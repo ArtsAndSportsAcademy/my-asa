@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+﻿import { Router, type IRouter } from "express";
 import { and, eq, inArray, ne } from "drizzle-orm";
 import {
   areaLocalSupervisorsTable,
@@ -37,7 +37,7 @@ async function locationInOrg(id: string, organizationId: string) {
 }
 
 router.get("/areas", requireAuth, requireOrganization, async (req, res) => {
-  if (!mayReadReference(req.user!.role)) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!mayReadReference(req.user!.role)) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Sem permissão para esta ação." }); return; }
   const includeInactive = req.query.includeInactive === "true";
   let areas = await db.select().from(areasTable).where(and(
     eq(areasTable.organizationId, req.user!.organizationId),
@@ -53,7 +53,7 @@ router.get("/areas", requireAuth, requireOrganization, async (req, res) => {
 
 router.post("/areas", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
   const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
-  if (!name) { res.status(400).json({ error: "name é obrigatório" }); return; }
+  if (!name) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "name é obrigatório." }); return; }
   try {
     const area = await db.transaction(async (tx) => {
       const [created] = await tx.insert(areasTable).values({ organizationId: req.user!.organizationId, name, active: true }).returning();
@@ -62,14 +62,14 @@ router.post("/areas", requireAuth, requireOrganization, requireRole("ADMIN"), as
       return created;
     });
     res.status(201).json({ area });
-  } catch { res.status(409).json({ error: "Já existe uma área ativa com este nome" }); }
+  } catch { res.status(409).json({ error: "CONFLITO", message: "Já existe uma área ativa com este nome." }); }
 });
 
 router.patch("/areas/:id", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
   const before = await areaInOrg(req.params.id as string, req.user!.organizationId);
   if (!before) { res.status(403).json({ error: "Forbidden", message: "Recurso fora do escopo" }); return; }
   const name = typeof req.body?.name === "string" ? req.body.name.trim() : before.name;
-  if (!name) { res.status(400).json({ error: "name não pode ser vazio" }); return; }
+  if (!name) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "name não pode ser vazio." }); return; }
   try {
     const area = await db.transaction(async (tx) => {
       const [next] = await tx.update(areasTable).set({ name, active: typeof req.body?.active === "boolean" ? req.body.active : before.active, updatedAt: new Date() }).where(eq(areasTable.id, before.id)).returning();
@@ -78,7 +78,7 @@ router.patch("/areas/:id", requireAuth, requireOrganization, requireRole("ADMIN"
       return next;
     });
     res.json({ area });
-  } catch { res.status(409).json({ error: "Já existe uma área ativa com este nome" }); }
+  } catch { res.status(409).json({ error: "CONFLITO", message: "Já existe uma área ativa com este nome." }); }
 });
 
 router.delete("/areas/:id", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
@@ -96,10 +96,10 @@ router.delete("/areas/:id", requireAuth, requireOrganization, requireRole("ADMIN
 router.get("/areas/:id/local-supervisors", requireAuth, requireOrganization, async (req, res) => {
   const area = await areaInOrg(req.params.id as string, req.user!.organizationId);
   if (!area) { res.status(403).json({ error: "Forbidden", message: "Recurso fora do escopo" }); return; }
-  if (!mayReadReference(req.user!.role)) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!mayReadReference(req.user!.role)) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Sem permissão para esta ação." }); return; }
   if (SUPERVISOR_ROLES.has(req.user!.role)) {
     const scopes = await listAreaLocalScopes(req.user!.sub, req.user!.organizationId);
-    if (!scopes.some((scope) => scope.areaId === area.id)) { res.status(403).json({ error: "Forbidden" }); return; }
+    if (!scopes.some((scope) => scope.areaId === area.id)) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Sem permissão para esta ação." }); return; }
   }
   const rows = await db.select({ mapping: areaLocalSupervisorsTable, locationName: locationsTable.name, supervisorName: usersTable.name })
     .from(areaLocalSupervisorsTable)
@@ -114,12 +114,12 @@ router.put("/areas/:id/locations/:locationId/supervisor", requireAuth, requireOr
   const location = await locationInOrg(req.params.locationId as string, req.user!.organizationId);
   const supervisorId = req.body?.supervisorId as string | undefined;
   if (!area || !location) { res.status(403).json({ error: "Forbidden", message: "Recurso fora do escopo" }); return; }
-  if (!supervisorId) { res.status(400).json({ error: "supervisorId é obrigatório" }); return; }
+  if (!supervisorId) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "supervisorId é obrigatório." }); return; }
   const [[supervisor], [activeRole]] = await Promise.all([
     db.select({ id: usersTable.id }).from(usersTable).where(and(eq(usersTable.id, supervisorId), eq(usersTable.status, "ACTIVE"), eq(usersTable.organizationId, req.user!.organizationId))).limit(1),
     db.select({ id: userRolesTable.id }).from(userRolesTable).innerJoin(operationsTable, eq(userRolesTable.operationId, operationsTable.id)).where(and(eq(operationsTable.organizationId, req.user!.organizationId), eq(userRolesTable.userId, supervisorId), eq(userRolesTable.active, true), inArray(userRolesTable.role, ["SUPERVISOR_A", "SUPERVISOR_B"] as any))).limit(1),
   ]);
-  if (!supervisor || !activeRole) { res.status(400).json({ error: "supervisorId precisa ser supervisor ativo da organização" }); return; }
+  if (!supervisor || !activeRole) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "supervisorId precisa ser supervisor ativo da organização." }); return; }
   const mapping = await db.transaction(async (tx) => {
     const [before] = await tx.select().from(areaLocalSupervisorsTable).where(and(eq(areaLocalSupervisorsTable.areaId, area.id), eq(areaLocalSupervisorsTable.locationId, location.id), eq(areaLocalSupervisorsTable.active, true))).limit(1);
     if (before) await tx.update(areaLocalSupervisorsTable).set({ active: false, updatedAt: new Date() }).where(eq(areaLocalSupervisorsTable.id, before.id));
@@ -133,7 +133,7 @@ router.put("/areas/:id/locations/:locationId/supervisor", requireAuth, requireOr
 
 router.get("/locations", requireAuth, requireOrganization, async (req, res) => {
   const locations = await listReadableLocations(req.user!.organizationId, req.user!.sub, req.user!.role, undefined, undefined, req.query.includeClosed === "true");
-  if (!locations) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!locations) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Sem permissão para esta ação." }); return; }
   // De qual operação é cada local: sem isso, dois "Palco" de operações diferentes ficam iguais na tela (crivo 12).
   const vinculos = locations.length
     ? await db.select({ locationId: operationLocationsTable.locationId, operationName: operationsTable.name })
@@ -151,7 +151,7 @@ router.post("/locations", requireAuth, requireOrganization, requireRole("ADMIN")
   const operatingDays = Array.isArray(req.body?.operatingDays) ? req.body.operatingDays.filter((day: unknown) => Number.isInteger(day) && Number(day) >= 0 && Number(day) <= 6) : [1, 2, 3, 4, 5, 6, 0];
   const openTime = typeof req.body?.openTime === "string" && /^\d{2}:\d{2}$/.test(req.body.openTime) ? req.body.openTime : "08:00";
   const closeTime = typeof req.body?.closeTime === "string" && /^\d{2}:\d{2}$/.test(req.body.closeTime) ? req.body.closeTime : "22:00";
-  if (!name) { res.status(400).json({ error: "name é obrigatório" }); return; }
+  if (!name) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "name é obrigatório." }); return; }
   // A operação dona do local é escolhida no cadastro (operationIds). Sem escolha, só dá para decidir sozinho
   // quando existe uma única operação ativa; com duas ou mais, ligar a todas travaria a Escala do local.
   const escolhidas: string[] | null = Array.isArray(req.body?.operationIds) && req.body.operationIds.every((id: unknown) => typeof id === "string")
@@ -178,7 +178,7 @@ router.post("/locations", requireAuth, requireOrganization, requireRole("ADMIN")
       return created;
     });
     res.status(201).json({ location });
-  } catch { res.status(409).json({ error: "Já existe um local com este nome" }); }
+  } catch { res.status(409).json({ error: "CONFLITO", message: "Já existe um local com este nome." }); }
 });
 
 router.patch("/locations/:id", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
@@ -192,7 +192,7 @@ router.patch("/locations/:id", requireAuth, requireOrganization, requireRole("AD
   const reason = reopening ? requireReason(res, req.body?.reason, "reabrir local") : null;
   if (reopening && !reason) return;
   const name = typeof req.body?.name === "string" ? req.body.name.trim() : before.name;
-  if (!name) { res.status(400).json({ error: "name não pode ser vazio" }); return; }
+  if (!name) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "name não pode ser vazio." }); return; }
   const operatingDays = Array.isArray(req.body?.operatingDays) ? req.body.operatingDays.filter((day: unknown) => Number.isInteger(day) && Number(day) >= 0 && Number(day) <= 6) : before.operatingDays;
   const openTime = typeof req.body?.openTime === "string" && /^\d{2}:\d{2}$/.test(req.body.openTime) ? req.body.openTime : before.openTime;
   const closeTime = typeof req.body?.closeTime === "string" && /^\d{2}:\d{2}$/.test(req.body.closeTime) ? req.body.closeTime : before.closeTime;
@@ -204,7 +204,7 @@ router.patch("/locations/:id", requireAuth, requireOrganization, requireRole("AD
       return next;
     });
     res.json({ location });
-  } catch { res.status(409).json({ error: "Já existe um local com este nome" }); }
+  } catch { res.status(409).json({ error: "CONFLITO", message: "Já existe um local com este nome." }); }
 });
 
 /** Operações ATIVAS que ficariam sem nenhum local aberto se este local fechasse. */
@@ -241,7 +241,7 @@ router.delete("/locations/:id", requireAuth, requireOrganization, requireRole("A
 router.get("/operations/:operationId/locations", requireAuth, requireOrganization, async (req, res) => {
   const [operation] = await db.select().from(operationsTable).where(and(eq(operationsTable.id, req.params.operationId as string), eq(operationsTable.organizationId, req.user!.organizationId))).limit(1);
   if (!operation) { res.status(403).json({ error: "Forbidden", message: "Recurso fora do escopo" }); return; }
-  if (!mayReadReference(req.user!.role)) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!mayReadReference(req.user!.role)) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Sem permissão para esta ação." }); return; }
   const rows = await db.select({ location: locationsTable }).from(operationLocationsTable).innerJoin(locationsTable, eq(operationLocationsTable.locationId, locationsTable.id)).where(and(eq(operationLocationsTable.operationId, operation.id), eq(operationLocationsTable.active, true), eq(locationsTable.closed, false)));
   res.json({ locations: rows.map((row) => row.location) });
 });
@@ -250,7 +250,7 @@ router.put("/operations/:operationId/locations", requireAuth, requireOrganizatio
   const [operation] = await db.select().from(operationsTable).where(and(eq(operationsTable.id, req.params.operationId as string), eq(operationsTable.organizationId, req.user!.organizationId))).limit(1);
   const locationIds: string[] | null = Array.isArray(req.body?.locationIds) && req.body.locationIds.every((id: unknown) => typeof id === "string") ? [...new Set<string>(req.body.locationIds)] : null;
   if (!operation) { res.status(403).json({ error: "Forbidden", message: "Recurso fora do escopo" }); return; }
-  if (!locationIds) { res.status(400).json({ error: "locationIds é obrigatório" }); return; }
+  if (!locationIds) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "locationIds é obrigatório." }); return; }
   if (operation.status === "ARCHIVED") { res.status(409).json({ error: "OPERATION_ARCHIVED", message: "Esta operação está encerrada. Reabra-a antes de mudar os locais." }); return; }
   const locations = locationIds.length === 0 ? [] : await db.select({ id: locationsTable.id }).from(locationsTable).where(and(inArray(locationsTable.id, locationIds), eq(locationsTable.organizationId, req.user!.organizationId), eq(locationsTable.closed, false)));
   if (locations.length !== new Set(locationIds).size) { res.status(400).json({ error: "LOCAIS_INVALIDOS", message: "Todos os locais precisam existir, ser desta organização e estar abertos." }); return; }
@@ -292,11 +292,11 @@ router.put("/operations/:operationId/locations", requireAuth, requireOrganizatio
 // pela Escala em cada dia; esta rota conserva o caminho legado só para área.
 router.put("/users/:id/operational-scope", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
   const [before] = await db.select().from(usersTable).where(and(eq(usersTable.id, req.params.id as string), eq(usersTable.organizationId, req.user!.organizationId))).limit(1);
-  if (!before) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!before) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Sem permissão para esta ação." }); return; }
   const { areaId } = req.body ?? {};
-  if (typeof areaId !== "string") { res.status(400).json({ error: "areaId é obrigatório" }); return; }
+  if (typeof areaId !== "string") { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "areaId é obrigatório." }); return; }
   const area = await areaInOrg(areaId, req.user!.organizationId);
-  if (!area?.active) { res.status(403).json({ error: "Área fora do escopo ativo" }); return; }
+  if (!area?.active) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Área fora do escopo ativo." }); return; }
   const scope = await db.transaction(async (tx) => {
     const [next] = await tx.update(usersTable).set({ areaId, updatedAt: new Date() }).where(eq(usersTable.id, before.id)).returning();
     if (!next) throw new Error("Pessoa não encontrada");
@@ -311,7 +311,7 @@ router.put("/users/:id/operational-scope", requireAuth, requireOrganization, req
 router.delete("/areas/:id/locations/:locationId/supervisor", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
   const area = await areaInOrg(req.params.id as string, req.user!.organizationId);
   const location = await locationInOrg(req.params.locationId as string, req.user!.organizationId);
-  if (!area || !location) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!area || !location) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Sem permissão para esta ação." }); return; }
   const mapping = await db.transaction(async (tx) => {
     const [before] = await tx.select().from(areaLocalSupervisorsTable).where(and(eq(areaLocalSupervisorsTable.areaId, area.id), eq(areaLocalSupervisorsTable.locationId, location.id), eq(areaLocalSupervisorsTable.active, true))).limit(1);
     if (!before) return null;

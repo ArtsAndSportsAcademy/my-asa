@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 15 Escalas — Escala do dia (uma por local e dia) e Programação (molde do local).
  *
  * Quem faz o quê (07-o-que-falta.md, "15 Escalas — decisões"):
@@ -87,8 +87,8 @@ router.get("/escalas/dia", requireAuth, requireOrganization, async (req, res) =>
   const actor = req.user! as Actor;
   const locationId = typeof req.query.locationId === "string" ? req.query.locationId : "";
   const date = dateParam(req.query.date);
-  if (!locationId || !(await locationInOrg(locationId, actor.organizationId))) { res.status(404).json({ error: "Local não encontrado" }); return; }
-  if (!(await canReadLocal(actor, locationId))) { res.status(403).json({ error: "Forbidden", message: "A escala deste local não está no seu acesso" }); return; }
+  if (!locationId || !(await locationInOrg(locationId, actor.organizationId))) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
+  if (!(await canReadLocal(actor, locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: "A escala deste local não está no seu acesso" }); return; }
   try {
     const dia = await montarEscalaDoDia(actor.organizationId, locationId, date);
     // Mudança que não passou por ajuste nem pelo Livro (ex.: bloco novo na Programação) também pede republicação.
@@ -98,7 +98,7 @@ router.get("/escalas/dia", requireAuth, requireOrganization, async (req, res) =>
     res.json({ dia, areasSupervisionadas: await supervisedAreas(actor, locationId), podePublicar: actor.role === "ADMIN" });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Erro ao montar a Escala do dia" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível montar a Escala. Tente de novo." });
   }
 });
 
@@ -147,7 +147,7 @@ router.get("/escalas/minha", requireAuth, requireOrganization, async (req, res) 
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Erro ao montar a sua escala" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível montar a escala. Tente de novo." });
   }
 });
 
@@ -161,17 +161,17 @@ router.post("/escalas/dia/gerar", requireAuth, requireOrganization, async (req, 
   const actor = req.user! as Actor;
   const { locationId, date: rawDate } = req.body ?? {};
   const date = typeof rawDate === "string" && DATE.test(rawDate) ? rawDate : null;
-  if (actor.role !== "ADMIN") { res.status(403).json({ error: "Forbidden", message: "A Administração gera o dia operacional" }); return; }
-  if (typeof locationId !== "string" || !date) { res.status(400).json({ error: "locationId e date são obrigatórios" }); return; }
+  if (actor.role !== "ADMIN") { res.status(403).json({ error: "ACESSO_NEGADO", message: "A Administração gera o dia operacional" }); return; }
+  if (typeof locationId !== "string" || !date) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "locationId e date são obrigatórios." }); return; }
   const location = await locationInOrg(locationId, actor.organizationId);
-  if (!location) { res.status(404).json({ error: "Local não encontrado" }); return; }
+  if (!location) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
   try {
     const r = await gerarDiaDoLocal(actor, location, date);
     if (!r.ok) { res.status(r.status).json({ error: r.error, message: r.message }); return; }
     res.status(201).json({ escala: r.scale, livros: r.livros.map((book) => ({ id: book.dailyBook.id, showBookId: book.dailyBook.showBookId, generated: book.generated, conflicts: book.conflicts })), dia: await montarEscalaDoDia(actor.organizationId, locationId, date) });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Erro ao gerar a Escala e os Livros do Dia" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível gerar a Escala. Tente de novo." });
   }
 });
 
@@ -181,19 +181,19 @@ router.post("/escalas/dia/gerar", requireAuth, requireOrganization, async (req, 
  */
 router.get("/escalas/mes/resumo", requireAuth, requireOrganization, async (req, res) => {
   const actor = req.user! as Actor;
-  if (actor.role !== "ADMIN") { res.status(403).json({ error: "Forbidden", message: "A Administração gera o mês." }); return; }
+  if (actor.role !== "ADMIN") { res.status(403).json({ error: "ACESSO_NEGADO", message: "A Administração gera o mês." }); return; }
   const locationId = typeof req.query.locationId === "string" ? req.query.locationId : "";
   const mes = validarMes(req.query.year, req.query.month);
-  if (!locationId) { res.status(400).json({ error: "locationId é obrigatório" }); return; }
+  if (!locationId) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "locationId é obrigatório." }); return; }
   if ("erro" in mes) { res.status(400).json({ error: "MES_INVALIDO", message: mes.erro }); return; }
   try {
     const resumo = await resumoDoMes(actor.organizationId, locationId, mes.year, mes.month);
-    if (!resumo) { res.status(404).json({ error: "Local não encontrado" }); return; }
+    if (!resumo) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
     const conta = (...estados: string[]) => resumo.dias.filter((d) => estados.includes(d.estado)).length;
     res.json({ ...resumo, year: mes.year, month: mes.month, totais: { aGerar: resumo.semOperacao ? 0 : conta("a_gerar", "faltam_livros"), completos: conta("completo"), publicados: conta("publicado"), naoEntram: conta("passou", "fechado", "sem_programacao", "sem_atividades") } });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Erro ao montar o resumo do mês" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Erro ao montar o resumo do mês. Tente de novo." });
   }
 });
 
@@ -204,73 +204,73 @@ router.get("/escalas/mes/resumo", requireAuth, requireOrganization, async (req, 
  */
 router.post("/escalas/mes/gerar", requireAuth, requireOrganization, async (req, res) => {
   const actor = req.user! as Actor;
-  if (actor.role !== "ADMIN") { res.status(403).json({ error: "Forbidden", message: "A Administração gera o mês." }); return; }
+  if (actor.role !== "ADMIN") { res.status(403).json({ error: "ACESSO_NEGADO", message: "A Administração gera o mês." }); return; }
   const { locationId, year, month, desde } = req.body ?? {};
   const mes = validarMes(year, month);
-  if (typeof locationId !== "string" || !locationId) { res.status(400).json({ error: "locationId é obrigatório" }); return; }
+  if (typeof locationId !== "string" || !locationId) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "locationId é obrigatório." }); return; }
   if ("erro" in mes) { res.status(400).json({ error: "MES_INVALIDO", message: mes.erro }); return; }
   try {
-    const r = await gerarMes(actor, locationId, mes.year, mes.month, { desde: typeof desde === "string" && DATE.test(desde) ? desde : null });
     if (!(await operationForLocation(locationId))) { res.status(409).json({ error: "LOCAL_SEM_OPERACAO", message: FRASE_LOCAL_SEM_OPERACAO }); return; }
-    if (!r) { res.status(404).json({ error: "Local não encontrado" }); return; }
+    const r = await gerarMes(actor, locationId, mes.year, mes.month, { desde: typeof desde === "string" && DATE.test(desde) ? desde : null });
+    if (!r) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
     res.json(r);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Erro ao gerar o mês" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Erro ao gerar o mês. Tente de novo." });
   }
 });
 
 /** O que o "Descartar rascunhos do mês" levaria, dia a dia, e o que a gerência mexeu à mão em cada um. */
 router.get("/escalas/mes/descartaveis", requireAuth, requireOrganization, async (req, res) => {
   const actor = req.user! as Actor;
-  if (actor.role !== "ADMIN") { res.status(403).json({ error: "Forbidden", message: "A Administração descarta rascunhos do mês." }); return; }
+  if (actor.role !== "ADMIN") { res.status(403).json({ error: "ACESSO_NEGADO", message: "A Administração descarta rascunhos do mês." }); return; }
   const locationId = typeof req.query.locationId === "string" ? req.query.locationId : "";
   const mes = validarMes(req.query.year, req.query.month);
-  if (!locationId) { res.status(400).json({ error: "locationId é obrigatório" }); return; }
+  if (!locationId) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "locationId é obrigatório." }); return; }
   if ("erro" in mes) { res.status(400).json({ error: "MES_INVALIDO", message: mes.erro }); return; }
   try {
     const r = await descartaveisDoMes(actor.organizationId, locationId, mes.year, mes.month);
-    if (!r) { res.status(404).json({ error: "Local não encontrado" }); return; }
+    if (!r) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
     res.json({ ...r, year: mes.year, month: mes.month });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Erro ao ver o que seria descartado" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível verificar o descarte. Tente de novo." });
   }
 });
 
 /** Descarta (de forma lógica e restaurável) os rascunhos do mês. Motivo obrigatório; nunca toca em dia publicado. */
 router.post("/escalas/mes/descartar", requireAuth, requireOrganization, async (req, res) => {
   const actor = req.user! as Actor;
-  if (actor.role !== "ADMIN") { res.status(403).json({ error: "Forbidden", message: "A Administração descarta rascunhos do mês." }); return; }
+  if (actor.role !== "ADMIN") { res.status(403).json({ error: "ACESSO_NEGADO", message: "A Administração descarta rascunhos do mês." }); return; }
   const { locationId, year, month, motivo, incluirComAjustes } = req.body ?? {};
   const mes = validarMes(year, month);
-  if (typeof locationId !== "string" || !locationId) { res.status(400).json({ error: "locationId é obrigatório" }); return; }
+  if (typeof locationId !== "string" || !locationId) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "locationId é obrigatório." }); return; }
   if ("erro" in mes) { res.status(400).json({ error: "MES_INVALIDO", message: mes.erro }); return; }
   const porque = typeof motivo === "string" ? motivo.trim() : "";
   if (porque.length < 3) { res.status(400).json({ error: "MOTIVO_OBRIGATORIO", message: "Escreva o motivo do descarte." }); return; }
   try {
     const r = await descartarMes(actor, locationId, mes.year, mes.month, porque, incluirComAjustes === true);
-    if (!r) { res.status(404).json({ error: "Local não encontrado" }); return; }
+    if (!r) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
     res.json(r);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Erro ao descartar os rascunhos do mês" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Erro ao descartar os rascunhos do mês. Tente de novo." });
   }
 });
 
 /** Desfaz um descarte (pelo evento do Registro que ele gerou). */
 router.post("/escalas/mes/restaurar", requireAuth, requireOrganization, async (req, res) => {
   const actor = req.user! as Actor;
-  if (actor.role !== "ADMIN") { res.status(403).json({ error: "Forbidden", message: "A Administração restaura rascunhos do mês." }); return; }
+  if (actor.role !== "ADMIN") { res.status(403).json({ error: "ACESSO_NEGADO", message: "A Administração restaura rascunhos do mês." }); return; }
   const { eventoId } = req.body ?? {};
-  if (typeof eventoId !== "string" || !eventoId) { res.status(400).json({ error: "eventoId é obrigatório" }); return; }
+  if (typeof eventoId !== "string" || !eventoId) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "eventoId é obrigatório." }); return; }
   try {
     const r = await restaurarDescarte(actor, eventoId);
-    if (!r) { res.status(404).json({ error: "Descarte não encontrado" }); return; }
+    if (!r) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Descarte não encontrado." }); return; }
     res.json(r);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Erro ao restaurar os rascunhos do mês" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Erro ao restaurar os rascunhos do mês. Tente de novo." });
   }
 });
 
@@ -287,7 +287,7 @@ router.post("/escalas/dia/ajustes", requireAuth, requireOrganization, async (req
     : [];
   if (typeof locationId !== "string" || typeof date !== "string" || !DATE.test(date) || typeof sourceKey !== "string" || !sourceKey
     || (!lote.length && (typeof userId !== "string" || !["ADICIONAR", "REMOVER"].includes(action)))) {
-    res.status(400).json({ error: "locationId, date, sourceKey e userId+action (ou mudancas) são obrigatórios" }); return;
+    res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "locationId, date, sourceKey e userId+action (ou mudancas) são obrigatórios." }); return;
   }
   const pedidos = lote.length ? lote : [{ userId: userId as string, action: action as "ADICIONAR" | "REMOVER" }];
   const porque = typeof motivo === "string" ? motivo.trim() : null;
@@ -312,7 +312,7 @@ router.post("/escalas/dia/ajustes", requireAuth, requireOrganization, async (req
     console.error(err);
     const conflito = err instanceof VersionConflictError;
     res.status(conflito ? 409 : 500).json({
-      error: conflito ? "LIVRO_MUDOU" : "Erro ao ajustar a Escala",
+      error: conflito ? "LIVRO_MUDOU" : "ERRO_INTERNO",
       message: conflito
         ? "O Livro do Dia mudou enquanto você ajustava. Nada foi gravado; confira a grade e tente de novo."
         : "Não foi possível gravar o ajuste. Nada foi gravado; confira a grade e tente de novo.",
@@ -337,7 +337,7 @@ async function conferirAjuste(
 ): Promise<AjusteConferido | AjusteErro> {
   const location = await locationInOrg(locationId, actor.organizationId);
   if (!location) return { ok: false, status: 404, body: { error: "Local não encontrado" } };
-  if (!(await canManageLocal(actor, locationId))) return { ok: false, status: 403, body: { error: "Forbidden", message: "Você não ajusta a Escala deste local" } };
+  if (!(await canManageLocal(actor, locationId))) return { ok: false, status: 403, body: { error: "ACESSO_NEGADO", message: "Você não ajusta a Escala deste local" } };
   const diaAntes = await montarEscalaDoDia(actor.organizationId, locationId, date);
   const bloco = diaAntes?.blocos.find((b) => b.key === sourceKey);
   if (!bloco) return { ok: false, status: 404, body: { error: "Bloco não encontrado nesta Escala" } };
@@ -347,7 +347,7 @@ async function conferirAjuste(
   if (!pessoa) return { ok: false, status: 404, body: { error: "Pessoa não encontrada neste local" } };
   const minhasAreas = await supervisedAreas(actor, locationId);
   if (actor.role !== "ADMIN" && (!pessoa.areaId || !minhasAreas.includes(pessoa.areaId))) {
-    return { ok: false, status: 403, body: { error: "Forbidden", message: "Supervisão ajusta somente pessoas da própria área" } };
+    return { ok: false, status: 403, body: { error: "ACESSO_NEGADO", message: "Supervisão ajusta somente pessoas da própria área" } };
   }
   // Folga vence por padrão. Chamar alguém na folga é exceção: pede motivo escrito, e a folga
   // perdida fica pendente de decisão (remarcar para outro dia ou deixar como está).
@@ -440,12 +440,12 @@ router.post("/escalas/dia/folga-resolvida", requireAuth, requireOrganization, as
   const actor = req.user! as Actor;
   const { locationId, date, userId } = req.body ?? {};
   if (typeof locationId !== "string" || typeof date !== "string" || !DATE.test(date) || typeof userId !== "string") {
-    res.status(400).json({ error: "locationId, date e userId são obrigatórios" }); return;
+    res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "locationId, date e userId são obrigatórios." }); return;
   }
-  if (!(await locationInOrg(locationId, actor.organizationId))) { res.status(404).json({ error: "Local não encontrado" }); return; }
-  if (!(await canManageLocal(actor, locationId))) { res.status(403).json({ error: "Forbidden", message: "Você não decide folgas deste local" }); return; }
+  if (!(await locationInOrg(locationId, actor.organizationId))) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
+  if (!(await canManageLocal(actor, locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Você não decide folgas deste local" }); return; }
   const scale = await findEscalaDoDia(locationId, date);
-  if (!scale) { res.status(404).json({ error: "Escala do dia não encontrada" }); return; }
+  if (!scale) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Escala do dia não encontrada." }); return; }
   try {
     const resolvidos = await db.transaction(async (tx) => {
       const rows = await tx.update(escalaBlocoAjustesTable).set({ folgaDecididaEm: new Date() }).where(and(
@@ -463,20 +463,20 @@ router.post("/escalas/dia/folga-resolvida", requireAuth, requireOrganization, as
       }
       return rows.length;
     });
-    if (!resolvidos) { res.status(404).json({ error: "Esta pessoa não foi chamada na folga neste dia" }); return; }
+    if (!resolvidos) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Esta pessoa não foi chamada na folga neste dia." }); return; }
     res.json({ dia: await montarEscalaDoDia(actor.organizationId, locationId, date) });
-  } catch (err) { console.error(err); res.status(500).json({ error: "Erro ao resolver a folga" }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível resolver a folga. Tente de novo." }); }
 });
 
 /** Elenco confirma que leu a versão publicada que está vendo. */
 router.post("/escalas/:id/confirmar", requireAuth, requireOrganization, async (req, res) => {
   const actor = req.user! as Actor;
-  if (actor.role !== "MEMBER") { res.status(403).json({ error: "Forbidden", message: "Cada pessoa confirma a própria Escala" }); return; }
+  if (actor.role !== "MEMBER") { res.status(403).json({ error: "ACESSO_NEGADO", message: "Cada pessoa confirma a própria Escala" }); return; }
   const [scale] = await db.select().from(scalesTable).where(eq(scalesTable.id, req.params.id as string)).limit(1);
-  if (!scale || !scale.locationId || !(await locationInOrg(scale.locationId, actor.organizationId))) { res.status(404).json({ error: "Escala não encontrada" }); return; }
+  if (!scale || !scale.locationId || !(await locationInOrg(scale.locationId, actor.organizationId))) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Escala não encontrada." }); return; }
   if (!escalaPublicada(scale.status)) { res.status(409).json({ error: "ESCALA_NAO_PUBLICADA", message: "A Escala ainda não foi publicada." }); return; }
   const dia = await montarEscalaDoDia(actor.organizationId, scale.locationId, scale.periodStart);
-  if (!dia?.blocos.some((bloco) => bloco.pessoaIds.includes(actor.sub))) { res.status(403).json({ error: "Forbidden", message: "Você só confirma uma escala em que está escalada." }); return; }
+  if (!dia?.blocos.some((bloco) => bloco.pessoaIds.includes(actor.sub))) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Você só confirma uma escala em que está escalada." }); return; }
   try {
     await db.transaction(async (tx) => {
       const [previous] = await tx.select().from(escalaConfirmacoesTable).where(and(eq(escalaConfirmacoesTable.scaleId, scale.id), eq(escalaConfirmacoesTable.userId, actor.sub))).limit(1);
@@ -487,7 +487,7 @@ router.post("/escalas/:id/confirmar", requireAuth, requireOrganization, async (r
       await writeHistoryEvent({ category: "SCALE", action: "escala.confirmada", title: "Escala confirmada", narrative: `Confirmou a leitura da Escala de ${scale.periodStart}.`, entityType: "scale", entityId: scale.id, actorId: actor.sub, operationId: scale.operationId, orgId: actor.organizationId, beforeState: { version: previous?.version ?? null }, afterState: { version: scale.version } }, tx as unknown as HistoryExecutor);
     });
     res.json({ confirmed: true, version: scale.version });
-  } catch (err) { console.error(err); res.status(500).json({ error: "Erro ao confirmar a Escala" }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível confirmar a Escala. Tente de novo." }); }
 });
 
 /** Supervisão marca (ou desmarca) a parte da área dela como pronta. Cria a Escala do dia se ainda não existe. */
@@ -495,11 +495,11 @@ router.post("/escalas/dia/pronta", requireAuth, requireOrganization, async (req,
   const actor = req.user! as Actor;
   const { locationId, areaId, pronta } = req.body ?? {};
   const date = typeof req.body?.date === "string" && DATE.test(req.body.date) ? req.body.date : null;
-  if (typeof locationId !== "string" || typeof areaId !== "string" || !date || typeof pronta !== "boolean") { res.status(400).json({ error: "locationId, areaId, date e pronta são obrigatórios" }); return; }
+  if (typeof locationId !== "string" || typeof areaId !== "string" || !date || typeof pronta !== "boolean") { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "locationId, areaId, date e pronta são obrigatórios." }); return; }
   const location = await locationInOrg(locationId, actor.organizationId);
-  if (!location) { res.status(404).json({ error: "Local não encontrado" }); return; }
+  if (!location) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
   const mine = await supervisedAreas(actor, locationId);
-  if (actor.role !== "ADMIN" && !mine.includes(areaId)) { res.status(403).json({ error: "Forbidden", message: "Você marca como pronta só a parte da sua área" }); return; }
+  if (actor.role !== "ADMIN" && !mine.includes(areaId)) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Você marca como pronta só a parte da sua área" }); return; }
   try {
     let scale = await findEscalaDoDia(locationId, date);
     if (scale && scale.status !== "DRAFT") { res.status(409).json({ error: "ESCALA_JA_PUBLICADA", message: "A escala deste dia já foi publicada." }); return; }
@@ -530,18 +530,18 @@ router.post("/escalas/dia/pronta", requireAuth, requireOrganization, async (req,
     res.json({ dia: await montarEscalaDoDia(actor.organizationId, locationId, date), scaleId: result.id });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Erro ao marcar a área" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Erro ao marcar a área. Tente de novo." });
   }
 });
 
 /** Administração publica o dia — só com todas as áreas do local prontas. */
 export async function publicarOuRepublicar(req: any, res: any, republicar: boolean) {
   const actor = req.user! as Actor;
-  if (actor.role !== "ADMIN") { res.status(403).json({ error: "Forbidden", message: "Quem publica o dia é a Administração" }); return; }
+  if (actor.role !== "ADMIN") { res.status(403).json({ error: "ACESSO_NEGADO", message: "Quem publica o dia é a Administração" }); return; }
   const expectedVersion = Number(req.body?.expectedVersion);
-  if (!Number.isInteger(expectedVersion)) { res.status(400).json({ error: "expectedVersion é obrigatório" }); return; }
+  if (!Number.isInteger(expectedVersion)) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "expectedVersion é obrigatório." }); return; }
   const [scale] = await db.select().from(scalesTable).where(eq(scalesTable.id, req.params.id)).limit(1);
-  if (!scale || !scale.locationId || !(await locationInOrg(scale.locationId, actor.organizationId))) { res.status(404).json({ error: "Escala não encontrada" }); return; }
+  if (!scale || !scale.locationId || !(await locationInOrg(scale.locationId, actor.organizationId))) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Escala não encontrada." }); return; }
   if (scale.version !== expectedVersion) { res.status(409).json({ error: "CONCURRENT_MODIFICATION", message: "Alguém alterou esta escala depois que você a abriu.", expectedVersion, currentVersion: scale.version }); return; }
   if (republicar ? !escalaPublicada(scale.status) : scale.status !== "DRAFT") {
     res.status(409).json({ error: republicar ? "ESCALA_NAO_PUBLICADA" : "ESCALA_JA_PUBLICADA", message: republicar ? "Só republica escala já publicada." : "Esta escala já foi publicada." }); return;
@@ -622,8 +622,8 @@ export async function republicarEscalaPorChamada(actor: Actor, scaleId: string, 
   await publicarOuRepublicar({ user: actor, body: { expectedVersion }, params: { id: scaleId } }, res, true);
   return saida;
 }
-router.post("/escalas/:id/publicar", requireAuth, requireOrganization, (req, res) => void publicarOuRepublicar(req, res, false).catch((err) => { console.error(err); res.status(500).json({ error: "Erro ao publicar a escala" }); }));
-router.post("/escalas/:id/republicar", requireAuth, requireOrganization, (req, res) => void publicarOuRepublicar(req, res, true).catch((err) => { console.error(err); res.status(500).json({ error: "Erro ao republicar a escala" }); }));
+router.post("/escalas/:id/publicar", requireAuth, requireOrganization, (req, res) => void publicarOuRepublicar(req, res, false).catch((err) => { console.error(err); res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível publicar a escala. Tente de novo." }); }));
+router.post("/escalas/:id/republicar", requireAuth, requireOrganization, (req, res) => void publicarOuRepublicar(req, res, true).catch((err) => { console.error(err); res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível republicar a escala. Tente de novo." }); }));
 
 // ─── Programação ─────────────────────────────────────────────────────────────
 
@@ -655,8 +655,8 @@ async function programacaoInOrg(id: string, organizationId: string) {
 router.get("/programacoes", requireAuth, requireOrganization, async (req, res) => {
   const actor = req.user! as Actor;
   const locationId = typeof req.query.locationId === "string" ? req.query.locationId : "";
-  if (!locationId || !(await locationInOrg(locationId, actor.organizationId))) { res.status(404).json({ error: "Local não encontrado" }); return; }
-  if (!(await canReadLocal(actor, locationId))) { res.status(403).json({ error: "Forbidden", message: "Você não vê a Programação deste local." }); return; }
+  if (!locationId || !(await locationInOrg(locationId, actor.organizationId))) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
+  if (!(await canReadLocal(actor, locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Você não vê a Programação deste local." }); return; }
   // Molde arquivado continua na resposta (active: false) para poder ser reativado ou consultado.
   const programacoes = await db.select().from(programacoesTable).where(eq(programacoesTable.locationId, locationId)).orderBy(asc(programacoesTable.vigenciaInicio));
   // Blocos tirados do molde continuam na resposta (active: false) para a tela poder devolvê-los.
@@ -669,14 +669,14 @@ router.post("/programacoes", requireAuth, requireOrganization, async (req, res) 
   const actor = req.user! as Actor;
   const { locationId, nome, vigenciaInicio, vigenciaFim } = req.body ?? {};
   if (typeof locationId !== "string" || typeof nome !== "string" || !nome.trim() || !DATE.test(String(vigenciaInicio)) || !DATE.test(String(vigenciaFim)) || vigenciaFim < vigenciaInicio) {
-    res.status(400).json({ error: "locationId, nome e vigência (início ≤ fim) são obrigatórios" }); return;
+    res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "locationId, nome e vigência (início ≤ fim) são obrigatórios." }); return;
   }
-  if (!(await locationInOrg(locationId, actor.organizationId))) { res.status(404).json({ error: "Local não encontrado" }); return; }
-  if (!(await canManageLocal(actor, locationId))) { res.status(403).json({ error: "Forbidden", message: "Programação é da Administração e da Supervisão do local" }); return; }
+  if (!(await locationInOrg(locationId, actor.organizationId))) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
+  if (!(await canManageLocal(actor, locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Programação é da Administração e da Supervisão do local" }); return; }
   // Temporada nova costuma repetir o molde da anterior: `copiarDeId` traz os blocos junto.
   const copiarDeId = typeof (req.body as { copiarDeId?: unknown })?.copiarDeId === "string" ? (req.body as { copiarDeId: string }).copiarDeId : null;
   const origem = copiarDeId ? await programacaoInOrg(copiarDeId, actor.organizationId) : null;
-  if (copiarDeId && (!origem || origem.locationId !== locationId)) { res.status(404).json({ error: "Molde de origem não encontrado neste local" }); return; }
+  if (copiarDeId && (!origem || origem.locationId !== locationId)) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Molde de origem não encontrado neste local." }); return; }
   const created = await db.transaction(async (tx) => {
     const [row] = await tx.insert(programacoesTable).values({ organizationId: actor.organizationId, locationId, nome: nome.trim(), vigenciaInicio, vigenciaFim, createdBy: actor.sub }).returning();
     let copiados: (typeof programacaoBlocosTable.$inferSelect)[] = [];
@@ -695,8 +695,8 @@ router.post("/programacoes", requireAuth, requireOrganization, async (req, res) 
 router.patch("/programacoes/:id", requireAuth, requireOrganization, async (req, res) => {
   const actor = req.user! as Actor;
   const current = await programacaoInOrg(req.params.id as string, actor.organizationId);
-  if (!current) { res.status(404).json({ error: "Programação não encontrada" }); return; }
-  if (!(await canManageLocal(actor, current.locationId))) { res.status(403).json({ error: "Forbidden", message: "Você não altera a Programação deste local." }); return; }
+  if (!current) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Programação não encontrada." }); return; }
+  if (!(await canManageLocal(actor, current.locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Você não altera a Programação deste local." }); return; }
   const { nome, vigenciaInicio, vigenciaFim, active } = req.body ?? {};
   const next = {
     nome: typeof nome === "string" && nome.trim() ? nome.trim() : current.nome,
@@ -704,7 +704,7 @@ router.patch("/programacoes/:id", requireAuth, requireOrganization, async (req, 
     vigenciaFim: DATE.test(String(vigenciaFim)) ? vigenciaFim as string : current.vigenciaFim,
     active: typeof active === "boolean" ? active : current.active,
   };
-  if (next.vigenciaFim < next.vigenciaInicio) { res.status(400).json({ error: "vigência: início ≤ fim" }); return; }
+  if (next.vigenciaFim < next.vigenciaInicio) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "vigência: início ≤ fim." }); return; }
   const updated = await db.transaction(async (tx) => {
     const [row] = await tx.update(programacoesTable).set({ ...next, version: current.version + 1, updatedAt: new Date() }).where(eq(programacoesTable.id, current.id)).returning();
     await writeHistoryEvent({ category: "SCALE", action: next.active ? "programacao.alterada" : "programacao.desativada", title: next.active ? "Programação alterada" : "Programação desativada", narrative: `Programação ${row!.nome} ${next.active ? "alterada" : "desativada (sem exclusão)"}.`, entityType: "programacao", entityId: current.id, actorId: actor.sub, orgId: actor.organizationId, beforeState: { programacao: current }, afterState: { programacao: row } }, tx as unknown as HistoryExecutor);
@@ -716,19 +716,19 @@ router.patch("/programacoes/:id", requireAuth, requireOrganization, async (req, 
 router.post("/programacoes/:id/blocos", requireAuth, requireOrganization, async (req, res) => {
   const actor = req.user! as Actor;
   const programacao = await programacaoInOrg(req.params.id as string, actor.organizationId);
-  if (!programacao) { res.status(404).json({ error: "Programação não encontrada" }); return; }
-  if (!(await canManageLocal(actor, programacao.locationId))) { res.status(403).json({ error: "Forbidden", message: "Você não altera a Programação deste local." }); return; }
+  if (!programacao) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Programação não encontrada." }); return; }
+  if (!(await canManageLocal(actor, programacao.locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Você não altera a Programação deste local." }); return; }
   // A mesma atividade costuma repetir em vários dias da semana (treino de segunda a sexta):
   // `weekdays` cria um bloco por dia de uma vez; `weekday` sozinho continua valendo.
   const dias = Array.isArray((req.body as { weekdays?: unknown })?.weekdays)
     ? [...new Set(((req.body as { weekdays: unknown[] }).weekdays).map(Number))]
     : [];
-  if (dias.some((w) => !Number.isInteger(w) || w < 0 || w > 6)) { res.status(400).json({ error: "weekdays: dias de 0 (domingo) a 6 (sábado)" }); return; }
+  if (dias.some((w) => !Number.isInteger(w) || w < 0 || w > 6)) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "weekdays: dias de 0 (domingo) a 6 (sábado)." }); return; }
   const parsed = parseBloco({ ...(req.body ?? {}), weekday: dias.length ? dias[0] : (req.body as BlocoInput)?.weekday }, false);
-  if (!parsed.ok) { res.status(400).json({ error: parsed.error }); return; }
+  if (!parsed.ok) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: parsed.error }); return; }
   if (typeof parsed.value.showBookId === "string") {
     const [show] = await db.select({ id: showBooksTable.id }).from(showBooksTable).where(eq(showBooksTable.id, parsed.value.showBookId)).limit(1);
-    if (!show) { res.status(404).json({ error: "Show não encontrado" }); return; }
+    if (!show) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Show não encontrado." }); return; }
   }
   const alvos = dias.length ? dias.sort((a, b) => a - b) : [parsed.value.weekday as number];
   const created = await db.transaction(async (tx) => {
@@ -746,15 +746,15 @@ router.post("/programacoes/:id/blocos", requireAuth, requireOrganization, async 
 router.patch("/programacoes/:id/blocos/:blocoId", requireAuth, requireOrganization, async (req, res) => {
   const actor = req.user! as Actor;
   const programacao = await programacaoInOrg(req.params.id as string, actor.organizationId);
-  if (!programacao) { res.status(404).json({ error: "Programação não encontrada" }); return; }
-  if (!(await canManageLocal(actor, programacao.locationId))) { res.status(403).json({ error: "Forbidden", message: "Você não altera a Programação deste local." }); return; }
+  if (!programacao) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Programação não encontrada." }); return; }
+  if (!(await canManageLocal(actor, programacao.locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Você não altera a Programação deste local." }); return; }
   const [current] = await db.select().from(programacaoBlocosTable).where(and(eq(programacaoBlocosTable.id, req.params.blocoId as string), eq(programacaoBlocosTable.programacaoId, programacao.id))).limit(1);
-  if (!current) { res.status(404).json({ error: "Bloco não encontrado" }); return; }
+  if (!current) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Bloco não encontrado." }); return; }
   const parsed = parseBloco(req.body ?? {}, true);
-  if (!parsed.ok) { res.status(400).json({ error: parsed.error }); return; }
+  if (!parsed.ok) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: parsed.error }); return; }
   const merged = { ...current, ...parsed.value } as typeof current;
-  if (merged.regra === "livro" && !merged.showBookId) { res.status(400).json({ error: "Escolha de qual show é este bloco do Livro." }); return; }
-  if (merged.fim && merged.fim.slice(0, 5) <= merged.inicio.slice(0, 5)) { res.status(400).json({ error: "fim precisa ser depois do início" }); return; }
+  if (merged.regra === "livro" && !merged.showBookId) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "Escolha de qual show é este bloco do Livro.." }); return; }
+  if (merged.fim && merged.fim.slice(0, 5) <= merged.inicio.slice(0, 5)) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "fim precisa ser depois do início." }); return; }
   const updated = await db.transaction(async (tx) => {
     const [row] = await tx.update(programacaoBlocosTable).set({ ...parsed.value, updatedAt: new Date() }).where(eq(programacaoBlocosTable.id, current.id)).returning();
     await writeHistoryEvent({ category: "SCALE", action: row!.active ? "programacao.bloco_alterado" : "programacao.bloco_desativado", title: row!.active ? "Bloco da Programação alterado" : "Bloco da Programação desativado", narrative: `Bloco ${row!.rotulo} ${row!.active ? "alterado" : "desativado (sem exclusão)"} na programação ${programacao.nome}.`, entityType: "programacao", entityId: programacao.id, actorId: actor.sub, orgId: actor.organizationId, beforeState: { bloco: current }, afterState: { bloco: row } }, tx as unknown as HistoryExecutor);

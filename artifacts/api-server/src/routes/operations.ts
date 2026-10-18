@@ -192,7 +192,7 @@ router.get("/operations/:id", requireAuth, requireOrganization, async (req, res)
     res.json({ operation });
   } catch (err) {
     log.error({ err }, "Error getting operation");
-    res.status(500).json({ error: "INTERNAL_ERROR" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível completar a operação. Tente de novo." });
   }
 });
 
@@ -283,7 +283,7 @@ router.post("/operations", requireAuth, requireOrganization, requireRole("ADMIN"
       return;
     }
     log.error({ err }, "Error creating operation");
-    res.status(500).json({ error: "INTERNAL_ERROR" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível criar a operação. Tente de novo." });
   }
 });
 
@@ -416,7 +416,7 @@ router.patch("/operations/:id", requireAuth, requireOrganization, requireRole("A
       return;
     }
     log.error({ err }, "Error updating operation");
-    res.status(500).json({ error: "INTERNAL_ERROR" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível atualizar a operação. Tente de novo." });
   }
 });
 
@@ -433,7 +433,7 @@ router.patch("/operations/:id/status", requireAuth, requireOrganization, require
   try {
     const operation = await getOperationInOrganization(id, req.user!.organizationId);
     if (!operation) {
-      res.status(404).json({ error: "NOT_FOUND" });
+      res.status(404).json({ error: "NAO_ENCONTRADO", message: "Operação não encontrada." });
       return;
     }
 

@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+﻿import { randomUUID } from "node:crypto";
 import { Router, type IRouter } from "express";
 import { eq, and, inArray, ne, isNull, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
@@ -220,7 +220,7 @@ async function getDailyBookOrFail(id: string, res: any) {
     .where(eq(dailyBooksTable.id, id))
     .limit(1);
   if (!book) {
-    res.status(404).json({ error: "Livro do Dia não encontrado" });
+    res.status(404).json({ error: "NAO_ENCONTRADO", message: "Livro do Dia não encontrado." });
     return null;
   }
   return book;
@@ -255,7 +255,7 @@ async function requireDailyBookOperate(
     operationId = ev?.operationId ?? null;
   }
   if (!operationId || !(await canOperateDailyBook(user, operationId, show))) {
-    res.status(403).json({ error: "Forbidden", message: show?.responsibleId ? "Este show tem uma pessoa responsável: só ela e a Administração mexem no Livro do Dia." : "Acesso restrito à Supervisão da operação e à Administração" });
+    res.status(403).json({ error: "ACESSO_NEGADO", message: show?.responsibleId ? "Este show tem uma pessoa responsável: só ela e a Administração mexem no Livro do Dia." : "Acesso restrito à Supervisão da operação e à Administração" });
     return false;
   }
   return true;
@@ -413,7 +413,7 @@ async function respondDailyBookVersionConflict(
     .where(eq(dailyBooksTable.id, dailyBookId))
     .limit(1);
   if (!currentBook) {
-    res.status(404).json({ error: "Livro do Dia não encontrado" });
+    res.status(404).json({ error: "NAO_ENCONTRADO", message: "Livro do Dia não encontrado." });
     return;
   }
   const currentSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(dailyBookId) };
@@ -439,7 +439,7 @@ async function respondDailyBookMutationError(
     return true;
   }
   if (err instanceof VersionedResourceNotFoundError) {
-    res.status(404).json({ error: err.message });
+    res.status(404).json({ error: "NAO_ENCONTRADO", message: err.message });
     return true;
   }
   return false;
@@ -1105,12 +1105,12 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
   //      apenas para carregar showBook+operação+data — o utilizador nunca lida com a agenda.
   //  (2) por EVENTO (legado): mantém o comportamento antigo via agendaEventId.
   if (!bodyAgendaEventId && (!bodyShowBookId || !bodyDate)) {
-    res.status(400).json({ error: "Informe o Livro do Show e a data" });
+    res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "Informe o Livro do Show e a data." });
     return;
   }
   // Não aceitamos payload ambíguo: ou modo por data, ou modo legado por evento.
   if (bodyAgendaEventId && (bodyShowBookId || bodyDate)) {
-    res.status(400).json({ error: "Envie apenas o Livro do Show + data, ou apenas um evento — não ambos" });
+    res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "Envie apenas o Livro do Show + data, ou apenas um evento — não ambos." });
     return;
   }
   try {
@@ -1118,10 +1118,10 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
 
     if (!agendaEventId) {
       const [sb] = await db.select().from(showBooksTable).where(eq(showBooksTable.id, bodyShowBookId)).limit(1);
-      if (!sb) { res.status(404).json({ error: "Show Book não encontrado" }); return; }
+      if (!sb) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Show Book não encontrado." }); return; }
 
       if (!(await canOperateDailyBook(user, sb.operationId, { id: sb.id, responsibleId: sb.responsibleId }))) {
-        res.status(403).json({ error: "Forbidden", message: "Apenas o responsável por este show, um capitão delegado ou um admin podem gerar o Livro do Dia" });
+        res.status(403).json({ error: "ACESSO_NEGADO", message: "Apenas o responsável por este show, um capitão delegado ou um admin podem gerar o Livro do Dia" });
         return;
       }
 
@@ -1161,22 +1161,22 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
         .from(agendaEventsTable)
         .where(eq(agendaEventsTable.id, agendaEventId))
         .limit(1);
-      if (!ev) { res.status(404).json({ error: "Evento não encontrado" }); return; }
+      if (!ev) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Evento não encontrado." }); return; }
       const loaded = ev.showBookId ? await loadShowRef(ev.showBookId) : null;
       if (!(await canOperateDailyBook(user, ev.operationId, loaded?.ref ?? null))) {
-        res.status(403).json({ error: "Forbidden", message: "Apenas o responsável por este show, um capitão delegado ou um admin podem gerar o Livro do Dia" });
+        res.status(403).json({ error: "ACESSO_NEGADO", message: "Apenas o responsável por este show, um capitão delegado ou um admin podem gerar o Livro do Dia" });
         return;
       }
     }
 
     const [event] = await db.select().from(agendaEventsTable).where(eq(agendaEventsTable.id, agendaEventId)).limit(1);
-    if (!event) { res.status(404).json({ error: "Evento não encontrado" }); return; }
+    if (!event) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Evento não encontrado." }); return; }
 
     const showBookId = event.showBookId;
-    if (!showBookId) { res.status(400).json({ error: "Evento não tem Show Book associado" }); return; }
+    if (!showBookId) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "Evento não tem Show Book associado." }); return; }
 
     const [showBook] = await db.select().from(showBooksTable).where(eq(showBooksTable.id, showBookId)).limit(1);
-    if (!showBook) { res.status(404).json({ error: "Show Book não encontrado" }); return; }
+    if (!showBook) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Show Book não encontrado." }); return; }
 
     let scaleId = explicitScaleId ?? null;
     if (!scaleId) {
@@ -1343,7 +1343,7 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
     res.status(201).json({ dailyBook: updatedBook, sessionBlocks: await listSessionBlocks(dailyBookId, showBookId, event.date), ...conflictResult });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Erro ao gerar Livro do Dia" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível gerar o Livro do Dia. Tente de novo." });
   }
 });
 
@@ -1362,7 +1362,7 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
         : [undefined];
       const loaded = ev?.showBookId ? await loadShowRef(ev.showBookId) : null;
       if (!ev?.operationId || !(await canOperateDailyBook(user, ev.operationId, loaded?.ref ?? null))) {
-        res.status(403).json({ error: "Forbidden", message: "Apenas o responsável por este show, a Supervisão da operação ou a Administração podem regenerar o Livro do Dia" });
+        res.status(403).json({ error: "ACESSO_NEGADO", message: "Apenas o responsável por este show, a Supervisão da operação ou a Administração podem regenerar o Livro do Dia" });
         return;
       }
     }
@@ -1376,7 +1376,7 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
         EXECUTED: "Livro já executado é histórico e não pode ser regenerado.",
         CANCELLED: "Livro cancelado não pode ser regenerado.",
       };
-      res.status(409).json({ error: blocked[book.status] ?? "Só um Livro em rascunho pode ser regenerado." });
+      res.status(409).json({ error: "ESTADO_INVALIDO", message: blocked[book.status] ?? "Só um Livro em rascunho pode ser regenerado." });
       return;
     }
     expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
@@ -1384,7 +1384,7 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
     const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id) };
 
     const [event] = await db.select().from(agendaEventsTable).where(eq(agendaEventsTable.id, book.agendaEventId)).limit(1);
-    if (!event || !event.showBookId) { res.status(400).json({ error: "Evento ou Show Book não encontrado" }); return; }
+    if (!event || !event.showBookId) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "Evento ou Show Book não encontrado." }); return; }
 
     const showBookId = event.showBookId;
     const scenes = await db.select().from(showBookScenesTable).where(and(eq(showBookScenesTable.showBookId, showBookId), eq(showBookScenesTable.active, true))).orderBy(showBookScenesTable.order);
@@ -1493,7 +1493,7 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
   } catch (err) {
     if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
     console.error(err);
-    res.status(500).json({ error: "Erro ao regenerar Livro do Dia" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível regenerar o Livro do Dia. Tente de novo." });
   }
 });
 
@@ -1519,11 +1519,11 @@ router.post("/daily-book/:id/publish", requireAuth, requireOrganization, async (
         operationId = sr?.operationId ?? null;
       }
       if (!operationId || !(await canOperateDailyBook(user, operationId, show))) {
-        res.status(403).json({ error: "Forbidden", message: "Acesso restrito ao responsável do show, à Supervisão da operação ou à Administração" }); return;
+        res.status(403).json({ error: "ACESSO_NEGADO", message: "Acesso restrito ao responsável do show, à Supervisão da operação ou à Administração" }); return;
       }
     }
     if (!["DRAFT"].includes(book.status)) {
-      res.status(409).json({ error: `Livro em status ${book.status} não pode ser publicado diretamente` });
+      res.status(409).json({ error: "ESTADO_INVALIDO", message: `Livro em status ${book.status} não pode ser publicado diretamente.` });
       return;
     }    // O Livro só publica depois da Escala do dia publicada: é a Escala que convoca (tela 15).
     const { scale: escalaDoDia } = await escalaDoDiaDoLivro(id);
@@ -1620,7 +1620,7 @@ router.post("/daily-book/:id/publish", requireAuth, requireOrganization, async (
     res.json({ dailyBook: updated });
   } catch (err) {
     if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
-    res.status(500).json({ error: "Erro ao publicar Livro do Dia" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível publicar o Livro do Dia. Tente de novo." });
   }
 });
 
@@ -1646,11 +1646,11 @@ router.post("/daily-book/:id/republish", requireAuth, requireOrganization, async
         operationId = sr?.operationId ?? null;
       }
       if (!operationId || !(await canOperateDailyBook(user, operationId, show))) {
-        res.status(403).json({ error: "Forbidden", message: "Acesso restrito ao responsável do show, à Supervisão da operação ou à Administração" }); return;
+        res.status(403).json({ error: "ACESSO_NEGADO", message: "Acesso restrito ao responsável do show, à Supervisão da operação ou à Administração" }); return;
       }
     }
     if (!["PUBLISHED", "REPUBLISHED"].includes(book.status)) {
-      res.status(409).json({ error: "Somente livros PUBLICADOS ou REPUBLICADOS podem ser republicados" });
+      res.status(409).json({ error: "ESTADO_INVALIDO", message: "Somente livros PUBLICADOS ou REPUBLICADOS podem ser republicados." });
       return;
     }
 
@@ -1662,7 +1662,7 @@ router.post("/daily-book/:id/republish", requireAuth, requireOrganization, async
     const delta = computeDelta(prevSnapshot, currentSnapshot);
 
     if (delta.isEmpty) {
-      res.status(409).json({ error: "Nenhuma alteração detectada. Delta está vazio." });
+      res.status(409).json({ error: "ESTADO_INVALIDO", message: "Nenhuma alteração detectada. Delta está vazio.." });
       return;
     }
 
@@ -1740,7 +1740,7 @@ router.post("/daily-book/:id/republish", requireAuth, requireOrganization, async
   } catch (err) {
     if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
     console.error(err);
-    res.status(500).json({ error: "Erro ao republicar Livro do Dia" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível republicar o Livro do Dia. Tente de novo." });
   }
 });
 
@@ -1753,7 +1753,7 @@ router.post("/daily-book/:id/execute", requireAuth, requireOrganization, require
     if (!book) return;
     if (!(await requireDailyBookOperate(book, req.user!, res))) return;
     if (!["PUBLISHED", "REPUBLISHED"].includes(book.status)) {
-      res.status(409).json({ error: "Somente livros publicados podem ser executados" });
+      res.status(409).json({ error: "ESTADO_INVALIDO", message: "Somente livros publicados podem ser executados." });
       return;
     }
     expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
@@ -1786,7 +1786,7 @@ router.post("/daily-book/:id/execute", requireAuth, requireOrganization, require
     res.json({ dailyBook: updated });
   } catch (err) {
     if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
-    res.status(500).json({ error: "Erro ao executar Livro do Dia" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível executar o Livro do Dia. Tente de novo." });
   }
 });
 
@@ -1800,7 +1800,7 @@ router.post("/daily-book/:id/cancel", requireAuth, requireOrganization, requireR
     if (!book) return;
     if (!(await requireDailyBookOperate(book, req.user!, res))) return;
     if (book.status === "CANCELLED") {
-      res.status(409).json({ error: "Livro já está cancelado" });
+      res.status(409).json({ error: "ESTADO_INVALIDO", message: "Livro já está cancelado." });
       return;
     }
     expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
@@ -1831,7 +1831,7 @@ router.post("/daily-book/:id/cancel", requireAuth, requireOrganization, requireR
     res.json({ dailyBook: updated });
   } catch (err) {
     if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
-    res.status(500).json({ error: "Erro ao cancelar Livro do Dia" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível cancelar o Livro do Dia. Tente de novo." });
   }
 });
 
@@ -1847,12 +1847,12 @@ router.post("/daily-book/:id/reopen", requireAuth, requireOrganization, requireR
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
     if (!["EXECUTED", "CANCELLED"].includes(book.status)) {
-      res.status(409).json({ error: `Livro em status ${book.status} não precisa ser reaberto — só EXECUTED ou CANCELLED voltam a rascunho.` });
+      res.status(409).json({ error: "ESTADO_INVALIDO", message: `Livro em status ${book.status} não precisa ser reaberto — só EXECUTED ou CANCELLED voltam a rascunho.` });
       return;
     }
     const reopenReason = typeof reason === "string" ? reason.trim() : "";
     if (!reopenReason) {
-      res.status(400).json({ error: "Motivo obrigatório para reabrir um dia fechado." });
+      res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "Motivo obrigatório para reabrir um dia fechado.." });
       return;
     }
     expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
@@ -1879,7 +1879,7 @@ router.post("/daily-book/:id/reopen", requireAuth, requireOrganization, requireR
     res.json({ dailyBook: updated });
   } catch (err) {
     if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
-    res.status(500).json({ error: "Erro ao reabrir Livro do Dia" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível reabrir o Livro do Dia. Tente de novo." });
   }
 });
 
@@ -1911,7 +1911,7 @@ router.delete("/daily-book/:id", requireAuth, requireOrganization, requireRole("
     const isManagerInScope =
       operationId !== null && (await isOperationManager(user, operationId));
     if (!operationId || !isManagerInScope) {
-      res.status(403).json({ error: "Sem permissão para apagar este Livro do Dia" });
+      res.status(403).json({ error: "ACESSO_NEGADO", message: "Sem permissão para apagar este Livro do Dia." });
       return;
     }
     expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
@@ -1938,7 +1938,7 @@ router.delete("/daily-book/:id", requireAuth, requireOrganization, requireRole("
     res.json({ success: true });
   } catch (err) {
     if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
-    res.status(500).json({ error: "Erro ao apagar Livro do Dia" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível apagar o Livro do Dia. Tente de novo." });
   }
 });
 
@@ -2036,7 +2036,7 @@ router.get("/daily-book", requireAuth, requireOrganization, async (req, res) => 
 
     res.json({ dailyBooks });
   } catch (err) {
-    res.status(500).json({ error: "Erro ao listar Livros do Dia" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível listar os Livros do Dia. Tente de novo." });
   }
 });
 
@@ -2049,7 +2049,7 @@ router.get("/daily-book/:id", requireAuth, requireOrganization, async (req, res)
 
     const ctx = await resolveDailyBookReadContext(actor, book);
     if (!ctx) {
-      res.status(404).json({ error: "Evento do Livro do Dia não encontrado" });
+      res.status(404).json({ error: "NAO_ENCONTRADO", message: "Evento do Livro do Dia não encontrado." });
       return;
     }
     if (!ctx.ok) {
@@ -2087,7 +2087,7 @@ router.get("/daily-book/:id", requireAuth, requireOrganization, async (req, res)
       },
     });
   } catch (err) {
-    res.status(500).json({ error: "Erro ao buscar Livro do Dia" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível buscar o Livro do Dia. Tente de novo." });
   }
 });
 
@@ -2100,7 +2100,7 @@ router.get("/daily-book/:id/delta", requireAuth, requireOrganization, async (req
 
     const ctx = await resolveDailyBookReadContext(actor, book);
     if (!ctx) {
-      res.status(404).json({ error: "Evento do Livro do Dia não encontrado" });
+      res.status(404).json({ error: "NAO_ENCONTRADO", message: "Evento do Livro do Dia não encontrado." });
       return;
     }
     if (!ctx.ok) {
@@ -2137,7 +2137,7 @@ router.get("/daily-book/:id/delta", requireAuth, requireOrganization, async (req
       lastRepublishDelta: book.republishDeltaJson ?? null,
     });
   } catch (err) {
-    res.status(500).json({ error: "Erro ao buscar delta" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível calcular as diferenças. Tente de novo." });
   }
 });
 
@@ -2207,14 +2207,14 @@ router.get("/daily-book/:id/pattern-diff", requireAuth, requireOrganization, asy
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
     const ctx = await resolveDailyBookReadContext(actor, book);
-    if (!ctx) { res.status(404).json({ error: "Evento do Livro do Dia não encontrado" }); return; }
+    if (!ctx) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Evento do Livro do Dia não encontrado." }); return; }
     if (!ctx.ok) { res.status(403).json({ error: "FORBIDDEN", message: "Livro do Dia fora do seu escopo" }); return; }
     if (!book.showBookId) { res.json({ diffs: [] }); return; }
     const diffs = await buildPatternDiffRows(book, book.showBookId, ctx.operationId, ctx.eventDate);
     res.json({ diffs, version: book.version, status: book.status });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Erro ao calcular diferenças do padrão" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Erro ao calcular diferenças do padrão. Tente de novo." });
   }
 });
 
@@ -2228,7 +2228,7 @@ router.patch("/daily-book/:id/assignments/:assignmentId", requireAuth, requireOr
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
     if (book.status === "EXECUTED" || book.status === "CANCELLED") {
-      res.status(409).json({ error: "Livro em estado terminal não pode ser alterado" });
+      res.status(409).json({ error: "ESTADO_INVALIDO", message: "Livro em estado terminal não pode ser alterado." });
       return;
     }
     if (!(await requireDailyBookOperate(book, req.user!, res))) return;
@@ -2237,11 +2237,11 @@ router.patch("/daily-book/:id/assignments/:assignmentId", requireAuth, requireOr
       .from(dailyBookAssignmentsTable)
       .where(and(eq(dailyBookAssignmentsTable.id, assignmentId), eq(dailyBookAssignmentsTable.dailyBookId, id), isNull(dailyBookAssignmentsTable.supersededAt)))
       .limit(1);
-    if (!before) { res.status(404).json({ error: "Alocação não encontrada" }); return; }
+    if (!before) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Alocação não encontrada." }); return; }
     // Supervisão troca só pessoas das áreas que supervisiona naquele local (a mesma regra da Escala). O responsável
     // pelo show e a Administração trocam qualquer pessoa. Vale para quem sai e para quem entra.
     const recusaDeArea = await recusaDeAreaNaTroca(book, req.user!, [before.userId, userId ?? null]);
-    if (recusaDeArea) { res.status(403).json({ error: "Forbidden", message: recusaDeArea }); return; }
+    if (recusaDeArea) { res.status(403).json({ error: "ACESSO_NEGADO", message: recusaDeArea }); return; }
     expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
     if (expectedVersion === null) return;
     // Restrição de horário e limite de shows do dia são proibição; passar delas à mão pede motivo escrito.
@@ -2290,7 +2290,7 @@ router.patch("/daily-book/:id/assignments/:assignmentId", requireAuth, requireOr
     res.json({ assignment: updated, version: book.version + 1 });
   } catch (err) {
     if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
-    res.status(500).json({ error: "Erro ao atualizar alocação" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Erro ao atualizar alocação. Tente de novo." });
   }
 });
 
@@ -2366,7 +2366,7 @@ router.delete("/daily-book/:id/positions/:positionId", requireAuth, requireOrgan
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
     if (book.status === "EXECUTED" || book.status === "CANCELLED") {
-      res.status(409).json({ error: "Livro em estado terminal não pode ser alterado" });
+      res.status(409).json({ error: "ESTADO_INVALIDO", message: "Livro em estado terminal não pode ser alterado." });
       return;
     }
     if (!(await requireDailyBookOperate(book, req.user!, res))) return;
@@ -2397,7 +2397,7 @@ router.delete("/daily-book/:id/positions/:positionId", requireAuth, requireOrgan
     res.json({ position: updated, version: book.version + 1 });
   } catch (err) {
     if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
-    res.status(500).json({ error: "Erro ao remover posição" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Erro ao remover posição. Tente de novo." });
   }
 });
 
@@ -2410,7 +2410,7 @@ router.delete("/daily-book/:id/scenes/:sceneId", requireAuth, requireOrganizatio
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
     if (book.status === "EXECUTED" || book.status === "CANCELLED") {
-      res.status(409).json({ error: "Livro em estado terminal não pode ser alterado" });
+      res.status(409).json({ error: "ESTADO_INVALIDO", message: "Livro em estado terminal não pode ser alterado." });
       return;
     }
     if (!(await requireDailyBookOperate(book, req.user!, res))) return;
@@ -2450,7 +2450,7 @@ router.delete("/daily-book/:id/scenes/:sceneId", requireAuth, requireOrganizatio
     res.json({ scene: updatedScene, version: book.version + 1 });
   } catch (err) {
     if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
-    res.status(500).json({ error: "Erro ao remover cena" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível remover a cena. Tente de novo." });
   }
 });
 
@@ -2463,7 +2463,7 @@ router.delete("/daily-book/:id/blocks/:blockId", requireAuth, requireOrganizatio
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
     if (book.status === "EXECUTED" || book.status === "CANCELLED") {
-      res.status(409).json({ error: "Livro em estado terminal não pode ser alterado" });
+      res.status(409).json({ error: "ESTADO_INVALIDO", message: "Livro em estado terminal não pode ser alterado." });
       return;
     }
     if (!(await requireDailyBookOperate(book, req.user!, res))) return;
@@ -2496,7 +2496,7 @@ router.delete("/daily-book/:id/blocks/:blockId", requireAuth, requireOrganizatio
     res.json({ block: updatedBlock, version: book.version + 1 });
   } catch (err) {
     if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
-    res.status(500).json({ error: "Erro ao remover bloco" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível remover o bloco. Tente de novo." });
   }
 });
 
@@ -2511,7 +2511,7 @@ router.patch("/daily-book/:id/scenes/:sceneId/restore", requireAuth, requireOrga
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
     if (book.status === "EXECUTED" || book.status === "CANCELLED") {
-      res.status(409).json({ error: "Livro em estado terminal não pode ser alterado" });
+      res.status(409).json({ error: "ESTADO_INVALIDO", message: "Livro em estado terminal não pode ser alterado." });
       return;
     }
     if (!(await requireDailyBookOperate(book, req.user!, res))) return;
@@ -2555,7 +2555,7 @@ router.patch("/daily-book/:id/scenes/:sceneId/restore", requireAuth, requireOrga
     res.json({ scene: updatedScene, version: book.version + 1 });
   } catch (err) {
     if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
-    res.status(500).json({ error: "Erro ao restaurar cena" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível restaurar a cena. Tente de novo." });
   }
 });
 
@@ -2568,7 +2568,7 @@ router.patch("/daily-book/:id/blocks/:blockId/restore", requireAuth, requireOrga
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
     if (book.status === "EXECUTED" || book.status === "CANCELLED") {
-      res.status(409).json({ error: "Livro em estado terminal não pode ser alterado" });
+      res.status(409).json({ error: "ESTADO_INVALIDO", message: "Livro em estado terminal não pode ser alterado." });
       return;
     }
     if (!(await requireDailyBookOperate(book, req.user!, res))) return;
@@ -2605,7 +2605,7 @@ router.patch("/daily-book/:id/blocks/:blockId/restore", requireAuth, requireOrga
     res.json({ block: updatedBlock, version: book.version + 1 });
   } catch (err) {
     if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
-    res.status(500).json({ error: "Erro ao restaurar bloco" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível restaurar o bloco. Tente de novo." });
   }
 });
 
@@ -2618,7 +2618,7 @@ router.patch("/daily-book/:id/positions/:positionId/restore", requireAuth, requi
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
     if (book.status === "EXECUTED" || book.status === "CANCELLED") {
-      res.status(409).json({ error: "Livro em estado terminal não pode ser alterado" });
+      res.status(409).json({ error: "ESTADO_INVALIDO", message: "Livro em estado terminal não pode ser alterado." });
       return;
     }
     if (!(await requireDailyBookOperate(book, req.user!, res))) return;
@@ -2648,7 +2648,7 @@ router.patch("/daily-book/:id/positions/:positionId/restore", requireAuth, requi
     res.json({ position: updatedPosition, version: book.version + 1 });
   } catch (err) {
     if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
-    res.status(500).json({ error: "Erro ao restaurar posição" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Erro ao restaurar posição. Tente de novo." });
   }
 });
 
@@ -2658,14 +2658,14 @@ router.patch("/daily-book/:id/scenes/reorder", requireAuth, requireOrganization,
   const actorId = req.user!.sub;
   let expectedVersion: number | null = null;
   if (!Array.isArray(scenes)) {
-    res.status(400).json({ error: "scenes deve ser um array de {id, order}" });
+    res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "scenes deve ser um array de {id, order}." });
     return;
   }
   try {
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
     if (book.status === "EXECUTED" || book.status === "CANCELLED") {
-      res.status(409).json({ error: "Livro em estado terminal não pode ser alterado" });
+      res.status(409).json({ error: "ESTADO_INVALIDO", message: "Livro em estado terminal não pode ser alterado." });
       return;
     }
     if (!(await requireDailyBookOperate(book, req.user!, res))) return;
@@ -2690,7 +2690,7 @@ router.patch("/daily-book/:id/scenes/reorder", requireAuth, requireOrganization,
     res.json({ success: true, version: book.version + 1 });
   } catch (err) {
     if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
-    res.status(500).json({ error: "Erro ao reordenar cenas" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível reordenar as cenas. Tente de novo." });
   }
 });
 
@@ -2711,22 +2711,22 @@ router.post("/daily-book/:id/scenes/:sceneId/apply-formation", requireAuth, requ
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
     if (book.status === "EXECUTED" || book.status === "CANCELLED") {
-      res.status(409).json({ error: "Livro em estado terminal não pode ser alterado" });
+      res.status(409).json({ error: "ESTADO_INVALIDO", message: "Livro em estado terminal não pode ser alterado." });
       return;
     }
     if (!(await requireDailyBookOperate(book, req.user!, res))) return;
     if (typeof formationId !== "string" || !formationId) {
-      res.status(400).json({ error: "formationId é obrigatório" });
+      res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "formationId é obrigatório." });
       return;
     }
     const [scene] = await db.select().from(dailyBookScenesTable)
       .where(and(eq(dailyBookScenesTable.id, sceneId), eq(dailyBookScenesTable.dailyBookId, id), isNull(dailyBookScenesTable.supersededAt)))
       .limit(1);
-    if (!scene) { res.status(404).json({ error: "Cena não encontrada" }); return; }
+    if (!scene) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Cena não encontrada." }); return; }
     const [formation] = await db.select().from(formationsTable)
       .where(and(eq(formationsTable.id, formationId), eq(formationsTable.active, true)))
       .limit(1);
-    if (!formation) { res.status(404).json({ error: "Formação não encontrada" }); return; }
+    if (!formation) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Formação não encontrada." }); return; }
     const formationPositions = Array.isArray(formation.positions)
       ? (formation.positions as { role?: string; function?: string; roleId?: unknown }[])
       : [];
@@ -2799,7 +2799,7 @@ router.post("/daily-book/:id/scenes/:sceneId/apply-formation", requireAuth, requ
   } catch (err) {
     if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
     console.error(err);
-    res.status(500).json({ error: "Erro ao aplicar formação para hoje" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Erro ao aplicar formação para hoje. Tente de novo." });
   }
 });
 
@@ -2822,7 +2822,7 @@ router.post("/daily-book/:id/scenes/:sceneId/save-formation", requireAuth, requi
     const [scene] = await db.select().from(dailyBookScenesTable)
       .where(and(eq(dailyBookScenesTable.id, sceneId), eq(dailyBookScenesTable.dailyBookId, id), isNull(dailyBookScenesTable.supersededAt)))
       .limit(1);
-    if (!scene) { res.status(404).json({ error: "Cena não encontrada" }); return; }
+    if (!scene) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Cena não encontrada." }); return; }
     if (!scene.sourceSceneId || !book.showBookId) { res.status(409).json({ error: "SCENE_WITHOUT_PATTERN", message: "Esta cena não veio de um Livro do Show — não há biblioteca para guardar a formação." }); return; }
     if (scene.isRemoved) { res.status(409).json({ error: "SCENE_REMOVED", message: "A cena está fora do dia — restaure antes de guardar a formação." }); return; }
 
@@ -2885,7 +2885,7 @@ router.post("/daily-book/:id/scenes/:sceneId/save-formation", requireAuth, requi
     res.status(201).json({ formation: created });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Erro ao guardar a formação do dia" });
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Erro ao guardar a formação do dia. Tente de novo." });
   }
 });
 
