@@ -4,7 +4,7 @@ import { useFecharComEsc } from "@/lib/fechar-com-esc";
 
 /**
  * Gerar o mês em rascunho (Escala + Livros do Dia de todos os dias de um local). A tela dirige o
- * trabalho: pede ao servidor um bloco de dias por vez (cada chamada vive no máximo ~40 s), mostra
+ * trabalho: pede ao servidor um bloco de dias por vez (cada chamada vive uns 15 s), mostra
  * o andamento de verdade e pode parar. Dia já gerado é pulado, então retomar não repete nada.
  * Nada é publicado e ninguém é avisado.
  */
@@ -17,6 +17,11 @@ const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julh
 const dm = (iso: string) => { const [, m, d] = iso.split("-").map(Number); return `${d}/${String(m).padStart(2, "0")}`; };
 const plural = (n: number, um: string, muitos: string) => `${n} ${n === 1 ? um : muitos}`;
 const ROTULO_PULADO: Record<string, string> = { passou: "já passou", fechado: "local fechado", sem_programacao: "sem Programação", sem_atividades: "Programação sem blocos", publicado: "já publicado" };
+/** Uma chamada de bloco passa disso sem resposta: o servidor trabalha uns 15 s por chamada e a Vercel corta em 60 s. */
+const LIMITE_DA_CHAMADA_MS = 50_000;
+/** Depois de tanto tempo esperando uma chamada, a tela oferece "Parar agora" (sem esperar o fim do dia). */
+const CHAMADA_LENTA_MS = 20_000;
+const foiCancelada = (err: unknown) => err instanceof DOMException && err.name === "AbortError";
 const mensagem = (err: unknown, padrao: string) => err instanceof ApiError && err.data && typeof err.data === "object" && typeof (err.data as { message?: unknown }).message === "string" ? (err.data as { message: string }).message : padrao;
 
 /** Os meses que o servidor aceita: o corrente e até 2 à frente. */
@@ -55,6 +60,8 @@ export function GerarMesDialog({ locais, localInicial, review, onClose, onGerou 
   const [mostrarPulados, setMostrarPulados] = useState(false);
   const [modo, setModo] = useState<"gerar" | "descartar">("gerar");
   const parar = useRef(false);
+  const chamada = useRef<{ controle: AbortController; porUsuario: boolean } | null>(null);
+  const [chamadaLenta, setChamadaLenta] = useState(false);
   const mes = meses[mesIdx]!;
   const local = locais.find((l) => l.id === localId);
   // Esc fecha, mas não no meio da geração: parar é um botão (o que já foi gerado fica de qualquer jeito).
@@ -74,6 +81,17 @@ export function GerarMesDialog({ locais, localInicial, review, onClose, onGerou 
     return () => { cancelado = true; };
   }, [localId, mesIdx, review]);
 
+  /** Um bloco de dias, com limite de tempo: sem resposta, a tela não fica esperando para sempre. */
+  const chamarBloco = async (desde: string | null) => {
+    const controle = new AbortController();
+    chamada.current = { controle, porUsuario: false };
+    const limite = setTimeout(() => controle.abort(), LIMITE_DA_CHAMADA_MS);
+    const lenta = setTimeout(() => setChamadaLenta(true), CHAMADA_LENTA_MS);
+    try {
+      return await customFetch<Resultado>("/api/escalas/mes/gerar", { method: "POST", signal: controle.signal, body: JSON.stringify({ locationId: localId, year: mes.year, month: mes.month, desde }) });
+    } finally { clearTimeout(limite); clearTimeout(lenta); setChamadaLenta(false); }
+  };
+
   const gerar = async () => {
     if (!resumo || rodando) return;
     parar.current = false; setRodando(true); setErro(""); setFeitos(0); setLivrosFeitos(0);
@@ -88,7 +106,7 @@ export function GerarMesDialog({ locais, localInicial, review, onClose, onGerou 
       for (;;) {
         const r: Resultado = review
           ? { gerados: resumo.dias.filter((d) => d.estado === "a_gerar").slice(acumulado.gerados.length, acumulado.gerados.length + 4).map((d) => ({ date: d.date, livros: 5 })), falhas: [], pulados: resumo.dias.filter((d) => d.estado !== "a_gerar" && d.estado !== "completo").map((d) => ({ date: d.date, estado: d.estado, motivo: d.motivo })), restantes: 0, proximoDia: null }
-          : await customFetch<Resultado>("/api/escalas/mes/gerar", { method: "POST", body: JSON.stringify({ locationId: localId, year: mes.year, month: mes.month, desde }) });
+          : await chamarBloco(desde);
         if (review) { const feitosAteAgora = acumulado.gerados.length + r.gerados.length; r.restantes = resumo.totais.aGerar - feitosAteAgora; r.proximoDia = r.restantes > 0 ? resumo.dias.filter((d) => d.estado === "a_gerar")[feitosAteAgora]?.date ?? null : null; await new Promise((ok) => setTimeout(ok, 500)); }
         acumulado.gerados.push(...r.gerados); acumulado.falhas.push(...r.falhas); acumulado.pulados = r.pulados;
         acumulado.restantes = r.restantes; acumulado.proximoDia = r.proximoDia;
@@ -102,7 +120,10 @@ export function GerarMesDialog({ locais, localInicial, review, onClose, onGerou 
     } catch (e) {
       // O que já foi gerado fica; só mostra onde parou.
       setResultado(acumulado);
-      setErro(`${mensagem(e, "A conexão falhou no meio do caminho.")} O que já foi gerado fica guardado; é só tentar de novo que ele continua de onde parou.`);
+      const motivo = foiCancelada(e)
+        ? (chamada.current?.porUsuario ? "Você parou sem esperar a resposta." : "O servidor demorou demais para responder.") + " O dia que estava sendo montado pode ter terminado lá mesmo assim."
+        : mensagem(e, "A conexão falhou no meio do caminho.");
+      setErro(`${motivo} O que já foi gerado fica guardado; é só tentar de novo que ele continua de onde parou.`);
       onGerou();
     } finally { setRodando(false); }
   };
@@ -170,11 +191,14 @@ export function GerarMesDialog({ locais, localInicial, review, onClose, onGerou 
         <span>{!rodando && temRascunho && <button type="button" onClick={() => setModo("descartar")} style={{ border: 0, background: "none", padding: 0, fontSize: 12.5, fontWeight: 700, color: "#a12c2c", cursor: "pointer", minHeight: 44 }}>Descartar rascunhos do mês…</button>}</span>
         <span style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
           {rodando
-            ? <button type="button" onClick={() => { parar.current = true; }} style={botao(false)}>Parar depois deste dia</button>
+            ? <>
+                {chamadaLenta && <button type="button" onClick={() => { parar.current = true; if (chamada.current) { chamada.current.porUsuario = true; chamada.current.controle.abort(); } }} style={botao(false)}>Parar agora</button>}
+                <button type="button" onClick={() => { parar.current = true; }} style={botao(false)}>Parar depois deste dia</button>
+              </>
             : <>
                 <button type="button" onClick={onClose} style={botao(false)}>{resultado ? "Fechar" : "Cancelar"}</button>
                 {!resultado && <button type="button" onClick={() => void gerar()} disabled={!resumo || resumo.semOperacao || total === 0 || carregando} style={{ ...botao(true), opacity: !resumo || resumo.semOperacao || total === 0 || carregando ? 0.5 : 1 }}>{total ? `Gerar ${plural(total, "dia", "dias")}` : "Gerar"}</button>}
-                {resultado && resultado.restantes > 0 && <button type="button" onClick={() => void gerar()} style={botao(true)}>Continuar</button>}
+                {resultado && (resultado.restantes > 0 || Boolean(erro)) && <button type="button" onClick={() => void gerar()} style={botao(true)}>{erro ? "Tentar de novo" : "Continuar"}</button>}
               </>}
         </span>
       </footer>
