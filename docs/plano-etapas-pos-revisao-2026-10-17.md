@@ -334,6 +334,21 @@ Tarefa:
 1. Rode a bateria inteira de testes da API no banco de teste (um arquivo por vez, em segundo plano; o
    asa-actions-http leva cerca de 25 minutos), os tipos da API e do site, o build do site e o
    verificar-nomes-build.mjs. Conte o que passou, o que falhou e o que não rodou, sem arredondar.
+   Falhas que JÁ existiam antes da etapa 2 (conferidas em 18/10/2026 no código de 65a5513, sem a etapa 2) e
+   que a conferência final precisa decidir uma a uma (corrigir, ajustar o teste ou abrir issue; hoje só a
+   primeira tem issue):
+   - restricao-horario: "Livro do dia de show misto: a hora vem da sessão não separada" (veio 17:30 em vez de
+     17:00); causa provável é o próprio teste pegar o Livro de apoio. Issue #2 no GitHub.
+   - asa-capabilities: "confirmação da checklist deve ter ramo transacional próprio" (teste que lê o código; pode
+     ter ficado velho com a mudança do checklist de ativação, etapa 1).
+   - fase-e-ciclo: estoura o tempo ("TimeoutError") rodando sozinho.
+   - folgas-equipe: a limpeza do teste não consegue apagar usuários (chave estrangeira).
+   - mensagens-grupos: "Abrir a conversa marca como lido o aviso dela no sino".
+   - shift-checkins: espera a mensagem "janela" e recebe "O check-in do turno Dia ainda não abriu: abre às
+     08:00" (depende da hora do dia em que roda).
+   Na bateria inteira de 18/10 outros sete arquivos falharam uma vez e passaram rodando sozinhos (token 401,
+   "max clients reached" no banco de teste): se repetir, rode a bateria sem outra sessão usando o banco de teste
+   ao mesmo tempo.
 2. Refaça no navegador, com a empresa de teste (docs/empresa-de-teste.md), o roteiro de cada perfil
    (Administração, Direção, Supervisão, Elenco) a 375 px e 1280 px: Meu Dia, Escala, Livro do Dia, Painel,
    Cadastros (incluindo Operações e Locais), Tarefas. Traga captura de tela e as 16 perguntas do crivo
