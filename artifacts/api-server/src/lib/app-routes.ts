@@ -19,7 +19,7 @@ export const APP_ROUTES = {
   painel: "/painel",
 } as const;
 
-const CURRENT = new Set<string>([...Object.values(APP_ROUTES), "/perfil", "/shows", "/pessoas", "/areas", "/locais", "/registro"]);
+const CURRENT = new Set<string>([...Object.values(APP_ROUTES), "/perfil", "/shows", "/pessoas", "/areas", "/locais", "/registro", "/operacoes"]);
 
 const LEGACY: [RegExp, string][] = [
   [/^\/\(tabs\)\/(scale|escala)\b|^\/membro\/escala\b|^\/admin\/scales\b/, APP_ROUTES.escalas],

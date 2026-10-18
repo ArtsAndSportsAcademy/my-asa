@@ -1,0 +1,59 @@
+/* Operações (Gestão): lista, checklist de ativação, locais e acesso das pessoas. Reaproveita as classes cad-*. */
+.op-page .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.op-explica{margin:0 0 12px;padding:10px 12px;border-radius:12px;background:#f7f3ff;color:#4a3a78;font-size:12px;line-height:1.5}
+.op-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr))}
+.op-card{min-height:0;border-top:4px solid var(--op-cor,#6d4aff)}
+.op-cor{background:color-mix(in srgb,var(--op-cor,#6d4aff) 14%,#fff);color:var(--op-cor,#6d4aff)}
+.op-card .cad-location-info span{display:flex;align-items:flex-start;gap:6px;overflow-wrap:anywhere}
+.op-card .cad-location-info svg{flex:none;margin-top:2px}
+.op-card .cad-location-info .op-alerta{background:#fdf3e4;border-color:#f3d9ae;color:#8a4b00}
+.op-footer{flex-wrap:wrap}
+.op-footer .cad-danger-link{margin-left:auto}
+
+/* Janelas */
+.op-dialog{width:min(100%,540px)}
+.op-dialog .op-rodape{margin:14px -24px -24px}
+.op-dialog .op-rodape .op-sec,.op-dialog .cad-form-footer .op-sec{min-height:44px;border:1px solid var(--asa-border);border-radius:11px;background:#fff;padding:9px 13px;color:#5b5473;font-weight:700;cursor:pointer}
+.op-dialog .op-rodape{gap:8px}
+.op-dialog .cad-form footer button.cad-primary:disabled,.op-dialog .op-rodape .cad-primary:disabled{opacity:.55;cursor:not-allowed}
+.op-dialog .cad-form>span:empty{display:none}
+
+.op-check{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:10px}
+.op-check li{display:flex;gap:10px;padding:12px;border:1px solid #eee9f8;border-radius:12px;background:#faf9fe}
+.op-check li.pronto{background:#f1faf8;border-color:#cfe9e3}
+.op-check li.falta{background:#fff8ee;border-color:#f3d9ae}
+.op-check-icone{flex:none;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;background:#fff;color:#8a4b00}
+.op-check li.pronto .op-check-icone{color:var(--asa-good,#117a68)}
+.op-check strong{display:block;font-size:13px}
+.op-check p{margin:3px 0 0;font-size:12px;line-height:1.5;color:#5b5473}
+.op-check>li>div{min-width:0;flex:1}
+.op-check-acoes{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.op-check-acoes button{min-height:44px;border:1px solid var(--asa-border);border-radius:10px;background:#fff;padding:8px 12px;color:#4c1ca6;font:700 12px Manrope;cursor:pointer}
+.op-check-acoes button:disabled{opacity:.55;cursor:wait}
+
+.op-cores{display:flex;flex-wrap:wrap;gap:8px;border:0;margin:0;padding:0}
+.op-cores legend{padding:0;margin-bottom:6px;font-size:13px;font-weight:700}
+.op-cores label{position:relative;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;cursor:pointer}
+.op-cores label::before{content:"";width:28px;height:28px;border-radius:50%;background:var(--op-cor);box-shadow:inset 0 0 0 2px rgba(255,255,255,.55)}
+.op-cores label.on{outline:3px solid #cbb8f7;outline-offset:-3px}
+.op-cores input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer;min-height:0}
+.op-cores input:focus-visible+span{outline:2px solid #4c1ca6}
+
+.op-lista{display:grid;gap:6px;max-height:min(40dvh,320px);overflow:auto}
+.op-opcao{display:flex!important;flex-direction:row;align-items:flex-start;gap:10px!important;min-height:44px;padding:8px 10px;border:1px solid #eee9f8;border-radius:10px;font-weight:600!important;cursor:pointer}
+.op-opcao input{flex:none;width:20px!important;height:20px;min-height:0!important;margin-top:2px;accent-color:#6c2bf2}
+.op-opcao small{display:inline;font-weight:400}
+.op-opcao.off{background:#f7f6fb;color:#6b6482;cursor:default}
+.op-lote{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#3a2278}
+.op-lote>span{flex:1;min-width:130px}
+.op-lote button{min-height:44px;border:1px solid var(--asa-border);border-radius:10px;background:#fff;padding:8px 12px;color:#5b5473;font:700 12px Manrope;cursor:pointer}
+.op-aviso{padding:9px 11px;border-radius:10px;background:#fdf3e4;color:#8a4b00}
+.op-link{justify-self:start;min-height:44px;border:0;background:transparent;padding:0;color:#4c1ca6;font:700 12px Manrope;cursor:pointer}
+
+@media(max-width:720px){
+  .op-dialog .op-rodape{margin:14px -16px -20px}
+  .op-footer .cad-danger-link{margin-left:0}
+  .op-footer button{flex:1 1 40%;justify-content:center}
+  .op-check li{padding:10px}
+  .op-check-acoes button{flex:1 1 auto}
+}

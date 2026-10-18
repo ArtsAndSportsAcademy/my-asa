@@ -96,11 +96,13 @@ async function run() {
     assert((await call("PUT", `/users/${semPerfil.body.user.id}/perfil`, asBarbara, { perfil: "DIR" })).status === 200, "dar perfil a quem não tinha não exige motivo");
 
     // ── Local novo e supervisão por área e local ──
-    const local = await call("POST", "/locations", asBarbara, { name: `${tag}_Snowland` });
+    // Com duas operações ativas o local precisa dizer de qual é (desde 17/10): ligar a todas travaria a Escala dele.
+    assert((await call("POST", "/locations", asBarbara, { name: `${tag}_SemOperacao` })).status === 400, "com duas operações ativas, local sem operação escolhida é recusado");
+    const local = await call("POST", "/locations", asBarbara, { name: `${tag}_Snowland`, operationIds: [op!.id] });
     assert(local.status === 201, "Administração cria local");
     locaisCriados.push(local.body.location.id);
     const ligacoes = await db.select().from(operationLocationsTable).where(and(eq(operationLocationsTable.locationId, local.body.location.id), eq(operationLocationsTable.active, true)));
-    assert(ligacoes.length === 2 && ligacoes.every((l) => [op!.id, op2!.id].includes(l.operationId)), "local novo já fica ligado às operações ativas");
+    assert(ligacoes.length === 1 && ligacoes[0]!.operationId === op!.id, "local novo fica ligado só à operação escolhida");
     assert((await call("PUT", `/areas/${pat!.id}/locations/${local.body.location.id}/supervisor`, asBarbara, { supervisorId: dir.body.user.id })).status === 400, "quem não tem perfil Supervisão não supervisiona");
     const sup = await call("PUT", `/areas/${pat!.id}/locations/${local.body.location.id}/supervisor`, asBarbara, { supervisorId: julia.body.user.id });
     assert(sup.status === 201, "Supervisão é definida para a área naquele local");

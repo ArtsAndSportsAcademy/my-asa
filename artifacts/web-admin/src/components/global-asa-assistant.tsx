@@ -138,7 +138,7 @@ const pageNames: Record<string, string> = {
   "/admin/responsabilidades-delegacoes": "Responsabilidades e delegações",
   "/meu-dia": "Meu Dia", "/escalas": "Escalas", "/livro-do-dia": "Livro do Dia", "/shows": "Shows",
   "/check-in": "Check-in", "/folgas": "Folgas", "/agenda": "Agenda", "/pessoas": "Pessoas",
-  "/areas": "Áreas", "/locais": "Locais", "/responsabilidades": "Responsabilidades e tarefas",
+  "/areas": "Áreas", "/locais": "Locais", "/operacoes": "Operações", "/responsabilidades": "Responsabilidades e tarefas",
   "/mural": "Mural", "/mensagens": "Mensagens", "/biblioteca": "Biblioteca", "/painel": "Painel",
   "/notificacoes": "Notificações", "/membro/tarefas": "Minhas tarefas", "/membro/entregas": "Minhas entregas", "/membro/avisos": "Meus avisos", "/membro/solicitacoes": "Minhas solicitações",
   "/membro/biblioteca": "Biblioteca", "/admin/library": "Biblioteca", "/supervisor/library": "Biblioteca",

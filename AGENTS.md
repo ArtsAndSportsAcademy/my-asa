@@ -116,7 +116,7 @@ imagina.
 - **Branch `codex/myasa-novo`.** Nunca faça merge na `main` por conta própria.
 - Perfis: Administração publica o dia; Supervisão cuida da própria área; Direção só lê a operação
   (escala, livro, folgas), **mas interage no Mural e nas Mensagens como a Administração** (publica,
-  edita e cancela aviso, reconhece, conversa) — decisão de 14/10/2026 — **e também na Agenda e nas Tarefas** (marca, confirma, remarca e cancela compromisso; prepara lote, adiciona participante e cancela tarefa) — decisão de 15/10/2026 — **e cria, vê e cobra tarefas e pedidos às responsabilidades** (decisão de 16/10/2026; o Elenco também cria tarefa para qualquer pessoa, e a Supervisão vê e cobra as da própria área). Biblioteca continua só leitura para a Direção (ela vê quem leu, mas não publica nem edita); Elenco vê o que é dele. Quando
+  edita e cancela aviso, reconhece, conversa) — decisão de 14/10/2026 — **e também na Agenda e nas Tarefas** (marca, confirma, remarca e cancela compromisso; prepara lote, adiciona participante e cancela tarefa) — decisão de 15/10/2026 — **e cria, vê e cobra tarefas e pedidos às responsabilidades** (decisão de 16/10/2026; o Elenco também cria tarefa para qualquer pessoa, e a Supervisão vê e cobra as da própria área). **Operações (cadastro, 17/10/2026): a Direção só lê; criar, ativar, encerrar e dar acesso é da Administração; Supervisão e Elenco não veem a tela** (`docs/operacoes-cadastro.md`). Biblioteca continua só leitura para a Direção (ela vê quem leu, mas não publica nem edita); Elenco vê o que é dele. Quando
   uma tela nova tiver exceção para a Direção, anote aqui. Folga vence a escala — só entra quem foi
   chamado de propósito, com motivo escrito.
 

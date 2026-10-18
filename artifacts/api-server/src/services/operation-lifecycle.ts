@@ -1,12 +1,15 @@
 import {
   db,
+  locationsTable,
+  operationLocationsTable,
   operationsTable,
   operationalGroupsTable,
   teamMembershipsTable,
   responsibilitiesTable,
   responsibilityAssignmentsTable,
+  userRolesTable,
 } from "@workspace/db";
-import { and, count, eq, sql } from "drizzle-orm";
+import { and, count, eq, inArray, sql } from "drizzle-orm";
 
 export const OPERATION_STATUSES = ["DRAFT", "ACTIVE", "PAUSED", "ARCHIVED"] as const;
 export type OperationStatus = (typeof OPERATION_STATUSES)[number];
@@ -38,9 +41,20 @@ export interface OperationReadiness {
   blockers: OperationReadinessItem[];
 }
 
+/** As contagens que o servidor confere no banco antes de avaliar o checklist. */
+export interface OperationReadinessCounts {
+  /** Integrantes de equipes fixas (grupos operacionais) da operação. */
+  teamCount: number;
+  /** Pessoas com perfil ativo gravado para a operação (é assim que a tela Pessoas dá acesso). */
+  accessCount: number;
+  responsibilityCount: number;
+  /** Locais abertos ligados à operação. */
+  linkedLocationCount: number;
+}
+
 type ReadinessOperation = Pick<
   typeof operationsTable.$inferSelect,
-  "name" | "description" | "clientName" | "locations" | "color" | "icon" | "modulesReviewedAt"
+  "name" | "description" | "clientName" | "color" | "icon" | "modulesReviewedAt"
 >;
 
 export function normalizeOperationName(name: string): string {
@@ -94,68 +108,87 @@ export async function getActiveOperationInOrganization(operationId: string, orga
   });
 }
 
+/**
+ * Checklist de várias operações de uma vez: uma consulta agrupada por item, em fila (não em paralelo — o banco
+ * de teste e o pooler em modo sessão têm poucas conexões, e a lista de Operações não pode estourá-las).
+ */
+export async function getOperationsReadiness(
+  operations: (typeof operationsTable.$inferSelect)[],
+): Promise<Map<string, { readiness: OperationReadiness; accessCount: number }>> {
+  const resultado = new Map<string, { readiness: OperationReadiness; accessCount: number }>();
+  const ids = operations.map((operation) => operation.id);
+  if (ids.length === 0) return resultado;
+  const porOperacao = (rows: { operationId: string | null; value: unknown }[]) => new Map(rows.map((row) => [row.operationId, Number(row.value ?? 0)]));
+
+  const equipes = porOperacao(await db
+    .select({ operationId: operationalGroupsTable.operationId, value: count() })
+    .from(teamMembershipsTable)
+    .innerJoin(operationalGroupsTable, eq(teamMembershipsTable.teamId, operationalGroupsTable.id))
+    .where(and(inArray(operationalGroupsTable.operationId, ids), eq(operationalGroupsTable.status, "ACTIVE"), eq(teamMembershipsTable.active, true)))
+    .groupBy(operationalGroupsTable.operationId));
+  const responsaveis = porOperacao(await db
+    .select({ operationId: responsibilitiesTable.operationId, value: count() })
+    .from(responsibilityAssignmentsTable)
+    .innerJoin(responsibilitiesTable, eq(responsibilityAssignmentsTable.responsibilityId, responsibilitiesTable.id))
+    .where(and(inArray(responsibilitiesTable.operationId, ids), eq(responsibilitiesTable.active, true), eq(responsibilityAssignmentsTable.active, true)))
+    .groupBy(responsibilitiesTable.operationId));
+  const acessos = porOperacao(await db
+    .select({ operationId: userRolesTable.operationId, value: sql<number>`count(distinct ${userRolesTable.userId})` })
+    .from(userRolesTable)
+    .where(and(inArray(userRolesTable.operationId, ids), eq(userRolesTable.active, true)))
+    .groupBy(userRolesTable.operationId));
+  const locais = porOperacao(await db
+    .select({ operationId: operationLocationsTable.operationId, value: count() })
+    .from(operationLocationsTable)
+    .innerJoin(locationsTable, eq(operationLocationsTable.locationId, locationsTable.id))
+    .where(and(inArray(operationLocationsTable.operationId, ids), eq(operationLocationsTable.active, true), eq(locationsTable.closed, false)))
+    .groupBy(operationLocationsTable.operationId));
+
+  for (const operation of operations) {
+    const accessCount = acessos.get(operation.id) ?? 0;
+    resultado.set(operation.id, {
+      accessCount,
+      readiness: evaluateOperationReadiness(operation, {
+        teamCount: equipes.get(operation.id) ?? 0,
+        accessCount,
+        responsibilityCount: responsaveis.get(operation.id) ?? 0,
+        linkedLocationCount: locais.get(operation.id) ?? 0,
+      }),
+    });
+  }
+  return resultado;
+}
+
 export async function getOperationReadiness(
   operation: typeof operationsTable.$inferSelect,
 ): Promise<OperationReadiness> {
-  const [[teamCount], [responsibilityCount]] = await Promise.all([
-    db
-      .select({ value: count() })
-      .from(teamMembershipsTable)
-      .innerJoin(
-        operationalGroupsTable,
-        eq(teamMembershipsTable.teamId, operationalGroupsTable.id),
-      )
-      .where(
-        and(
-          eq(operationalGroupsTable.operationId, operation.id),
-          eq(operationalGroupsTable.status, "ACTIVE"),
-          eq(teamMembershipsTable.active, true),
-        ),
-      ),
-    db
-      .select({ value: count() })
-      .from(responsibilityAssignmentsTable)
-      .innerJoin(
-        responsibilitiesTable,
-        eq(responsibilityAssignmentsTable.responsibilityId, responsibilitiesTable.id),
-      )
-      .where(
-        and(
-          eq(responsibilitiesTable.operationId, operation.id),
-          eq(responsibilitiesTable.active, true),
-          eq(responsibilityAssignmentsTable.active, true),
-        ),
-      ),
-  ]);
-
-  return evaluateOperationReadiness(
-    operation,
-    Number(teamCount?.value ?? 0),
-    Number(responsibilityCount?.value ?? 0),
-  );
+  return (await getOperationsReadiness([operation])).get(operation.id)!.readiness;
 }
 
 export function evaluateOperationReadiness(
   operation: ReadinessOperation,
-  teamCount: number,
-  responsibilityCount: number,
+  counts: OperationReadinessCounts,
 ): OperationReadiness {
-  const hasGeneralData = Boolean(
-    operation.name.trim()
-      && operation.description?.trim()
-      && operation.clientName?.trim()
-      && operation.locations.length > 0,
-  );
+  const hasDescription = Boolean(operation.description?.trim());
+  const hasClient = Boolean(operation.clientName?.trim());
+  const hasLocation = counts.linkedLocationCount > 0;
+  const hasGeneralData = Boolean(operation.name.trim()) && hasDescription && hasClient && hasLocation;
+  const missingGeneral = [
+    !hasDescription && "a descrição",
+    !hasClient && "o empreendimento (para quem a ASA trabalha)",
+    !hasLocation && "pelo menos um local aberto ligado a esta operação",
+  ].filter(Boolean) as string[];
   const hasVisualIdentity = /^#[0-9a-f]{6}$/i.test(operation.color) && Boolean(operation.icon.trim());
+  const hasPeople = counts.teamCount > 0 || counts.accessCount > 0;
 
   const items: OperationReadinessItem[] = [
     {
       key: "GENERAL_DATA",
-      label: "Dados gerais",
+      label: "Dados gerais e local",
       complete: hasGeneralData,
       message: hasGeneralData
-        ? "Nome, descrição, empreendimento e local estão preenchidos."
-        : "Preencha nome, descrição, empreendimento e pelo menos um local.",
+        ? "Nome, descrição, empreendimento e pelo menos um local aberto estão preenchidos."
+        : `Falta informar ${missingGeneral.join("; ")}. A Escala e os shows só existem dentro de um local desta operação.`,
     },
     {
       key: "VISUAL_IDENTITY",
@@ -165,27 +198,27 @@ export function evaluateOperationReadiness(
     },
     {
       key: "FIXED_TEAM",
-      label: "Equipe fixa",
-      complete: teamCount > 0,
-      message: teamCount > 0
-        ? "A operação possui integrantes em sua equipe fixa."
-        : "Adicione pelo menos uma pessoa a uma equipe desta operação.",
+      label: "Pessoas com acesso",
+      complete: hasPeople,
+      message: hasPeople
+        ? "Há pessoas com acesso a esta operação."
+        : "Dê acesso a pelo menos uma pessoa. Sem isso ninguém monta a Escala nem vê a operação.",
     },
     {
       key: "RESPONSIBILITIES",
       label: "Responsáveis",
-      complete: responsibilityCount > 0,
-      message: responsibilityCount > 0
+      complete: counts.responsibilityCount > 0,
+      message: counts.responsibilityCount > 0
         ? "A operação possui uma responsabilidade ativa com responsável."
-        : "Defina pelo menos uma responsabilidade e seu responsável.",
+        : "Crie pelo menos uma responsabilidade desta operação, com quem responde por ela (em Responsabilidades e tarefas).",
     },
     {
       key: "RELATED_MODULES",
       label: "Módulos relacionados",
       complete: operation.modulesReviewedAt !== null,
       message: operation.modulesReviewedAt
-        ? "Os módulos relacionados foram revisados pela administração."
-        : "Revise Escalas, Programação e Livros e confirme esta etapa.",
+        ? "A Administração confirmou que Escalas, Programação e Livros do Dia estão prontos para esta operação."
+        : "Confira Escalas, Programação e Livros do Dia e marque esta etapa como revisada.",
     },
   ];
 

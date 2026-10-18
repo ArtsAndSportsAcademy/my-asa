@@ -1,6 +1,6 @@
 import { type ReactNode, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link, Redirect, useLocation } from "wouter";
-import { Bell, BookOpen, CalendarDays, CheckCircle2, CircleAlert, ClipboardCheck, Clock3, Inbox, LayoutDashboard, LogOut, MapPin, Menu, MessageCircle, MoreHorizontal, Search, Users } from "lucide-react";
+import { Bell, BookOpen, Building2, CalendarDays, CheckCircle2, CircleAlert, ClipboardCheck, Clock3, Inbox, LayoutDashboard, LogOut, MapPin, Menu, MessageCircle, MoreHorizontal, Search, Users } from "lucide-react";
 import { customFetch } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/useAuth";
 import { PwaSetup, installedMode, usePushSubscribed } from "@/components/pwa-setup";
@@ -15,6 +15,7 @@ const AniversariosFaixa = lazy(() => import("@/pages/aniversarios-faixa"));
 const LivroDoDiaPage = lazy(() => import("@/pages/livro-do-dia"));
 const EscalasPage = lazy(() => import("@/pages/escalas"));
 const CadastrosPage = lazy(() => import("@/pages/cadastros"));
+const OperacoesPage = lazy(() => import("@/pages/operacoes"));
 const CheckInPage = lazy(() => import("@/pages/checkin-shifts").then(module => ({ default: module.CheckInPage })));
 const FolgasPage = lazy(() => import("@/pages/operational-cycle").then(module => ({ default: module.FolgasPage })));
 const SolicitacoesPage = lazy(() => import("@/pages/solicitacoes"));
@@ -51,6 +52,7 @@ const groups: { label: string; items: NavItem[] }[] = [
   ] },
   { label: "Gestão", items: [
     { label: "Painel", href: "/painel", icon: LayoutDashboard, kind: "cards", roles: ["adm", "dir", "sup"] },
+    { label: "Operações", href: "/operacoes", icon: Building2, kind: "list", roles: ["adm", "dir"] },
     { label: "Locais", href: "/locais", icon: MapPin, kind: "list", roles: ["adm", "dir", "sup"] },
     { label: "Pessoas e acessos", memberLabel: "Meu grupo", href: "/pessoas", icon: Users, kind: "list", roles: ["adm", "dir", "sup", "mem"] },
     { label: "Áreas", href: "/areas", icon: Users, kind: "list", roles: ["adm", "dir", "sup"] },
@@ -231,6 +233,7 @@ export default function ShellFoundation() {
           : active.href === "/pessoas" ? <CadastrosPage screen="people" role={role}/>
           : active.href === "/areas" ? <CadastrosPage screen="areas" role={role}/>
           : active.href === "/locais" ? <CadastrosPage screen="locations" role={role}/>
+          : active.href === "/operacoes" ? <OperacoesPage role={role}/>
           : active.href === "/responsabilidades" ? <ResponsibilitiesTasksPage role={role}/>
           : active.href === "/agenda" ? <AgendaWorkspacePage role={role}/>
           : active.href === "/registro" ? <RegistroPage role={role}/>

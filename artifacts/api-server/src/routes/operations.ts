@@ -1,8 +1,9 @@
 import { Router, type IRouter } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc, inArray, ne } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { operationsTable } from "@workspace/db";
+import { historyEventsTable, locationsTable, operationLocationsTable, operationsTable, userRolesTable, usersTable } from "@workspace/db";
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
+import { sendNotification } from "../services/notificationService.js";
 import { recordAudit } from "../lib/audit.service.js";
 import { requestLogger } from "../lib/logger.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
@@ -13,6 +14,7 @@ import {
   canTransitionOperation,
   getOperationInOrganization,
   getOperationReadiness,
+  getOperationsReadiness,
   isDuplicateOperationError,
   isOperationStatus,
   operationNameExists,
@@ -20,6 +22,99 @@ import {
 } from "../services/operation-lifecycle.js";
 
 const router: IRouter = Router();
+
+const STATUS_PT: Record<OperationStatus, string> = { DRAFT: "em configuração", ACTIVE: "ativa", PAUSED: "pausada", ARCHIVED: "encerrada" };
+const CAMPO_PT: Record<string, string> = { name: "nome", description: "descrição", clientName: "empreendimento", locations: "locais", startDate: "início", endDate: "fim", color: "cor", icon: "ícone", localCoordinatorId: "coordenação local", healthThresholds: "limites de saúde", lateThresholdMinutes: "tolerância de atraso", timezone: "fuso horário" };
+const PAPEL_ORDEM = ["ADMIN", "DIR", "DIRECTOR", "SUPERVISOR_A", "SUPERVISOR_B", "MEMBER", "TRAINER"];
+
+/** Administração e Direção da casa (menos quem agiu): quem precisa saber que uma operação mudou de situação. */
+async function gestoresParaAvisar(organizationId: string, exceto: string): Promise<string[]> {
+  const rows = await db
+    .selectDistinct({ userId: userRolesTable.userId })
+    .from(userRolesTable)
+    .innerJoin(operationsTable, eq(userRolesTable.operationId, operationsTable.id))
+    .innerJoin(usersTable, eq(userRolesTable.userId, usersTable.id))
+    .where(and(
+      eq(operationsTable.organizationId, organizationId),
+      eq(userRolesTable.active, true),
+      inArray(userRolesTable.role, ["ADMIN", "DIR"] as any),
+      eq(usersTable.status, "ACTIVE"),
+      ne(userRolesTable.userId, exceto),
+    ));
+  return rows.map((row) => row.userId);
+}
+
+/** Aviso ao sino; falhar em avisar nunca desfaz a mudança já gravada. */
+async function avisar(userIds: string[], title: string, message: string, operationId: string, type = "operation.status") {
+  await Promise.allSettled(userIds.map((userId) => sendNotification({
+    userId, type, title, message, category: "system", priority: "NORMAL",
+    entityType: "operation", entityId: operationId, actionUrl: "/operacoes",
+  })));
+}
+
+/**
+ * Visão da tela de Operações: cada operação com situação, locais ligados, quantas pessoas têm acesso e o
+ * checklist de ativação — numa chamada só. Administração e Direção leem; só a Administração escreve.
+ */
+router.get("/operations/overview", requireAuth, requireOrganization, requireRole("ADMIN", "DIR", "DIRECTOR"), async (req, res) => {
+  const log = requestLogger("organization", req.requestId, req.correlationId);
+  try {
+    const organizationId = req.user!.organizationId;
+    const [operations, links, locations] = await Promise.all([
+      db.query.operationsTable.findMany({ where: eq(operationsTable.organizationId, organizationId) }),
+      db
+        .select({ operationId: operationLocationsTable.operationId, locationId: operationLocationsTable.locationId })
+        .from(operationLocationsTable)
+        .innerJoin(operationsTable, eq(operationLocationsTable.operationId, operationsTable.id))
+        .where(and(eq(operationsTable.organizationId, organizationId), eq(operationLocationsTable.active, true))),
+      db
+        .select({ id: locationsTable.id, name: locationsTable.name, closed: locationsTable.closed })
+        .from(locationsTable)
+        .where(eq(locationsTable.organizationId, organizationId))
+        .orderBy(locationsTable.name),
+    ]);
+    const donoDoLocal = new Map<string, string>();
+    for (const link of links) donoDoLocal.set(link.locationId, link.operationId);
+
+    const prontidao = await getOperationsReadiness(operations);
+    // Motivo escrito do encerramento: o evento mais recente de cada operação encerrada, numa consulta só.
+    const encerradas = operations.filter((operation) => operation.status === "ARCHIVED").map((operation) => operation.id);
+    const eventos = encerradas.length
+      ? await db.select({ entityId: historyEventsTable.entityId, metadata: historyEventsTable.metadata }).from(historyEventsTable)
+          .where(and(eq(historyEventsTable.entityType, "operation"), inArray(historyEventsTable.entityId, encerradas), eq(historyEventsTable.action, "operation.status.archived")))
+          .orderBy(desc(historyEventsTable.createdAt))
+      : [];
+    const itens = operations.map((operation) => {
+      const reason = eventos.find((evento) => evento.entityId === operation.id)?.metadata?.["reason"];
+      const dados = prontidao.get(operation.id)!;
+      return {
+        id: operation.id,
+        name: operation.name,
+        description: operation.description,
+        clientName: operation.clientName,
+        color: operation.color,
+        icon: operation.icon,
+        status: operation.status,
+        archivedAt: operation.archivedAt,
+        activatedAt: operation.activatedAt,
+        modulesReviewedAt: operation.modulesReviewedAt,
+        archivedReason: typeof reason === "string" ? reason : null,
+        peopleCount: dados.accessCount,
+        locationIds: links.filter((link) => link.operationId === operation.id).map((link) => link.locationId),
+        readiness: dados.readiness,
+      };
+    });
+    itens.sort((a, b) => Number(a.status === "ARCHIVED") - Number(b.status === "ARCHIVED") || a.name.localeCompare(b.name, "pt-BR"));
+    res.json({
+      canManage: req.user!.role === "ADMIN",
+      operations: itens,
+      locations: locations.map((location) => ({ ...location, operationId: donoDoLocal.get(location.id) ?? null })),
+    });
+  } catch (err) {
+    log.error({ err }, "Error building operations overview");
+    res.status(500).json({ error: "INTERNAL_ERROR", message: "Não consegui carregar as operações agora." });
+  }
+});
 
 router.get("/operations/:id", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger("organization", req.requestId, req.correlationId);
@@ -158,7 +253,11 @@ router.patch("/operations/:id", requireAuth, requireOrganization, requireRole("A
       where: and(eq(operationsTable.id, id), eq(operationsTable.organizationId, req.user!.organizationId)),
     });
     if (!operation) {
-      res.status(404).json({ error: "NOT_FOUND" });
+      res.status(404).json({ error: "NOT_FOUND", message: "Operação não encontrada." });
+      return;
+    }
+    if (operation.status === "ARCHIVED") {
+      res.status(409).json({ error: "OPERATION_ARCHIVED", message: "Esta operação está encerrada. Reabra-a antes de editar." });
       return;
     }
 
@@ -220,14 +319,14 @@ router.patch("/operations/:id", requireAuth, requireOrganization, requireRole("A
         category: "OPERATIONAL_CHANGE",
         action: "operation.updated",
         title: "Operação atualizada",
-        narrative: `Campos atualizados: ${changed.join(", ") || "nenhum"}.`,
+        narrative: `Campos atualizados: ${changed.map((key) => CAMPO_PT[key] ?? key).join(", ") || "nenhum"}.`,
         entityType: "operation",
         entityId: id,
         actorId: req.user!.sub,
         operationId: id,
         orgId: req.user!.organizationId,
-        beforeState: { lateThresholdMinutes: operation.lateThresholdMinutes, timezone: operation.timezone },
-        afterState: { lateThresholdMinutes: persisted!.lateThresholdMinutes, timezone: persisted!.timezone },
+        beforeState: { name: operation.name, description: operation.description, clientName: operation.clientName, color: operation.color, lateThresholdMinutes: operation.lateThresholdMinutes, timezone: operation.timezone },
+        afterState: { name: persisted!.name, description: persisted!.description, clientName: persisted!.clientName, color: persisted!.color, lateThresholdMinutes: persisted!.lateThresholdMinutes, timezone: persisted!.timezone },
         metadata: { changedFields: changed },
       }, tx as any);
       return persisted!;
@@ -274,10 +373,13 @@ router.patch("/operations/:id/status", requireAuth, requireOrganization, require
 
     const targetStatus: OperationStatus = status;
     const isReopening = operation.status === "ARCHIVED" && targetStatus !== "ARCHIVED";
+    const isClosing = targetStatus === "ARCHIVED" && operation.status !== "ARCHIVED";
     const statusReason = isReopening
-      ? requireReason(res, reason, "reabrir local encerrado")
-      : normalizeReason(reason);
-    if (isReopening && !statusReason) return;
+      ? requireReason(res, reason, "reabrir uma operação encerrada")
+      : isClosing
+        ? requireReason(res, reason, "encerrar uma operação")
+        : normalizeReason(reason);
+    if ((isReopening || isClosing) && !statusReason) return;
 
     if (!canTransitionOperation(operation.status, targetStatus)) {
       res.status(409).json({
@@ -287,12 +389,25 @@ router.patch("/operations/:id/status", requireAuth, requireOrganization, require
       return;
     }
 
+    // A casa não fica sem operação ativa: o perfil de cada pessoa é gravado em cada operação ativa.
+    if (operation.status === "ACTIVE" && targetStatus !== "ACTIVE") {
+      const [outra] = await db.select({ id: operationsTable.id }).from(operationsTable)
+        .where(and(eq(operationsTable.organizationId, req.user!.organizationId), eq(operationsTable.status, "ACTIVE"), ne(operationsTable.id, id))).limit(1);
+      if (!outra) {
+        res.status(409).json({
+          error: "LAST_ACTIVE_OPERATION",
+          message: `"${operation.name}" é a única operação ativa. Ative outra antes de ${targetStatus === "ARCHIVED" ? "encerrar" : "pausar"} esta, senão a casa fica sem escala nem acessos.`,
+        });
+        return;
+      }
+    }
+
     if (targetStatus === "ACTIVE") {
       const readiness = await getOperationReadiness(operation);
       if (!readiness.ready) {
         res.status(409).json({
           error: "OPERATION_NOT_READY",
-          message: "Conclua a configuração da operação antes de ativá-la.",
+          message: "A operação ainda não está pronta para ativar. Veja o que falta no checklist.",
           readiness,
         });
         return;
@@ -317,8 +432,8 @@ router.patch("/operations/:id/status", requireAuth, requireOrganization, require
       await writeHistoryEvent({
         category: "OPERATIONAL_CHANGE",
         action: `operation.status.${targetStatus.toLowerCase()}`,
-        title: "Situação da operação alterada",
-        narrative: `Situação alterada de ${operation.status} para ${targetStatus}`,
+        title: isClosing ? "Operação encerrada" : isReopening ? "Operação reaberta" : "Situação da operação alterada",
+        narrative: `Operação "${operation.name}": de ${STATUS_PT[operation.status]} para ${STATUS_PT[targetStatus]}${statusReason ? `. Motivo: ${statusReason}` : ""}.`,
         entityType: "operation",
         entityId: id,
         actorId: req.user!.sub,
@@ -339,10 +454,21 @@ router.patch("/operations/:id/status", requireAuth, requireOrganization, require
     });
 
     log.info({ operationId: id, from: operation.status, to: targetStatus }, "Operation status changed");
+    // Quem mais da Administração e da Direção precisa saber, sem abrir a tela: um aviso por mudança.
+    if (operation.status !== targetStatus) {
+      const quem = (await db.query.usersTable.findFirst({ where: eq(usersTable.id, req.user!.sub) }))?.fullName ?? "A Administração";
+      const verbo = isClosing ? "encerrou" : isReopening ? "reabriu" : targetStatus === "ACTIVE" ? "ativou" : targetStatus === "PAUSED" ? "pausou" : "mudou";
+      await avisar(
+        await gestoresParaAvisar(req.user!.organizationId, req.user!.sub),
+        `Operação ${STATUS_PT[targetStatus]}: ${operation.name}`,
+        `${quem} ${verbo} a operação ${operation.name}${statusReason ? `. Motivo: ${statusReason}` : "."}`,
+        id,
+      );
+    }
     res.json({ operation: updated });
   } catch (err) {
     log.error({ err }, "Error updating operation status");
-    res.status(500).json({ error: "INTERNAL_ERROR" });
+    res.status(500).json({ error: "INTERNAL_ERROR", message: "Não consegui mudar a situação da operação agora. Nada foi alterado; tente de novo." });
   }
 });
 
@@ -418,5 +544,82 @@ router.patch(
     res.json({ operation: updated, readiness: await getOperationReadiness(updated!) });
   },
 );
+
+/**
+ * Dá acesso a várias pessoas de uma vez: cada uma ganha, nesta operação, o mesmo perfil que já tem na casa
+ * (Elenco continua Elenco, Supervisão continua Supervisão). Quem ainda não tem perfil nenhum fica de fora, com o porquê.
+ */
+router.post("/operations/:id/access", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
+  const log = requestLogger("organization", req.requestId, req.correlationId);
+  const id = req.params.id as string;
+  const userIds: string[] | null = Array.isArray(req.body?.userIds) && req.body.userIds.every((v: unknown) => typeof v === "string")
+    ? [...new Set<string>(req.body.userIds)] : null;
+  if (!userIds || userIds.length === 0) {
+    res.status(400).json({ error: "BAD_REQUEST", message: "Marque pelo menos uma pessoa." });
+    return;
+  }
+  try {
+    const organizationId = req.user!.organizationId;
+    const operation = await getOperationInOrganization(id, organizationId);
+    if (!operation) {
+      res.status(404).json({ error: "NOT_FOUND", message: "Operação não encontrada." });
+      return;
+    }
+    if (operation.status === "ARCHIVED") {
+      res.status(409).json({ error: "OPERATION_ARCHIVED", message: "Esta operação está encerrada. Reabra-a antes de dar acesso." });
+      return;
+    }
+
+    const pessoas = await db.select({ id: usersTable.id, nome: usersTable.fullName, status: usersTable.status })
+      .from(usersTable).where(and(inArray(usersTable.id, userIds), eq(usersTable.organizationId, organizationId)));
+    const ativas = pessoas.filter((pessoa) => pessoa.status === "ACTIVE");
+    if (ativas.length !== userIds.length) {
+      res.status(400).json({ error: "BAD_REQUEST", message: "Só pessoas ativas desta casa podem receber acesso. Atualize a lista e tente de novo." });
+      return;
+    }
+
+    const resultado = await db.transaction(async (tx) => {
+      const papeis = await tx.select({ userId: userRolesTable.userId, role: userRolesTable.role, operationId: userRolesTable.operationId, groupId: userRolesTable.groupId })
+        .from(userRolesTable)
+        .innerJoin(operationsTable, eq(userRolesTable.operationId, operationsTable.id))
+        .where(and(inArray(userRolesTable.userId, userIds), eq(userRolesTable.active, true), eq(operationsTable.organizationId, organizationId)));
+      const liberadas: string[] = [], jaTinham: string[] = [], semPerfil: string[] = [];
+      for (const pessoa of ativas) {
+        const dela = papeis.filter((papel) => papel.userId === pessoa.id);
+        const principal = [...dela].sort((a, b) => PAPEL_ORDEM.indexOf(a.role) - PAPEL_ORDEM.indexOf(b.role))[0];
+        if (!principal) { semPerfil.push(pessoa.nome ?? "Pessoa"); continue; }
+        if (dela.some((papel) => papel.operationId === id && papel.role === principal.role && !papel.groupId)) { jaTinham.push(pessoa.nome ?? "Pessoa"); continue; }
+        await tx.insert(userRolesTable).values({ userId: pessoa.id, operationId: id, role: principal.role, active: true });
+        liberadas.push(pessoa.id);
+      }
+      if (liberadas.length) {
+        await writeHistoryEvent({
+          category: "OPERATIONAL_CHANGE",
+          action: "operation.access_granted",
+          title: "Acesso à operação concedido",
+          narrative: `${liberadas.length} ${liberadas.length === 1 ? "pessoa ganhou" : "pessoas ganharam"} acesso à operação "${operation.name}".`,
+          entityType: "operation",
+          entityId: id,
+          actorId: req.user!.sub,
+          operationId: id,
+          orgId: organizationId,
+          metadata: { userIds: liberadas },
+        }, tx as any);
+      }
+      return { liberadas, jaTinham, semPerfil };
+    });
+
+    await recordAudit({ actorId: req.user!.sub, action: "OPERATION_UPDATED", targetResource: `operation:${id}`, metadata: { accessGranted: resultado.liberadas } });
+    // Só quem já pode usar a operação precisa ser avisada: numa operação em configuração ela ainda nem aparece.
+    if (operation.status === "ACTIVE") {
+      await avisar(resultado.liberadas, `Você agora tem acesso a ${operation.name}`, `A Administração liberou o seu acesso à operação ${operation.name}. Ela já aparece nas suas telas.`, id, "operation.access");
+    }
+    log.info({ operationId: id, granted: resultado.liberadas.length }, "Operation access granted");
+    res.json(resultado);
+  } catch (err) {
+    log.error({ err }, "Error granting operation access");
+    res.status(500).json({ error: "INTERNAL_ERROR", message: "Não consegui dar o acesso agora. Nada foi alterado; tente de novo." });
+  }
+});
 
 export default router;

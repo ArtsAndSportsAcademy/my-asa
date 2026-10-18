@@ -1,0 +1,48 @@
+# Cadastro de Operações (Etapa 1 do plano pós-revisão, 17/10/2026)
+
+Tela **Gestão → Operações** (`/operacoes`, `artifacts/web-admin/src/pages/operacoes.tsx`). Só a Administração cria,
+edita, ativa, pausa, encerra, reabre, liga locais e dá acesso a pessoas. A Direção só lê. Supervisão e Elenco não veem
+o item no menu e, se abrirem o endereço, caem no Meu Dia.
+
+## O que o checklist exige para ativar (regra do servidor)
+
+Código: `getOperationsReadiness` / `evaluateOperationReadiness` em `services/operation-lifecycle.ts`. A ativação
+(`PATCH /operations/:id/status` → `ACTIVE`) responde 409 `OPERATION_NOT_READY` com a lista enquanto faltar algo:
+
+1. **Dados gerais e local** — nome, descrição, empreendimento (para quem a ASA trabalha) e **pelo menos um local aberto
+   ligado à operação**. (Antes era o campo antigo `locations`, uma lista de textos que nenhuma tela preenchia; agora vale
+   o vínculo real em `operation_locations`.)
+2. **Identidade visual** — cor e ícone. Já vêm preenchidos ao criar; a tela deixa escolher a cor.
+3. **Pessoas com acesso** — pelo menos uma pessoa com perfil ativo gravado para a operação (ou integrante de equipe fixa
+   antiga). Antes só contava a "equipe fixa" dos grupos operacionais, cuja tela foi retirada do menu em 16/10.
+4. **Responsáveis** — pelo menos uma responsabilidade ativa da operação com alguém responsável (criada em
+   Responsabilidades e tarefas).
+5. **Módulos relacionados** — a Administração marca que conferiu Escalas, Programação e Livros do Dia (`setup-review`,
+   reversível).
+
+## Regras das ações
+
+- **Criar**: nasce em configuração (rascunho). Nome único (sem diferenciar caixa e espaços).
+- **Editar**: nome, empreendimento, descrição, cor. Operação encerrada não se edita até ser reaberta.
+- **Locais** (`PUT /operations/:id/locations`): um local pertence a uma operação só (409 com o nome da dona). Só mexe nos
+  locais abertos; o vínculo de local encerrado fica para voltar junto se ele reabrir. **Operação ativa não perde o último
+  local aberto** (409 `ULTIMO_LOCAL`). Local desmarcado fica sem operação até ser ligado a outra, e a tela avisa.
+  O cadastro de local novo (`POST /locations`) agora aceita também operação em configuração.
+- **Pessoas** (`POST /operations/:id/access`): várias de uma vez; cada uma ganha na operação o mesmo perfil que já tem na
+  casa. Quem não tem perfil fica de fora, com o porquê. Operação ativa: as pessoas são avisadas no sino.
+- **Ativar / reativar**: pede confirmação depois do checklist; ao ativar, a Administração e a Direção (exceto quem
+  agiu) recebem um aviso.
+- **Pausar**: motivo opcional. **Encerrar**: motivo escrito obrigatório, nada é apagado, some das listas de uso.
+  **Reabrir**: motivo obrigatório; volta como "em configuração" e passa de novo pelo checklist.
+- **A casa não fica sem operação ativa**: pausar ou encerrar a única ativa é recusado (409 `LAST_ACTIVE_OPERATION`),
+  porque o perfil de cada pessoa é gravado em cada operação ativa.
+- Toda escrita grava `writeHistoryEvent`/`writeEntityHistory` na mesma transação; o motivo vai em `metadata.reason`.
+- `GET /operations/overview` (Administração e Direção) traz tudo da tela numa chamada: situação, locais, pessoas com
+  acesso, checklist e o motivo do encerramento.
+
+## Fora do escopo desta etapa (decisões abertas)
+
+Ver o relato da sessão: aviso às pessoas com acesso quando a operação é ativada, pausada ou encerrada; o que fazer quando
+um local da operação ativa é encerrado pela tela Locais; acesso automático de quem já existe a uma operação nova.
+
+Sem migração: nada de schema mudou. Ordem para promover: API primeiro, site depois.

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import {
   areaLocalSupervisorsTable,
   areasTable,
@@ -146,8 +146,10 @@ router.post("/locations", requireAuth, requireOrganization, requireRole("ADMIN")
   if (escolhidas === null && ativasDaCasa.length > 1) {
     res.status(400).json({ error: "OPERACAO_OBRIGATORIA", message: "Escolha de qual operação é este local. A Escala e os shows dele dependem disso." }); return;
   }
-  if (escolhidas && escolhidas.some((id) => !ativasDaCasa.some((op) => op.id === id))) {
-    res.status(400).json({ error: "OPERACAO_INVALIDA", message: "Escolha só operações ativas desta organização." }); return;
+  // Operação em configuração também pode receber locais: sem local aberto ela não passa no checklist de ativação.
+  const emConfiguracao = await db.select({ id: operationsTable.id }).from(operationsTable).where(and(eq(operationsTable.organizationId, req.user!.organizationId), eq(operationsTable.status, "DRAFT")));
+  if (escolhidas && escolhidas.some((id) => !ativasDaCasa.some((op) => op.id === id) && !emConfiguracao.some((op) => op.id === id))) {
+    res.status(400).json({ error: "OPERACAO_INVALIDA", message: "Escolha só operações ativas ou em configuração desta organização." }); return;
   }
   if (escolhidas && escolhidas.length > 1) {
     res.status(400).json({ error: "OPERACAO_UNICA", message: "Um local pertence a uma operação só. Escolha uma." }); return;
@@ -212,16 +214,41 @@ router.put("/operations/:operationId/locations", requireAuth, requireOrganizatio
   const locationIds: string[] | null = Array.isArray(req.body?.locationIds) && req.body.locationIds.every((id: unknown) => typeof id === "string") ? [...new Set<string>(req.body.locationIds)] : null;
   if (!operation) { res.status(403).json({ error: "Forbidden", message: "Recurso fora do escopo" }); return; }
   if (!locationIds) { res.status(400).json({ error: "locationIds é obrigatório" }); return; }
+  if (operation.status === "ARCHIVED") { res.status(409).json({ error: "OPERATION_ARCHIVED", message: "Esta operação está encerrada. Reabra-a antes de mudar os locais." }); return; }
   const locations = locationIds.length === 0 ? [] : await db.select({ id: locationsTable.id }).from(locationsTable).where(and(inArray(locationsTable.id, locationIds), eq(locationsTable.organizationId, req.user!.organizationId), eq(locationsTable.closed, false)));
-  if (locations.length !== new Set(locationIds).size) { res.status(400).json({ error: "Todos os locais devem existir, pertencer à organização e estar abertos" }); return; }
-  const mappings = await db.transaction(async (tx) => {
-    const before = await tx.select().from(operationLocationsTable).where(and(eq(operationLocationsTable.operationId, operation.id), eq(operationLocationsTable.active, true)));
-    if (before.length > 0) await tx.update(operationLocationsTable).set({ active: false, updatedAt: new Date() }).where(and(eq(operationLocationsTable.operationId, operation.id), eq(operationLocationsTable.active, true)));
-    const created = locationIds.length > 0 ? await tx.insert(operationLocationsTable).values(locationIds.map((locationId: string) => ({ operationId: operation.id, locationId, active: true }))).returning() : [];
-    await writeEntityHistory(req, { category: "OPERATIONAL_CHANGE", action: "operation_locations.updated", title: "Locais da operação atualizados", narrative: "Vínculos de locais da operação atualizados sem apagar histórico.", entityType: "operation", entityId: operation.id, actorId: req.user!.sub, orgId: req.user!.organizationId, operationId: operation.id, beforeState: { locations: before }, afterState: { locations: created } }, tx as any);
-    return created;
-  });
-  res.json({ locations: mappings });
+  if (locations.length !== new Set(locationIds).size) { res.status(400).json({ error: "LOCAIS_INVALIDOS", message: "Todos os locais precisam existir, ser desta organização e estar abertos." }); return; }
+  try {
+    const resultado = await db.transaction(async (tx) => {
+      // Só mexe nos locais abertos: o vínculo de um local encerrado fica como está, para voltar junto se ele reabrir.
+      const atuais = await tx.select({ link: operationLocationsTable, closed: locationsTable.closed, name: locationsTable.name })
+        .from(operationLocationsTable).innerJoin(locationsTable, eq(operationLocationsTable.locationId, locationsTable.id))
+        .where(and(eq(operationLocationsTable.operationId, operation.id), eq(operationLocationsTable.active, true)));
+      const abertosAtuais = atuais.filter((row) => !row.closed);
+      const paraTirar = abertosAtuais.filter((row) => !locationIds.includes(row.link.locationId));
+      const paraPor = locationIds.filter((locationId) => !abertosAtuais.some((row) => row.link.locationId === locationId));
+      if (operation.status === "ACTIVE" && locationIds.length === 0) {
+        return { erro: { status: 409, error: "ULTIMO_LOCAL", message: `"${operation.name}" está ativa e ficaria sem nenhum local aberto: a Escala e os shows dela deixariam de existir. Ligue outro local antes de tirar este, ou encerre a operação.` } } as const;
+      }
+      if (paraPor.length) {
+        const deOutra = await tx.select({ locationName: locationsTable.name, operationName: operationsTable.name })
+          .from(operationLocationsTable)
+          .innerJoin(operationsTable, eq(operationLocationsTable.operationId, operationsTable.id))
+          .innerJoin(locationsTable, eq(operationLocationsTable.locationId, locationsTable.id))
+          .where(and(inArray(operationLocationsTable.locationId, paraPor), eq(operationLocationsTable.active, true), ne(operationLocationsTable.operationId, operation.id)));
+        if (deOutra.length) {
+          return { erro: { status: 409, error: "LOCAL_DE_OUTRA_OPERACAO", message: `Um local pertence a uma operação só. ${deOutra.map((row) => `"${row.locationName}" já é de ${row.operationName}`).join("; ")}.` } } as const;
+        }
+      }
+      if (paraTirar.length) await tx.update(operationLocationsTable).set({ active: false, updatedAt: new Date() }).where(inArray(operationLocationsTable.id, paraTirar.map((row) => row.link.id)));
+      const criados = paraPor.length ? await tx.insert(operationLocationsTable).values(paraPor.map((locationId) => ({ operationId: operation.id, locationId, active: true }))).returning() : [];
+      if (paraTirar.length || criados.length) {
+        await writeEntityHistory(req, { category: "OPERATIONAL_CHANGE", action: "operation_locations.updated", title: "Locais da operação atualizados", narrative: `Locais de "${operation.name}": ${criados.length} ligado(s), ${paraTirar.length} desligado(s). Nada foi apagado do histórico.`, entityType: "operation", entityId: operation.id, actorId: req.user!.sub, orgId: req.user!.organizationId, operationId: operation.id, beforeState: { locations: abertosAtuais.map((row) => row.link) }, afterState: { locations: criados } }, tx as any);
+      }
+      return { locations: [...abertosAtuais.filter((row) => !paraTirar.includes(row)).map((row) => row.link), ...criados] } as const;
+    });
+    const recusa = "erro" in resultado ? resultado.erro : undefined; if (recusa) { res.status(recusa.status).json({ error: recusa.error, message: recusa.message }); return; }
+    res.json({ locations: "locations" in resultado ? resultado.locations : [] });
+  } catch { res.status(500).json({ error: "INTERNAL_ERROR", message: "Não consegui salvar os locais da operação agora. Nada foi alterado; tente de novo." }); }
 });
 
 // Pessoa pertence à ASA e a uma área. O local é definido pela Programação e
