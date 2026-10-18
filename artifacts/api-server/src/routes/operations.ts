@@ -23,6 +23,31 @@ import {
 
 const router: IRouter = Router();
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** Um id que nem tem cara de id é "não encontrada", não erro do servidor. */
+router.param("id", (_req, res, next, id) => {
+  if (!UUID.test(String(id))) { res.status(404).json({ error: "NOT_FOUND", message: "Operação não encontrada." }); return; }
+  next();
+});
+
+const MAX_NOME = 120, MAX_DESCRICAO = 600;
+/** AAAA-MM-DD de um dia que existe no calendário (30 de fevereiro não passa). */
+function dataExiste(valor: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(valor)) return false;
+  const data = new Date(`${valor}T12:00:00Z`);
+  return !Number.isNaN(data.getTime()) && data.toISOString().slice(0, 10) === valor;
+}
+/** Tamanho dos textos e formato das datas, com a frase que a tela mostra. Devolve null quando está tudo certo. */
+function recusaDosDadosGerais(corpo: { name?: unknown; clientName?: unknown; description?: unknown; startDate?: unknown; endDate?: unknown }): string | null {
+  if (typeof corpo.name === "string" && corpo.name.trim().length > MAX_NOME) return `O nome tem no máximo ${MAX_NOME} letras.`;
+  if (typeof corpo.clientName === "string" && corpo.clientName.trim().length > MAX_NOME) return `O empreendimento tem no máximo ${MAX_NOME} letras.`;
+  if (typeof corpo.description === "string" && corpo.description.trim().length > MAX_DESCRICAO) return `A descrição tem no máximo ${MAX_DESCRICAO} letras.`;
+  for (const [campo, valor] of [["início", corpo.startDate], ["fim", corpo.endDate]] as const) {
+    if (valor && (typeof valor !== "string" || !dataExiste(valor))) return `A data de ${campo} é inválida. Use o formato AAAA-MM-DD.`;
+  }
+  return null;
+}
+
 const STATUS_PT: Record<OperationStatus, string> = { DRAFT: "em configuração", ACTIVE: "ativa", PAUSED: "pausada", ARCHIVED: "encerrada" };
 const CAMPO_PT: Record<string, string> = { name: "nome", description: "descrição", clientName: "empreendimento", locations: "locais", startDate: "início", endDate: "fim", color: "cor", icon: "ícone", localCoordinatorId: "coordenação local", healthThresholds: "limites de saúde", lateThresholdMinutes: "tolerância de atraso", timezone: "fuso horário" };
 const PAPEL_ORDEM = ["ADMIN", "DIR", "DIRECTOR", "SUPERVISOR_A", "SUPERVISOR_B", "MEMBER", "TRAINER"];
@@ -177,6 +202,12 @@ router.post("/operations", requireAuth, requireOrganization, requireRole("ADMIN"
     return;
   }
 
+  const recusa = recusaDosDadosGerais({ name, clientName, description, startDate, endDate });
+  if (recusa) {
+    res.status(400).json({ error: "BAD_REQUEST", message: recusa });
+    return;
+  }
+
   if (startDate && endDate && endDate < startDate) {
     res.status(400).json({ error: "BAD_REQUEST", message: "A data final não pode ser anterior à data inicial" });
     return;
@@ -281,6 +312,12 @@ router.patch("/operations/:id", requireAuth, requireOrganization, requireRole("A
     }
     if (operation.status === "ARCHIVED") {
       res.status(409).json({ error: "OPERATION_ARCHIVED", message: "Esta operação está encerrada. Reabra-a antes de editar." });
+      return;
+    }
+
+    const recusa = recusaDosDadosGerais({ name, clientName, description, startDate, endDate });
+    if (recusa) {
+      res.status(400).json({ error: "BAD_REQUEST", message: recusa });
       return;
     }
 
@@ -580,6 +617,10 @@ router.post("/operations/:id/access", requireAuth, requireOrganization, requireR
     ? [...new Set<string>(req.body.userIds)] : null;
   if (!userIds || userIds.length === 0) {
     res.status(400).json({ error: "BAD_REQUEST", message: "Marque pelo menos uma pessoa." });
+    return;
+  }
+  if (!userIds.every((userId) => UUID.test(userId))) {
+    res.status(400).json({ error: "BAD_REQUEST", message: "Só pessoas ativas desta casa podem receber acesso. Atualize a lista e tente de novo." });
     return;
   }
   try {

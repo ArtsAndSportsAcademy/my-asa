@@ -13,6 +13,8 @@
 /* Janelas */
 .op-dialog{width:min(100%,540px)}
 .op-dialog .op-rodape{margin:14px -24px -24px}
+/* Janela só de texto (ex.: "Acesso dado"): o rodapé colante subia 24px e escondia a última linha da mensagem. */
+.op-dialog>.cad-form-footer:not(.op-rodape){position:static;margin:14px -24px -24px}
 .op-dialog .op-rodape .op-sec,.op-dialog .cad-form-footer .op-sec{min-height:44px;border:1px solid var(--asa-border);border-radius:11px;background:#fff;padding:9px 13px;color:#5b5473;font-weight:700;cursor:pointer}
 .op-dialog .op-rodape{gap:8px}
 .op-dialog .cad-form footer button.cad-primary:disabled,.op-dialog .op-rodape .cad-primary:disabled{opacity:.55;cursor:not-allowed}
@@ -51,7 +53,7 @@
 .op-link{justify-self:start;min-height:44px;border:0;background:transparent;padding:0;color:#4c1ca6;font:700 12px Manrope;cursor:pointer}
 
 @media(max-width:720px){
-  .op-dialog .op-rodape{margin:14px -16px -20px}
+  .op-dialog .op-rodape,.op-dialog>.cad-form-footer:not(.op-rodape){margin:14px -16px -20px}
   .op-footer .cad-danger-link{margin-left:0}
   .op-footer button{flex:1 1 40%;justify-content:center}
   .op-check li{padding:10px}

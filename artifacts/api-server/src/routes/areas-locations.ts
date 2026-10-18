@@ -17,6 +17,12 @@ import { listAreaLocalScopes } from "../services/area-local-scope.js";
 import { listReadableLocations } from "../services/location-directory.js";
 
 const router: IRouter = Router();
+
+/** Um id que nem tem cara de id é "não encontrada", não erro do servidor. */
+router.param("operationId", (_req, res, next, id) => {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id))) { res.status(404).json({ error: "NOT_FOUND", message: "Operação não encontrada." }); return; }
+  next();
+});
 const SUPERVISOR_ROLES = new Set(["SUPERVISOR_A", "SUPERVISOR_B"]);
 
 function mayReadReference(role: string) { return role === "ADMIN" || role === "DIR" || SUPERVISOR_ROLES.has(role); }

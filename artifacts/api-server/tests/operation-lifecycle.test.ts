@@ -219,6 +219,17 @@ async function run() {
       assert((await chamar("PATCH", `/operations/${createdOperationId}`, directorToken, { name: "Direção não edita" })).status === 403, "direção não edita operação");
       assert((await chamar("PATCH", `/operations/${createdOperationId}/status`, directorToken, { status: "ARCHIVED", reason: "x" })).status === 403, "direção não encerra operação");
 
+      // Entradas ruins: recusa com frase, nunca erro do servidor.
+      const nomeGigante = await chamar("POST", "/operations", adminToken, { name: "x".repeat(5000) });
+      assert(nomeGigante.status === 400 && /120 letras/.test(String(nomeGigante.body.message)), "recusa nome com mais de 120 letras");
+      const diaImpossivel = await chamar("POST", "/operations", adminToken, { name: "Operação dia impossível", startDate: "2026-02-30" });
+      assert(diaImpossivel.status === 400 && /AAAA-MM-DD/.test(String(diaImpossivel.body.message)), "recusa 30 de fevereiro como data de início");
+      const idSemCara = await chamar("PATCH", "/operations/nao-e-id/status", adminToken, { status: "PAUSED" });
+      assert(idSemCara.status === 404, "id que não é id dá 404, não 500");
+      assert((await chamar("PUT", "/operations/nao-e-id/locations", adminToken, { locationIds: [] })).status === 404, "id que não é id nos locais dá 404");
+      const acessoLixo = await chamar("POST", `/operations/${createdOperationId}/access`, adminToken, { userIds: ["x"] });
+      assert(acessoLixo.status === 400, "acesso a id lixo dá 400, não 500");
+
       // Locais: nascem ligados à operação escolhida, mesmo em configuração, e um local não serve a duas operações.
       const localA = await chamar("POST", "/locations", adminToken, { name: `Local A ${organizationId}`, operationIds: [createdOperationId] });
       const localB = await chamar("POST", "/locations", adminToken, { name: `Local B ${organizationId}`, operationIds: [accessOperationId] });
