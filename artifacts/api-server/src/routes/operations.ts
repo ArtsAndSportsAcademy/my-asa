@@ -52,10 +52,13 @@ const STATUS_PT: Record<OperationStatus, string> = { DRAFT: "em configuração",
 const CAMPO_PT: Record<string, string> = { name: "nome", description: "descrição", clientName: "empreendimento", locations: "locais", startDate: "início", endDate: "fim", color: "cor", icon: "ícone", localCoordinatorId: "coordenação local", healthThresholds: "limites de saúde", lateThresholdMinutes: "tolerância de atraso", timezone: "fuso horário" };
 const PAPEL_ORDEM = ["ADMIN", "DIR", "DIRECTOR", "SUPERVISOR_A", "SUPERVISOR_B", "MEMBER", "TRAINER"];
 
-/** Administração, Direção e Supervisão da casa (menos quem agiu): quem precisa saber que uma operação mudou de situação. */
-async function gestoresParaAvisar(organizationId: string, exceto: string): Promise<string[]> {
+/**
+ * Administração, Direção e Supervisão da casa (menos quem agiu): quem precisa saber que uma operação mudou de situação.
+ * Devolve também quem vê a tela de Operações: só Administração e Direção; a Supervisão fica no Meu Dia.
+ */
+async function gestoresParaAvisar(organizationId: string, exceto: string): Promise<{ comTela: string[]; semTela: string[] }> {
   const rows = await db
-    .selectDistinct({ userId: userRolesTable.userId })
+    .selectDistinct({ userId: userRolesTable.userId, role: userRolesTable.role })
     .from(userRolesTable)
     .innerJoin(operationsTable, eq(userRolesTable.operationId, operationsTable.id))
     .innerJoin(usersTable, eq(userRolesTable.userId, usersTable.id))
@@ -66,7 +69,9 @@ async function gestoresParaAvisar(organizationId: string, exceto: string): Promi
       eq(usersTable.status, "ACTIVE"),
       ne(userRolesTable.userId, exceto),
     ));
-  return rows.map((row) => row.userId);
+  const comTela = new Set(rows.filter((row) => row.role === "ADMIN" || row.role === "DIR").map((row) => row.userId));
+  const semTela = new Set(rows.map((row) => row.userId).filter((userId) => !comTela.has(userId)));
+  return { comTela: [...comTela], semTela: [...semTela] };
 }
 
 /**
@@ -93,10 +98,11 @@ async function darAcessoAosExistentes(tx: any, organizationId: string, operation
 }
 
 /** Aviso ao sino; falhar em avisar nunca desfaz a mudança já gravada. */
-async function avisar(userIds: string[], title: string, message: string, operationId: string, type = "operation.status") {
+/** `actionUrl` é uma tela que a pessoa vê: Administração e Direção abrem Operações; as demais ficam no Meu Dia. */
+async function avisar(userIds: string[], title: string, message: string, operationId: string, type = "operation.status", actionUrl = "/operacoes") {
   await Promise.allSettled(userIds.map((userId) => sendNotification({
     userId, type, title, message, category: "system", priority: "NORMAL",
-    entityType: "operation", entityId: operationId, actionUrl: "/operacoes",
+    entityType: "operation", entityId: operationId, actionUrl,
   })));
 }
 
@@ -519,12 +525,11 @@ router.patch("/operations/:id/status", requireAuth, requireOrganization, require
     if (operation.status !== targetStatus) {
       const quem = (await db.query.usersTable.findFirst({ where: eq(usersTable.id, req.user!.sub) }))?.fullName ?? "A Administração";
       const verbo = isClosing ? "encerrou" : isReopening ? "reabriu" : targetStatus === "ACTIVE" ? "ativou" : targetStatus === "PAUSED" ? "pausou" : "mudou";
-      await avisar(
-        await gestoresParaAvisar(req.user!.organizationId, req.user!.sub),
-        `Operação ${STATUS_PT[targetStatus]}: ${operation.name}`,
-        `${quem} ${verbo} a operação ${operation.name}${statusReason ? `. Motivo: ${statusReason}` : "."}`,
-        id,
-      );
+      const { comTela, semTela } = await gestoresParaAvisar(req.user!.organizationId, req.user!.sub);
+      const titulo = `Operação ${STATUS_PT[targetStatus]}: ${operation.name}`;
+      const texto = `${quem} ${verbo} a operação ${operation.name}${statusReason ? `. Motivo: ${statusReason}` : "."}`;
+      await avisar(comTela, titulo, texto, id);
+      await avisar(semTela, titulo, texto, id, "operation.status", "/meu-dia");
     }
     res.json({ operation: updated });
   } catch (err) {
@@ -677,7 +682,7 @@ router.post("/operations/:id/access", requireAuth, requireOrganization, requireR
     await recordAudit({ actorId: req.user!.sub, action: "OPERATION_UPDATED", targetResource: `operation:${id}`, metadata: { accessGranted: resultado.liberadas } });
     // Só quem já pode usar a operação precisa ser avisada: numa operação em configuração ela ainda nem aparece.
     if (operation.status === "ACTIVE") {
-      await avisar(resultado.liberadas, `Você agora tem acesso a ${operation.name}`, `A Administração liberou o seu acesso à operação ${operation.name}. Ela já aparece nas suas telas.`, id, "operation.access");
+      await avisar(resultado.liberadas, `Você agora tem acesso a ${operation.name}`, `A Administração liberou o seu acesso à operação ${operation.name}. Ela já aparece nas suas telas.`, id, "operation.access", "/meu-dia");
     }
     log.info({ operationId: id, granted: resultado.liberadas.length }, "Operation access granted");
     res.json(resultado);

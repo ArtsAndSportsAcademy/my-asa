@@ -35,3 +35,6 @@
 /* 16/10 (crivo 16): rodapé da janela sempre à vista. */
 .cad-form footer,.cad-form-footer{position:sticky;bottom:0;z-index:2;margin:4px -24px -24px;padding:12px 24px;background:#fff;border-top:1px solid #eee9f6}
 @media(max-width:720px){.cad-form footer,.cad-form-footer{margin:4px -16px -20px;padding:12px 16px}}
+
+/* Dias de funcionamento do local: caixa pequena ao lado do nome, em linha (a regra geral dá 100% de largura e 44 px a todo campo). */
+.cad-form fieldset{display:flex;flex-wrap:wrap;gap:0 14px;margin:0;padding:0;border:0}.cad-form fieldset legend{margin-bottom:4px;padding:0;font-size:13px;font-weight:700}.cad-form fieldset label{display:flex;align-items:center;gap:6px;min-height:44px;font-size:13px}.cad-form input[type=checkbox]{width:20px;min-height:20px;height:20px;padding:0;accent-color:#4c1ca6}

@@ -13,12 +13,11 @@ Código: `getOperationsReadiness` / `evaluateOperationReadiness` em `services/op
    ligado à operação**. (Antes era o campo antigo `locations`, uma lista de textos que nenhuma tela preenchia; agora vale
    o vínculo real em `operation_locations`.)
 2. **Identidade visual** — cor e ícone. Já vêm preenchidos ao criar; a tela deixa escolher a cor.
-3. **Pessoas com acesso** — pelo menos uma pessoa com perfil ativo gravado para a operação (ou integrante de equipe fixa
-   antiga). Antes só contava a "equipe fixa" dos grupos operacionais, cuja tela foi retirada do menu em 16/10.
-4. **Módulos relacionados** — a Administração marca que conferiu Escalas, Programação e Livros do Dia (`setup-review`,
+3. **Módulos relacionados** — a Administração marca que conferiu Escalas, Programação e Livros do Dia (`setup-review`,
    reversível).
 
 Responsabilidades e tarefas não fazem parte do checklist: não são algo que a operação precise ter (decisão de 18/10/2026).
+Pessoas com acesso também saiu do checklist: ao ativar, toda pessoa ativa da casa ganha acesso na hora (decisão de 18/10/2026), então exigir isso antes era uma etapa à toa. Os avisos de mudança de situação levam a Administração e a Direção à tela de Operações e a Supervisão ao Meu Dia, que é uma tela que ela vê.
 
 ## Regras das ações
 

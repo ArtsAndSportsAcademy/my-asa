@@ -134,7 +134,15 @@ router.put("/areas/:id/locations/:locationId/supervisor", requireAuth, requireOr
 router.get("/locations", requireAuth, requireOrganization, async (req, res) => {
   const locations = await listReadableLocations(req.user!.organizationId, req.user!.sub, req.user!.role, undefined, undefined, req.query.includeClosed === "true");
   if (!locations) { res.status(403).json({ error: "Forbidden" }); return; }
-  res.json({ locations });
+  // De qual operação é cada local: sem isso, dois "Palco" de operações diferentes ficam iguais na tela (crivo 12).
+  const vinculos = locations.length
+    ? await db.select({ locationId: operationLocationsTable.locationId, operationName: operationsTable.name })
+        .from(operationLocationsTable)
+        .innerJoin(operationsTable, eq(operationLocationsTable.operationId, operationsTable.id))
+        .where(and(inArray(operationLocationsTable.locationId, locations.map((location) => location.id)), eq(operationLocationsTable.active, true), eq(operationsTable.organizationId, req.user!.organizationId)))
+    : [];
+  const operacaoDoLocal = new Map(vinculos.map((vinculo) => [vinculo.locationId, vinculo.operationName]));
+  res.json({ locations: locations.map((location) => ({ ...location, operationName: operacaoDoLocal.get(location.id) ?? null })) });
 });
 
 router.post("/locations", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {

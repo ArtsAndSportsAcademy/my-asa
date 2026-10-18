@@ -40,7 +40,7 @@ async function run() {
     icon: "mountain",
     modulesReviewedAt: null,
   }, { teamCount: 0, accessCount: 0, linkedLocationCount: 0 });
-  assert(!incomplete.ready && incomplete.blockers.length === 3, "bloqueia ativação enquanto faltam dados e local, pessoas e revisão");
+  assert(!incomplete.ready && incomplete.blockers.length === 2, "bloqueia ativação enquanto faltam dados e local e a revisão dos módulos");
   assert(incomplete.items[0]!.message.includes("descrição") && incomplete.items[0]!.message.includes("local aberto"), "o checklist diz item a item o que falta nos dados gerais");
 
   const complete = evaluateOperationReadiness({
@@ -51,7 +51,7 @@ async function run() {
     icon: "mountain",
     modulesReviewedAt: new Date(),
   }, { teamCount: 0, accessCount: 1, linkedLocationCount: 1 });
-  assert(complete.ready && complete.blockers.length === 0, "libera ativação quando as quatro etapas estão completas");
+  assert(complete.ready && complete.blockers.length === 0, "libera ativação quando as três etapas estão completas (o acesso das pessoas vem junto com a ativação)");
 
   const [{ default: express }, { default: operationsRouter }, { default: locationsRouter }, { signAccessToken }, { pool }] = await Promise.all([
     import("express"),
@@ -211,7 +211,7 @@ async function run() {
       const visaoAdm = await chamar("GET", "/operations/overview", adminToken);
       assert(visaoAdm.status === 200 && visaoAdm.body.canManage === true, "administração vê a lista de operações e pode alterá-la");
       const piloto = visaoAdm.body.operations?.find((op: any) => op.id === createdOperationId);
-      assert(piloto?.status === "DRAFT" && piloto.readiness.items.length === 4 && piloto.readiness.blockers.length === 3, "operação nova aparece em configuração com 3 dos 4 itens do checklist pendentes (a identidade visual já vem com cor e ícone)");
+      assert(piloto?.status === "DRAFT" && piloto.readiness.items.length === 3 && piloto.readiness.blockers.length === 2, "operação nova aparece em configuração com 2 dos 3 itens do checklist pendentes (a identidade visual já vem com cor e ícone)");
       const visaoDir = await chamar("GET", "/operations/overview", directorToken);
       assert(visaoDir.status === 200 && visaoDir.body.canManage === false, "direção lê a lista, sem poder alterar");
       assert((await chamar("GET", "/operations/overview", supervisorToken)).status === 403, "supervisão não vê a tela de operações");
@@ -261,8 +261,11 @@ async function run() {
       assert(ativada.status === 200 && ativada.body.operation.status === "ACTIVE", "com o checklist completo, a operação é ativada");
       const papelDaDirecao = await pool.query(`select 1 from user_roles where user_id = $1 and operation_id = $2 and role = 'DIR' and active`, [directorId, createdOperationId]);
       assert(papelDaDirecao.rows.length === 1, "ao ativar, quem já existe na casa ganha o mesmo perfil na operação nova");
-      const avisoSupervisao = await pool.query(`select 1 from user_notifications where user_id = $1 and type = 'operation.status'`, [supervisorId]);
+      const avisoSupervisao = await pool.query(`select action_url from user_notifications where user_id = $1 and type = 'operation.status'`, [supervisorId]);
       assert(avisoSupervisao.rows.length === 1, "a Supervisão também é avisada quando a operação muda de situação");
+      assert(avisoSupervisao.rows[0].action_url === "/meu-dia", "o aviso da Supervisão leva a uma tela que ela vê (Meu Dia), não à de Operações");
+      const avisoDirecao = await pool.query(`select action_url from user_notifications where user_id = $1 and type = 'operation.status' limit 1`, [directorId]);
+      assert(avisoDirecao.rows[0]?.action_url === "/operacoes", "o aviso da Direção abre a tela de Operações");
       // Fechar o último local aberto de uma operação ativa é recusado, também pela tela Locais.
       const fecharUltimo = await chamar("DELETE", `/locations/${localA.body.location.id}`, adminToken, { reason: "teste" });
       assert(fecharUltimo.status === 409 && fecharUltimo.body.error === "ULTIMO_LOCAL", "não fecha o último local aberto de uma operação ativa");

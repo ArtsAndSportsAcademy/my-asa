@@ -22,7 +22,6 @@ const ALLOWED_TRANSITIONS: Record<OperationStatus, readonly OperationStatus[]> =
 export type OperationReadinessItemKey =
   | "GENERAL_DATA"
   | "VISUAL_IDENTITY"
-  | "FIXED_TEAM"
   | "RELATED_MODULES";
 
 export interface OperationReadinessItem {
@@ -168,7 +167,6 @@ export function evaluateOperationReadiness(
     !hasLocation && "pelo menos um local aberto ligado a esta operação",
   ].filter(Boolean) as string[];
   const hasVisualIdentity = /^#[0-9a-f]{6}$/i.test(operation.color) && Boolean(operation.icon.trim());
-  const hasPeople = counts.teamCount > 0 || counts.accessCount > 0;
 
   const items: OperationReadinessItem[] = [
     {
@@ -184,14 +182,6 @@ export function evaluateOperationReadiness(
       label: "Identidade visual",
       complete: hasVisualIdentity,
       message: hasVisualIdentity ? "Cor e ícone estão definidos." : "Defina uma cor válida e um ícone.",
-    },
-    {
-      key: "FIXED_TEAM",
-      label: "Pessoas com acesso",
-      complete: hasPeople,
-      message: hasPeople
-        ? "Há pessoas com acesso a esta operação."
-        : "Dê acesso a pelo menos uma pessoa. Sem isso ninguém monta a Escala nem vê a operação.",
     },
     {
       key: "RELATED_MODULES",
