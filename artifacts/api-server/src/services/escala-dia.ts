@@ -424,18 +424,40 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
  * porque a formação da 1ª e da 2ª sessão pode não ser a mesma.
  */
 export async function horariosDoShowNaProgramacao(showBookId: string, date: string): Promise<{ inicio: string; fim: string | null; rotulo: string }[]> {
-  const [show] = await db.select({ locationId: showBooksTable.locationId }).from(showBooksTable).where(eq(showBooksTable.id, showBookId)).limit(1);
-  if (!show?.locationId) return [];
-  const [programacao] = await db.select().from(programacoesTable).where(and(
-    eq(programacoesTable.locationId, show.locationId), eq(programacoesTable.active, true),
+  return (await horariosDosShowsNaProgramacao([showBookId], date)).get(showBookId) ?? [];
+}
+
+/**
+ * O mesmo para vários shows de uma vez (a lista do Livro do Dia mostra dez cartões): três leituras no total,
+ * não três por show. Cada show só aparece no mapa se a Programação lhe dá algum horário no dia.
+ */
+export async function horariosDosShowsNaProgramacao(showBookIds: string[], date: string): Promise<Map<string, { inicio: string; fim: string | null; rotulo: string }[]>> {
+  const out = new Map<string, { inicio: string; fim: string | null; rotulo: string }[]>();
+  const ids = [...new Set(showBookIds)];
+  if (!ids.length) return out;
+  const shows = await db.select({ id: showBooksTable.id, locationId: showBooksTable.locationId }).from(showBooksTable).where(inArray(showBooksTable.id, ids));
+  const locais = [...new Set(shows.map((s) => s.locationId).filter((id): id is string => Boolean(id)))];
+  if (!locais.length) return out;
+  const programacoes = await db.select().from(programacoesTable).where(and(
+    inArray(programacoesTable.locationId, locais), eq(programacoesTable.active, true),
     lte(programacoesTable.vigenciaInicio, date), gte(programacoesTable.vigenciaFim, date),
-  )).orderBy(asc(sql`${programacoesTable.vigenciaFim} - ${programacoesTable.vigenciaInicio}`), desc(programacoesTable.createdAt)).limit(1);
-  if (!programacao) return [];
+  )).orderBy(asc(sql`${programacoesTable.vigenciaFim} - ${programacoesTable.vigenciaInicio}`), desc(programacoesTable.createdAt));
+  // Por local vale a de vigência mais curta (a mais específica), como em `escalaDoDia`.
+  const vigentePorLocal = new Map<string, string>();
+  for (const p of programacoes) if (p.locationId && !vigentePorLocal.has(p.locationId)) vigentePorLocal.set(p.locationId, p.id);
+  if (!vigentePorLocal.size) return out;
   const blocos = await db.select().from(programacaoBlocosTable).where(and(
-    eq(programacaoBlocosTable.programacaoId, programacao.id), eq(programacaoBlocosTable.weekday, weekdayOf(date)), eq(programacaoBlocosTable.active, true),
-    eq(programacaoBlocosTable.regra, "livro"), eq(programacaoBlocosTable.showBookId, showBookId),
+    inArray(programacaoBlocosTable.programacaoId, [...vigentePorLocal.values()]), eq(programacaoBlocosTable.weekday, weekdayOf(date)), eq(programacaoBlocosTable.active, true),
+    eq(programacaoBlocosTable.regra, "livro"), inArray(programacaoBlocosTable.showBookId, ids),
   )).orderBy(asc(programacaoBlocosTable.inicio), asc(programacaoBlocosTable.order));
-  return blocos.map((b) => ({ inicio: hhmm(b.inicio)!, fim: hhmm(b.fim), rotulo: b.rotulo }));
+  const localDoShow = new Map(shows.map((s) => [s.id, s.locationId]));
+  for (const b of blocos) {
+    const showId = b.showBookId;
+    // O bloco só vale se a Programação dele é a vigente do local do show (um show não herda bloco de outro local).
+    if (!showId || vigentePorLocal.get(localDoShow.get(showId) ?? "") !== b.programacaoId) continue;
+    (out.get(showId) ?? out.set(showId, []).get(showId)!).push({ inicio: hhmm(b.inicio)!, fim: hhmm(b.fim), rotulo: b.rotulo });
+  }
+  return out;
 }
 
 /**

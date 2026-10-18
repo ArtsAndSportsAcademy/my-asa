@@ -52,7 +52,7 @@ import {
 } from "../services/line-resolver.js";
 import { detectConflictsForDailyBooks, detectDailyBookConflicts, type PublicScheduleConflict } from "../services/schedule-conflicts.js";
 import { lembrarOuLer, type LeiturasDoMes } from "../services/leituras-do-mes.js";
-import { escalaDoDiaDoLivro, escalaPublicada, horariosDoShowNaProgramacao, marcarEscalaAlteradaPeloLivro } from "../services/escala-dia.js";
+import { escalaDoDiaDoLivro, escalaPublicada, horariosDoShowNaProgramacao, horariosDosShowsNaProgramacao, marcarEscalaAlteradaPeloLivro } from "../services/escala-dia.js";
 import { eligibleSessions, isNotSessionBlock, listSessionBlocks, syncSessionBlocks } from "../services/session-blocks.js";
 
 const router: IRouter = Router();
@@ -931,6 +931,15 @@ export async function generateDailyBookDraftForScale(input: {
       startTime: session.startTime, endTime: session.endTime, title: `${showBook.title} · ${session.startTime.slice(0, 5)}`, updatedAt: new Date(),
     }).where(eq(agendaEventsTable.id, event.id)).returning();
   }
+  // Livro do dia inteiro (sem sessão separada): a hora vem da Programação do local, que é o que a Escala lê
+  // (decisão de 17/10/2026). Vale a primeira hora do dia; as outras o cartão lista a partir da própria
+  // Programação. Hora que já existe na Agenda não é apagada.
+  const horaDaProgramacao = session ? null : (await lembrarOuLer(leituras, `programacao:${showBookId}:${date}`, () => horariosDoShowNaProgramacao(showBookId, date)))[0] ?? null;
+  if (event && horaDaProgramacao && !event.startTime && !session) {
+    [event] = await db.update(agendaEventsTable).set({
+      startTime: horaDaProgramacao.inicio, endTime: event.endTime ?? horaDaProgramacao.fim, updatedAt: new Date(),
+    }).where(eq(agendaEventsTable.id, event.id)).returning();
+  }
   // Evento recém-criado aqui: ainda não tem Livro nem alocação, não há o que procurar.
   let eventoNovo = false;
   if (!event) {
@@ -940,8 +949,8 @@ export async function generateDailyBookDraftForScale(input: {
       type: "SHOW",
       title: session ? `${showBook.title} · ${session.startTime.slice(0, 5)}` : showBook.title,
       date,
-      startTime: session?.startTime ?? null,
-      endTime: session?.endTime ?? null,
+      startTime: session?.startTime ?? horaDaProgramacao?.inicio ?? null,
+      endTime: session?.endTime ?? horaDaProgramacao?.fim ?? null,
       status: "CONFIRMED",
       visibility: "MANAGEMENT",
       createdBy: actorId,
@@ -1994,10 +2003,29 @@ router.get("/daily-book", requireAuth, requireOrganization, async (req, res) => 
       ),
     );
 
-    const dailyBooks = rows
-      .filter((_, i) => visibility[i])
-      .map((r) => ({
+    const visiveis = rows.filter((_, i) => visibility[i]);
+    // Quando o show acontece, como a Escala diz: horários da Programação do local; sem eles, a hora da
+    // Agenda; sem ela, as sessões do Livro do Show. Vazio quer dizer que nenhuma das três marca o show.
+    const datas = [...new Set(visiveis.map((r) => String(r.eventDate).slice(0, 10)))];
+    const daProgramacao = new Map<string, Map<string, { inicio: string; fim: string | null; rotulo: string }[]>>();
+    for (const data of datas) {
+      daProgramacao.set(data, await horariosDosShowsNaProgramacao(visiveis.filter((r) => String(r.eventDate).slice(0, 10) === data && !r.book.sessionId && r.book.showBookId).map((r) => r.book.showBookId!), data));
+    }
+    const sessoesComuns = new Map<string, string[]>();
+    const horarios = await Promise.all(visiveis.map(async (r) => {
+      const programacao = !r.book.sessionId && r.book.showBookId ? daProgramacao.get(String(r.eventDate).slice(0, 10))?.get(r.book.showBookId) ?? [] : [];
+      if (programacao.length) return [...new Set(programacao.map((h) => h.inicio))];
+      if (r.eventStartTime) return [r.eventStartTime.slice(0, 5)];
+      if (r.book.sessionId || !r.book.showBookId) return [];
+      const chave = `${r.book.showBookId}:${String(r.eventDate).slice(0, 10)}`;
+      if (!sessoesComuns.has(chave)) sessoesComuns.set(chave, (await eligibleSessions(r.book.showBookId, String(r.eventDate).slice(0, 10), db, { separada: false })).map((x) => x.startTime.slice(0, 5)));
+      return sessoesComuns.get(chave)!;
+    }));
+
+    const dailyBooks = visiveis
+      .map((r, i) => ({
         ...r.book,
+        horarios: horarios[i],
         operationId: r.operationId,
         operationName: r.operationName,
         eventTitle: r.eventTitle,
