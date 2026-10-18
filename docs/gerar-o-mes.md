@@ -33,7 +33,7 @@ node --env-file=../../.env.test ./tests/run-tests.mjs
 ```
 
 Para conferir a tela com a API de teste de verdade: `MYASA_MEDIDA_SERVIR=<arquivo>` e `MYASA_MEDIDA_SERVIR_PARAR=<arquivo>`
-deixam a casa de pé, com a API na porta 3001 e um token de Administração gravado (vale 15 min) no primeiro arquivo, até o
+deixam a casa de pé, com a API na porta 3001 (ou na de `MYASA_MEDIDA_PORTA`) e um token de Administração gravado (vale 15 min) no primeiro arquivo, até o
 segundo existir. `MYASA_MEDIDA_SEM_OPERACAO=1` desliga o local da operação antes. O token vale só no banco de teste.
 
 Nota: `restricao-horario.test.ts` falha por um motivo antigo, não relacionado (issue #2).
