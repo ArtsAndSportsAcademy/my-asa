@@ -161,6 +161,188 @@
   --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* ─── Paleta de identidade MyASA ─────────────────────────────────────────── */
+  /* Violeta principal */
+  --asa-purple:         #6C2BF2;
+  --asa-purple-dark:    #5B23C9;
+  --asa-purple-surface: #F3ECFE;
+  --asa-purple-border:  #CBB8F7;
+  --asa-purple-muted:   #F0ECF8;
+  --asa-purple-faint:   #FAF8FF;
+  /* Texto / tinta */
+  --asa-ink:        #1B1630;
+  --asa-ink-dark:   #2B2545;
+  --asa-ink-medium: #3D3559;
+  --asa-ink-muted:  #5B5473;
+  --asa-label:      #6B6482;
+  --asa-deep:       #1C1440;
+  /* Bordas */
+  --asa-line:         #E6E1F2;
+  --asa-line-soft:    #DDD6EE;
+  --asa-border-faint: #F5F2FA;
+  --asa-border-soft:  #EBE6F6;
+  /* Superfícies */
+  --asa-bg-tinted: #F5F3FB;
+  --asa-bg-page:   #FAF9FE;
+  /* Teal — ok / publicado */
+  --asa-teal:         #0A6F68;
+  --asa-teal-surface: #E3F4F1;
+  --asa-ok-fg:        #0E8F86;
+  --asa-checkin-bd:   #A4DED8;
+  --asa-checkin-bg:   #EFFAF8;
+  /* Âmbar — rascunho / warn */
+  --asa-amber:         #8F5409;
+  --asa-amber-surface: #FDF3E4;
+  --asa-amber-text:    #9A5B00;
+  --asa-warn-bg:       #FDEEE4;
+  --asa-warn-fg:       #C2600F;
+  --asa-late-bd:       #EFD09D;
+  --asa-late-bg:       #FFFAF0;
+  /* Vermelho — erro / ausente */
+  --asa-red:           #C2334D;
+  --asa-red-surface:   #FFF0F2;
+  --asa-red-text:      #B42340;
+  --asa-error-bg:      #FDECEA;
+  --asa-error-fg:      #A12C2C;
+  --asa-error2-bg:     #F0DEDE;
+  --asa-error2-surface:#FDF7F7;
+  --asa-error2-fg:     #8A2F2F;
+  --asa-absent-bd:     #F3C2CB;
+  --asa-absent-bg:     #FFF5F6;
+  /* Tipagem de atividade (Escala do dia) */
+  --asa-aula-bg: #EEF1FD;
+  --asa-aula-fg: #2E3BD6;
+  --asa-aula-bd: #DBE1FA;
+  --asa-show-bg: #F3EBFF;
+  --asa-show-bd: #E5D8FB;
+  --asa-prep-bg: #E6F5F3;
+  --asa-prep-fg: #0E7F76;
+  --asa-prep-bd: #CFEAE6;
+  --asa-refeicao-bg: #F4F2FA;
+  --asa-refeicao-bd: #E8E4F2;
+  --asa-ausente-bg:  #FDECEB;
+  --asa-ausente-fg:  #C2453C;
+  --asa-ausente-bd:  #F7D8D5;
+  --asa-ferias-bg:   #F1EEF8;
+  --asa-ferias-fg:   #7D72A8;
+  --asa-ferias-bd:   #E2DCF0;
+  --asa-vaga-bg:     #FFF4E4;
+  --asa-vaga-fg:     #B06E00;
+  --asa-vaga-bd:     #F0D8B0;
+  --asa-chars-fg:    #C97A17;
+  /* Tons do Meu Dia */
+  --asa-mute-bg: #F0EEF5;
+  --asa-mine-bg: #FBEAF3;
+  --asa-mine-fg: #C2508F;
+  /* Chips / seleção */
+  --asa-chip-on:    #F6F0FF;
+  --asa-chip-off:   #9A93B0;
+  --asa-text-faint: #8B85A0;
+  --asa-legend-away:#C4B5FD;
+  /* Somente leitura */
+  --asa-readonly-fg: #2E63D6;
+  --asa-readonly-bg: #E9EFFC;
+  /* Elementos do botão de informação */
+  --asa-info-bd:         #E4DEF2;
+  --asa-info-open-bg:    #F3EEFE;
+  --asa-info-pop-bd:     #ECE6F8;
+  --asa-preview-bg:      #F6F3FD;
+  --asa-modal-footer-bd: #EEE9F6;
+  /* Badges e alertas */
+  --asa-badge-bg: #FDF1DC;
+  --asa-badge-fg: #8A6413;
+  /* Formulários / rascunho */
+  --asa-save-bd: #DDD0FA;
+  --asa-save-bg: #FBF9FF;
+  --asa-note-bd: #D8CFF0;
+  --asa-note-bg: #FDFCFF;
+  /* Hero / CTA */
+  --asa-cta-fg:    #2B1F63;
+  --asa-hero-to:   #3A2278;
+  --asa-hero-text: #D6CFF5;
+  --asa-hero-alert:#FFD9C2;
+  --asa-chip-pale: #F3F0FB;
+  --asa-mine-row:  #FDF4F9;
+  /* Superfícies de diálogo / seleção (Escala e Livro) */
+  --asa-book-fade:      #F0ECF9;
+  --asa-purple-airy:    #EEE9F7;
+  --asa-purple-lift:    #F3F0FA;
+  --asa-purple-subdued: #E9E4F5;
+  --asa-purple-lighter: #F6F1FF;
+  --asa-purple-mist:    #FAF6FF;
+  --asa-purple-line:    #D8D2E8;
+  --asa-purple-screen:  #F4F1FB;
+  --asa-card-faint:     #FBFAFF;
+  --asa-fade:           #F7F5FD;
+  /* Sessão / publicação ativa */
+  --asa-session-bg:     #E2DDF0;
+  --asa-session-active: #F3ECFF;
+  /* Teal variantes */
+  --asa-teal-medium: #0E6E66;
+  --asa-teal-dark:   #0B6B64;
+  --asa-teal-pale:   #E2F4F2;
+  --asa-teal-glow:   #EEF7F6;
+  --asa-teal-check:  #CBE6E2;
+  /* Âmbar variantes */
+  --asa-amber-mid:    #8A5A00;
+  --asa-amber-dark:   #7A5A1C;
+  --asa-amber-streak: #F0DCB4;
+  --asa-amber-stripe: #F0DCB8;
+  --asa-amber-cream:  #F0E4D4;
+  --asa-amber-white:  #FFFDF9;
+  --asa-amber-cloud:  #FFF8F1;
+  --asa-amber-glow:   #F3DCA8;
+  --asa-amber-light:  #F0D9A8;
+  --asa-amber-paper:  #FDF7E8;
+  --asa-amber-earth:  #7D4A10;
+  --asa-gold:         #F2C230;
+  /* Vermelho variantes */
+  --asa-red-wash:  #F0BCBC;
+  --asa-red-cloud: #FDF8F8;
+  /* Rosa / mine variantes */
+  --asa-rose-fg:    #8A3A33;
+  --asa-pink-subtle:#F2D9E6;
+  --asa-mine-faint: #FDF6FA;
+  /* Lilás / violeta intermediário */
+  --asa-violet:          #8B5CF6;
+  --asa-indigo:          #3B45D9;
+  --asa-lavender:        #C9B2FA;
+  --asa-lavender-muted:  #C8C1DD;
+  --asa-lavender-surface:#EAE5F5;
+  --asa-lavender-chalk:  #CBC3E2;
+  --asa-lavender-border: #C4BCD8;
+  /* Roxo uma-ocorrência */
+  --asa-purple-dawn:    #FAF7FF;
+  --asa-purple-soft:    #ECE7F8;
+  --asa-purple-blossom: #F1EAFE;
+  --asa-purple-veil:    #F0EDF8;
+  --asa-purple-snow:    #F5EFFF;
+  --asa-muted-chip:     #D5CFE4;
+  /* Rosa / conflito */
+  --asa-rose-surface: #F0DCD9;
+  --asa-rose-faint:   #F2E7E5;
+  --asa-rose-paper:   #FFFBFA;
+  --asa-rose-muted:   #EFE3E1;
+  /* Vermelho uma-ocorrência */
+  --asa-red-airy: #FDEEF1;
+  --asa-red-dark: #8D2438;
+  --asa-red-deep: #7A4F4F;
+  /* Âmbar uma-ocorrência */
+  --asa-amber-brown:     #5B4A1F;
+  --asa-amber-pale:      #FFF8EC;
+  --asa-amber-border-lt: #F2D7BB;
+  --asa-amber-texture:   #F3DDC4;
+  --asa-amber-text2:     #B4560B;
+  --asa-late-amber-bd:   #E6D3AC;
+  /* Teal uma-ocorrência */
+  --asa-teal-border: #CFE8E5;
+  --asa-swap-ok-bg:  #F3FBFA;
+  /* Tinta */
+  --asa-ink-darkest: #2B2440;
+  /* Superfícies neutras una-ocorrência */
+  --asa-near-white: #FCFBFE;
+  --asa-off-white:  #FBFAFD;
 }
 
 .dark {
