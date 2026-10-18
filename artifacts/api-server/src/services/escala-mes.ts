@@ -90,6 +90,8 @@ export async function gerarDiaDoLocal(actor: ActorMes, location: { id: string; n
 /** Meses que se pode gerar: o corrente e até 2 à frente (decisão de 14/10/2026). */
 export const MESES_A_FRENTE = 2;
 
+export const FRASE_LOCAL_SEM_OPERACAO = "Este local não está ligado a nenhuma operação. Ligue-o em Gestão → Operações para poder gerar o mês.";
+
 export function validarMes(year: unknown, month: unknown, hoje = operationalDate()): { year: number; month: number } | { erro: string } {
   const y = Number(year), m = Number(month);
   if (!Number.isInteger(y) || !Number.isInteger(m) || m < 1 || m > 12 || y < 2000 || y > 2100) return { erro: "Informe o ano e o mês." };
@@ -105,9 +107,12 @@ export type EstadoDiaMes =
 export type DiaMes = { date: string; weekday: number; estado: EstadoDiaMes; motivo: string | null; livrosEsperados: number; livrosGerados: number; escalaStatus: string | null };
 
 /** Estado de cada dia do mês de um local — só leitura. Mesmas regras do gerar o dia. */
-export async function resumoDoMes(organizationId: string, locationId: string, year: number, month: number, hoje = operationalDate()): Promise<{ location: { id: string; name: string }; dias: DiaMes[] } | null> {
+export async function resumoDoMes(organizationId: string, locationId: string, year: number, month: number, hoje = operationalDate()): Promise<{ location: { id: string; name: string }; dias: DiaMes[]; semOperacao: boolean } | null> {
   const [location] = await db.select().from(locationsTable).where(and(eq(locationsTable.id, locationId), eq(locationsTable.organizationId, organizationId))).limit(1);
   if (!location) return null;
+  // Local desligado de toda operação (Gestão → Operações) não tem onde nascer a Escala: o mês inteiro falharia dia a dia
+  // com a mesma frase. Quem lê o resumo recebe o aviso uma vez só.
+  const semOperacao = !(await operationForLocation(locationId));
   const ultimo = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const primeiroDia = `${year}-${pad(month)}-01`, ultimoDia = `${year}-${pad(month)}-${pad(ultimo)}`;
 
@@ -144,7 +149,7 @@ export async function resumoDoMes(organizationId: string, locationId: string, ye
     if (!escala) { dias.push({ ...comum, estado: "a_gerar", motivo: null }); continue; }
     dias.push(gerados < esperados.length ? { ...comum, estado: "faltam_livros", motivo: `Faltam ${esperados.length - gerados} Livro(s).` } : { ...comum, estado: "completo", motivo: null });
   }
-  return { location: { id: location.id, name: location.name }, dias };
+  return { location: { id: location.id, name: location.name }, dias, semOperacao };
 }
 
 // ─── Descartar rascunhos do mês (e desfazer) ──────────────────────────────────

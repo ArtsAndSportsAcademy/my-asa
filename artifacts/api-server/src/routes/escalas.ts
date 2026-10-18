@@ -31,7 +31,7 @@ import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.j
 import { operationalDate } from "../lib/operational-date.js";
 import { avisarRepublicacaoPendente, comoPublicada, convocacaoPorPessoa, escalaPublicada, findEscalaDoDia, montarEscalaDoDia, operationForLocation, pessoasAfetadas } from "../services/escala-dia.js";
 import { ultimoRetratoFolgas } from "../services/folgas-publicadas.js";
-import { descartarMes, descartaveisDoMes, gerarDiaDoLocal, gerarMes, restaurarDescarte, resumoDoMes, validarMes } from "../services/escala-mes.js";
+import { FRASE_LOCAL_SEM_OPERACAO, descartarMes, descartaveisDoMes, gerarDiaDoLocal, gerarMes, restaurarDescarte, resumoDoMes, validarMes } from "../services/escala-mes.js";
 import { enqueueNotification } from "../services/undo.js";
 import { avisarExcecaoDeRegra, codigoDaExcecao, frasesDasRegras, verificarRegrasDeEscala } from "../services/regras-de-escala.js";
 import { APP_ROUTES } from "../lib/app-routes.js";
@@ -189,7 +189,7 @@ router.get("/escalas/mes/resumo", requireAuth, requireOrganization, async (req, 
     const resumo = await resumoDoMes(actor.organizationId, locationId, mes.year, mes.month);
     if (!resumo) { res.status(404).json({ error: "Local não encontrado" }); return; }
     const conta = (...estados: string[]) => resumo.dias.filter((d) => estados.includes(d.estado)).length;
-    res.json({ ...resumo, year: mes.year, month: mes.month, totais: { aGerar: conta("a_gerar", "faltam_livros"), completos: conta("completo"), publicados: conta("publicado"), naoEntram: conta("passou", "fechado", "sem_programacao", "sem_atividades") } });
+    res.json({ ...resumo, year: mes.year, month: mes.month, totais: { aGerar: resumo.semOperacao ? 0 : conta("a_gerar", "faltam_livros"), completos: conta("completo"), publicados: conta("publicado"), naoEntram: conta("passou", "fechado", "sem_programacao", "sem_atividades") } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Erro ao montar o resumo do mês" });
@@ -210,6 +210,7 @@ router.post("/escalas/mes/gerar", requireAuth, requireOrganization, async (req, 
   if ("erro" in mes) { res.status(400).json({ error: "MES_INVALIDO", message: mes.erro }); return; }
   try {
     const r = await gerarMes(actor, locationId, mes.year, mes.month, { desde: typeof desde === "string" && DATE.test(desde) ? desde : null });
+    if (!(await operationForLocation(locationId))) { res.status(409).json({ error: "LOCAL_SEM_OPERACAO", message: FRASE_LOCAL_SEM_OPERACAO }); return; }
     if (!r) { res.status(404).json({ error: "Local não encontrado" }); return; }
     res.json(r);
   } catch (err) {

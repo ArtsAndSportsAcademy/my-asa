@@ -155,6 +155,14 @@ async function run() {
     assert(voltou[0]!.status === "DRAFT" && livroVoltou.every((l) => l.status === "DRAFT"), "depois de desfazer, tudo volta a rascunho");
     const ajusteSobrevive = await db.select().from(scaleAllocationsTable).where(eq(scaleAllocationsTable.scaleId, escalaDia2.id));
     assert(ajusteSobrevive.length === 1, "o ajuste à mão não se perde no descarte nem na volta");
+    // Local desligado de toda operação (Gestão → Operações): o resumo avisa uma vez e gerar é recusado com a frase.
+    await db.update(operationLocationsTable).set({ active: false }).where(eq(operationLocationsTable.locationId, loc!.id));
+    const semOp = await (await asAdmin(`/escalas/mes/resumo?locationId=${loc!.id}&year=${ano}&month=${mes}`)).json() as { semOperacao: boolean; totais: { aGerar: number } };
+    assert(semOp.semOperacao === true && semOp.totais.aGerar === 0, "local sem operação: o resumo diz isso e não promete dias a gerar");
+    const gerarSemOp = await asAdmin("/escalas/mes/gerar", { method: "POST", body: JSON.stringify({ locationId: loc!.id, year: ano, month: mes }) });
+    const gerarSemOpCorpo = await gerarSemOp.json() as { error?: string; message?: string };
+    assert(gerarSemOp.status === 409 && gerarSemOpCorpo.error === "LOCAL_SEM_OPERACAO" && /Gestão → Operações/.test(gerarSemOpCorpo.message ?? ""), "gerar o mês de local sem operação é recusado com uma frase só (409), em vez de falhar dia a dia");
+    await db.update(operationLocationsTable).set({ active: true }).where(eq(operationLocationsTable.locationId, loc!.id));
     const rest2 = await (await asAdmin("/escalas/mes/restaurar", { method: "POST", body: JSON.stringify({ eventoId: comConfirmar.eventoId }) })).json() as { restauradas: number };
     assert(rest2.restauradas === 0, "desfazer duas vezes não faz nada na segunda");
   } finally {

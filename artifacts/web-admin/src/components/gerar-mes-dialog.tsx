@@ -10,7 +10,7 @@ import { useFecharComEsc } from "@/lib/fechar-com-esc";
  */
 type Estado = "a_gerar" | "faltam_livros" | "completo" | "publicado" | "passou" | "fechado" | "sem_programacao" | "sem_atividades";
 type DiaMes = { date: string; weekday: number; estado: Estado; motivo: string | null; livrosEsperados: number; livrosGerados: number; escalaStatus: string | null };
-type Resumo = { location: { id: string; name: string }; year: number; month: number; dias: DiaMes[]; totais: { aGerar: number; completos: number; publicados: number; naoEntram: number } };
+type Resumo = { semOperacao?: boolean; location: { id: string; name: string }; year: number; month: number; dias: DiaMes[]; totais: { aGerar: number; completos: number; publicados: number; naoEntram: number } };
 type Resultado = { gerados: { date: string; livros: number }[]; falhas: { date: string; motivo: string }[]; pulados: { date: string; estado: Estado; motivo: string | null }[]; restantes: number; proximoDia: string | null };
 
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
@@ -139,7 +139,9 @@ export function GerarMesDialog({ locais, localInicial, review, onClose, onGerou 
       {carregando && <div aria-busy="true" style={{ padding: 14, borderRadius: 12, background: "#f6f3fd", fontSize: 13, color: "#6b6482" }}>Vendo o mês…</div>}
       {!carregando && erro && !resultado && <div role="alert" style={{ padding: 14, borderRadius: 12, background: "#fdecea", color: "#a12c2c", fontSize: 13, lineHeight: 1.5 }}>{erro}</div>}
 
-      {!carregando && resumo && !resultado && !rodando && <>
+      {!carregando && resumo?.semOperacao && !resultado && <div role="alert" style={{ padding: 14, borderRadius: 12, background: "#fff7ea", color: "#5b4a1f", fontSize: 13, lineHeight: 1.5 }}><b>{local?.name}</b> não está ligado a nenhuma operação, então não há onde gerar a Escala. Ligue o local a uma operação em <b>Gestão → Operações</b> e volte aqui.</div>}
+
+      {!carregando && resumo && !resumo.semOperacao && !resultado && !rodando && <>
         <div role="status" style={{ padding: 14, borderRadius: 12, background: "#f6f3fd", fontSize: 13, lineHeight: 1.55, color: "#3d3559" }}>
           <b>{local?.name}, {mes.rotulo.split(" de ")[0]}:</b> {plural(entram, "dia com atividade", "dias com atividade")} · {resumo.totais.completos} já {resumo.totais.completos === 1 ? "gerado" : "gerados"} · {resumo.totais.publicados} {resumo.totais.publicados === 1 ? "publicado" : "publicados"}.
           <div style={{ marginTop: 4, fontWeight: 700, color: total ? "#5B23C9" : "#6b6482" }}>{total ? `Vai gerar ${plural(total, "dia", "dias")}.` : "Nada a gerar: o mês já está montado."}</div>
@@ -171,7 +173,7 @@ export function GerarMesDialog({ locais, localInicial, review, onClose, onGerou 
             ? <button type="button" onClick={() => { parar.current = true; }} style={botao(false)}>Parar depois deste dia</button>
             : <>
                 <button type="button" onClick={onClose} style={botao(false)}>{resultado ? "Fechar" : "Cancelar"}</button>
-                {!resultado && <button type="button" onClick={() => void gerar()} disabled={!resumo || total === 0 || carregando} style={{ ...botao(true), opacity: !resumo || total === 0 || carregando ? 0.5 : 1 }}>{total ? `Gerar ${plural(total, "dia", "dias")}` : "Gerar"}</button>}
+                {!resultado && <button type="button" onClick={() => void gerar()} disabled={!resumo || resumo.semOperacao || total === 0 || carregando} style={{ ...botao(true), opacity: !resumo || resumo.semOperacao || total === 0 || carregando ? 0.5 : 1 }}>{total ? `Gerar ${plural(total, "dia", "dias")}` : "Gerar"}</button>}
                 {resultado && resultado.restantes > 0 && <button type="button" onClick={() => void gerar()} style={botao(true)}>Continuar</button>}
               </>}
         </span>
