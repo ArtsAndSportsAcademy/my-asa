@@ -133,6 +133,7 @@ async function run() {
     // Modo "servir": deixa a casa de teste de pé, com a API na porta 3001 e um token de Administração gravado no arquivo,
     // para conferir a tela de verdade. Termina quando o arquivo MYASA_MEDIDA_SERVIR_PARAR aparece.
     if (process.env.MYASA_MEDIDA_SERVIR) {
+      if (process.env.MYASA_MEDIDA_SEM_OPERACAO) await db.update(operationLocationsTable).set({ active: false }).where(eq(operationLocationsTable.locationId, loc!.id));
       const server = app.listen(3001);
       await new Promise<void>((r) => server.once("listening", r));
       const token = signAccessToken({ sub: admin.id, jti: `${tag}_ui`, organizationId: org!.id, role: "ADMIN", operationIds: [op!.id] });
