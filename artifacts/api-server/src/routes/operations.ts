@@ -27,7 +27,7 @@ const STATUS_PT: Record<OperationStatus, string> = { DRAFT: "em configuração",
 const CAMPO_PT: Record<string, string> = { name: "nome", description: "descrição", clientName: "empreendimento", locations: "locais", startDate: "início", endDate: "fim", color: "cor", icon: "ícone", localCoordinatorId: "coordenação local", healthThresholds: "limites de saúde", lateThresholdMinutes: "tolerância de atraso", timezone: "fuso horário" };
 const PAPEL_ORDEM = ["ADMIN", "DIR", "DIRECTOR", "SUPERVISOR_A", "SUPERVISOR_B", "MEMBER", "TRAINER"];
 
-/** Administração e Direção da casa (menos quem agiu): quem precisa saber que uma operação mudou de situação. */
+/** Administração, Direção e Supervisão da casa (menos quem agiu): quem precisa saber que uma operação mudou de situação. */
 async function gestoresParaAvisar(organizationId: string, exceto: string): Promise<string[]> {
   const rows = await db
     .selectDistinct({ userId: userRolesTable.userId })
@@ -37,11 +37,34 @@ async function gestoresParaAvisar(organizationId: string, exceto: string): Promi
     .where(and(
       eq(operationsTable.organizationId, organizationId),
       eq(userRolesTable.active, true),
-      inArray(userRolesTable.role, ["ADMIN", "DIR"] as any),
+      inArray(userRolesTable.role, ["ADMIN", "DIR", "SUPERVISOR_A", "SUPERVISOR_B"] as any),
       eq(usersTable.status, "ACTIVE"),
       ne(userRolesTable.userId, exceto),
     ));
   return rows.map((row) => row.userId);
+}
+
+/**
+ * Ao ativar uma operação, toda pessoa ativa da casa que já tem perfil ganha o mesmo perfil nela (o perfil é gravado
+ * em cada operação ativa). Devolve quantas ganharam. Roda na mesma transação da ativação.
+ */
+async function darAcessoAosExistentes(tx: any, organizationId: string, operationId: string): Promise<number> {
+  const papeis: { userId: string; role: string; operationId: string | null; groupId: string | null }[] = await tx
+    .select({ userId: userRolesTable.userId, role: userRolesTable.role, operationId: userRolesTable.operationId, groupId: userRolesTable.groupId })
+    .from(userRolesTable)
+    .innerJoin(operationsTable, eq(userRolesTable.operationId, operationsTable.id))
+    .innerJoin(usersTable, eq(userRolesTable.userId, usersTable.id))
+    .where(and(eq(operationsTable.organizationId, organizationId), eq(userRolesTable.active, true), eq(usersTable.status, "ACTIVE")));
+  const porPessoa = new Map<string, typeof papeis>();
+  for (const papel of papeis) porPessoa.set(papel.userId, [...(porPessoa.get(papel.userId) ?? []), papel]);
+  let concedidos = 0;
+  for (const [userId, dela] of porPessoa) {
+    const principal = [...dela].sort((a, b) => PAPEL_ORDEM.indexOf(a.role) - PAPEL_ORDEM.indexOf(b.role))[0]!;
+    if (dela.some((papel) => papel.operationId === operationId && papel.role === principal.role && !papel.groupId)) continue;
+    await tx.insert(userRolesTable).values({ userId, operationId, role: principal.role as any, active: true });
+    concedidos += 1;
+  }
+  return concedidos;
 }
 
 /** Aviso ao sino; falhar em avisar nunca desfaz a mudança já gravada. */
@@ -429,11 +452,12 @@ router.patch("/operations/:id/status", requireAuth, requireOrganization, require
         })
         .where(eq(operationsTable.id, id))
         .returning();
+      const acessoDado = isActivation ? await darAcessoAosExistentes(tx, req.user!.organizationId, id) : 0;
       await writeHistoryEvent({
         category: "OPERATIONAL_CHANGE",
         action: `operation.status.${targetStatus.toLowerCase()}`,
         title: isClosing ? "Operação encerrada" : isReopening ? "Operação reaberta" : "Situação da operação alterada",
-        narrative: `Operação "${operation.name}": de ${STATUS_PT[operation.status]} para ${STATUS_PT[targetStatus]}${statusReason ? `. Motivo: ${statusReason}` : ""}.`,
+        narrative: `Operação "${operation.name}": de ${STATUS_PT[operation.status]} para ${STATUS_PT[targetStatus]}${statusReason ? `. Motivo: ${statusReason}` : ""}${acessoDado ? `. ${acessoDado} ${acessoDado === 1 ? "pessoa ganhou" : "pessoas ganharam"} acesso automático.` : "."}`,
         entityType: "operation",
         entityId: id,
         actorId: req.user!.sub,

@@ -170,6 +170,10 @@ router.post("/locations", requireAuth, requireOrganization, requireRole("ADMIN")
 router.patch("/locations/:id", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
   const before = await locationInOrg(req.params.id as string, req.user!.organizationId);
   if (!before) { res.status(403).json({ error: "Forbidden", message: "Recurso fora do escopo" }); return; }
+  if (!before.closed && req.body?.closed === true) {
+    const semLocal = await operacoesQueFicariamSemLocal(before.id, req.user!.organizationId);
+    if (semLocal.length) { res.status(409).json({ error: "ULTIMO_LOCAL", message: `Este é o último local aberto de ${semLocal.join(", ")}, que está ativa: sem local a Escala e os shows dela deixam de existir. Ligue outro local à operação, ou encerre a operação, antes de encerrar este.` }); return; }
+  }
   const reopening = before.closed && req.body?.closed === false;
   const reason = reopening ? requireReason(res, req.body?.reason, "reabrir local") : null;
   if (reopening && !reason) return;
@@ -189,9 +193,28 @@ router.patch("/locations/:id", requireAuth, requireOrganization, requireRole("AD
   } catch { res.status(409).json({ error: "Já existe um local com este nome" }); }
 });
 
+/** Operações ATIVAS que ficariam sem nenhum local aberto se este local fechasse. */
+async function operacoesQueFicariamSemLocal(locationId: string, organizationId: string) {
+  const donas = await db.select({ id: operationsTable.id, name: operationsTable.name }).from(operationLocationsTable)
+    .innerJoin(operationsTable, eq(operationLocationsTable.operationId, operationsTable.id))
+    .where(and(eq(operationLocationsTable.locationId, locationId), eq(operationLocationsTable.active, true), eq(operationsTable.organizationId, organizationId), eq(operationsTable.status, "ACTIVE")));
+  const semLocal: string[] = [];
+  for (const dona of donas) {
+    const outros = await db.select({ id: locationsTable.id }).from(operationLocationsTable)
+      .innerJoin(locationsTable, eq(operationLocationsTable.locationId, locationsTable.id))
+      .where(and(eq(operationLocationsTable.operationId, dona.id), eq(operationLocationsTable.active, true), eq(locationsTable.closed, false), ne(locationsTable.id, locationId))).limit(1);
+    if (!outros.length) semLocal.push(dona.name);
+  }
+  return semLocal;
+}
+
 router.delete("/locations/:id", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
   const before = await locationInOrg(req.params.id as string, req.user!.organizationId);
   if (!before) { res.status(403).json({ error: "Forbidden", message: "Recurso fora do escopo" }); return; }
+  if (!before.closed) {
+    const semLocal = await operacoesQueFicariamSemLocal(before.id, req.user!.organizationId);
+    if (semLocal.length) { res.status(409).json({ error: "ULTIMO_LOCAL", message: `Este é o último local aberto de ${semLocal.join(", ")}, que está ativa: sem local a Escala e os shows dela deixam de existir. Ligue outro local à operação, ou encerre a operação, antes de encerrar este.` }); return; }
+  }
   const location = await db.transaction(async (tx) => {
     const [next] = await tx.update(locationsTable).set({ closed: true, closedReason: typeof req.body?.reason === "string" ? req.body.reason.trim() || before.closedReason : before.closedReason, updatedAt: new Date() }).where(eq(locationsTable.id, before.id)).returning();
     if (!next) throw new Error("Local não encontrado");

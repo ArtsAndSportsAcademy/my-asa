@@ -224,7 +224,7 @@ export default function OperacoesPage({ role }: { role: ShellRole }) {
 
       {painel?.tipo === "ativar" && op && (
         <Dialog titulo={op.status === "PAUSED" ? `Reativar ${op.name}?` : `Ativar ${op.name}?`} onClose={fechar}>
-          <p>Todos os itens do checklist estão prontos. Ao ativar, {op.name} passa a valer para {plural(op.peopleCount, "pessoa com acesso", "pessoas com acesso")}: a Escala, os shows e a Programação dos locais dela abrem. Dá para pausar ou encerrar depois, com Registro.</p>
+          <p>Todos os itens do checklist estão prontos. Ao ativar, {op.name} passa a valer: a Escala, os shows e a Programação dos locais dela abrem, e toda pessoa ativa da casa ganha nela o mesmo perfil que já tem. A Administração, a Direção e a Supervisão são avisadas. Dá para pausar ou encerrar depois, com Registro.</p>
           <div className="cad-form"><span />
             {erroPainel && <p className="cad-error" role="alert">{erroPainel}</p>}
             <footer><button type="button" onClick={fechar}>Cancelar</button><button type="button" className="cad-primary" disabled={salvando} onClick={() => void mudarSituacao(op, "ACTIVE")}>{salvando ? "Ativando…" : "Ativar agora"}</button></footer>
@@ -236,10 +236,10 @@ export default function OperacoesPage({ role }: { role: ShellRole }) {
         texto={`A operação sai das telas de quem trabalha nela até ser reativada. Locais, pessoas e histórico continuam como estão. ${ativas <= 1 ? "Atenção: é a única operação ativa, e o servidor não deixa a casa sem operação ativa." : ""}`} dica="Ex.: pausa de baixa temporada" />}
 
       {painel?.tipo === "encerrar" && op && <Motivo titulo={`Encerrar ${op.name}`} botao="Encerrar operação" ocupado="Encerrando…" obrigatorio perigo salvando={salvando} erro={erroPainel} onClose={fechar} onConfirm={(m) => mudarSituacao(op, "ARCHIVED", m)}
-        texto={`Nada é apagado: ${plural(op.locationIds.length, "local fica ligado", "locais ficam ligados")}, ${plural(op.peopleCount, "pessoa mantém", "pessoas mantêm")} o vínculo e o histórico continua no Registro. A operação some das listas de uso e dá para reabri-la depois, com motivo. A Administração e a Direção são avisadas.${ativas <= 1 && op.status === "ACTIVE" ? " Atenção: é a única operação ativa, e o servidor não deixa a casa sem operação ativa." : ""}`} dica="Ex.: contrato terminou" />}
+        texto={`Nada é apagado: ${plural(op.locationIds.length, "local fica ligado", "locais ficam ligados")}, ${plural(op.peopleCount, "pessoa mantém", "pessoas mantêm")} o vínculo e o histórico continua no Registro. A operação some das listas de uso e dá para reabri-la depois, com motivo. A Administração, a Direção e a Supervisão são avisadas.${ativas <= 1 && op.status === "ACTIVE" ? " Atenção: é a única operação ativa, e o servidor não deixa a casa sem operação ativa." : ""}`} dica="Ex.: contrato terminou" />}
 
       {painel?.tipo === "reabrir" && op && <Motivo titulo={`Reabrir ${op.name}`} botao="Reabrir" ocupado="Reabrindo…" obrigatorio salvando={salvando} erro={erroPainel} onClose={fechar} onConfirm={(m) => mudarSituacao(op, "DRAFT", m)}
-        texto="A operação volta como “em configuração”, com os locais e as pessoas que tinha. Para voltar a valer, passe de novo pelo checklist e ative. A Administração e a Direção são avisadas." dica="Ex.: voltou a ter contrato" />}
+        texto="A operação volta como “em configuração”, com os locais e as pessoas que tinha. Para voltar a valer, passe de novo pelo checklist e ative. A Administração, a Direção e a Supervisão são avisadas." dica="Ex.: voltou a ter contrato" />}
     </section>
   );
 }

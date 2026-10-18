@@ -246,6 +246,21 @@ async function run() {
       const pausarUltima = await chamar("PATCH", `/operations/${accessOperationId}/status`, adminToken, { status: "PAUSED" });
       assert(pausarUltima.status === 409 && pausarUltima.body.error === "LAST_ACTIVE_OPERATION", "não pausa a única operação ativa da casa");
 
+      // Ativar: com o checklist completo a operação vira ativa e quem já existe ganha o perfil nela, sem passo manual.
+      const [responsabilidade] = (await pool.query(`insert into responsibilities (org_id, operation_id, owner_id, title, category, active) values ($1, $2, $3, 'Responsável piloto', 'OPERAÇÃO', true) returning id`, [organizationId, createdOperationId, adminId])).rows;
+      await pool.query(`insert into responsibility_assignments (responsibility_id, member_id, role, active) values ($1, $2, 'PRIMARY', true)`, [responsabilidade.id, adminId]);
+      const ativada = await chamar("PATCH", `/operations/${createdOperationId}/status`, adminToken, { status: "ACTIVE" });
+      assert(ativada.status === 200 && ativada.body.operation.status === "ACTIVE", "com o checklist completo, a operação é ativada");
+      const papelDaDirecao = await pool.query(`select 1 from user_roles where user_id = $1 and operation_id = $2 and role = 'DIR' and active`, [directorId, createdOperationId]);
+      assert(papelDaDirecao.rows.length === 1, "ao ativar, quem já existe na casa ganha o mesmo perfil na operação nova");
+      const avisoSupervisao = await pool.query(`select 1 from user_notifications where user_id = $1 and type = 'operation.status'`, [supervisorId]);
+      assert(avisoSupervisao.rows.length === 1, "a Supervisão também é avisada quando a operação muda de situação");
+      // Fechar o último local aberto de uma operação ativa é recusado, também pela tela Locais.
+      const fecharUltimo = await chamar("DELETE", `/locations/${localA.body.location.id}`, adminToken, { reason: "teste" });
+      assert(fecharUltimo.status === 409 && fecharUltimo.body.error === "ULTIMO_LOCAL", "não fecha o último local aberto de uma operação ativa");
+      const fecharPorPatch = await chamar("PATCH", `/locations/${localA.body.location.id}`, adminToken, { closed: true });
+      assert(fecharPorPatch.status === 409, "o mesmo vale ao fechar pela edição do local");
+
       // Encerrar exige motivo; é lógico (volta); editar encerrada é recusado; reabrir exige motivo.
       assert((await chamar("PATCH", `/operations/${createdOperationId}/status`, adminToken, { status: "ARCHIVED" })).status === 400, "encerrar sem motivo é recusado");
       const encerrada = await chamar("PATCH", `/operations/${createdOperationId}/status`, adminToken, { status: "ARCHIVED", reason: "Piloto cancelado" });
@@ -257,9 +272,9 @@ async function run() {
       const reaberta = await chamar("PATCH", `/operations/${createdOperationId}/status`, adminToken, { status: "DRAFT", reason: "Voltou a ser planejado" });
       assert(reaberta.status === 200 && reaberta.body.operation.status === "DRAFT", "reabre a operação encerrada, sem perder o que tinha");
       const registro = await pool.query(`select action, metadata from history_events where entity_id = $1 and action like 'operation.status.%' order by created_at`, [createdOperationId]);
-      assert(registro.rows.length === 2 && registro.rows.every((row: any) => typeof row.metadata?.reason === "string"), "encerrar e reabrir entraram no Registro, cada um com o motivo");
+      assert(registro.rows.length === 3 && registro.rows.filter((row: any) => row.action !== "operation.status.active").length === 2 && registro.rows.filter((row: any) => row.action !== "operation.status.active").every((row: any) => typeof row.metadata?.reason === "string"), "encerrar e reabrir entraram no Registro, cada um com o motivo");
       const avisos = await pool.query(`select title from user_notifications where user_id = $1 and type = 'operation.status'`, [directorId]);
-      assert(avisos.rows.length === 2, "a Direção recebe um aviso por mudança de situação");
+      assert(avisos.rows.length === 3, "a Direção recebe um aviso por mudança de situação");
       const avisoDoAtor = await pool.query(`select 1 from user_notifications where user_id = $1`, [adminId]);
       assert(avisoDoAtor.rows.length === 0, "quem mudou a situação não recebe aviso dela mesma");
     }
@@ -278,6 +293,7 @@ async function run() {
       `delete from history_events where org_id = $1 or actor_id = any($2::uuid[])`,
       [organizationId, todos],
     );
+    if (createdOperationId) await pool.query(`delete from responsibilities where operation_id = $1`, [createdOperationId]);
     await pool.query(`delete from operation_locations where location_id = any($1::uuid[])`, [locationIds]);
     await pool.query(`delete from locations where id = any($1::uuid[])`, [locationIds]);
     await pool.query(`delete from user_roles where user_id = any($1::uuid[])`, [todos]);

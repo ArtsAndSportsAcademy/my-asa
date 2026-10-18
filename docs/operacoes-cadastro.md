@@ -30,8 +30,11 @@ Código: `getOperationsReadiness` / `evaluateOperationReadiness` em `services/op
   O cadastro de local novo (`POST /locations`) agora aceita também operação em configuração.
 - **Pessoas** (`POST /operations/:id/access`): várias de uma vez; cada uma ganha na operação o mesmo perfil que já tem na
   casa. Quem não tem perfil fica de fora, com o porquê. Operação ativa: as pessoas são avisadas no sino.
-- **Ativar / reativar**: pede confirmação depois do checklist; ao ativar, a Administração e a Direção (exceto quem
-  agiu) recebem um aviso.
+- **Ativar / reativar**: pede confirmação depois do checklist. Ao ativar, toda pessoa ativa da casa ganha na operação o
+  mesmo perfil que já tem (decisão de 18/10/2026), na mesma transação, e o Registro conta quantas ganharam. Em toda
+  mudança de situação, Administração, Direção e Supervisão (exceto quem agiu) recebem um aviso.
+- **Fechar o último local**: encerrar (ou editar como fechado) o último local aberto de uma operação ativa é recusado
+  (409 `ULTIMO_LOCAL`), também pela tela Locais (decisão de 18/10/2026).
 - **Pausar**: motivo opcional. **Encerrar**: motivo escrito obrigatório, nada é apagado, some das listas de uso.
   **Reabrir**: motivo obrigatório; volta como "em configuração" e passa de novo pelo checklist.
 - **A casa não fica sem operação ativa**: pausar ou encerrar a única ativa é recusado (409 `LAST_ACTIVE_OPERATION`),
@@ -42,7 +45,7 @@ Código: `getOperationsReadiness` / `evaluateOperationReadiness` em `services/op
 
 ## Fora do escopo desta etapa (decisões abertas)
 
-Ver o relato da sessão: aviso às pessoas com acesso quando a operação é ativada, pausada ou encerrada; o que fazer quando
-um local da operação ativa é encerrado pela tela Locais; acesso automático de quem já existe a uma operação nova.
+Nenhuma. Decididas em 18/10/2026: aviso a Administração, Direção e Supervisão; bloqueio do último local; acesso
+automático ao ativar.
 
 Sem migração: nada de schema mudou. Ordem para promover: API primeiro, site depois.

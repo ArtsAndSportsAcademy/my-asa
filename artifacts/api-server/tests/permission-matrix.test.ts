@@ -123,6 +123,7 @@ async function run() {
   let lifecycleUserId: string | null = null;
   let lifecycleAreaId: string | null = null;
   let lifecycleLocationId: string | null = null;
+  let reservaLocationId: string | null = null;
   try {
     await db.insert(userRolesTable).values([
       { userId: admin!.id, operationId: operation!.id, role: "ADMIN", active: true },
@@ -199,6 +200,11 @@ async function run() {
     const createdDirectoryLocationPayload = await createdDirectoryLocation.json() as { location?: { id: string } };
     lifecycleLocationId = createdDirectoryLocationPayload.location?.id ?? null;
     const editedDirectoryLocation = lifecycleLocationId ? await fetch(`${base}/locations/${lifecycleLocationId}`, { method: "PATCH", headers: auth(adminToken), body: JSON.stringify({ name: `${tag} local editado` }) }) : null;
+    // Operação ativa não perde o último local aberto: só fecha depois de ligar outro (decisão de 18/10/2026).
+    const ultimoLocal = lifecycleLocationId ? await fetch(`${base}/locations/${lifecycleLocationId}`, { method: "DELETE", headers: auth(adminToken), body: JSON.stringify({ reason: "Validação do cadastro Grupo A" }) }) : null;
+    assert(ultimoLocal?.status === 409, "Encerrar o último Local aberto de uma operação ativa é recusado");
+    const reservaResposta = await fetch(`${base}/locations`, { method: "POST", headers: auth(adminToken), body: JSON.stringify({ name: `${tag} local reserva`, type: "teste", operationIds: [operation!.id] }) });
+    reservaLocationId = ((await reservaResposta.json()) as { location?: { id: string } }).location?.id ?? null;
     const closedDirectoryLocation = lifecycleLocationId ? await fetch(`${base}/locations/${lifecycleLocationId}`, { method: "DELETE", headers: auth(adminToken), body: JSON.stringify({ reason: "Validação do cadastro Grupo A" }) }) : null;
     const [keptDirectoryLocation] = lifecycleLocationId ? await db.select().from(locationsTable).where(eq(locationsTable.id, lifecycleLocationId)).limit(1) : [];
     assert(createdDirectoryLocation.status === 201 && editedDirectoryLocation?.status === 200 && closedDirectoryLocation?.status === 200, "ADM cria, edita e encerra Local pelo cadastro");
@@ -341,6 +347,8 @@ async function run() {
     if (lifecycleAreaId) await db.delete(areasTable).where(eq(areasTable.id, lifecycleAreaId));
     if (bailarinosArea) await db.delete(areasTable).where(eq(areasTable.id, bailarinosArea.id));
     // Desde 01/10 o local criado pela rota já nasce ligado às operações ativas.
+    if (reservaLocationId) await db.delete(operationLocationsTable).where(eq(operationLocationsTable.locationId, reservaLocationId));
+    if (reservaLocationId) await db.delete(locationsTable).where(eq(locationsTable.id, reservaLocationId));
     if (lifecycleLocationId) await db.delete(operationLocationsTable).where(eq(operationLocationsTable.locationId, lifecycleLocationId));
     if (lifecycleLocationId) await db.delete(locationsTable).where(eq(locationsTable.id, lifecycleLocationId));
     if (snowland && acquamotion) await db.delete(locationsTable).where(inArray(locationsTable.id, [snowland.id, acquamotion.id]));
