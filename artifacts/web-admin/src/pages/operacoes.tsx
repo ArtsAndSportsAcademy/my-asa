@@ -8,7 +8,7 @@ import "./operacoes.css";
 
 type ShellRole = "adm" | "dir" | "sup" | "mem";
 type Status = "DRAFT" | "ACTIVE" | "PAUSED" | "ARCHIVED";
-type ItemChave = "GENERAL_DATA" | "VISUAL_IDENTITY" | "FIXED_TEAM" | "RESPONSIBILITIES" | "RELATED_MODULES";
+type ItemChave = "GENERAL_DATA" | "VISUAL_IDENTITY" | "FIXED_TEAM" | "RELATED_MODULES";
 type Item = { key: ItemChave; label: string; complete: boolean; message: string };
 type Readiness = { ready: boolean; items: Item[]; blockers: Item[] };
 type Operacao = {
@@ -54,7 +54,7 @@ const amostra: Visao | null = import.meta.env.DEV ? {
   ],
   operations: [
     { id: "o1", name: "Operação Neve", description: "Shows no parque de neve", clientName: "Parque A S.A.", color: "#6D4AFF", icon: "sparkles", status: "ACTIVE", archivedAt: null, activatedAt: null, modulesReviewedAt: "2026-10-01", archivedReason: null, peopleCount: 24, locationIds: ["l1", "l2"], readiness: { ready: true, blockers: [], items: [] } },
-    { id: "o2", name: "Operação Águas", description: null, clientName: null, color: "#0E8F7E", icon: "sparkles", status: "DRAFT", archivedAt: null, activatedAt: null, modulesReviewedAt: null, archivedReason: null, peopleCount: 0, locationIds: [], readiness: { ready: false, get blockers() { return this.items.filter((i) => !i.complete); }, items: [{ key: "GENERAL_DATA", label: "Dados gerais e local", complete: false, message: "Falta informar a descrição; o empreendimento; pelo menos um local aberto ligado a esta operação." }, { key: "VISUAL_IDENTITY", label: "Identidade visual", complete: true, message: "Cor e ícone estão definidos." }, { key: "FIXED_TEAM", label: "Pessoas com acesso", complete: false, message: "Dê acesso a pelo menos uma pessoa." }, { key: "RESPONSIBILITIES", label: "Responsáveis", complete: false, message: "Crie pelo menos uma responsabilidade desta operação." }, { key: "RELATED_MODULES", label: "Módulos relacionados", complete: false, message: "Confira Escalas, Programação e Livros do Dia e marque como revisado." }] } },
+    { id: "o2", name: "Operação Águas", description: null, clientName: null, color: "#0E8F7E", icon: "sparkles", status: "DRAFT", archivedAt: null, activatedAt: null, modulesReviewedAt: null, archivedReason: null, peopleCount: 0, locationIds: [], readiness: { ready: false, get blockers() { return this.items.filter((i) => !i.complete); }, items: [{ key: "GENERAL_DATA", label: "Dados gerais e local", complete: false, message: "Falta informar a descrição; o empreendimento; pelo menos um local aberto ligado a esta operação." }, { key: "VISUAL_IDENTITY", label: "Identidade visual", complete: true, message: "Cor e ícone estão definidos." }, { key: "FIXED_TEAM", label: "Pessoas com acesso", complete: false, message: "Dê acesso a pelo menos uma pessoa." }, { key: "RELATED_MODULES", label: "Módulos relacionados", complete: false, message: "Confira Escalas, Programação e Livros do Dia e marque como revisado." }] } },
     { id: "o3", name: "Operação Antiga", description: "Encerrada na virada", clientName: "Cliente X", color: "#B42340", icon: "sparkles", status: "ARCHIVED", archivedAt: "2026-08-30", activatedAt: null, modulesReviewedAt: null, archivedReason: "Contrato terminou em agosto.", peopleCount: 3, locationIds: ["l4"], readiness: { ready: false, blockers: [], items: [] } },
   ],
 } : null;
@@ -129,7 +129,7 @@ export default function OperacoesPage({ role }: { role: ShellRole }) {
         <p>{role === "dir" ? "Somente leitura" : "Cadastro da operação"}</p>
         {pode && <div className="cad-toolbar-actions"><button type="button" className="cad-primary" onClick={() => abrir({ tipo: "form" })}><Plus size={17} />Nova operação</button></div>}
       </div>
-      <div className="cad-note op-explica">Uma operação reúne locais, pessoas e responsáveis. A Escala, os shows e a Programação de um local seguem a operação dele{role === "dir" ? "." : "; por isso uma operação só pode ser ativada depois de ter local, pessoas e responsável."}</div>
+      <div className="cad-note op-explica">Uma operação reúne locais e pessoas. A Escala, os shows e a Programação de um local seguem a operação dele{role === "dir" ? "." : "; por isso uma operação só pode ser ativada depois de ter local e pessoas."}</div>
       <div className="cad-status-filters" role="group" aria-label="Situação das operações">
         {FILTROS.map((f) => <button key={f.valor} type="button" className={filtro === f.valor ? "active" : ""} aria-pressed={filtro === f.valor} onClick={() => setFiltro(f.valor)}>{f.rotulo}</button>)}
       </div>
@@ -193,7 +193,6 @@ export default function OperacoesPage({ role }: { role: ShellRole }) {
 
       {painel?.tipo === "check" && op && <Checklist op={op} pode={pode} onClose={fechar}
         onEditar={() => abrir({ tipo: "form", op }, op.id)} onLocais={() => abrir({ tipo: "locais", id: op.id }, op.id)} onPessoas={() => abrir({ tipo: "pessoas", id: op.id }, op.id)}
-        onResponsabilidades={() => { setPainel(null); navegar("/responsabilidades"); }}
         onRevisao={async (revisado) => {
           if (review) return;
           setSalvando(true); setErroPainel("");
@@ -268,16 +267,15 @@ function FormOperacao({ op, salvando, erro, onClose, onSave }: { op?: Operacao; 
   );
 }
 
-function Checklist({ op, pode, salvando, erro, onClose, onEditar, onLocais, onPessoas, onResponsabilidades, onRevisao, onAtivar }: {
+function Checklist({ op, pode, salvando, erro, onClose, onEditar, onLocais, onPessoas, onRevisao, onAtivar }: {
   op: Operacao; pode: boolean; salvando: boolean; erro: string; onClose: () => void; onEditar: () => void; onLocais: () => void; onPessoas: () => void;
-  onResponsabilidades: () => void; onRevisao: (revisado: boolean) => void | Promise<void>; onAtivar: () => void;
+  onRevisao: (revisado: boolean) => void | Promise<void>; onAtivar: () => void;
 }) {
   const faltam = op.readiness.blockers.length;
   const acao = (item: Item): ReactNode => {
     if (!pode) return null;
     if (item.key === "GENERAL_DATA") return <><button type="button" onClick={onEditar}>Editar dados</button><button type="button" onClick={onLocais}>Ligar locais</button></>;
     if (item.key === "FIXED_TEAM") return <button type="button" onClick={onPessoas}>Dar acesso</button>;
-    if (item.key === "RESPONSIBILITIES") return <button type="button" onClick={onResponsabilidades}>Abrir Responsabilidades</button>;
     if (item.key === "RELATED_MODULES") return <button type="button" disabled={salvando} onClick={() => void onRevisao(!item.complete)}>{item.complete ? "Desmarcar revisão" : "Marcar como revisado"}</button>;
     return <button type="button" onClick={onEditar}>Escolher cor</button>;
   };

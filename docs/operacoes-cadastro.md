@@ -15,10 +15,10 @@ Código: `getOperationsReadiness` / `evaluateOperationReadiness` em `services/op
 2. **Identidade visual** — cor e ícone. Já vêm preenchidos ao criar; a tela deixa escolher a cor.
 3. **Pessoas com acesso** — pelo menos uma pessoa com perfil ativo gravado para a operação (ou integrante de equipe fixa
    antiga). Antes só contava a "equipe fixa" dos grupos operacionais, cuja tela foi retirada do menu em 16/10.
-4. **Responsáveis** — pelo menos uma responsabilidade ativa da operação com alguém responsável (criada em
-   Responsabilidades e tarefas).
-5. **Módulos relacionados** — a Administração marca que conferiu Escalas, Programação e Livros do Dia (`setup-review`,
+4. **Módulos relacionados** — a Administração marca que conferiu Escalas, Programação e Livros do Dia (`setup-review`,
    reversível).
+
+Responsabilidades e tarefas não fazem parte do checklist: não são algo que a operação precise ter (decisão de 18/10/2026).
 
 ## Regras das ações
 

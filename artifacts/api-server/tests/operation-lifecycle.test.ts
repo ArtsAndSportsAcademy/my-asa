@@ -39,8 +39,8 @@ async function run() {
     color: "#6D4AFF",
     icon: "mountain",
     modulesReviewedAt: null,
-  }, { teamCount: 0, accessCount: 0, responsibilityCount: 0, linkedLocationCount: 0 });
-  assert(!incomplete.ready && incomplete.blockers.length === 4, "bloqueia ativação enquanto faltam dados, equipe, responsáveis e revisão");
+  }, { teamCount: 0, accessCount: 0, linkedLocationCount: 0 });
+  assert(!incomplete.ready && incomplete.blockers.length === 3, "bloqueia ativação enquanto faltam dados e local, pessoas e revisão");
   assert(incomplete.items[0]!.message.includes("descrição") && incomplete.items[0]!.message.includes("local aberto"), "o checklist diz item a item o que falta nos dados gerais");
 
   const complete = evaluateOperationReadiness({
@@ -50,8 +50,8 @@ async function run() {
     color: "#6D4AFF",
     icon: "mountain",
     modulesReviewedAt: new Date(),
-  }, { teamCount: 0, accessCount: 1, responsibilityCount: 1, linkedLocationCount: 1 });
-  assert(complete.ready && complete.blockers.length === 0, "libera ativação quando as cinco etapas estão completas");
+  }, { teamCount: 0, accessCount: 1, linkedLocationCount: 1 });
+  assert(complete.ready && complete.blockers.length === 0, "libera ativação quando as quatro etapas estão completas");
 
   const [{ default: express }, { default: operationsRouter }, { default: locationsRouter }, { signAccessToken }, { pool }] = await Promise.all([
     import("express"),
@@ -211,7 +211,7 @@ async function run() {
       const visaoAdm = await chamar("GET", "/operations/overview", adminToken);
       assert(visaoAdm.status === 200 && visaoAdm.body.canManage === true, "administração vê a lista de operações e pode alterá-la");
       const piloto = visaoAdm.body.operations?.find((op: any) => op.id === createdOperationId);
-      assert(piloto?.status === "DRAFT" && piloto.readiness.items.length === 5 && piloto.readiness.blockers.length === 4, "operação nova aparece em configuração com 4 dos 5 itens do checklist pendentes (a identidade visual já vem com cor e ícone)");
+      assert(piloto?.status === "DRAFT" && piloto.readiness.items.length === 4 && piloto.readiness.blockers.length === 3, "operação nova aparece em configuração com 3 dos 4 itens do checklist pendentes (a identidade visual já vem com cor e ícone)");
       const visaoDir = await chamar("GET", "/operations/overview", directorToken);
       assert(visaoDir.status === 200 && visaoDir.body.canManage === false, "direção lê a lista, sem poder alterar");
       assert((await chamar("GET", "/operations/overview", supervisorToken)).status === 403, "supervisão não vê a tela de operações");
@@ -238,8 +238,7 @@ async function run() {
       assert((await chamar("POST", `/operations/${createdOperationId}/access`, supervisorToken, { userIds: [memberId] })).status === 403, "supervisão não dá acesso a operação");
       await chamar("PATCH", `/operations/${createdOperationId}/setup-review`, adminToken, { reviewed: true });
       const depois = (await chamar("GET", "/operations/overview", adminToken)).body.operations.find((op: any) => op.id === createdOperationId);
-      const pendentes = depois.readiness.blockers.map((item: any) => item.key);
-      assert(pendentes.length === 1 && pendentes[0] === "RESPONSIBILITIES", "depois de dados, local, pessoas e revisão, só falta a responsabilidade");
+      assert(depois.readiness.ready === true && depois.readiness.items.every((item: any) => item.key !== "RESPONSIBILITIES"), "depois de dados, local, pessoas e revisão a operação está pronta; responsabilidade não faz parte do checklist");
       assert(depois.peopleCount === 2 && depois.locationIds.length === 1, "a visão mostra quantas pessoas e quais locais pertencem à operação");
 
       // Última operação ativa: não dá para pausar ou encerrar.
@@ -247,8 +246,6 @@ async function run() {
       assert(pausarUltima.status === 409 && pausarUltima.body.error === "LAST_ACTIVE_OPERATION", "não pausa a única operação ativa da casa");
 
       // Ativar: com o checklist completo a operação vira ativa e quem já existe ganha o perfil nela, sem passo manual.
-      const [responsabilidade] = (await pool.query(`insert into responsibilities (org_id, operation_id, owner_id, title, category, active) values ($1, $2, $3, 'Responsável piloto', 'OPERAÇÃO', true) returning id`, [organizationId, createdOperationId, adminId])).rows;
-      await pool.query(`insert into responsibility_assignments (responsibility_id, member_id, role, active) values ($1, $2, 'PRIMARY', true)`, [responsabilidade.id, adminId]);
       const ativada = await chamar("PATCH", `/operations/${createdOperationId}/status`, adminToken, { status: "ACTIVE" });
       assert(ativada.status === 200 && ativada.body.operation.status === "ACTIVE", "com o checklist completo, a operação é ativada");
       const papelDaDirecao = await pool.query(`select 1 from user_roles where user_id = $1 and operation_id = $2 and role = 'DIR' and active`, [directorId, createdOperationId]);
@@ -293,7 +290,6 @@ async function run() {
       `delete from history_events where org_id = $1 or actor_id = any($2::uuid[])`,
       [organizationId, todos],
     );
-    if (createdOperationId) await pool.query(`delete from responsibilities where operation_id = $1`, [createdOperationId]);
     await pool.query(`delete from operation_locations where location_id = any($1::uuid[])`, [locationIds]);
     await pool.query(`delete from locations where id = any($1::uuid[])`, [locationIds]);
     await pool.query(`delete from user_roles where user_id = any($1::uuid[])`, [todos]);

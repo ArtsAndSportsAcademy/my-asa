@@ -5,8 +5,6 @@ import {
   operationsTable,
   operationalGroupsTable,
   teamMembershipsTable,
-  responsibilitiesTable,
-  responsibilityAssignmentsTable,
   userRolesTable,
 } from "@workspace/db";
 import { and, count, eq, inArray, sql } from "drizzle-orm";
@@ -25,7 +23,6 @@ export type OperationReadinessItemKey =
   | "GENERAL_DATA"
   | "VISUAL_IDENTITY"
   | "FIXED_TEAM"
-  | "RESPONSIBILITIES"
   | "RELATED_MODULES";
 
 export interface OperationReadinessItem {
@@ -47,7 +44,6 @@ export interface OperationReadinessCounts {
   teamCount: number;
   /** Pessoas com perfil ativo gravado para a operação (é assim que a tela Pessoas dá acesso). */
   accessCount: number;
-  responsibilityCount: number;
   /** Locais abertos ligados à operação. */
   linkedLocationCount: number;
 }
@@ -126,12 +122,6 @@ export async function getOperationsReadiness(
     .innerJoin(operationalGroupsTable, eq(teamMembershipsTable.teamId, operationalGroupsTable.id))
     .where(and(inArray(operationalGroupsTable.operationId, ids), eq(operationalGroupsTable.status, "ACTIVE"), eq(teamMembershipsTable.active, true)))
     .groupBy(operationalGroupsTable.operationId));
-  const responsaveis = porOperacao(await db
-    .select({ operationId: responsibilitiesTable.operationId, value: count() })
-    .from(responsibilityAssignmentsTable)
-    .innerJoin(responsibilitiesTable, eq(responsibilityAssignmentsTable.responsibilityId, responsibilitiesTable.id))
-    .where(and(inArray(responsibilitiesTable.operationId, ids), eq(responsibilitiesTable.active, true), eq(responsibilityAssignmentsTable.active, true)))
-    .groupBy(responsibilitiesTable.operationId));
   const acessos = porOperacao(await db
     .select({ operationId: userRolesTable.operationId, value: sql<number>`count(distinct ${userRolesTable.userId})` })
     .from(userRolesTable)
@@ -151,7 +141,6 @@ export async function getOperationsReadiness(
       readiness: evaluateOperationReadiness(operation, {
         teamCount: equipes.get(operation.id) ?? 0,
         accessCount,
-        responsibilityCount: responsaveis.get(operation.id) ?? 0,
         linkedLocationCount: locais.get(operation.id) ?? 0,
       }),
     });
@@ -203,14 +192,6 @@ export function evaluateOperationReadiness(
       message: hasPeople
         ? "Há pessoas com acesso a esta operação."
         : "Dê acesso a pelo menos uma pessoa. Sem isso ninguém monta a Escala nem vê a operação.",
-    },
-    {
-      key: "RESPONSIBILITIES",
-      label: "Responsáveis",
-      complete: counts.responsibilityCount > 0,
-      message: counts.responsibilityCount > 0
-        ? "A operação possui uma responsabilidade ativa com responsável."
-        : "Crie pelo menos uma responsabilidade desta operação, com quem responde por ela (em Responsabilidades e tarefas).",
     },
     {
       key: "RELATED_MODULES",
