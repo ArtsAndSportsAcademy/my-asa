@@ -214,16 +214,26 @@ async function resolveDailyBookReadContext(
 }
 
 async function getDailyBookOrFail(id: string, res: any) {
-  const [book] = await db
-    .select()
-    .from(dailyBooksTable)
-    .where(eq(dailyBooksTable.id, id))
-    .limit(1);
-  if (!book) {
+  // O Livro tem que ser da organização de quem pede. Antes só se procurava pelo id, e a Administração passava em qualquer
+  // checagem seguinte (o papel ADMIN vale sem olhar a organização): a Administração de uma casa cancelava o Livro do Dia
+  // de outra casa só de saber o id. Livro de outra organização responde 404, como se não existisse.
+  const organizationId = res?.req?.user?.organizationId as string | undefined;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
     res.status(404).json({ error: "NAO_ENCONTRADO", message: "Livro do Dia não encontrado." });
     return null;
   }
-  return book;
+  const [row] = await db
+    .select({ book: dailyBooksTable, organizationId: operationsTable.organizationId })
+    .from(dailyBooksTable)
+    .innerJoin(agendaEventsTable, eq(dailyBooksTable.agendaEventId, agendaEventsTable.id))
+    .innerJoin(operationsTable, eq(agendaEventsTable.operationId, operationsTable.id))
+    .where(eq(dailyBooksTable.id, id))
+    .limit(1);
+  if (!row || (organizationId && row.organizationId !== organizationId)) {
+    res.status(404).json({ error: "NAO_ENCONTRADO", message: "Livro do Dia não encontrado." });
+    return null;
+  }
+  return row.book;
 }
 
 /**
@@ -1117,7 +1127,10 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
     let agendaEventId: string = bodyAgendaEventId ?? "";
 
     if (!agendaEventId) {
-      const [sb] = await db.select().from(showBooksTable).where(eq(showBooksTable.id, bodyShowBookId)).limit(1);
+      const [achado] = await db.select({ sb: showBooksTable, organizationId: operationsTable.organizationId }).from(showBooksTable)
+        .innerJoin(operationsTable, eq(showBooksTable.operationId, operationsTable.id)).where(eq(showBooksTable.id, bodyShowBookId)).limit(1);
+      // Show de outra organização responde como se não existisse (antes a Administração gerava Livro no show de outra casa).
+      const sb = achado && achado.organizationId === user.organizationId ? achado.sb : undefined;
       if (!sb) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Show Book não encontrado." }); return; }
 
       if (!(await canOperateDailyBook(user, sb.operationId, { id: sb.id, responsibleId: sb.responsibleId }))) {
@@ -1157,11 +1170,12 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
       // Auth do modo legado: validar contra a operação REAL do evento, nunca um operationId
       // vindo do cliente (evita bypass com evento de outra operação).
       const [ev] = await db
-        .select({ operationId: agendaEventsTable.operationId, showBookId: agendaEventsTable.showBookId })
+        .select({ operationId: agendaEventsTable.operationId, showBookId: agendaEventsTable.showBookId, organizationId: operationsTable.organizationId })
         .from(agendaEventsTable)
+        .innerJoin(operationsTable, eq(agendaEventsTable.operationId, operationsTable.id))
         .where(eq(agendaEventsTable.id, agendaEventId))
         .limit(1);
-      if (!ev) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Evento não encontrado." }); return; }
+      if (!ev || ev.organizationId !== user.organizationId) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Evento não encontrado." }); return; }
       const loaded = ev.showBookId ? await loadShowRef(ev.showBookId) : null;
       if (!(await canOperateDailyBook(user, ev.operationId, loaded?.ref ?? null))) {
         res.status(403).json({ error: "ACESSO_NEGADO", message: "Apenas o responsável por este show, um capitão delegado ou um admin podem gerar o Livro do Dia" });

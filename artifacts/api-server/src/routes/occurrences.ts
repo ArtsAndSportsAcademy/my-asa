@@ -39,10 +39,15 @@ async function canReadOccurrence(actor: NonNullable<Express.Request["user"]>, pe
   });
 }
 
-async function canWriteOccurrence(actor: NonNullable<Express.Request["user"]>, personId: string): Promise<boolean> {
+async function canWriteOccurrence(actor: NonNullable<Express.Request["user"]>, personId: string, registeredBy?: string | null): Promise<boolean> {
   if (actor.role === "DIR") return false;
+  // A pessoa pode registrar a própria ocorrência (um aviso de atraso, por exemplo) e mexer no que ELA registrou. O que a
+  // gerência registrou sobre ela, ela lê mas não reescreve nem apaga: antes, quem tinha uma falta registrada podia trocar o
+  // texto ou desativar o registro, porque a leitura própria valia também para escrever.
+  if (actor.sub === personId && actor.role !== "ADMIN" && registeredBy && registeredBy !== actor.sub) return false;
   return canReadOccurrence(actor, personId);
 }
+const SO_A_GERENCIA = { error: "Forbidden", message: "Quem registra e altera ocorrência é a Supervisão da área da pessoa ou a Administração. O que registraram sobre você, você só lê." };
 
 router.get("/occurrences", requireAuth, requireOrganization, async (req, res) => {
   const actor = req.user!;
@@ -91,7 +96,7 @@ router.post("/occurrences", requireAuth, requireOrganization, async (req, res) =
     res.status(400).json({ error: "personId, date, type e description são obrigatórios" });
     return;
   }
-  if (!(await canWriteOccurrence(req.user!, personId))) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!(await canWriteOccurrence(req.user!, personId))) { res.status(403).json(SO_A_GERENCIA); return; }
   try {
     const occurrence = await createOccurrence({ personId, date, type, description, reason, registeredBy: req.user!.sub });
     res.status(201).json({ occurrence });
@@ -106,7 +111,7 @@ router.patch("/occurrences/:id", requireAuth, requireOrganization, async (req, r
   try {
     const row = await occurrenceInOrganization(req.params.id as string, req.user!.organizationId);
     if (!row) { res.status(403).json({ error: "Forbidden", message: "Recurso fora do escopo" }); return; }
-    if (!(await canWriteOccurrence(req.user!, row.occurrence.personId))) { res.status(403).json({ error: "Forbidden" }); return; }
+    if (!(await canWriteOccurrence(req.user!, row.occurrence.personId, row.occurrence.registeredBy))) { res.status(403).json(SO_A_GERENCIA); return; }
     const reason = requireReason(res, req.body?.reason, "alterar ocorrência");
     if (!reason) return;
     const before = row.occurrence;
@@ -142,7 +147,7 @@ router.patch("/occurrences/:id/state", requireAuth, requireOrganization, async (
   try {
     const row = await occurrenceInOrganization(req.params.id as string, req.user!.organizationId);
     if (!row) { res.status(403).json({ error: "Forbidden", message: "Recurso fora do escopo" }); return; }
-    if (!(await canWriteOccurrence(req.user!, row.occurrence.personId))) { res.status(403).json({ error: "Forbidden" }); return; }
+    if (!(await canWriteOccurrence(req.user!, row.occurrence.personId, row.occurrence.registeredBy))) { res.status(403).json(SO_A_GERENCIA); return; }
     const occurrence = await transitionOccurrence({ occurrenceId: row.occurrence.id, to, registeredBy: req.user!.sub, reason: req.body?.reason });
     res.json({ occurrence });
   } catch (error) {
@@ -156,7 +161,7 @@ router.patch("/occurrences/:id/state", requireAuth, requireOrganization, async (
 router.delete("/occurrences/:id", requireAuth, requireOrganization, async (req, res) => {
   const row = await occurrenceInOrganization(req.params.id as string, req.user!.organizationId);
   if (!row) { res.status(403).json({ error: "Forbidden", message: "Recurso fora do escopo" }); return; }
-  if (!(await canWriteOccurrence(req.user!, row.occurrence.personId))) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!(await canWriteOccurrence(req.user!, row.occurrence.personId, row.occurrence.registeredBy))) { res.status(403).json(SO_A_GERENCIA); return; }
   const reason = requireReason(res, req.body?.reason, "desativar ocorrência");
   if (!reason) return;
   const occurrence = await db.transaction(async (tx) => {

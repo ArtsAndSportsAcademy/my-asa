@@ -32,6 +32,7 @@ function isAdmin(req: any) { return ["ADMIN", "ADM"].includes(role(req)); }
 function isDirection(req: any) { return ["DIRECTOR", "DIR", "DIRECTION"].includes(role(req)); }
 function isSupervisor(req: any) { return role(req).startsWith("SUPERVISOR") || role(req) === "SUP"; }
 /** Aviso oficial é da gestão. Direção age como a Administração no Mural (decisão de 14/10/2026). */
+const MAX_TEXTO_MURAL = 5000, MAX_TITULO_MURAL = 120, MAX_COMENTARIO_MURAL = 1000;
 function isGestao(req: any) { return isAdmin(req) || isDirection(req) || isSupervisor(req); }
 function isAdminOuDirecao(req: any) { return isAdmin(req) || isDirection(req); }
 
@@ -226,6 +227,8 @@ router.post("/communication/mural", requireAuth, requireOrganization, async (req
     const { type = "NOTICE", scope = "HOUSE", areaId = null, locationId = null, recipientId = null, recipientIds: rawRecipientIds = [], destinos = null, eventDate: rawEventDate = null, title = null, body, reason = null, requiresConfirmation = false } = req.body as { eventDate?: unknown; type?: Kind; scope?: Scope; areaId?: string | null; locationId?: string | null; recipientId?: string | null; recipientIds?: unknown; destinos?: Record<string, unknown> | null; title?: string | null; body?: string; reason?: string | null; requiresConfirmation?: boolean };
     const orgId = req.user!.organizationId!, authorId = req.user!.sub;
     if (!body?.trim()) { res.status(400).json({ error: "Escreva a publicação" }); return; }
+    if (typeof body !== "string" || body.length > MAX_TEXTO_MURAL) { res.status(400).json({ error: `A publicação tem no máximo ${MAX_TEXTO_MURAL} letras.` }); return; }
+    if (typeof title === "string" && title.trim().length > MAX_TITULO_MURAL) { res.status(400).json({ error: `O título tem no máximo ${MAX_TITULO_MURAL} letras.` }); return; }
     if (!KINDS.includes(type) || !["HOUSE", "AREA", "LOCATION", "PEOPLE"].includes(scope)) { res.status(400).json({ error: "Publicação inválida" }); return; }
     // Aviso oficial é da gestão. Qualquer pessoa publica (POST) e reconhece.
     if (type === "NOTICE" && !isGestao(req)) { res.status(403).json({ error: "Aviso oficial é da Administração, da Direção e da Supervisão. Para falar com a casa, use Publicar." }); return; }
@@ -329,6 +332,7 @@ router.patch("/communication/mural/:id", requireAuth, requireOrganization, async
     if (body !== undefined) {
       const texto = typeof body === "string" ? body.trim() : "";
       if (!texto) { res.status(400).json({ error: "O texto não pode ficar vazio" }); return; }
+      if (texto.length > MAX_TEXTO_MURAL) { res.status(400).json({ error: `A publicação tem no máximo ${MAX_TEXTO_MURAL} letras.` }); return; }
       if (texto !== post.body) mudanca.body = texto;
     }
     if (title !== undefined && post.type !== "RECOGNITION") {
@@ -436,6 +440,7 @@ router.post("/communication/mural/:id/comments", requireAuth, requireOrganizatio
     const id = String(req.params.id);
     const body = String(req.body?.body ?? "").trim();
     if (!body) { res.status(400).json({ error: "Escreva um comentário" }); return; }
+    if (body.length > MAX_COMENTARIO_MURAL) { res.status(400).json({ error: `O comentário tem no máximo ${MAX_COMENTARIO_MURAL} letras.` }); return; }
     const result = await db.transaction(async tx => {
       const [post] = await tx.select().from(announcementsTable).where(and(
         eq(announcementsTable.id, id), eq(announcementsTable.orgId, req.user!.organizationId),

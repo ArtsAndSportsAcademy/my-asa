@@ -1449,8 +1449,27 @@ router.delete("/show-books/:id/drive-links/:linkId", requireAuth, requireOrganiz
   try { const book = await requireShowManage(req, res); if (!book) return; if (!(await driveLinkInShowBook(linkId, showBookId))) { res.status(404).json({ error: "Link não encontrado" }); return; } await db.transaction(async (tx) => { const [before] = await tx.select().from(showBookDriveLinksTable).where(eq(showBookDriveLinksTable.id, linkId)); const [after] = await tx.update(showBookDriveLinksTable).set({ active: false, updatedAt: new Date() }).where(eq(showBookDriveLinksTable.id, linkId)).returning(); await writeHistoryEvent({ category: "OPERATIONAL_CHANGE", action: "show_book.drive_link.removed", title: "Link do Drive removido", narrative: `Link ${before!.label} removido sem apagar o histórico.`, entityType: "show_book_drive_link", entityId: linkId, actorId: req.user!.sub, operationId: book.operationId, orgId: req.user!.organizationId, beforeState: before, afterState: after, metadata: { reason } }, tx as any); await bumpVersion(showBookId, "CONFIG", reason, req.user!.sub, req.requestId, req.correlationId, tx as any); }); res.status(204).send(); } catch { res.status(500).json({ error: "Erro ao remover link" }); }
 });
 
+// ─── Tags: escopo de organização e de papel ──────────────────────────────────
+// Estas rotas não olhavam organização nem papel: qualquer pessoa logada lia, criava e desativava tag de qualquer operação,
+// e lia e mexia nas tags de qualquer pessoa, até de outra casa. Agora a operação ou a pessoa tem que ser da organização de
+// quem pede, e escrever é da gestão.
+async function operacaoDaMinhaOrganizacao(req: { user?: { organizationId: string } }, operationId: string) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(operationId)) return false;
+  const [op] = await db.select({ id: operationsTable.id }).from(operationsTable)
+    .where(and(eq(operationsTable.id, operationId), eq(operationsTable.organizationId, req.user!.organizationId))).limit(1);
+  return Boolean(op);
+}
+async function pessoaDaMinhaOrganizacao(req: { user?: { organizationId: string } }, userId: string) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) return false;
+  const [pessoa] = await db.select({ id: usersTable.id }).from(usersTable)
+    .where(and(eq(usersTable.id, userId), eq(usersTable.organizationId, req.user!.organizationId))).limit(1);
+  return Boolean(pessoa);
+}
+const SO_GESTAO_MEXE_EM_TAG = { error: "Forbidden", message: "Tag é criada e atribuída pela Supervisão e pela Administração." };
+
 router.get("/operations/:operationId/tags", requireAuth, requireOrganization, async (req, res) => {
   const operationId = req.params.operationId as string;
+  if (!(await operacaoDaMinhaOrganizacao(req, operationId))) { res.status(404).json({ error: "Operação não encontrada" }); return; }
   try {
     const tags = await db.select().from(showBookTagsTable)
       .where(and(eq(showBookTagsTable.operationId, operationId), eq(showBookTagsTable.active, true)));
@@ -1462,6 +1481,8 @@ router.get("/operations/:operationId/tags", requireAuth, requireOrganization, as
 
 router.post("/operations/:operationId/tags", requireAuth, requireOrganization, async (req, res) => {
   const operationId = req.params.operationId as string;
+  if (!MANAGER_ROLES.includes(req.user!.role as any)) { res.status(403).json(SO_GESTAO_MEXE_EM_TAG); return; }
+  if (!(await operacaoDaMinhaOrganizacao(req, operationId))) { res.status(404).json({ error: "Operação não encontrada" }); return; }
   const { category, label } = req.body;
   if (!category || !label) { res.status(400).json({ error: "category e label são obrigatórios" }); return; }
   try {
@@ -1478,6 +1499,8 @@ router.post("/operations/:operationId/tags", requireAuth, requireOrganization, a
 router.delete("/operations/:operationId/tags/:tagId", requireAuth, requireOrganization, async (req, res) => {
   const operationId = req.params.operationId as string;
   const tagId = req.params.tagId as string;
+  if (!MANAGER_ROLES.includes(req.user!.role as any)) { res.status(403).json(SO_GESTAO_MEXE_EM_TAG); return; }
+  if (!(await operacaoDaMinhaOrganizacao(req, operationId))) { res.status(404).json({ error: "Operação não encontrada" }); return; }
   try {
     // Desativação lógica: a tag e quem a recebeu continuam no histórico.
     const removed = await db.transaction(async (tx) => {
@@ -1502,6 +1525,7 @@ router.delete("/operations/:operationId/tags/:tagId", requireAuth, requireOrgani
 
 router.get("/users/:userId/tags", requireAuth, requireOrganization, async (req, res) => {
   const userId = req.params.userId as string;
+  if (!(await pessoaDaMinhaOrganizacao(req, userId))) { res.status(404).json({ error: "Pessoa não encontrada" }); return; }
   try {
     const tags = await db
       .select({ userTag: userTagsTable, tag: showBookTagsTable })
@@ -1518,6 +1542,14 @@ router.post("/users/:userId/tags", requireAuth, requireOrganization, async (req,
   const userId = req.params.userId as string;
   const { tagId } = req.body;
   if (!tagId) { res.status(400).json({ error: "tagId é obrigatório" }); return; }
+  if (!MANAGER_ROLES.includes(req.user!.role as any)) { res.status(403).json(SO_GESTAO_MEXE_EM_TAG); return; }
+  if (!(await pessoaDaMinhaOrganizacao(req, userId))) { res.status(404).json({ error: "Pessoa não encontrada" }); return; }
+  {
+    // A tag também tem que ser de uma operação da mesma organização.
+    const [tag] = typeof tagId === "string" && /^[0-9a-f-]{36}$/i.test(tagId)
+      ? await db.select({ operationId: showBookTagsTable.operationId }).from(showBookTagsTable).where(eq(showBookTagsTable.id, tagId)).limit(1) : [];
+    if (!tag || !(await operacaoDaMinhaOrganizacao(req, tag.operationId))) { res.status(404).json({ error: "Tag não encontrada" }); return; }
+  }
   try {
     const [userTag] = await db
       .insert(userTagsTable)
@@ -1532,6 +1564,8 @@ router.post("/users/:userId/tags", requireAuth, requireOrganization, async (req,
 router.delete("/users/:userId/tags/:tagId", requireAuth, requireOrganization, async (req, res) => {
   const userId = req.params.userId as string;
   const tagId = req.params.tagId as string;
+  if (!MANAGER_ROLES.includes(req.user!.role as any)) { res.status(403).json(SO_GESTAO_MEXE_EM_TAG); return; }
+  if (!(await pessoaDaMinhaOrganizacao(req, userId))) { res.status(404).json({ error: "Pessoa não encontrada" }); return; }
   try {
     const removed = await db.transaction(async (tx) => {
       const before = await tx.select().from(userTagsTable)

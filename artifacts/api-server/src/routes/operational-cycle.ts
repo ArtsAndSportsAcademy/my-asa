@@ -426,11 +426,16 @@ router.get("/panel-indicators", requireAuth, requireOrganization, async (req, re
     const eligible = new Set(dia.pessoas.filter((person) => !allowedAreas || (person.areaId && allowedAreas.has(person.areaId))).map((person) => person.id));
     const invited = [...new Set(dia.blocos.flatMap((block) => block.pessoaIds).filter((id) => eligible.has(id)))];
     expected += invited.length;
+    // O check-in grava uma linha por pessoa E por atividade (3 blocos = 3 linhas). Contar linha dava "11 faltas" para 6 pessoas e
+    // "chegou" acima do total. Aqui conta pessoa: chegou quem tem alguma linha de chegada (no horário ou atrasado), e só é falta
+    // quem não chegou em nenhuma.
     const rows = await db.select().from(dayCheckInsTable).where(eq(dayCheckInsTable.scaleId, dia.escala.id));
-    for (const row of rows.filter((row) => eligible.has(row.userId))) {
-      if (row.status === "CHECKED_IN") checkedIn++;
-      else if (row.status === "LATE") late++;
-      else if (row.status === "ABSENT" || row.status === "EXCUSED") absent++;
+    const porPessoa = new Map<string, Set<string>>();
+    for (const row of rows.filter((row) => eligible.has(row.userId))) porPessoa.set(row.userId, (porPessoa.get(row.userId) ?? new Set()).add(row.status));
+    for (const estados of porPessoa.values()) {
+      const chegou = estados.has("CHECKED_IN") || estados.has("LATE");
+      if (chegou) { checkedIn++; if (estados.has("LATE")) late++; }
+      else if (estados.has("ABSENT") || estados.has("EXCUSED")) absent++;
     }
   }
   // Vagas não podem escapar do recorte: o Livro aponta para a Escala do local,

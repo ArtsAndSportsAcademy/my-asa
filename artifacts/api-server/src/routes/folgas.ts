@@ -24,14 +24,25 @@ import { listAreaLocalScopes } from "../services/area-local-scope.js";
 
 const router: IRouter = Router();
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
+// A Direção só lê a operação (decisão registrada no AGENTS.md): o Mapa do mês e os Grupos passam a abrir para ela, sem editar.
+const READ_ROLES = [...MANAGER_ROLES, "DIR"];
+const SO_GERENCIA = { error: "Forbidden", message: "Folga é marcada pela Supervisão da área da pessoa e pela Administração." };
+const TIPOS_DE_FOLGA = ["DAY_OFF", "NO_SHOW", "RECESSO", "AFASTAMENTO", "RESTRICAO", "OUTRO"];
+/** Data de verdade (2026-11-31 não existe): antes, uma data assim chegava ao banco e a tela recebia "erro interno". */
+const dataReal = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(`${v}T12:00:00Z`)) && new Date(`${v}T12:00:00Z`).toISOString().slice(0, 10) === v;
+const tipoDeFolgaValido = (v: unknown) => v === null || v === undefined || v === "" || (typeof v === "string" && TIPOS_DE_FOLGA.includes(v));
+const FRASE_TIPO = `Tipo de folga inválido. Use um destes: ${TIPOS_DE_FOLGA.join(", ")}.`;
 export type FolgaMutationExecutor = Pick<typeof db, "insert" | "update">;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function offsetDate(date: string, days: number): string {
-  const d = new Date(date + "T00:00:00Z");
+  // Meio-dia em UTC e sem conversão de fuso: a data é só um dia do calendário. Antes, 00:00 UTC convertido para o horário de
+  // Brasília caía na véspera, então "dia seguinte" devolvia o MESMO dia e "dia anterior" devolvia dois dias antes. Marcar ou
+  // limpar um dia dentro de uma folga de vários dias deixava pedaços errados e até folgas com o fim antes do começo.
+  const d = new Date(date + "T12:00:00Z");
   d.setUTCDate(d.getUTCDate() + days);
-  return operationalDate(d);
+  return d.toISOString().slice(0, 10);
 }
 
 /**
@@ -66,7 +77,7 @@ async function validateManagerScope(
   operationId: string,
   targetUserId?: string
 ): Promise<string | null> {
-  if (user.role === "ADMIN") {
+  if (user.role === "ADMIN" || user.role === "DIR") {
     const [op] = await db
       .select({ id: operationsTable.id })
       .from(operationsTable)
@@ -365,8 +376,8 @@ router.get("/folgas/grid", requireAuth, requireOrganization, async (req, res) =>
   const user = req.user!;
   const { operationId, year, month } = req.query as Record<string, string>;
 
-  if (!MANAGER_ROLES.includes(user.role)) {
-    res.status(403).json({ error: "Forbidden" });
+  if (!READ_ROLES.includes(user.role)) {
+    res.status(403).json(SO_GERENCIA);
     return;
   }
 
@@ -509,7 +520,7 @@ router.get("/folgas/grid", requireAuth, requireOrganization, async (req, res) =>
 
     // Quem pode ser alterado por quem está olhando (a tela trava as outras linhas).
     const scopes = user.role === "ADMIN" ? [] : await listAreaLocalScopes(user.sub, user.organizationId);
-    const canEdit = (m: (typeof members)[number]) => user.role === "ADMIN" || (m.userId !== user.sub && inTeam(scopes, m));
+    const canEdit = (m: (typeof members)[number]) => user.role === "ADMIN" || (user.role !== "DIR" && m.userId !== user.sub && inTeam(scopes, m));
     const result = members.map((m) => {
       const days = daysMap[m.userId] ?? {};
       const totals: Record<string, number> = {
@@ -549,7 +560,7 @@ async function monthPublication(operationId: string, yr: number, mo: number) {
 router.post("/folgas/grid/publicar", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger(LOG_DOMAIN.FOLGAS, req.requestId, req.correlationId);
   const user = req.user!;
-  if (!MANAGER_ROLES.includes(user.role)) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!MANAGER_ROLES.includes(user.role)) { res.status(403).json(SO_GERENCIA); return; }
   const { operationId, year, month } = req.body as { operationId?: string; year?: number; month?: number };
   if (!operationId || !year || !month || month < 1 || month > 12) { res.status(400).json({ error: "Bad Request", message: "operationId, year e month são obrigatórios" }); return; }
   const scopeErr = await validateManagerScope(user, operationId);
@@ -611,7 +622,7 @@ router.post("/folgas/grid/toggle", requireAuth, requireOrganization, async (req,
   const user = req.user!;
 
   if (!MANAGER_ROLES.includes(user.role)) {
-    res.status(403).json({ error: "Forbidden" });
+    res.status(403).json(SO_GERENCIA);
     return;
   }
 
@@ -623,6 +634,8 @@ router.post("/folgas/grid/toggle", requireAuth, requireOrganization, async (req,
     res.status(400).json({ error: "Bad Request", message: "userId, operationId e date são obrigatórios" });
     return;
   }
+  if (!dataReal(date)) { res.status(400).json({ error: "Bad Request", message: "Escolha uma data que exista (AAAA-MM-DD)." }); return; }
+  if (!tipoDeFolgaValido(type)) { res.status(400).json({ error: "Bad Request", message: FRASE_TIPO }); return; }
 
   const scopeErr = await validateManagerScope(user, operationId, userId);
   if (scopeErr) { res.status(403).json({ error: "Forbidden", message: scopeErr }); return; }
@@ -795,7 +808,7 @@ router.post("/folgas/grid/bulk", requireAuth, requireOrganization, async (req, r
   const user = req.user!;
 
   if (!MANAGER_ROLES.includes(user.role)) {
-    res.status(403).json({ error: "Forbidden" });
+    res.status(403).json(SO_GERENCIA);
     return;
   }
 
@@ -812,17 +825,21 @@ router.post("/folgas/grid/bulk", requireAuth, requireOrganization, async (req, r
     return;
   }
 
+  // Dias repetidos viram um só; data que não existe e tipo inventado recusam com frase (antes: "erro interno").
+  if (!dates.every(dataReal)) { res.status(400).json({ error: "Bad Request", message: "Há dia que não existe na lista. Use datas no formato AAAA-MM-DD." }); return; }
+  if (!tipoDeFolgaValido(type)) { res.status(400).json({ error: "Bad Request", message: FRASE_TIPO }); return; }
+  if (new Set(dates).size > 93) { res.status(400).json({ error: "Bad Request", message: "Escolha até 93 dias por vez." }); return; }
   const recusa = await recusaDeFolgaEmLote(user, operationId, pessoas);
   if (recusa) { res.status(403).json({ error: "Forbidden", message: recusa }); return; }
 
   try {
     const motivoDoLote = typeof (req.body as { motivo?: unknown }).motivo === "string" ? (req.body as { motivo: string }).motivo.trim() || null : null;
     await db.transaction(async (tx) => {
-      await aplicarFolgasEmLote(tx, { user: { sub: user.sub, organizationId: user.organizationId }, operationId, pessoas, dates, type: type ?? null, motivo: motivoDoLote });
+      await aplicarFolgasEmLote(tx, { user: { sub: user.sub, organizationId: user.organizationId }, operationId, pessoas, dates: [...new Set(dates)], type: type ?? null, motivo: motivoDoLote });
     });
 
     log.info({ pessoas: pessoas.length, count: dates.length, type: type ?? "clear" }, "bulk de folgas aplicado");
-    res.json({ ok: true, processed: dates.length * pessoas.length, dias: dates.length, pessoas: pessoas.length });
+    res.json({ ok: true, processed: new Set(dates).size * pessoas.length, dias: new Set(dates).size, pessoas: pessoas.length });
   } catch (err) {
     log.error({ err }, "erro ao aplicar bulk de folgas");
     res.status(500).json({ error: "Internal Server Error" });
@@ -872,7 +889,7 @@ async function grupoEscopoBloqueio(user: { role: string; organizationId: string;
 // quais o usuário pode editar (a Supervisão só mexe nos grupos da própria equipe).
 router.get("/folgas/grupos", requireAuth, requireOrganization, async (req, res) => {
   const user = req.user!;
-  if (!MANAGER_ROLES.includes(user.role)) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!READ_ROLES.includes(user.role)) { res.status(403).json(SO_GERENCIA); return; }
   const operationId = typeof req.query.operationId === "string" ? req.query.operationId : "";
   if (!operationId) { res.status(400).json({ error: "Bad Request", message: "operationId é obrigatório" }); return; }
   const scopeErr = await validateManagerScope(user, operationId);
@@ -907,7 +924,7 @@ router.get("/folgas/grupos", requireAuth, requireOrganization, async (req, res) 
 router.post("/folgas/grupos", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger(LOG_DOMAIN.FOLGAS, req.requestId, req.correlationId);
   const user = req.user!;
-  if (!MANAGER_ROLES.includes(user.role)) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!MANAGER_ROLES.includes(user.role)) { res.status(403).json(SO_GERENCIA); return; }
   const { operationId, nome, pessoaIds, tipo } = req.body as { operationId?: string; nome?: string; pessoaIds?: string[]; tipo?: string };
   const quando = quandoDoGrupo(req.body as Record<string, unknown>);
   const nomeTrim = typeof nome === "string" ? nome.trim() : "";
@@ -944,7 +961,7 @@ router.post("/folgas/grupos", requireAuth, requireOrganization, async (req, res)
 router.patch("/folgas/grupos/:id", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger(LOG_DOMAIN.FOLGAS, req.requestId, req.correlationId);
   const user = req.user!;
-  if (!MANAGER_ROLES.includes(user.role)) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!MANAGER_ROLES.includes(user.role)) { res.status(403).json(SO_GERENCIA); return; }
   const [grupo] = await db.select().from(folgaGruposTable).where(eq(folgaGruposTable.id, String(req.params.id))).limit(1);
   if (!grupo) { res.status(404).json({ error: "Not Found" }); return; }
 
@@ -987,7 +1004,7 @@ router.patch("/folgas/grupos/:id", requireAuth, requireOrganization, async (req,
 router.delete("/folgas/grupos/:id", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger(LOG_DOMAIN.FOLGAS, req.requestId, req.correlationId);
   const user = req.user!;
-  if (!MANAGER_ROLES.includes(user.role)) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!MANAGER_ROLES.includes(user.role)) { res.status(403).json(SO_GERENCIA); return; }
   const [grupo] = await db.select().from(folgaGruposTable).where(eq(folgaGruposTable.id, String(req.params.id))).limit(1);
   if (!grupo) { res.status(404).json({ error: "Not Found" }); return; }
   const bloqueio = await grupoEscopoBloqueio(user, grupo.operationId, grupo.pessoaIds);
@@ -1011,7 +1028,7 @@ router.delete("/folgas/grupos/:id", requireAuth, requireOrganization, async (req
 router.post("/folgas/grupos/:id/restaurar", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger(LOG_DOMAIN.FOLGAS, req.requestId, req.correlationId);
   const user = req.user!;
-  if (!MANAGER_ROLES.includes(user.role)) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!MANAGER_ROLES.includes(user.role)) { res.status(403).json(SO_GERENCIA); return; }
   const [grupo] = await db.select().from(folgaGruposTable).where(eq(folgaGruposTable.id, String(req.params.id))).limit(1);
   if (!grupo) { res.status(404).json({ error: "Not Found" }); return; }
   const bloqueio = await grupoEscopoBloqueio(user, grupo.operationId, grupo.pessoaIds);
@@ -1035,7 +1052,7 @@ router.post("/folgas/grupos/:id/restaurar", requireAuth, requireOrganization, as
 router.post("/folgas/grid/repeat", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger(LOG_DOMAIN.FOLGAS, req.requestId, req.correlationId);
   const user = req.user!;
-  if (!MANAGER_ROLES.includes(user.role)) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!MANAGER_ROLES.includes(user.role)) { res.status(403).json(SO_GERENCIA); return; }
   const { operationId, year, month } = req.body as { operationId?: string; year?: number; month?: number };
   if (!operationId || !year || !month || month < 1 || month > 12) { res.status(400).json({ error: "Bad Request", message: "operationId, year e month são obrigatórios" }); return; }
   const scopeErr = await validateManagerScope(user, operationId);
@@ -1208,7 +1225,7 @@ router.patch("/folgas/:id", requireAuth, requireOrganization, async (req, res) =
   const id = req.params.id as string;
 
   if (!MANAGER_ROLES.includes(user.role)) {
-    res.status(403).json({ error: "Forbidden" });
+    res.status(403).json(SO_GERENCIA);
     return;
   }
 
@@ -1263,7 +1280,7 @@ router.post("/folgas/:id/cancelar", requireAuth, requireOrganization, async (req
   const id = req.params.id as string;
 
   if (!MANAGER_ROLES.includes(user.role)) {
-    res.status(403).json({ error: "Forbidden" });
+    res.status(403).json(SO_GERENCIA);
     return;
   }
 
