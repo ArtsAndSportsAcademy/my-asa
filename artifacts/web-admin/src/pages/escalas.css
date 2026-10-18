@@ -33,3 +33,29 @@
 
 /* No computador, o botão redondo da ASA fica no canto de baixo e cobria o último botão da barra do rodapé ("Gerar o mês"). */
 @media(min-width:721px){.esc-pad{padding-right:104px!important}}
+
+/* 18/10: "Por pessoa" no telefone — um cartão por pessoa, com os blocos em ordem de horário. */
+.esc-cartoes{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.esc-cartao{border:1px solid #ddd6ee;border-radius:12px;background:#fff;overflow:hidden}
+.esc-cartao-topo{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #eae5f5}
+.esc-cartao-blocos{list-style:none;margin:0;padding:0}
+.esc-cartao-bloco{display:flex;align-items:flex-start;gap:10px;padding:9px 12px;border-bottom:1px solid #f3f0fa}
+.esc-cartao-bloco:last-child{border-bottom:0}
+.esc-cartao-hora{flex:none;width:52px;display:flex;flex-direction:column;font:700 12px 'JetBrains Mono',monospace;color:#3d3559;padding-top:6px}
+.esc-cartao-hora small{font-size:11px;font-weight:600;color:#8a84a0}
+.esc-cartao-vazio{margin:0;padding:12px;font-size:12.5px;color:#6b6482;text-align:center;list-style:none}
+
+/* 18/10: menu "Mais" do rodapé. Abre para cima; no telefone é uma folha acima da barra de baixo. */
+.esc-mais{position:relative}
+.esc-mais-botao{min-height:44px}
+.esc-mais-fundo{position:fixed;inset:0;z-index:48;border:0;background:transparent;cursor:default}
+.esc-mais-menu{position:absolute;right:0;bottom:calc(100% + 8px);z-index:49;min-width:220px;display:flex;flex-direction:column;padding:6px;border:1px solid #ddd6ee;border-radius:12px;background:#fff;box-shadow:0 14px 34px -14px rgba(40,20,90,.5)}
+.esc-mais-item,.esc-mais-fechar{display:flex;align-items:center;min-height:44px;padding:0 14px;border:0;border-radius:8px;background:none;font:700 13px Manrope,sans-serif;color:#3d3559;text-decoration:none;cursor:pointer;text-align:left}
+.esc-mais-item:hover,.esc-mais-item:focus-visible{background:#f6f0ff;color:#5b23c9}
+.esc-mais-item:disabled{opacity:.45;cursor:default}
+.esc-mais-fechar{display:none}
+@media(max-width:720px){
+  .esc-mais-fundo{background:rgba(28,20,64,.35)}
+  .esc-mais-menu{position:fixed;left:12px;right:12px;bottom:calc(78px + env(safe-area-inset-bottom,0px));max-height:60vh;overflow:auto}
+  .esc-mais-fechar{display:flex;justify-content:center;margin-top:4px;border:1px solid #e6e1f2;color:#6b6482}
+}

@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
+import { type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { X } from "lucide-react";
 import { ApiError, customFetch } from "@workspace/api-client-react";
@@ -352,8 +352,8 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       <button type="button" className="esc-hit" aria-label="Dia anterior" onClick={() => { setDate(addDays(date, -1)); setCal(false); }} style={css("width:30px;height:30px;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:13px;cursor:pointer")}>‹</button>
       <button type="button" className="esc-hit" aria-label="Próximo dia" onClick={() => { setDate(addDays(date, 1)); setCal(false); }} style={css("width:30px;height:30px;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:13px;cursor:pointer")}>›</button>
     </div>
-    <div style={css("display:flex;flex-direction:column;gap:3px;flex:none")}>
-      <div style={css("display:flex;align-items:baseline;gap:9px;white-space:nowrap;flex-wrap:wrap")}>
+    <div style={css("display:flex;flex-direction:column;gap:3px;flex:0 1 auto;min-width:0;max-width:100%")}>
+      <div style={css("display:flex;align-items:baseline;gap:2px 9px;flex-wrap:wrap")}>
         <span style={css("font-family:Outfit,sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.02em;white-space:nowrap")}>{WEEKDAY_LONG[weekdayOf(date)]}</span>
         <span style={css("font-size:13.5px;color:#5b5473;font-weight:500;white-space:nowrap")}>{fullDate(date)}</span>
         <span style={css("font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:#f3ebff;color:#6C2BF2;")}>{relOf(date)}</span>
@@ -438,6 +438,21 @@ function Calendario({ date, onPick }: { date: string; onPick: (d: string) => voi
   </div>;
 }
 
+/** Tela de telefone (até 640 px): a grade de pessoas × horários não cabe, então vira um cartão por pessoa. */
+function useTelefone() {
+  const consulta = "(max-width: 640px)";
+  const [telefone, setTelefone] = useState(() => typeof window !== "undefined" && Boolean(window.matchMedia?.(consulta).matches));
+  useEffect(() => {
+    const mq = window.matchMedia?.(consulta);
+    if (!mq) return;
+    const aoMudar = () => setTelefone(mq.matches);
+    aoMudar();
+    mq.addEventListener("change", aoMudar);
+    return () => mq.removeEventListener("change", aoMudar);
+  }, []);
+  return telefone;
+}
+
 /* ---------- aba Escala: grade pessoas × horários ---------- */
 function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onRemoveManual, onEditManual, onFolgaResolvida }: { dia: Dia; canEdit: boolean; editableAreaIds: string[] | null; onAdjust: (bloco: Bloco, mudancas: { userId: string; action: "ADICIONAR" | "REMOVER" }[], motivo?: string) => Promise<void>; onRemoveManual?: (allocationIds: string[]) => Promise<void>; onEditManual?: (bloco: Bloco) => void; onFolgaResolvida?: (userId: string) => Promise<void> }) {
   const [view, setView] = useState<"pessoa" | "atividade">(() => typeof window !== "undefined" && window.matchMedia?.("(max-width: 640px)").matches ? "atividade" : "pessoa");
@@ -446,6 +461,7 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onRemoveManual, o
   const [ajustando, setAjustando] = useState<Bloco | null>(null);
   const [confirmarGrade, setConfirmarGrade] = useState<{ titulo: string; texto: string; acao: string; onSim: () => void } | null>(null);
   const [tirando, setTirando] = useState("");
+  const telefone = useTelefone();
   const cols =dia.pessoas.filter((p) => team === "todos" || p.areaId === team);
   const vazios = dia.blocos.filter((b) => b.vazio);
   const faixas = useMemo(() => {
@@ -476,12 +492,12 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onRemoveManual, o
     return [...porPar.values()].sort((x, y) => x.a.inicio.localeCompare(y.a.inicio) || y.pessoas.length - x.pessoas.length);
   }, [conflitos]);
 
-  const blockEl = (b: Bloco, extra = "") => {
+  const blockEl = (b: Bloco, extra = "", semHora = false) => {
     const tone = toneOf(b);
     const inner = <>
       {b.dailyBookId && <span title={`Livro do Dia · ${b.dailyBookStatus ?? ""}`} style={css("width:6px;height:6px;border-radius:50%;flex:none;background:" + (b.dailyBookStatus === "DRAFT" ? "#B06E00" : "#0E7F76") + ";")}/>}
       <span style={css("overflow:hidden;text-overflow:ellipsis")}>{textoDoBloco(b)}</span>
-      {b.fim && b.regra !== "livro" && <span style={css("font-family:'JetBrains Mono',monospace;font-size:11px;color:" + tone.fg + ";opacity:.75;margin-left:auto;")}>{faixa(b)}</span>}
+      {!semHora && b.fim && b.regra !== "livro" && <span style={css("font-family:'JetBrains Mono',monospace;font-size:11px;color:" + tone.fg + ";opacity:.75;margin-left:auto;")}>{faixa(b)}</span>}
     </>;
     return b.dailyBookId
       ? <Link key={b.key} href="/livro-do-dia" title="Abrir no Livro do Dia" style={css(blockStyle(tone, "cursor:pointer;text-decoration:none;" + extra))}>{inner}</Link>
@@ -572,7 +588,33 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onRemoveManual, o
     {!dia.programacao && <div style={css("padding:16px;text-align:center;font-size:12.5px;color:#6b6482;background:#fff;border:1px dashed #ddd6ee;border-radius:12px")}>{`${dia.location.name} não tem Programação vigente para ${shortDate(dia.date)} — a grade mostra só os Livros do Dia e as entradas manuais.`}</div>}
 
     <div style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top left", width: `${10000 / zoom}%` }}>
-      {view === "pessoa" ? <div className="esc-scroll" tabIndex={0} style={css("border:1px solid #ddd6ee;border-radius:12px;overflow:auto;background:#fff;")}>
+      {view === "pessoa" && telefone ? <ul className="esc-cartoes" aria-label="Escala por pessoa">
+        {cols.map((p) => {
+          const away = p.folga ? FOLGA[p.folga] ?? FOLGA.OUTRO : null;
+          const lista = blocosDe(p.id).sort((a, b) => a.inicio.localeCompare(b.inicio) || (a.fim ?? "").localeCompare(b.fim ?? ""));
+          const pode = canEdit && (editableAreaIds === null || (p.areaId !== null && editableAreaIds.includes(p.areaId)));
+          return <li key={p.id} className="esc-cartao">
+            <header className="esc-cartao-topo" style={{ background: away ? away.tone.bg : "#f5f3fb" }}>
+              <span aria-hidden="true" style={css("width:30px;height:30px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#fff;" + (away ? "background:#c8c1dd;" : "background:linear-gradient(135deg,#8b5cf6,#3b45d9);"))}>{initials(p.name)}</span>
+              <div style={css("display:flex;flex-direction:column;gap:1px;min-width:0")}>
+                <strong style={css("font-size:13.5px;color:#2b2545;overflow-wrap:anywhere")}>{p.name}</strong>
+                <span style={css("font-size:12px;" + (away ? "font-weight:700;color:" + away.tone.fg : "color:#6b6482"))}>{away ? `${away.label} — dia todo` : `${p.areaName ?? "sem área"} · ${plural(lista.length, "bloco", "blocos")}`}</span>
+              </div>
+            </header>
+            {!away && (lista.length ? <ul className="esc-cartao-blocos">
+              {lista.map((b) => <li key={b.key} className="esc-cartao-bloco">
+                <span className="esc-cartao-hora">{b.fim && b.regra !== "livro" ? <>{b.inicio}<small>{b.fim}</small></> : b.inicio}</span>
+                <div style={css("flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px")}>
+                  {blockEl(b, "white-space:normal;max-width:100%;" + (emConflito.has(`${p.name}|${b.key}`) ? "box-shadow:0 0 0 1.5px #C2453C inset;" : ""), true)}
+                  {emConflito.has(`${p.name}|${b.key}`) && <span style={css("font-size:11.5px;font-weight:700;color:#C2453C")}>Cruza com outro bloco dela</span>}
+                  {pode && b.regra !== "ninguem" && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setAjustando(b)} aria-label={`Ajustar ${textoDoBloco(b)}`}>Ajustar</button>}
+                </div>
+              </li>)}
+            </ul> : <p className="esc-cartao-vazio">Sem blocos neste dia.</p>)}
+          </li>;
+        })}
+        {!cols.length && <li className="esc-cartao-vazio">{team === "todos" ? "Ninguém no elenco deste local." : "Ninguém deste grupo neste local."}</li>}
+      </ul> : view === "pessoa" ? <div className="esc-scroll" tabIndex={0} style={css("border:1px solid #ddd6ee;border-radius:12px;overflow:auto;background:#fff;")}>
         <table style={css("border-collapse:separate;border-spacing:0;width:100%;font-size:12.5px")}>
           <thead><tr>
             <th style={css("position:sticky;left:0;z-index:2;width:118px;min-width:118px;" + MONO_TH)}>Horário</th>
@@ -793,6 +835,37 @@ function AjusteCelulaDialog({ bloco, pessoas, editableAreaIds, onClose, onAdjust
   </div></div>;
 }
 
+type ItemDoMais = { key: string; label: string; href?: string; onClick?: () => void; disabled?: boolean };
+
+/** Menu "Mais" do rodapé: abre para cima (o rodapé fica embaixo); no telefone vira uma folha acima da barra de baixo, com "Fechar". */
+function MenuMais({ itens }: { itens: ItemDoMais[] }) {
+  const [aberto, setAberto] = useState(false);
+  const botao = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  const fechar = useCallback(() => { setAberto(false); botao.current?.focus(); }, []);
+  useFecharComEsc(fechar, aberto);
+  useEffect(() => { if (aberto) menu.current?.querySelector<HTMLElement>("[role=menuitem]:not([disabled])")?.focus(); }, [aberto]);
+  const setas = (e: ReactKeyboardEvent) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    e.preventDefault();
+    const lista = [...(menu.current?.querySelectorAll<HTMLElement>("[role=menuitem]:not([disabled])") ?? [])];
+    const i = lista.indexOf(document.activeElement as HTMLElement);
+    lista[(i + (e.key === "ArrowDown" ? 1 : -1) + lista.length) % lista.length]?.focus();
+  };
+  return <div className="esc-mais">
+    <button ref={botao} type="button" className="esc-hit esc-mais-botao" aria-haspopup="menu" aria-expanded={aberto} onClick={() => setAberto((v) => !v)} style={css(btn("ghost"))}>Mais ▾</button>
+    {aberto && <>
+      <button type="button" className="esc-mais-fundo" tabIndex={-1} aria-label="Fechar o menu" onClick={fechar}/>
+      <div ref={menu} className="esc-mais-menu" role="menu" aria-label="Mais ações da escala" onKeyDown={setas}>
+        {itens.map((i) => i.href
+          ? <Link key={i.key} href={i.href} role="menuitem" className="esc-mais-item">{i.label}</Link>
+          : <button key={i.key} type="button" role="menuitem" className="esc-mais-item" disabled={i.disabled} onClick={() => { setAberto(false); i.onClick?.(); }}>{i.label}</button>)}
+        <button type="button" className="esc-mais-fechar" onClick={fechar}>Fechar</button>
+      </div>
+    </>}
+  </div>;
+}
+
 /* ---------- rodapé: áreas prontas e publicação ---------- */
 // O último local escolhido fica guardado neste aparelho; se ele sumir da lista, volta ao primeiro.
 const LOCAL_KEY = "myasa-escalas-local";
@@ -809,8 +882,10 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, b
   const isMem = role === "mem" || onMinha, isDir = role === "dir", isAdm = role === "adm";
   let note = "";
   const actions: ReactNode[] = [];
+  // Ações de apoio ficam no menu "Mais"; no rodapé sobra só a ação principal (gerar, marcar pronta, publicar).
+  const apoio: ItemDoMais[] = [];
   // Atalhos do desenho 15: folga e troca moram em Folgas e solicitações; aqui só levam até lá.
-  if (!isMem && !isDir && tab === "escala") actions.push(<Link key="folga" href="/folgas" className="esc-hit" style={css(btn("ghost") + ";text-decoration:none")}>Folga</Link>, <Link key="troca" href="/solicitacoes" className="esc-hit" style={css(btn("ghost") + ";text-decoration:none")}>Registrar troca</Link>);
+  if (!isMem && !isDir && tab === "escala") apoio.push({ key: "folga", label: "Folga", href: "/folgas" }, { key: "troca", label: "Registrar troca", href: "/solicitacoes" });
   if (isMem) {
     const minhas = minha?.escalas?.length ? minha.escalas : minha?.escalaId ? [{ confirmada: minha.confirmada, confirmedAt: minha.confirmedAt }] : [];
     const pendente = minhas.some((e) => !e.confirmada);
@@ -826,14 +901,14 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, b
     else if (published) note = `Publicada${dia.escala.publishedAt ? ` às ${hhmm(dia.escala.publishedAt)}` : ""} · ${dia.areas.length} ${dia.areas.length === 1 ? "área" : "áreas"} · a mesma escalação está no Livro do Dia`;
     else note = `Rascunho · ${prontas.length} de ${dia.areas.length} áreas prontas${faltam.length ? ` · falta ${faltam.map((a) => a.name).join(", ")}` : ""} · publica a Administração`;
     // O mês inteiro de uma vez, em rascunho: a Administração confere depois e publica dia a dia.
-    if (tab === "escala" && isAdm && onRegras) actions.push(<button key="regras" type="button" className="esc-hit" disabled={saving} onClick={onRegras} style={css(btn("ghost"))}>Regras do local</button>);
-    if (tab === "escala" && isAdm && onGerarMes) actions.push(<button key="gerar-mes" type="button" className="esc-hit" disabled={saving} onClick={onGerarMes} style={css(btn("ghost"))}>Gerar o mês</button>);
+    if (tab === "escala" && isAdm && onRegras) apoio.push({ key: "regras", label: "Regras do local", onClick: onRegras, disabled: saving });
+    if (tab === "escala" && isAdm && onGerarMes) apoio.push({ key: "gerar-mes", label: "Gerar o mês", onClick: onGerarMes, disabled: saving });
     if (tab === "escala" && isAdm && !dia.escala) actions.push(<button key="generate" type="button" className="esc-hit" disabled={saving} onClick={onGerar} style={css(btn("primary"))}>{busy === "gerar" ? "Gerando Escala e Livros…" : "Gerar Escala e Livros"}</button>);
     // Show que entrou na Programação depois da geração fica sem Livro: dá para gerar o que falta.
     const semLivro = dia.escala ? dia.blocos.filter((b) => b.regra === "livro" && !b.dailyBookId).length : 0;
     if (tab === "escala" && isAdm && semLivro > 0) actions.push(<button key="gerar-faltam" type="button" className="esc-hit" disabled={saving} onClick={onGerar} style={css(btn("primary"))}>{busy === "gerar" ? "Gerando…" : `Gerar ${semLivro === 1 ? "o Livro que falta" : `os ${semLivro} Livros que faltam`}`}</button>);
     // Atividade que só existe hoje (prova de figurino, reunião de última hora): não mexe no molde da Programação.
-    if (tab === "escala" && isAdm && dia.escala && onManual) actions.push(<button key="manual" type="button" className="esc-hit" disabled={saving} onClick={onManual} style={css(btn("ghost"))}>Atividade só de hoje</button>);
+    if (tab === "escala" && isAdm && dia.escala && onManual) apoio.push({ key: "manual", label: "Atividade só de hoje", onClick: onManual, disabled: saving });
     if (tab === "escala" && !isDir && !published) {
       // Quem cuida de mais de uma área marca todas de uma vez.
       const minhasPendentes = areasMinhas.map((id) => dia.areas.find((a) => a.id === id)).filter((a): a is Area => Boolean(a) && !a!.pronta);
@@ -864,7 +939,9 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, b
     <span style={css("font-size:12px;color:#6b6482")}>{note}</span>
     <span style={css("flex:1")}/>
     {/* Ações de apoio primeiro, à esquerda; a ação principal (gerar, marcar pronta, publicar) sempre por último, à direita. */}
-    <div style={css("display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-left:auto")}>{[...actions].sort((a, b) => Number(principais.has(String((a as { key?: string }).key))) - Number(principais.has(String((b as { key?: string }).key))))}</div>
+    <div style={css("display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;margin-left:auto")}>
+      {apoio.length > 0 && <MenuMais itens={apoio}/>}
+      {[...actions].sort((a, b) => Number(principais.has(String((a as { key?: string }).key))) - Number(principais.has(String((b as { key?: string }).key))))}</div>
   </footer>;
 }
 
@@ -1242,15 +1319,19 @@ function FormDialog({ title, fields = CAMPOS_MOLDE, inicial, nota, onClose, onSu
   useFecharComEsc(onClose);
   const [values, setValues] = useState<Record<string, string>>(inicial ?? {});
   const [error, setError] = useState("");
-  const submit = async (event: FormEvent) => { event.preventDefault(); try { await onSubmit(values); } catch (err) { setError(err instanceof ApiError && err.data && typeof (err.data as { error?: unknown }).error === "string" ? (err.data as { error: string }).error : "Não consegui salvar."); } };
+  const [salvando, setSalvando] = useState(false);
+  const submit = async (event: FormEvent) => { event.preventDefault(); if (salvando) return; setSalvando(true); setError(""); try { await onSubmit(values); } catch (err) { setError(err instanceof ApiError && err.data && typeof (err.data as { error?: unknown }).error === "string" ? (err.data as { error: string }).error : "Não consegui salvar."); } finally { setSalvando(false); } };
   return <div className="shows-dialog-backdrop"><div className="shows-dialog" role="dialog" aria-modal="true" aria-label={title}>
-    <header className="shows-dialog-header"><h2>{title}</h2><button onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
+    <header className="shows-dialog-header"><h2>{title}</h2><button type="button" onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
     <div className="shows-dialog-content"><form id="esc-form" onSubmit={submit} className="shows-form">
       {nota && <p style={css("margin:0 0 2px;font-size:12px;line-height:1.5;color:#5b5473")}>{nota}</p>}
       {fields.map((f) => <label key={f.name}>{f.label}<input required type={f.type} value={values[f.name] ?? ""} onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}/></label>)}
       {error && <p role="alert" style={css("font-size:12px;color:#a12c2c")}>{error}</p>}
     </form></div>
-    <footer className="shows-dialog-footer"><button form="esc-form" className="shows-primary">Salvar</button></footer>
+    <footer className="shows-dialog-footer">
+      <button type="button" onClick={onClose} className="shows-secondary">Cancelar</button>
+      <button form="esc-form" className="shows-primary" disabled={salvando}>{salvando ? "Salvando…" : "Salvar"}</button>
+    </footer>
   </div></div>;
 }
 
@@ -1266,14 +1347,18 @@ function BlocoDialog({ weekday, vocabulario, areas, shows, pessoas, onClose, onS
   // A mesma atividade costuma repetir em vários dias; começa no dia aberto e você marca os outros.
   const [dias, setDias] = useState<number[]>([weekday]);
   const [error, setError] = useState("");
+  const [salvando, setSalvando] = useState(false);
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (salvando) return;
     if (!dias.length) { setError("Escolha pelo menos um dia da semana."); return; }
+    setSalvando(true); setError("");
     try { await onSubmit({ weekday: dias[0]!, weekdays: dias, rotulo: rotulo.trim(), inicio, fim: fim || null, regra: regra as ProgBloco["regra"], showBookId: regra === "livro" ? showBookId || null : null, areaIds: regra === "area" ? areaIds : [], pessoaIds: regra === "pessoas" ? pessoaIds : [] }); }
     catch (err) { setError(err instanceof ApiError && err.data && typeof (err.data as { error?: unknown }).error === "string" ? (err.data as { error: string }).error : "Não consegui criar o bloco."); }
+    finally { setSalvando(false); }
   };
   return <div className="shows-dialog-backdrop"><div className="shows-dialog" role="dialog" aria-modal="true" aria-label="Novo bloco">
-    <header className="shows-dialog-header"><h2>Novo bloco</h2><button onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
+    <header className="shows-dialog-header"><h2>Novo bloco</h2><button type="button" onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
     <div className="shows-dialog-content"><form id="esc-bloco" onSubmit={submit} className="shows-form">
       <fieldset style={css("border:none;padding:0;margin:0;display:flex;flex-direction:column;gap:5px")}>
         <legend style={css("padding:0;font-size:11px;font-weight:700;color:#6b6482")}>Em quais dias</legend>
@@ -1292,7 +1377,10 @@ function BlocoDialog({ weekday, vocabulario, areas, shows, pessoas, onClose, onS
       {regra === "pessoas" && <fieldset style={css("border:none;padding:0;display:flex;flex-wrap:wrap;gap:7px;max-height:150px;overflow:auto")}>{pessoas.map((p) => { const on = pessoaIds.includes(p.id); return <button key={p.id} type="button" onClick={() => setPessoaIds(on ? pessoaIds.filter((x) => x !== p.id) : [...pessoaIds, p.id])} style={css(on ? chipOn : chipOff)}>{p.name}</button>; })}</fieldset>}
       {error && <p role="alert" style={css("font-size:12px;color:#a12c2c")}>{error}</p>}
     </form></div>
-    <footer className="shows-dialog-footer"><button form="esc-bloco" className="shows-primary">{dias.length > 1 ? `Criar em ${dias.length} dias` : "Criar bloco"}</button></footer>
+    <footer className="shows-dialog-footer">
+      <button type="button" onClick={onClose} className="shows-secondary">Cancelar</button>
+      <button form="esc-bloco" className="shows-primary" disabled={salvando}>{salvando ? "Criando…" : dias.length > 1 ? `Criar em ${dias.length} dias` : "Criar bloco"}</button>
+    </footer>
   </div></div>;
 }
 
