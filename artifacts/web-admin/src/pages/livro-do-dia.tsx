@@ -313,6 +313,9 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
     try {
       if (review) { setBooks(sampleShows.map((_, index) => loadReviewBook(`sample-book-${index}`) ?? sampleDailyBookFor(index))); return; }
       const result = await customFetch<{ dailyBooks: DailyBook[] }>(`/api/daily-book?date=${date}&incluirCancelados=1`);
+      if (minhaCarga !== cargaAtual.current) return;
+      // Exibir os cartões logo que a lista chega; no banco lento os detalhes podem demorar vários segundos.
+      setBooks(result.dailyBooks); setLoading(false);
       // O cartão de cada show precisa da hora (sessão) e de quantos foram convocados: vêm do detalhe.
       const detailed = await Promise.all(result.dailyBooks.map((b) => customFetch<{ dailyBook: DailyBook }>(`/api/daily-book/${b.id}`).then((r) => ({ ...b, ...r.dailyBook })).catch(() => b)));
       if (minhaCarga !== cargaAtual.current) return;
@@ -822,7 +825,7 @@ function HojeTab(props: {
       <span style={css("font-size:12.5px;line-height:1.55;color:var(--asa-ink-muted);max-width:92ch;text-wrap:pretty")}>Sem cena, sem mapa de palco e sem biblioteca de formações. O que existe é quem faz cada personagem hoje e o horário de chamada, quando houver. O botão de confirmar fecha o dia direto.</span>
     </div>}
 
-    {!soPers && !scenes.length && <div style={css(DASHED_NOTE)}>Este Livro do Dia nasceu sem cenas — confira o Livro do Show de origem em 13 Shows.</div>}
+    {!soPers && !scenes.length && <div style={css(DASHED_NOTE)}>Este Livro do Dia nasceu sem cenas — confira o Livro do Show de origem.</div>}
 
     {!soPers && openScene && <div style={css("display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap")}>
       <div className="ldd-shrink" style={css("flex:0 0 268px;display:flex;flex-direction:column;gap:8px;min-width:240px")}>
