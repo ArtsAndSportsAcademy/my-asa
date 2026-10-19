@@ -62,25 +62,25 @@ async function attachOperationIds(
   const roles = await db.query.userRolesTable.findMany({
     where: and(eq(userRolesTable.active, true), inArray(userRolesTable.userId, ids)),
   });
-  const [memberships, operations, areas] = await Promise.all([
-    db.select({
-      userId: teamMembershipsTable.userId,
-      startsAt: teamMembershipsTable.startsAt,
-      endsAt: teamMembershipsTable.endsAt,
-      scope: operationalGroupsTable.scope,
-      ownerOperationId: operationalGroupsTable.operationId,
-      coveredOperationId: groupOperationsTable.operationId,
-      teamStatus: operationalGroupsTable.status,
-    })
-      .from(teamMembershipsTable)
-      .innerJoin(operationalGroupsTable, eq(operationalGroupsTable.id, teamMembershipsTable.teamId))
-      .leftJoin(groupOperationsTable, eq(groupOperationsTable.groupId, operationalGroupsTable.id))
-      .where(and(eq(teamMembershipsTable.active, true), inArray(teamMembershipsTable.userId, ids))),
-    db.select({ id: operationsTable.id }).from(operationsTable)
-      .where(eq(operationsTable.organizationId, users[0]!.organizationId)),
-    db.select({ id: areasTable.id, name: areasTable.name }).from(areasTable)
-      .where(eq(areasTable.organizationId, users[0]!.organizationId)),
-  ]);
+  // Sequencial deliberado: esta função é chamada por várias requisições em paralelo (ADM, DIR, SUP, MEM),
+  // e rodar 3 consultas em Promise.all por requisição esgota o pool de 15 conexões do Supabase.
+  const memberships = await db.select({
+    userId: teamMembershipsTable.userId,
+    startsAt: teamMembershipsTable.startsAt,
+    endsAt: teamMembershipsTable.endsAt,
+    scope: operationalGroupsTable.scope,
+    ownerOperationId: operationalGroupsTable.operationId,
+    coveredOperationId: groupOperationsTable.operationId,
+    teamStatus: operationalGroupsTable.status,
+  })
+    .from(teamMembershipsTable)
+    .innerJoin(operationalGroupsTable, eq(operationalGroupsTable.id, teamMembershipsTable.teamId))
+    .leftJoin(groupOperationsTable, eq(groupOperationsTable.groupId, operationalGroupsTable.id))
+    .where(and(eq(teamMembershipsTable.active, true), inArray(teamMembershipsTable.userId, ids)));
+  const operations = await db.select({ id: operationsTable.id }).from(operationsTable)
+    .where(eq(operationsTable.organizationId, users[0]!.organizationId));
+  const areas = await db.select({ id: areasTable.id, name: areasTable.name }).from(areasTable)
+    .where(eq(areasTable.organizationId, users[0]!.organizationId));
   const opsByUser = new Map<string, Set<string>>();
   const supByUser = new Map<string, Set<string>>();
   const adminUsers = new Set<string>();

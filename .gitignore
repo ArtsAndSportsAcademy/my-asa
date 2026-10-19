@@ -63,3 +63,18 @@ Thumbs.db
 
 # Credenciais da empresa de teste: sorteadas em cada execução, nunca versionadas.
 *.local.json
+
+artifacts/web-admin/playwright-report/
+artifacts/web-admin/test-results/
+
+# Arquivos soltos da máquina de quem constrói o app: não fazem parte do código.
+.pnpm-store/
+.playwright-mcp/
+output/
+my-asa-main.zip
+Nuevo Documento de texto.txt
+artifacts/api-server/tests/.dist-r5/
+
+# Skills de assistente instaladas na máquina e configuração local do Claude.
+.agents/skills/
+.claude/

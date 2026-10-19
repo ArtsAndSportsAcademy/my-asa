@@ -79,12 +79,23 @@ const toMinutes = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number)
 export async function enqueueEscalaReminders(now = new Date(), organizationId?: string) {
   const date = operationalDate(now);
   const clock = clockMinutes(now);
-  const locations = await db.select({ id: locationsTable.id, organizationId: locationsTable.organizationId }).from(locationsTable)
+  // Pré-filtra: só locais que têm uma escala publicada cobrindo hoje. Sem o JOIN, o ciclo chamaria
+  // montarEscalaDoDia (6+ consultas) para cada local do banco — incluindo centenas de locais de testes
+  // antigos — e esgotaria o pool ou excederia o tempo limite.
+  const locations = await db.selectDistinct({ id: locationsTable.id, organizationId: locationsTable.organizationId })
+    .from(locationsTable)
+    .innerJoin(scalesTable, and(
+      eq(scalesTable.locationId, locationsTable.id),
+      inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]),
+      lte(scalesTable.periodStart, date),
+      gte(scalesTable.periodEnd, date),
+    ))
     .where(and(eq(locationsTable.closed, false), organizationId ? eq(locationsTable.organizationId, organizationId) : undefined));
   // Os locais não dependem um do outro: monta poucos por vez (o pooler é compartilhado). Por organização, a pergunta
   // "tem turno?" e a antecedência do lembrete são lidas uma vez só, mesmo com vários locais montando ao mesmo tempo.
   const temTurno = lembrarPorChave((orgId: string) => shiftsForDate(orgId, date));
   const antecedencia = lembrarPorChave(async (orgId: string) => (await regrasDaOrganizacao(orgId)).lembreteCheckinMin);
+  // limite=1: montarEscalaDoDia abre ~6 conexões por local; processar 3 ao mesmo tempo excede o pool.
   const porLocal = await emParalelo(locations, async (location) => {
     if ((await temTurno(location.organizationId)).length) return 0;
     // A Administração define a antecedência do lembrete nas regras da casa (15, 30 ou 60 min).
@@ -107,7 +118,7 @@ export async function enqueueEscalaReminders(now = new Date(), organizationId?: 
       entityType: "scale", entityId: day.escala!.id, actionUrl: APP_ROUTES.checkIn,
     }, now, { deduplicationKey: `escala-checkin:${day.escala!.id}:${date}:${pessoa}` })));
     return devidos.length;
-  });
+  }, 1);
   let enqueued = porLocal.reduce((soma, n) => soma + n, 0);
   const porOrganizacao = await emParalelo([...new Set(locations.map(location => location.organizationId))], async (orgId) => {
     if (!(await temTurno(orgId)).length) return 0;
@@ -122,7 +133,7 @@ export async function enqueueEscalaReminders(now = new Date(), organizationId?: 
       entityType: "shift", entityId: plan.shiftId, actionUrl: APP_ROUTES.checkIn,
     }, now, { deduplicationKey: `turno-checkin:${plan.shiftId}:${date}:${plan.userId}` })));
     return devidos.length;
-  });
+  }, 1);
   enqueued += porOrganizacao.reduce((soma, n) => soma + n, 0);
   return { enqueued, date };
 }

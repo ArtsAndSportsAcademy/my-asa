@@ -145,6 +145,10 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
     customFetch<{ locais: Local[] }>("/api/escalas/locais").then((r) => { setLocais(r.locais); setLocalId((prev) => prev || lembrarLocal(r.locais) || ""); }).catch(() => setError("Não consegui carregar os locais.")).finally(() => setLocaisProntos(true));
   }, [review, role]);
 
+  // Trocar de local ou de dia esvazia a grade na hora: sem isso, a Escala do local anterior ficava na tela
+  // por 2 a 3 segundos e dava para ajustar uma pessoa achando que era o outro local.
+  useEffect(() => { setDia(null); setMinha(null); }, [localId, date]);
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true); setError("");

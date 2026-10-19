@@ -3,11 +3,12 @@
  * Cobre: para quem o pedido vai (principal, participante, substituto; nunca quem só lê); responsabilidade sem dono vai
  * para a Administração, dizendo por quê; em grupo basta uma pessoa aceitar e as outras são avisadas; dois aceites ao
  * mesmo tempo dão uma tarefa só; recusa pede motivo e, quando todas recusam, quem pediu recebe os motivos; quem é de
- * fora não vê a caixa; cancelar pede motivo e avisa quem recebeu.
+ * fora não vê a caixa; cancelar pede motivo e avisa quem recebeu; criar responsabilidade e atribuir via HTTP
+ * (endpoints POST /responsibilities e POST /responsibilities/:id/assignments, incluindo 409 para segundo PRIMARY).
  */
 import http from "node:http";
 import { and, eq, inArray } from "drizzle-orm";
-import { db, historyEventsTable, notificationOutboxTable, operationsTable, organizationsTable, pool, responsibilitiesTable, responsibilityAssignmentsTable, responsibilityRequestRecipientsTable, responsibilityRequestsTable, taskStepsTable, tasksTable, userNotificationsTable, userRolesTable, usersTable } from "@workspace/db";
+import { areasTable, db, historyEventsTable, notificationOutboxTable, operationsTable, organizationsTable, pool, responsibilitiesTable, responsibilityAssignmentsTable, responsibilityRequestRecipientsTable, responsibilityRequestsTable, taskStepsTable, tasksTable, userNotificationsTable, userRolesTable, usersTable } from "@workspace/db";
 import app from "../src/application.js";
 import { signAccessToken } from "../src/lib/jwt.service.js";
 import { processNotificationOutbox } from "../src/services/notification-outbox.js";
@@ -25,6 +26,7 @@ async function run() {
   const resp = async (title: string, active = true) => (await db.insert(responsibilitiesTable).values({ orgId: org!.id, operationId: operation!.id, title, active }).returning())[0]!;
   const perucas = await resp("Perucas"), midias = await resp("Mídias"), semDono = await resp("Sem dono"), antiga = await resp("Antiga", false);
   let server: http.Server | null = null;
+  let areaHttp: { id: string } | undefined;
   try {
     await db.insert(userRolesTable).values([
       { userId: admin.id, operationId: operation!.id, role: "ADMIN", active: true },
@@ -135,6 +137,23 @@ async function run() {
     assert(cancelaSemMotivo.status === 400 && outraCancela.status === 403 && cancelou.status === 200, `só quem pediu cancela, e com motivo (${cancelaSemMotivo.status} ${outraCancela.status} ${cancelou.status})`);
     assert((await avisos(ana.id, "responsibility.request_cancelled", cancelarId)).length === 1, "quem tinha recebido o pedido é avisada do cancelamento");
 
+    // ── Criar responsabilidade e atribuir via HTTP ────────────────────────────────────
+    // Endpoint POST /responsibilities: requer areaId; cria e grava no Registro.
+    // Endpoint POST /responsibilities/:id/assignments: atribui membro; segundo PRIMARY → 409.
+    [areaHttp] = await db.insert(areasTable).values({ organizationId: org!.id, name: `${tag}_area_http`, active: true }).returning();
+    const criaResp = await adminApi("/responsibilities", { method: "POST", body: { title: "Figurinos HTTP", operationId: operation!.id, areaId: areaHttp!.id } });
+    const respHttpId: string = criaResp.json?.responsibility?.id;
+    assert(criaResp.status === 201 && !!respHttpId && criaResp.json?.responsibility?.title === "Figurinos HTTP", `ADM cria responsabilidade via HTTP (${criaResp.status})`);
+
+    const atribuiPrimary = await adminApi(`/responsibilities/${respHttpId}/assignments`, { method: "POST", body: { memberId: ana.id, role: "PRIMARY" } });
+    assert(atribuiPrimary.status === 201, `ADM atribui PRIMARY via HTTP (${atribuiPrimary.status})`);
+
+    const segundoPrimary = await adminApi(`/responsibilities/${respHttpId}/assignments`, { method: "POST", body: { memberId: bia.id, role: "PRIMARY" } });
+    assert(segundoPrimary.status === 409 && /principal/i.test(segundoPrimary.json?.error ?? ""), `segundo PRIMARY retorna 409 com frase (${segundoPrimary.status} ${segundoPrimary.json?.error ?? ""})`);
+
+    const membroCriaResp = await danApi("/responsibilities", { method: "POST", body: { title: "Membro não pode", operationId: operation!.id, areaId: areaHttp!.id } });
+    assert(membroCriaResp.status === 403, `Elenco não cria responsabilidade (${membroCriaResp.status})`);
+
     // ── Registro ────────────────────────────────────────────────────────────────────
     const registro = await db.select().from(historyEventsTable).where(eq(historyEventsTable.orgId, org!.id));
     const acoes = new Set(registro.map((evento) => evento.action));
@@ -153,8 +172,10 @@ async function run() {
     }
     if (ids.length) await db.delete(taskStepsTable).where(inArray(taskStepsTable.taskId, ids));
     await db.delete(tasksTable).where(eq(tasksTable.organizationId, org!.id));
-    await db.delete(responsibilityAssignmentsTable).where(inArray(responsibilityAssignmentsTable.responsibilityId, [perucas.id, midias.id, semDono.id, antiga.id]));
+    const todasResp = await db.select({ id: responsibilitiesTable.id }).from(responsibilitiesTable).where(eq(responsibilitiesTable.orgId, org!.id));
+    if (todasResp.length) await db.delete(responsibilityAssignmentsTable).where(inArray(responsibilityAssignmentsTable.responsibilityId, todasResp.map((r) => r.id)));
     await db.delete(responsibilitiesTable).where(eq(responsibilitiesTable.orgId, org!.id));
+    if (areaHttp?.id) await db.delete(areasTable).where(eq(areasTable.id, areaHttp.id));
     await db.delete(userRolesTable).where(inArray(userRolesTable.userId, userIds));
     await db.delete(usersTable).where(inArray(usersTable.id, userIds));
     await db.delete(operationsTable).where(eq(operationsTable.organizationId, org!.id));

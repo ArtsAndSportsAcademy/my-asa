@@ -3,10 +3,10 @@
  * convocação; marca a designação do Livro do Dia como em risco para que a
  * Supervisão cubra o mesmo slot que já conhece.
  */
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, gte, lte, ne } from "drizzle-orm";
 import {
   dailyBookAssignmentsTable, dailyBookCheckInVacanciesTable, dayCheckInsTable,
-  db, locationsTable,
+  db, locationsTable, scalesTable,
 } from "@workspace/db";
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
 import { operationalDate, OPERATIONAL_TIME_ZONE } from "../lib/operational-date.js";
@@ -36,10 +36,19 @@ export async function reconcileDueCheckIns(now = new Date(), organizationId?: st
   const shifts = await reconcileShiftCheckIns(now, organizationId);
   const date = operationalDate(now);
   const nowMinutes = clockMinutes(now);
-  const locations = await db.select({ id: locationsTable.id, organizationId: locationsTable.organizationId }).from(locationsTable)
+  // Pré-filtra: só locais que têm escala não arquivada cobrindo hoje. Sem o JOIN, processaria todos os
+  // locais não encerrados do banco — incluindo centenas de testes antigos — e excederia o tempo ou o pool.
+  const locations = await db.selectDistinct({ id: locationsTable.id, organizationId: locationsTable.organizationId })
+    .from(locationsTable)
+    .innerJoin(scalesTable, and(
+      eq(scalesTable.locationId, locationsTable.id),
+      ne(scalesTable.status, "ARCHIVED"),
+      lte(scalesTable.periodStart, date),
+      gte(scalesTable.periodEnd, date),
+    ))
     .where(and(eq(locationsTable.closed, false), organizationId ? eq(locationsTable.organizationId, organizationId) : undefined));
-  // Cada local tem a própria escala, o próprio Livro e os próprios check-ins: um não espera o outro. Poucos por vez,
-  // porque o pooler é compartilhado. Dentro do local, blocos e pessoas seguem em fila (a ordem do Registro não muda).
+  // limite=1: montarEscalaDoDia abre ~6 conexões por local; processar 3 ao mesmo tempo excede o pool.
+  // Dentro do local, blocos e pessoas seguem em fila (a ordem do Registro não muda).
   const temTurno = lembrarPorChave((orgId: string) => shiftsForDate(orgId, date));
   const porLocal = await emParalelo(locations, async (location) => {
     if ((await temTurno(location.organizationId)).length) return 0;
@@ -67,7 +76,7 @@ export async function reconcileDueCheckIns(now = new Date(), organizationId?: st
       }
     }
     return marcadosNoLocal;
-  });
+  }, 1);
   const marked = porLocal.reduce((soma, n) => soma + n, 0);
   return { marked, date, shiftsClosed: shifts.closed };
 }

@@ -69,6 +69,8 @@ export async function shiftPlans(orgId: string, date: string): Promise<ShiftPlan
     .innerJoin(locationsTable, eq(scalesTable.locationId, locationsTable.id))
     .where(and(eq(locationsTable.organizationId, orgId), eq(locationsTable.closed, false), inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]), lte(scalesTable.periodStart, activityDate), gte(scalesTable.periodEnd, activityDate)))));
   const pares = datas.flatMap((activityDate, i) => locaisPorData[i]!.map((place) => ({ activityDate, place })));
+  // limite=1: cada local abre ~3 consultas em paralelo internamente via montarEscalaDoDia;
+  // rodar mais de um local por vez excede o pool de 15 conexões do Supabase.
   const lidos = await emParalelo(pares, async ({ activityDate, place }) => {
     const aoVivo = await montarEscalaDoDia(orgId, place.id, activityDate, { publishedOnly: true });
     if (!aoVivo?.escala || !escalaPublicada(aoVivo.escala.status)) return null;
@@ -77,7 +79,7 @@ export async function shiftPlans(orgId: string, date: string): Promise<ShiftPlan
     const escalaId = aoVivo.escala.id;
     const [scale] = await db.select({ operationId: scalesTable.operationId, threshold: operationsTable.lateThresholdMinutes }).from(scalesTable).innerJoin(operationsTable, eq(scalesTable.operationId, operationsTable.id)).where(and(eq(scalesTable.id, escalaId), eq(operationsTable.organizationId, orgId)));
     return scale ? { day, escalaId, scale } : null;
-  });
+  }, 1);
   for (const [i, { activityDate, place }] of pares.entries()) {
     const lido = lidos[i];
     if (!lido) continue;
@@ -226,9 +228,19 @@ export async function answerShift(actor: ShiftActor, input: { date: string; shif
 
 /** Fecha sem resposta e atraso sem chegada, sem convertê-los em falta. */
 export async function reconcileShiftCheckIns(now = new Date(), organizationId?: string) {
-  const orgs = await db.select({ id: organizationsTable.id }).from(organizationsTable).where(organizationId ? eq(organizationsTable.id, organizationId) : undefined);
-  // Casas diferentes não dependem uma da outra. Dentro da casa, cada fechamento trava só a linha da própria pessoa,
-  // então pessoas diferentes fecham juntas (poucas por vez) e a mesma pessoa espera a sua vez na trava.
+  const date = operationalDate(now);
+  // Pré-filtra: só orgs que têm turno ativo hoje. Sem o JOIN, processaria todas as orgs do banco —
+  // incluindo centenas de testes antigos — e excederia o tempo ou o pool.
+  const orgs = await db.selectDistinct({ id: organizationsTable.id }).from(organizationsTable)
+    .innerJoin(shiftsTable, and(
+      eq(shiftsTable.organizationId, organizationsTable.id),
+      eq(shiftsTable.active, true),
+      lte(shiftsTable.effectiveFrom, date),
+      or(isNull(shiftsTable.effectiveTo), gte(shiftsTable.effectiveTo, date)),
+    ))
+    .where(organizationId ? eq(organizationsTable.id, organizationId) : undefined);
+  // limite=1: cada org abre múltiplas transações via emParalelo interno; processar 3 orgs ao mesmo tempo
+  // esgota o pool. Dentro da casa, fechamentos de pessoas diferentes ainda rodam em paralelo (limite padrão).
   const fechadosPorCasa = await emParalelo(orgs, async (org) => {
     // O aviso de atraso já gravado deve fechar mesmo se a escala publicada
     // for retirada depois do aviso; não depende da convocação ao vivo.
@@ -264,7 +276,7 @@ export async function reconcileShiftCheckIns(now = new Date(), organizationId?: 
       return 1;
     }));
     return [...fechadosAvisos, ...fechadosPlanos].reduce<number>((soma, n) => soma + n, 0);
-  });
+  }, 1);
   const closed = fechadosPorCasa.reduce((soma, n) => soma + n, 0);
   return { closed };
 }

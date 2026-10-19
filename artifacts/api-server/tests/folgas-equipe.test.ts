@@ -201,8 +201,9 @@ async function run() {
     if (server) await new Promise<void>((resolve) => server!.close(() => resolve()));
     await pool.query(`delete from history_events where actor_id = any($1::uuid[]) or mo_id in (select id from operational_changes where actor_id = any($1::uuid[]))`, [ids]);
     await pool.query(`delete from operational_changes where actor_id = any($1::uuid[])`, [ids]);
-    await pool.query(`delete from user_notifications where user_id = any($1::uuid[])`, [ids]).catch(() => undefined);
+    // notification_outbox tem FK para user_notifications (notification_id); apagar na ordem certa.
     await pool.query(`delete from notification_outbox where user_id = any($1::uuid[])`, [ids]);
+    await pool.query(`delete from user_notifications where user_id = any($1::uuid[])`, [ids]);
     await db.delete(folgaGruposTable).where(eq(folgaGruposTable.operationId, op!.id));
     await db.delete(folgasTable).where(eq(folgasTable.operationId, op!.id));
     await db.delete(areaLocalSupervisorsTable).where(eq(areaLocalSupervisorsTable.supervisorId, deb.id));
