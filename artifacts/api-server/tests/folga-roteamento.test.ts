@@ -1,8 +1,9 @@
 /**
- * Roteamento do pedido de folga (Etapa 3, tarefa 2).
- *  - Mês de folgas ainda não publicado: o pedido entra direto como prioridade (aprovado, com a folga).
- *  - Mês publicado: o pedido espera a Supervisão da área; a Administração só decide depois do prazo
- *    (3 dias corridos antes da data pedida, por padrão) ou quando a área não tem supervisão.
+ * Roteamento do pedido de folga (Etapa 3, decisão de 19/10/2026).
+ *  - Todo pedido nasce PENDING e vai para a Supervisão da área, publicado ou não o mapa do mês.
+ *  - A Administração só decide depois do prazo (3 dias corridos, por padrão) ou quando a área não tem supervisão.
+ *  - O calendário da Administração (POST /leave-calendar) continua criando folgas já aprovadas.
+ *  - A rota de desfazer prioridade (/leave-requests/:id/desfazer) segue disponível para registros antigos.
  *  - Ninguém decide o próprio pedido. O aviso de prazo aberto sai uma vez só.
  *
  * Contra PostgreSQL real de teste, via HTTP.
@@ -80,37 +81,29 @@ async function run() {
       assert(pub.status === 200, `preparo: publicar o mapa de ${month}/${year}`);
     }
 
-    // 1 · Mês não publicado: entra como prioridade.
-    const prio = await pedir(asAna, dezembro);
-    const prioId = prio.body.request?.id as string;
-    assert(prio.status === 201 && prio.body.request?.status === "APPROVED" && prio.body.entrouComoPrioridade === true, "mês não publicado: o pedido entra aprovado, como prioridade");
-    const folgaCriada = await db.select().from(folgasTable).where(and(eq(folgasTable.userId, ana.id), eq(folgasTable.startDate, dezembro), eq(folgasTable.status, "ACTIVE")));
-    assert(folgaCriada.length === 1 && folgaCriada[0]!.origem === "SOLICITACAO", "a folga já existe no mapa, com origem SOLICITACAO");
-    const regPrio = await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, prioId), eq(historyEventsTable.action, "leave.priority")));
-    assert(regPrio.length === 1, "entrou no Registro como prioridade, na mesma operação");
-    const avPrio = await avisosDe(prioId);
-    assert(avPrio.some((a) => a.userId === sup.id) && !avPrio.some((a) => a.userId === admin.id), "a Supervisão da área é avisada; a Administração não");
-    const listaSup = await call("GET", "/leave-requests/prioridades", asSup);
-    assert(listaSup.status === 200 && (listaSup.body.pedidos as { id: string }[]).some((p) => p.id === prioId), "a gerência vê a prioridade de qualquer mês, não só do mês aberto");
-    assert((await call("GET", "/leave-requests/prioridades", asAdmin)).status === 200, "a Administração também lê a lista");
+    // 1 · Mês não publicado: o pedido nasce PENDING (decisão de 19/10/2026 — o mapa do mês não muda mais isso).
+    const pendente = await pedir(asAna, dezembro);
+    const pendId = pendente.body.request?.id as string;
+    assert(pendente.status === 201 && pendente.body.request?.status === "PENDING" && !pendente.body.entrouComoPrioridade, "mês não publicado: o pedido nasce pendente e vai para a Supervisão");
+    const folgaImediata = await db.select().from(folgasTable).where(and(eq(folgasTable.userId, ana.id), eq(folgasTable.startDate, dezembro), eq(folgasTable.status, "ACTIVE")));
+    assert(folgaImediata.length === 0, "nenhuma folga criada antes da aprovação: o pedido ainda é pendente");
+    const regPend = await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, pendId), eq(historyEventsTable.action, "leave.requested")));
+    assert(regPend.length === 1, "entrou no Registro como 'leave.requested', sem 'leave.priority'");
+    const avPend = await avisosDe(pendId);
+    assert(avPend.some((a) => a.userId === sup.id) && !avPend.some((a) => a.userId === admin.id), "a Supervisão da área é avisada; a Administração não");
+    // A rota /prioridades segue respondendo 200 (para registros antigos); o pedido novo não aparece lá.
+    assert((await call("GET", "/leave-requests/prioridades", asSup)).status === 200, "a rota de prioridades ainda responde");
+    assert((await call("GET", "/leave-requests/prioridades", asAdmin)).status === 200, "a Administração também lê a lista de prioridades");
     assert((await call("GET", "/leave-requests/prioridades", asAna)).status === 403, "o Elenco não vê a lista das prioridades");
-    assert(!((await call("GET", "/leave-requests/prioridades", asSupSolo)).body.pedidos as { id: string }[]).some((p) => p.id === prioId), "a Supervisão de outra área não vê a prioridade");
-    assert((await call("POST", `/leave-requests/${prioId}/desfazer`, asAna, { motivo: "x" })).status === 403, "quem pediu não desfaz a própria prioridade");
-    assert((await call("POST", `/leave-requests/${prioId}/desfazer`, asSup, {})).status === 400, "desfazer sem motivo: 400");
-    assert((await call("POST", `/leave-requests/${prioId}/desfazer`, asSup, { motivo: "show especial nesse dia" })).status === 200, "a gerência desfaz a folga de prioridade com motivo");
-    const depoisDesfazer = await db.select().from(folgasTable).where(and(eq(folgasTable.userId, ana.id), eq(folgasTable.startDate, dezembro), eq(folgasTable.status, "ACTIVE")));
-    const pedidoDesfeito = (await db.select().from(leaveRequestsTable).where(eq(leaveRequestsTable.id, prioId)))[0];
-    assert(depoisDesfazer.length === 0 && pedidoDesfeito?.status === "DENIED" && /show especial/.test(pedidoDesfeito.decisionReason ?? ""), "desfeita: a folga some do mapa e o pedido guarda o motivo");
-    assert((await avisosDe(prioId)).some((a) => a.userId === ana.id && /prioridade_desfeita/.test(a.deduplicationKey ?? "")), "quem pediu é avisada de que a folga foi desfeita");
-    assert((await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, prioId), eq(historyEventsTable.action, "leave.priority_undone")))).length === 1, "desfazer entra no Registro, uma vez");
-    assert((await call("POST", `/leave-requests/${prioId}/desfazer`, asSup, { motivo: "de novo" })).status === 409, "desfazer duas vezes devolve 409");
-    assert(!((await call("GET", "/leave-requests/prioridades", asSup)).body.pedidos as { id: string }[]).some((p) => p.id === prioId), "desfeita, a prioridade sai da lista");
+    assert(!((await call("GET", "/leave-requests/prioridades", asSup)).body.pedidos as { id: string }[]).some((p) => p.id === pendId), "o pedido novo não aparece na lista de prioridades");
+    // Desfazer num pedido PENDING (não é prioridade aprovada) devolve 409.
+    assert((await call("POST", `/leave-requests/${pendId}/desfazer`, asSup, { motivo: "teste" })).status === 409, "desfazer num pedido pendente retorna 409: não é prioridade aprovada");
 
-    // 1b · A Administração também desfaz a prioridade, mesmo com Supervisão cadastrada e o prazo ainda fechado.
-    const prio2 = await pedir(asAna, "2027-03-16");
-    assert(prio2.body.entrouComoPrioridade === true, "preparo: segunda folga de prioridade");
-    const desfezAdm = await call("POST", `/leave-requests/${prio2.body.request.id}/desfazer`, asAdmin, { motivo: "Ensaio geral nesse dia" });
-    assert(desfezAdm.status === 200, "a Administração desfaz a prioridade sem esperar prazo");
+    // 1b · Calendário da Administração: cria a folga já aprovada, sem passar pelo pedido do Elenco.
+    const calResp = await call("POST", "/leave-calendar", asAdmin, { userIds: [ana.id], operationId: operation!.id, startDate: "2027-03-16", endDate: "2027-03-16", reason: "Folga de grupo combinada" });
+    assert(calResp.status === 201 && calResp.body.request?.status === "APPROVED", "POST /leave-calendar cria folga já aprovada, sem esperar Supervisão");
+    const folgaCal = await db.select().from(folgasTable).where(and(eq(folgasTable.userId, ana.id), eq(folgasTable.startDate, "2027-03-16"), eq(folgasTable.status, "ACTIVE"), eq(folgasTable.origem, "MANUAL")));
+    assert(folgaCal.length === 1, "a folga do calendário aparece no mapa com origem MANUAL");
 
     // 2 · Mês publicado, longe: espera a Supervisão; Administração não decide antes do prazo.
     const longeAna = await pedir(asAna, longe);
@@ -150,11 +143,11 @@ async function run() {
     assert((await avisosDe(soloId)).some((a) => a.userId === admin.id), "a única Supervisão pediu: a Administração é avisada");
     assert((await call("PATCH", `/leave-requests/${soloId}`, asAdmin, { status: "APPROVED", decisionReason: "A única supervisora é quem pediu." })).status === 200, "e a Administração pode decidir sem esperar o prazo");
 
-    // 5c · Pedido que atravessa dois meses: basta um mês publicado para ele esperar a Supervisão.
+    // 5c · Pedido que atravessa meses não publicados e publicados: os dois nascem PENDING (todos os pedidos nascem assim).
     const fimDoMesAberto = "2027-01-31", inicioDoOutro = "2027-02-01";
     assert((await call("POST", "/folgas/grid/publicar", asAdmin, { operationId: operation!.id, year: 2027, month: 2 })).status === 200, "preparo: publicar o mapa de fevereiro de 2027");
     const atravessa = await call("POST", "/leave-requests", asAna, { startDate: fimDoMesAberto, endDate: inicioDoOutro, reason: "Viagem" });
-    assert(atravessa.status === 201 && atravessa.body.request?.status === "PENDING" && !atravessa.body.entrouComoPrioridade, "pedido de janeiro a fevereiro, com fevereiro publicado, espera a Supervisão");
+    assert(atravessa.status === 201 && atravessa.body.request?.status === "PENDING" && !atravessa.body.entrouComoPrioridade, "pedido de janeiro a fevereiro espera a Supervisão, como qualquer outro");
 
     // 6 · O aviso de prazo aberto sai uma vez só.
     const outro = await pedir(asAna, pertoB, "Dentista");

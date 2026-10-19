@@ -99,7 +99,7 @@ async function run() {
     const asAdmin = tokenFor(admin, "ADMIN"), asSup = tokenFor(sup, "SUPERVISOR_A"), asSupBai = tokenFor(supBai, "SUPERVISOR_A");
     const asDir = tokenFor(dir, "DIR"), asAna = tokenFor(ana, "MEMBER"), asEstranha = tokenFor(estranha, "ADMIN", outraOrg!.id);
 
-    // Pedido só espera decisão quando o mapa do mês já foi publicado (senão entra como prioridade): publica os meses usados.
+    // Publica os meses usados nos pedidos para que a análise leia o mapa de folgas do período.
     for (const [year, month] of [[2026, 11], [2026, 12]]) {
       assert((await call("POST", "/folgas/grid/publicar", asAdmin, { operationId: operation!.id, year, month })).status === 200, `preparo: publicar o mapa de ${month}/${year}`);
     }

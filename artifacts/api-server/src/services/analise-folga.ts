@@ -11,8 +11,9 @@
  */
 import { and, asc, eq, gte, inArray, isNull, lte, ne } from "drizzle-orm";
 import {
-  agendaEventsTable, dailyBookAssignmentsTable, dailyBookPositionsTable, dailyBooksTable, db, folgasTable, showBookLinesTable, showBooksTable, usersTable,
+  agendaEventsTable, dailyBookAssignmentsTable, dailyBookPositionsTable, dailyBooksTable, db, folgaGruposTable, folgasTable, showBookLinesTable, showBooksTable, usersTable,
 } from "@workspace/db";
+import { operacaoDaPessoa } from "./folga-roteamento.js";
 import { montarEscalaDoDia } from "./escala-dia.js";
 import { fraseDoLimite, lerConfigFolga, limitesExcedidos } from "./folga-config.js";
 
@@ -113,6 +114,15 @@ export async function analisarPedidoDeFolga(input: { organizationId: string; use
     .from(usersTable).where(and(eq(usersTable.id, userId), eq(usersTable.organizationId, organizationId))).limit(1);
   if (!pessoa) return { dias: [], cortado: false, troca: null };
   const config = await lerConfigFolga(organizationId);
+  // Grupos de folga da temporada em que esta pessoa está: para avisar a Supervisão se o dia pedido
+  // bate com o padrão do grupo (não bloqueia; quem decide é a Supervisão).
+  const operationId = await operacaoDaPessoa(db, userId, organizationId);
+  const gruposDaPessoa = operationId
+    ? (await db.select({ nome: folgaGruposTable.nome, diasFolga: folgaGruposTable.diasFolga, dataInicio: folgaGruposTable.dataInicio, dataFim: folgaGruposTable.dataFim, pessoaIds: folgaGruposTable.pessoaIds })
+        .from(folgaGruposTable)
+        .where(and(eq(folgaGruposTable.operationId, operationId), eq(folgaGruposTable.active, true))))
+        .filter((g) => g.pessoaIds.includes(userId))
+    : [];
   const { dias: datas, cortado } = diasDoPedido(input.startDate, input.endDate);
   const dias: DiaAnalisado[] = [];
 
@@ -173,6 +183,17 @@ export async function analisarPedidoDeFolga(input: { organizationId: string; use
     if (config.limiteTotalAtivo && typeof config.limiteTotal === "number") {
       const total = (await limitesExcedidos({ organizationId, pessoas: [{ id: userId, areaId: pessoa.areaId }], dates: [date], config })).find((e) => e.tipo === "TOTAL");
       if (total) aviso = [aviso, fraseDoLimite(total)].filter(Boolean).join(" ");
+    }
+
+    // Grupo de folga da temporada: avisa se este dia cai no padrão do grupo de quem pediu.
+    const diaDaSemana = new Date(`${date}T12:00:00Z`).getUTCDay();
+    for (const grupo of gruposDaPessoa) {
+      const nosDiasSemana = grupo.diasFolga.length > 0 && grupo.diasFolga.includes(diaDaSemana);
+      const noPeriodo = grupo.dataInicio && grupo.dataFim && date >= grupo.dataInicio && date <= grupo.dataFim;
+      if (nosDiasSemana || noPeriodo) {
+        const avisoGrupo = `Grupo "${grupo.nome}": este dia está no padrão de folga do grupo desta pessoa. Verifique se já foi aplicado antes de decidir.`;
+        aviso = [aviso, avisoGrupo].filter(Boolean).join(" ");
+      }
     }
 
     dias.push({ date, deFolga: lista(folgam), trabalham: lista(trabalham), vagas: vagasAnalisadas, resultado, aviso, semEscala });

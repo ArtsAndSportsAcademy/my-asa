@@ -1,9 +1,8 @@
 /**
- * Para onde vai um pedido de folga (Etapa 3):
- *  - Mês de folgas ainda não publicado: o pedido entra direto como prioridade.
- *  - Mês publicado: espera a Supervisão da área da pessoa. A Administração só decide quando a Supervisão
- *    não respondeu e faltam N dias corridos para a data pedida (N é configurável, começa em 3), ou
- *    quando a área não tem Supervisão cadastrada.
+ * Para onde vai um pedido de folga (Etapa 3, decisão de 19/10/2026):
+ *  - Todo pedido espera a Supervisão da área da pessoa, publicado ou não o mapa do mês.
+ *  - A Administração só decide quando a Supervisão não respondeu e faltam N dias corridos para a data
+ *    pedida (N é configurável, começa em 3), ou quando a área não tem Supervisão cadastrada.
  * "Publicado" é o mapa de folgas do mês (publicação ou retrato inicial), não a Escala do dia.
  */
 import { and, eq } from "drizzle-orm";

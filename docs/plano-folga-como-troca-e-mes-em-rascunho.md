@@ -314,14 +314,13 @@ na geração, e guardar como exceção só o que a gerência mexeu à mão — e
 
 O exemplo "5 bailarinos de folga no mesmo dia" é **só ilustração**, não é regra real nem número a usar.
 
-**Quem decide o pedido (áudio da Administração, transcrito em 16/10/2026):**
-- **Mês ainda não publicado:** o pedido da pessoa entra como prioridade; a gerência só recusa se houver algo
-  especial naquele dia. Não passa por análise nem por aceite.
-- **Mês já publicado:** o pedido vai para a **Supervisão da área da pessoa** (Deb, Victor e Tef são quem olha os
-  shows), e **não para a Administração**. A Administração só decide **quando a Supervisão não responde**.
-  Por quê: quem sabe se o show fica coberto são eles. O trabalho que hoje consome tempo é ver quem está no dia,
-  se o show fica descoberto sem a pessoa e com quem dá para trocar (e se a pessoa toparia) — é isso que a ASA
-  deve entregar pronto.
+**Quem decide o pedido (decisão de 19/10/2026 — revisa o áudio de 16/10/2026):**
+- **Todo pedido vai para a Supervisão da área**, publicado ou não o mapa do mês. A Administração só decide
+  quando a Supervisão não responde antes do prazo (3 dias corridos, configurável) ou quando a área não tem
+  Supervisão cadastrada. Não existe mais o caminho "prioridade" que aprovava automaticamente.
+- A razão: quem sabe se o show fica coberto é a Supervisão (Deb, Victor, Tef), independente do estado do mapa.
+  O calendário da Administração (POST /leave-calendar) continua registrando folgas já decididas, sem passar
+  pelo pedido do Elenco.
 - **O que é "troca" e o que é só "alerta"** (áudio de 16/10/2026): **troca** é quando o colega **está de folga**
   no dia pedido: a pessoa só ganha esse dia se o colega trabalhar nele, e os dois trocam de dia (o colega aceita
   antes, com motivo). Quando o colega **trabalha** naquele dia, **não é troca**: é um **alerta** do tipo
