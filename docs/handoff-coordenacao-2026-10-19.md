@@ -62,7 +62,55 @@ Também a migração 0074 (formato do palco no show), com API e site, promovida.
 4. **Flash da Escala ao trocar de local:** corrigir. A correção está em `escalas.tsx` (um `useEffect` que
    esvazia `dia` e `minha` quando `localId` ou `date` mudam).
 
-## Estado do git no momento em que este arquivo foi escrito
+## ATUALIZAÇÃO (mais tarde em 19/10) — leia primeiro, vale mais que o resto
+
+As sessões da R3-B, da regra de folga e da Etapa 8 terminaram. O que mudou desde o texto abaixo:
+
+- **Commits locais, sem push (4):** `4f4742a` (folga: todo pedido nasce pendente), `6b63769` (este handoff),
+  `5669e9d` (Etapa 8: corrige pool esgotado e FK nos testes) e `957eaa6` (handoff da Etapa 8, seção 1-b).
+  O diretório de trabalho está limpo para arquivos já versionados.
+- **`5669e9d` levou mais do que devia.** Ele varreu tudo o que estava solto: `.gitignore`, `package.json` do
+  web-admin, `pnpm-lock.yaml`, `skills-lock.json` (a pessoa tinha dito que **não** queria commitar esses) e
+  também o `escalas.tsx` com a correção do flash da Escala, que **continua sem conferência na tela**. A
+  pessoa precisa decidir se aceita assim ou se separa antes do push.
+- **`4f4742a` (folga) e `5669e9d` ainda não foram conferidos por esta sessão** quanto ao conteúdo; só o git
+  foi lido. Confira o que cada um leva e os testes antes de registrar no plano.
+- **Bateria da Etapa 8:** a primeira passada (`bateria-resultados.txt`) deu 61 de 71 arquivos. Depois, cada
+  arquivo que falhou foi rodado isolado: `fase-e-cadastro`, `folga-roteamento`, `folgas-equipe`,
+  `shift-checkins`, `fase-e-ciclo`, `ciclo-paralelo` e `permission-matrix` passam (o handoff
+  `docs/handoff-2026-10-19.md`, seção 1-b, lista os cinco últimos). **Sem confirmação nos papéis que li:**
+  `block5-integrity`, `fase-b-regressoes` e `fase-c-perfil-regras`. Rodar esses três isolados. Regra: um arquivo
+  por vez, `ciclo-paralelo` e `permission-matrix` nunca juntos (esgotam o pool de 15 conexões).
+- **Arquivos soltos na raiz** (resíduo de depuração, sem commit): `bateria-resultados.txt`,
+  `ciclo-paralelo-debug.txt`, `perm-debug.txt`, `rerun-correcoes.txt`, `rerun-correcoes2.txt`,
+  `rerun-falhas.txt`. Não commitar; perguntar se pode apagar ou pôr no `.gitignore`.
+
+### PROBLEMA GRAVE: a rodada 3 e o plano da revisão 3 sumiram do branch
+
+A história do `codex/myasa-novo` foi reconstruída (provavelmente para poder enviar `c404bdf`). Dois commits
+antigos **não estão mais no branch**, só no branch local `backup/rodada3-e-etapa2-sem-enviar`:
+
+- `f3cceb2` **"Rodada 3 da revisão: isolamento entre casas, folgas, ocorrências, Painel e limites do Mural"**.
+  É código, não documentação: `routes/folgas.ts`, `occurrences.ts`, `show-book.ts`, `daily-book.ts`,
+  `operational-cycle.ts`, `communication-hub.ts`, `web-admin/.../operational-cycle.tsx` e o teste
+  `folga-dia-dentro-do-intervalo.test.ts`. Conferi: o teste **não existe** no branch atual e o patch
+  **não está aplicado**. Ou seja, o branch enviado ao GitHub e a produção **não têm** essas correções, entre
+  elas, provavelmente, a do intervalo de folga invertido (a que motivou a consulta R3-D; não li o diff para confirmar).
+- `0536b7e` o plano `docs/plano-etapas-revisao-3-2026-10-18.md` (o arquivo existe no disco, mas está sem
+  commit).
+
+Os outros commits do backup têm equivalentes no branch atual (`git cherry` marca com `-`, exceto `e7668c0`, que foi reaplicado como `2739b84` com diferenças): Operações e
+Gerar o mês foram reaplicados com outros hashes.
+
+**O que fazer (com a pessoa decidindo):** trazer o `f3cceb2` para o branch atual com `git cherry-pick f3cceb2`.
+Haverá conflito provável em `operational-cycle.ts` (a regra de folga mexeu lá em `4f4742a`) e em
+`daily-book.ts`. Resolver, rodar `folga-dia-dentro-do-intervalo`, `folga-roteamento`, `folga-analise`,
+`folgas-equipe`, `permission-matrix` e `mural-aberto`, e só então commitar. Depois commitar o plano
+`plano-etapas-revisao-3-2026-10-18.md`. **Não apagar o branch de backup** até isso estar feito e testado.
+A R3-D (consulta de folgas invertidas em produção) continua valendo, e provavelmente vai achar linhas, porque
+a correção ainda não foi para produção.
+
+## Estado do git no momento em que este arquivo foi escrito (SUPERADO pela atualização acima)
 
 - Enviado ao GitHub: tudo até `8ce7965`.
 - **Local, sem push:** `4f4742a` "Folga: todo pedido nasce pendente, sem caminho de prioridade". É a sessão da
