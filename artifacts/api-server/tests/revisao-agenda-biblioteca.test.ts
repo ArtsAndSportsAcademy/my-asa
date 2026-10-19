@@ -143,6 +143,11 @@ async function run() {
     assert(supMudaEscopo.status === 403, "Supervisão não amplia o documento da área para a casa inteira");
     const supPublicaCasa = await post(supApi, "/library/documents", { title: "Tentativa", type: "RULES_AND_POLICIES", summary: "x", scopeType: "HOUSE" });
     assert(supPublicaCasa.status === 403, "Supervisão não publica documento da casa inteira");
+
+    // ───────── Regressão: id inválido devolve 404, não 500 ─────────
+    assert((await patch(adminApi, `/agenda/events/undefined`, { date: "2026-12-01" })).status === 404, "PATCH com id inválido na Agenda devolve 404");
+    assert((await post(adminApi, `/agenda/events/undefined/cancel`)).status === 404, "POST cancel com id inválido na Agenda devolve 404");
+    assert((await patch(adminApi, `/library/documents/undefined`, { title: "x" })).status === 404, "PATCH com id inválido na Biblioteca devolve 404");
   } finally {
     if (server) { (server as http.Server & { closeAllConnections?: () => void }).closeAllConnections?.(); await new Promise<void>(resolve => server!.close(() => resolve())); }
     const userIds = all.map(user => user.id);

@@ -27,6 +27,7 @@ import {
 } from "../services/task-steps.js";
 import { processNotificationOutbox } from "../services/notification-outbox.js";
 import { checarCompartilhamento, lerLinkDrive } from "../services/drive-link.js";
+import { validarUuid } from "../lib/uuid.js";
 
 const router: IRouter = Router();
 
@@ -547,6 +548,7 @@ router.patch("/tasks/:id", requireAuth, requireOrganization, async (req, res) =>
 // Cada ação é uma transação: grava a etapa, a tarefa, o Registro e os avisos juntos.
 
 async function comAtor<T>(req: import("express").Request, taskId: string, acao: (tx: Parameters<Parameters<typeof db.transaction>[0]>[0], ator: Ator) => Promise<T>): Promise<T> {
+  if (!validarUuid(taskId)) throw new TarefaError(404, "Tarefa não encontrada");
   const user = req.user!;
   const [task] = await db.select({ operationId: tasksTable.operationId, responsibilityId: tasksTable.responsibilityId, assigneeId: tasksTable.assigneeId })
     .from(tasksTable).where(and(eq(tasksTable.id, taskId), eq(tasksTable.organizationId, user.organizationId))).limit(1);

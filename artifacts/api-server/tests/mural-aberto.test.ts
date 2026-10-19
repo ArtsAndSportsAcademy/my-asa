@@ -198,6 +198,9 @@ async function run() {
     assert((await post(adminApi, `/communication/datas-especiais/${futuraId}/restore`)).status === 200 && (await feedOf(memApi)).datasEspeciais.some(item => item.nome === `${tag} Dia da Dança`), "Restaurar traz a data de volta");
     const eventosData = await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.orgId, org!.id), like(historyEventsTable.action, "mural.date_%")));
     assert(["mural.date_created", "mural.date_updated", "mural.date_removed", "mural.date_restored"].every(action => eventosData.some(event => event.action === action)), "Cadastrar, editar, remover e restaurar data entram no Registro");
+
+    // Regressão: id inválido na data especial devolve 404, não 500
+    assert((await post(adminApi, `/communication/datas-especiais/undefined/restore`)).status === 404, "Restaurar data com id inválido devolve 404");
   } finally {
     if (server) { (server as http.Server & { closeAllConnections?: () => void }).closeAllConnections?.(); await new Promise<void>(resolve => server!.close(() => resolve())); }
     const userIds = all.map(user => user.id);

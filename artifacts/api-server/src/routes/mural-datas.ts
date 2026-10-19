@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { db, muralDatasEspeciaisTable } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
+import { validarUuid } from "../lib/uuid.js";
 import { diaValido } from "../services/mural-janela.js";
 
 /**
@@ -55,6 +56,7 @@ router.post("/communication/datas-especiais", requireAuth, requireOrganization, 
 async function mudar(req: any, res: any, acao: "editar" | "remover" | "restaurar") {
   if (!podeGerir(req)) { res.status(403).json(NEGADO); return; }
   const id = String(req.params.id), orgId = req.user.organizationId as string;
+  if (!validarUuid(id)) { res.status(404).json({ error: "Data não encontrada" }); return; }
   let valor: { nome: string; mensagem: string | null; mes: number; dia: number } | null = null;
   if (acao === "editar") {
     const lido = ler(req.body);

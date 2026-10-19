@@ -13,6 +13,7 @@ import { aniversariosDaCasa } from "../services/aniversarios.js";
 import { MAX_DESTINATARIOS, resolverDestinos, type Alvo } from "../services/mural-destinos.js";
 import { janelaDoMural, proximasDatas } from "../services/mural-janela.js";
 import type { CreateNotificationInput } from "../services/notificationService.js";
+import { validarUuid } from "../lib/uuid.js";
 
 const router: IRouter = Router();
 type Scope = "HOUSE" | "AREA" | "LOCATION" | "PEOPLE";
@@ -260,7 +261,11 @@ router.post("/communication/mural", requireAuth, requireOrganization, async (req
     }
     if (type === "RECOGNITION") {
       // O reconhecimento é visto por todos; as pessoas reconhecidas ficam só na lista de "para quem".
-      alvo = { ...alvo, scope: "HOUSE", areaId: null, locationId: null };
+      // Reconhecimento é para os colegas (decisão de 19/10/2026): quem publica não entra na lista. Se sobrar
+      // gente (reconhecer uma área em que a própria pessoa está), segue para os outros; se só sobrar a própria pessoa, recusa.
+      const colegas = alvo.pessoaIds.filter(id => id !== authorId);
+      if (!colegas.length) { res.status(400).json({ error: "Reconhecimento é para os colegas. Escolha outra pessoa." }); return; }
+      alvo = { ...alvo, scope: "HOUSE", areaId: null, locationId: null, pessoaIds: colegas };
       const [recipient] = await db.select({ id: usersTable.id }).from(usersTable).where(and(eq(usersTable.id, alvo.pessoaIds[0] ?? ""), eq(usersTable.organizationId, orgId))).limit(1);
       if (!recipient) { res.status(404).json({ error: "Pessoa não encontrada" }); return; }
     }
@@ -303,6 +308,7 @@ router.post("/communication/mural", requireAuth, requireOrganization, async (req
 });
 
 async function loadAccessiblePost(req: any, id: string) {
+  if (!validarUuid(id)) return null;
   const [post] = await db.select().from(announcementsTable).where(and(eq(announcementsTable.id, id), eq(announcementsTable.orgId, req.user.organizationId), eq(announcementsTable.active, true), isNull(announcementsTable.cancelledAt))).limit(1);
   return post && await canReadAnnouncement({ userId: req.user.sub, organizationId: req.user.organizationId, role: req.user.role }, post) ? post : null;
 }

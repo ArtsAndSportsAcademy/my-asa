@@ -8,6 +8,7 @@ import {
   dailyBookScenesTable, folgasTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
+import { validarUuid } from "../lib/uuid.js";
 import { requestLogger } from "../lib/logger.js";
 import { eventBus } from "../lib/event-bus.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
@@ -46,6 +47,10 @@ async function assertOperationAccess(
 }
 
 async function getEventOrFail(id: string, res: any, organizationId?: string) {
+  if (!validarUuid(id)) {
+    res.status(404).json({ error: "Compromisso não encontrado." });
+    return null;
+  }
   const rows = await db
     .select({ event: agendaEventsTable })
     .from(agendaEventsTable)
@@ -54,7 +59,7 @@ async function getEventOrFail(id: string, res: any, organizationId?: string) {
     .limit(1);
   const event = rows[0]?.event;
   if (!event) {
-    res.status(404).json({ error: "Evento não encontrado" });
+    res.status(404).json({ error: "Compromisso não encontrado." });
     return null;
   }
   return event;
@@ -640,7 +645,7 @@ router.get("/agenda/events/:id", requireAuth, requireOrganization, async (req, r
 
 router.patch("/agenda/events/:id", requireAuth, requireOrganization, async (req, res) => {
   if (!isManager(req.user!.role)) {
-    res.status(403).json({ error: "Apenas administradores e supervisores podem editar eventos" });
+    res.status(403).json({ error: "Só a Administração, a Direção e a Supervisão podem editar compromissos." });
     return;
   }
 
@@ -727,7 +732,7 @@ router.patch("/agenda/events/:id", requireAuth, requireOrganization, async (req,
 
 router.post("/agenda/events/:id/confirm", requireAuth, requireOrganization, async (req, res) => {
   if (!isManager(req.user!.role)) {
-    res.status(403).json({ error: "Apenas administradores e supervisores podem confirmar eventos" });
+    res.status(403).json({ error: "Só a Administração, a Direção e a Supervisão podem confirmar compromissos." });
     return;
   }
 
@@ -791,7 +796,7 @@ router.post("/agenda/events/:id/confirm", requireAuth, requireOrganization, asyn
 
 router.post("/agenda/events/:id/suspend", requireAuth, requireOrganization, async (req, res) => {
   if (!isManager(req.user!.role)) {
-    res.status(403).json({ error: "Apenas administradores e supervisores podem suspender eventos" });
+    res.status(403).json({ error: "Só a Administração, a Direção e a Supervisão podem suspender compromissos." });
     return;
   }
 
@@ -853,7 +858,7 @@ router.post("/agenda/events/:id/suspend", requireAuth, requireOrganization, asyn
 
 router.post("/agenda/events/:id/cancel", requireAuth, requireOrganization, async (req, res) => {
   if (!isManager(req.user!.role)) {
-    res.status(403).json({ error: "Apenas administradores e supervisores podem cancelar eventos" });
+    res.status(403).json({ error: "Só a Administração, a Direção e a Supervisão podem cancelar compromissos." });
     return;
   }
 
@@ -918,7 +923,7 @@ router.post("/agenda/events/:id/cancel", requireAuth, requireOrganization, async
 
 router.post("/agenda/events/:id/complete", requireAuth, requireOrganization, async (req, res) => {
   if (!isManager(req.user!.role)) {
-    res.status(403).json({ error: "Apenas administradores e supervisores podem concluir eventos" });
+    res.status(403).json({ error: "Só a Administração, a Direção e a Supervisão podem concluir compromissos." });
     return;
   }
 
@@ -956,7 +961,7 @@ router.post("/agenda/events/:id/complete", requireAuth, requireOrganization, asy
 
 router.delete("/agenda/events/:id", requireAuth, requireOrganization, async (req, res) => {
   if (!isManager(req.user!.role)) {
-    res.status(403).json({ error: "Apenas administradores e supervisores podem excluir eventos" });
+    res.status(403).json({ error: "Só a Administração, a Direção e a Supervisão podem excluir compromissos." });
     return;
   }
 

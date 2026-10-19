@@ -300,3 +300,33 @@ Decisão: o formato do palco é **do show inteiro** e quem edita o show escolhe,
   `permission-matrix`.
 - Ficou de fora de propósito: escolher o formato já na janela "Novo show". Hoje o show nasce "sem mapa" e a pessoa escolhe no
   Livro oficial; a API já aceita o campo se quiserem a pergunta na criação.
+
+## Rodada 3 (17–18/10/2026): check-in, ocorrências, folgas, isolamento, Mural, Mensagens, Agenda, Tarefas, Escala
+
+Tudo abaixo foi atacado pela API com a empresa fictícia (3 locais, 4 áreas, os quatro perfis) no banco de **teste**, e as telas do Elenco conferidas a 375 px. Nada foi commitado; nenhuma migração nova.
+
+### Corrigido
+
+1. **Painel contava linha, não pessoa.** Quem tinha dois turnos aparecia duas vezes ("11 faltas" para 6 pessoas). Agora cada pessoa conta uma vez (`operational-cycle.ts`).
+2. **Ocorrência: o Elenco editava registro que outra pessoa fez sobre ele.** Agora quem não registrou nem gerencia leva um "não" com frase (`occurrences.ts`, `canWriteOccurrence`).
+3. **Folga em intervalo gravava linhas invertidas (data final antes da inicial).** Era o `offsetDate` usando fuso local. Corrigido, com teste de regressão (`folga-dia-dentro-do-intervalo.test.ts`). **Para você, em produção, só leitura:** conferir se já existe folga ativa com `end_date < start_date` ou sobreposta.
+4. **Folga com data ou tipo inválido dava 500**; agora 400 com frase. Lote repete datas sem duplicar e aceita até 93 dias.
+5. **Direção não via o Mapa de folgas nem os grupos**; agora lê (sem editar), na API e na tela.
+6. **Isolamento entre organizações (grave):** a Administração de uma casa conseguia cancelar o Livro do Dia de outra, e as rotas de etiquetas (tags) não olhavam a organização. `getDailyBookOrFail`, gerar Livro e as tags agora conferem a organização; a reexecução do ataque como Administração deu 0 problemas.
+7. **Mural sem limite de tamanho:** publicação de 20 mil letras e comentário de 6 mil eram aceitos. Agora publicação ≤ 5000, título ≤ 120, comentário ≤ 1000, com frase.
+
+### Conferido e funciona
+Mural (publicar, editar só o autor, remover com motivo e desfazer, ciente, quem falta só para a gestão, aviso para pessoas escolhidas), Mensagens (grupo, convidar só a criadora, limite de 4000 letras, estranho não lê), Agenda (proposta só na própria área), Tarefas em etapas (a vez, etapa de outra pessoa, aviso quando chega a vez, cancelar só quem criou), responsabilidades, atividade manual, regras do local, restrição de horário, descartar e restaurar o mês (volta tudo, sem conflito). Telas do Elenco a 375 px (Mural, Mensagens, Agenda, Folgas, Solicitações, Biblioteca, Perfil): sem corte e sem rolagem lateral.
+
+### Pedem decisão
+- **Quem pode publicar para a área de outra pessoa no Mural?** Hoje o Elenco e a Supervisão publicam para qualquer área. Se a ideia é "Mural aberto", está certo; se a Supervisão só deve falar com a própria área, é uma regra a acrescentar.
+- **Reconhecer a si mesma** é aceito (sem aviso a ninguém), e um teste antigo (`mural-avisos`) afirma isso de propósito. Recusar ou manter?
+- **ID inválido na URL dá 500** (ex.: `/agenda/events/undefined`) em vez de 404 com frase. Inofensivo, mas mascara erro real; posso padronizar.
+- **Rótulos de 9–10 px** (selo "PDF", "Regras e políticas", marcadores de folga) estão pequenos no telefone.
+- **Descartar e restaurar o mês levam 16–21 s no banco de teste**, e um ajuste de Escala leva ~10 s; o banco de teste é lento, mas vale medir em produção antes de achar que está bom.
+- Mensagem de recusa "Apenas administradores e supervisores" em editar evento da Agenda não cita a Direção.
+
+### Não consegui conferir
+- **ASA (assistente) ao vivo:** o roteiro falhou por erro do meu script (id da conversa) e depende de chave de IA; a cobertura fica por conta dos testes existentes.
+- Push/Web Push real, impressão da Escala e PDF da Biblioteca no aparelho.
+- Alguns cenários do roteiro (Tarefas até a aprovação, aceitar pedido a responsabilidade) pararam por ordem dos meus passos, não por defeito do app; ficam para uma repetição.

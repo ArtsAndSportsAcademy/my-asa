@@ -17,6 +17,7 @@ import {
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { canReadLibraryScope as canReadScope, isLibraryFullReader, isLibraryManager, LIBRARY_MANAGER_ROLES, type LibraryRole as RoleValue } from "../services/library-access.js";
+import { validarUuid } from "../lib/uuid.js";
 
 const MANAGER_ROLES = LIBRARY_MANAGER_ROLES;
 
@@ -325,6 +326,7 @@ router.get("/library/documents/:id", requireAuth, requireOrganization, async (re
   try {
     const orgId = req.user!.organizationId;
     const docId = String(req.params.id);
+    if (!validarUuid(docId)) { res.status(404).json({ error: "Documento não encontrado" }); return; }
     const userId = req.user!.sub;
     const role = await getUserRole(userId);
     const isManager = isLibraryManager(role);
@@ -406,6 +408,7 @@ router.put("/library/documents/:id/file", requireAuth, requireOrganization, expr
     const userId = req.user!.sub;
     const orgId = req.user!.organizationId;
     const docId = String(req.params.id);
+    if (!validarUuid(docId)) { res.status(404).json({ error: "Documento não encontrado" }); return; }
     const role = await getUserRole(userId);
     if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "Sem permissão" }); return; }
     const [doc] = await db.select().from(libraryDocumentsTable).where(and(eq(libraryDocumentsTable.id, docId), eq(libraryDocumentsTable.orgId, orgId))).limit(1);
@@ -435,6 +438,7 @@ router.put("/library/documents/:id/citations", requireAuth, requireOrganization,
     const userId = req.user!.sub;
     const orgId = req.user!.organizationId;
     const docId = String(req.params.id);
+    if (!validarUuid(docId)) { res.status(404).json({ error: "Documento não encontrado" }); return; }
     const role = await getUserRole(userId);
     if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "Sem permissão" }); return; }
 
@@ -497,6 +501,7 @@ router.get("/library/documents/:id/file", requireAuth, requireOrganization, asyn
     const userId = req.user!.sub;
     const orgId = req.user!.organizationId;
     const docId = String(req.params.id);
+    if (!validarUuid(docId)) { res.status(404).json({ error: "Documento não encontrado" }); return; }
     const role = await getUserRole(userId);
     const isManager = isLibraryManager(role);
     const isFullReader = isLibraryFullReader(role);
@@ -518,6 +523,7 @@ router.patch("/library/documents/:id", requireAuth, requireOrganization, async (
     const userId = req.user!.sub;
     const orgId = req.user!.organizationId;
     const docId = String(req.params.id);
+    if (!validarUuid(docId)) { res.status(404).json({ error: "Documento não encontrado" }); return; }
 
     const role = await getUserRole(userId);
     if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "Sem permissão" }); return; }
@@ -584,6 +590,7 @@ router.post("/library/documents/:id/publish", requireAuth, requireOrganization, 
     const userId = req.user!.sub;
     const orgId = req.user!.organizationId;
     const docId = String(req.params.id);
+    if (!validarUuid(docId)) { res.status(404).json({ error: "Documento não encontrado" }); return; }
 
     const role = await getUserRole(userId);
     if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "Sem permissão" }); return; }
@@ -632,6 +639,7 @@ router.post("/library/documents/:id/version", requireAuth, requireOrganization, 
     const userId = req.user!.sub;
     const orgId = req.user!.organizationId;
     const docId = String(req.params.id);
+    if (!validarUuid(docId)) { res.status(404).json({ error: "Documento não encontrado" }); return; }
 
     const role = await getUserRole(userId);
     if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "Sem permissão" }); return; }
@@ -681,6 +689,7 @@ router.post("/library/documents/:id/archive", requireAuth, requireOrganization, 
     const userId = req.user!.sub;
     const orgId = req.user!.organizationId;
     const docId = String(req.params.id);
+    if (!validarUuid(docId)) { res.status(404).json({ error: "Documento não encontrado" }); return; }
 
     const role = await getUserRole(userId);
     if (!role || role !== "ADMIN") { res.status(403).json({ error: "Apenas Admin pode arquivar documentos" }); return; }
@@ -722,6 +731,7 @@ router.post("/library/documents/:id/confirm", requireAuth, requireOrganization, 
     const userId = req.user!.sub;
     const orgId = req.user!.organizationId;
     const docId = String(req.params.id);
+    if (!validarUuid(docId)) { res.status(404).json({ error: "Documento não encontrado" }); return; }
     const role = await getUserRole(userId);
     const isManager = isLibraryManager(role);
     const [doc] = await db.select().from(libraryDocumentsTable).where(and(eq(libraryDocumentsTable.id, docId), eq(libraryDocumentsTable.orgId, orgId))).limit(1);
@@ -766,6 +776,7 @@ router.get("/library/documents/:id/versions", requireAuth, requireOrganization, 
     const userId = req.user!.sub;
     const orgId = req.user!.organizationId;
     const docId = String(req.params.id);
+    if (!validarUuid(docId)) { res.status(404).json({ error: "Documento não encontrado" }); return; }
 
     const role = await getUserRole(userId);
     if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "Sem permissão" }); return; }

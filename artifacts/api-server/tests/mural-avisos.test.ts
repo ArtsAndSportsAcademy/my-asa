@@ -75,8 +75,9 @@ async function run() {
     const reconhecimentoPayload = reconhecimentoAvisos[0]?.payload as Payload | undefined;
     assert(quem(reconhecimentoAvisos) === ids(outra) && reconhecimentoPayload?.type === "notice.recognition" && reconhecimentoPayload.message.includes(`${tag}_mem`) && reconhecimentoPayload.message.includes("Cuidado com a equipe"), `Quem é reconhecido é avisado, com o nome de quem reconheceu e o motivo: ${JSON.stringify(reconhecimentoPayload)}`);
     const proprio = await post(memApi, "/communication/mural", { type: "RECOGNITION", scope: "HOUSE", recipientId: mem.id, reason: "Eu mesma", body: "Teste" });
-    const proprioId = ((await proprio.json()) as { post: { id: string } }).post.id;
-    assert((await avisosDe(`mural:${proprioId}:publicado`)).length === 0, "Ninguém é avisado do reconhecimento que fez a si mesmo");
+    assert(proprio.status === 400, "Reconhecimento de si mesma é recusado (decisão de 19/10/2026)");
+    const proprioCorpo = (await proprio.json()) as { error?: string };
+    assert(Boolean(proprioCorpo.error?.includes("colegas")), `A recusa diz que reconhecimento é para os colegas: ${JSON.stringify(proprioCorpo)}`);
 
     // ── Publicação recusada não avisa ninguém ──
     const recusado = await post(adminApi, "/communication/mural", { type: "NOTICE", scope: "AREA", areaId: "00000000-0000-4000-8000-000000000000", body: "Área que não existe" });

@@ -17,12 +17,14 @@ import { normalizeReason, requireReason } from "../lib/reason.js";
 import { hasActiveResponsibility } from "../lib/delegation-check.js";
 import { notifyMany } from "../services/notificationService.js";
 import { hasOperationAccess } from "../lib/authorization.service.js";
+import { validarUuid } from "../lib/uuid.js";
 
 const MANAGER_ROLES_NOTICES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
 
 const router: IRouter = Router();
 
 async function loadNoticeScope(noticeId: string) {
+  if (!validarUuid(noticeId)) return null;
   const [row] = await db.select({
     status: noticesTable.status,
     operationId: noticesTable.operationId,

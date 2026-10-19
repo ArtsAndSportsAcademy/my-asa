@@ -20,6 +20,7 @@ import { normalizeReason, requireReason } from "../lib/reason.js";
 import { registerUndo } from "../services/undo.js";
 import { canSupervisorAccessPerson, usesAreaLocalScopes } from "../services/area-local-scope.js";
 import { isSupervisorOfOperation } from "../lib/show-responsibility.js";
+import { validarUuid } from "../lib/uuid.js";
 
 const router: IRouter = Router();
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
@@ -159,6 +160,7 @@ router.get("/requests/:id", requireAuth, requireOrganization, async (req, res) =
   const log = requestLogger(LOG_DOMAIN.REQUESTS, req.requestId, req.correlationId);
   const user = req.user!;
   const { id } = req.params as { id: string };
+  if (!validarUuid(id)) { res.status(404).json({ error: "Solicitação não encontrada" }); return; }
 
   try {
     const [request] = await db
@@ -296,6 +298,7 @@ router.patch("/requests/:id", requireAuth, requireOrganization, async (req, res)
   const log = requestLogger(LOG_DOMAIN.REQUESTS, req.requestId, req.correlationId);
   const user = req.user!;
   const { id } = req.params as { id: string };
+  if (!validarUuid(id)) { res.status(404).json({ error: "Solicitação não encontrada" }); return; }
   const { status } = req.body as { status: string };
 
   const allowed = ["ALTERNATIVE_ACCEPTED", "ALTERNATIVE_REJECTED"];
@@ -362,6 +365,7 @@ router.post("/requests/:id/decision", requireAuth, requireOrganization, async (r
   const log = requestLogger(LOG_DOMAIN.REQUESTS, req.requestId, req.correlationId);
   const user = req.user!;
   const { id } = req.params as { id: string };
+  if (!validarUuid(id)) { res.status(404).json({ error: "Solicitação não encontrada" }); return; }
   const { decision, reason, alternativeDetails, deadline } = req.body as {
     decision: string;
     reason?: string;

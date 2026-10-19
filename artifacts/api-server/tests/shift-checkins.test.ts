@@ -34,7 +34,7 @@ async function run() {
     await configureShifts(adminActor, schedule, shiftInstant(yesterday, 600));
     const current = await shiftsForDate(org!.id, date);
     assert.equal(current.length, 2);
-    const future = await configureShifts(adminActor, [{ name: "Amanhã", startTime: "06:00", endTime: "23:00" }]);
+    const future = await configureShifts(adminActor, [{ name: "Amanhã", startTime: "06:00", endTime: "23:00" }], shiftInstant(date, 600));
     assert.equal(future.effectiveFrom, shiftOperationalDate(date, 1));
     assert.deepEqual((await shiftsForDate(org!.id, date)).map(s => s.id), current.map(s => s.id));
     const tomorrowBefore = await shiftsForDate(org!.id, future.effectiveFrom);
