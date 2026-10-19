@@ -182,9 +182,9 @@ async function run() {
       const beforeCounts = await childCounts(bookId);
       const beforeVersion = (await readBook(bookId)).version;
       const blocked = await regenerate(bookId);
-      const blockedBody = await blocked.json() as { error?: string };
+      const blockedBody = await blocked.json() as { error?: string; message?: string };
       const afterCounts = await childCounts(bookId);
-      assert(blocked.status === 409 && (blockedBody.error ?? "").toLowerCase().includes(word), `regenerar Livro ${status} é recusado com 409 e mensagem própria`);
+      assert(blocked.status === 409 && (blockedBody.message ?? "").toLowerCase().includes(word), `regenerar Livro ${status} é recusado com 409 e mensagem própria`);
       assert(JSON.stringify(beforeCounts) === JSON.stringify(afterCounts) && (await readBook(bookId)).version === beforeVersion, `recusa de ${status} não apaga nem altera nada (filhos e versão intactos)`);
     }
     await db.update(dailyBooksTable).set({ status: "DRAFT" }).where(eq(dailyBooksTable.id, bookId));

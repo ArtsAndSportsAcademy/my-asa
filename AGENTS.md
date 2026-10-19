@@ -175,7 +175,7 @@ Pronto e em produção: Escala do dia, Programação (com rascunho e rodapé), L
 Meu Dia, Folgas em lote e grupos de folga, Gerar o mês, **Mural aberto** (o Elenco publica, edita, remove e
 desfaz, reações, datas especiais) e **Mensagens com grupos** (privadas: a Administração não lê conversa),
 com o elenco de Snowland carregado e gerando o dia de verdade. O último handoff é
-`docs/handoff-2026-10-18-sessao-1.md` (18/10: testes e revisão de telas, nenhum código alterado): leia antes de continuar.
+`docs/handoff-2026-10-19.md` (19/10: revisão completa de todos os perfis, permission-matrix limpo): leia antes de continuar.
 
 **Feito em 16/10 (ainda local, nada enviado ao GitHub nem promovido; 3 migrações só no banco de teste, 0067 a 0069):** a
 Etapa 3 de folgas (pedido analisado pela Supervisão da área, troca com colega de folga, mediação, regras configuráveis), a
@@ -199,11 +199,19 @@ EMAXCONNSESSION + teste de rollback; demais arquivos vistos: OK). Revisão de te
 carregam em fundo, sem travar o header em "carregando…"); removido "em 13 Shows" hardcoded da mensagem de livro
 sem cenas. `tsc` limpo após as mudanças.
 
+**Feito em 19/10 (Etapa 8 — conferência final):** revisão de telas no modo amostra com `sessionStorage["myasa-review-role"]`
+para todos os quatro perfis (ADM, DIR, SUP, MEM) a 375px e 1280px — Meu Dia, Escala, Livro do Dia, Painel, Operações, Locais,
+Tarefas. `permission-matrix` rerodado: 463/463 rotas sem auth + 25 cases de autorização real = 0 falhas. Nenhum código
+alterado. O último handoff é `docs/handoff-2026-10-19.md`; leia antes de continuar.
+
 Pendente:
-- **Revisão das telas com Direção, Supervisão e Elenco** (a 375px e 1280px) — ficou para a próxima sessão.
 - **Folgas e Solicitações, Mapa do mês e Grupos de folga** — revisão com o crivo ainda não feita. A regra real
   de folgas está em `docs/regras-de-folgas.md` — leia antes de mexer. Cobertura mínima por função só avisa e é configurável.
-- **`permission-matrix`:** a falha de autorização da sessão 1 desapareceu no rerun (0 falhas) — era transitória, EMAXCONNSESSION.
+- **`daily-book-session-blocks`:** 4 falhas na sessão 1 eram bug no teste (lia `blockedBody.error` em vez de
+  `blockedBody.message` para verificar a mensagem do 409); corrigido em 19/10. Rerun com a correção em andamento
+  quando o handoff foi escrito — ver resultado ou rerodá-lo.
+- **Bateria completa de testes** (escala-mes, mural-avisos, tarefas-*, folga-*, revisao-agenda-biblioteca,
+  asa-actions-http e ~60 outros arquivos) ainda não rodada do zero nesta sessão.
 - **Escala:** flash de dados antigos ao trocar de local — decidir se corrige.
 - **Quem constrói o app** confere no telefone o Perfil e o PDF da Biblioteca, e roda em produção
   `lib/db/scripts/limpar-texto-de-mensagens-no-registro.sql`. Só depois do "pode enviar" dessa pessoa: o envio do
