@@ -175,7 +175,7 @@ Pronto e em produção: Escala do dia, Programação (com rascunho e rodapé), L
 Meu Dia, Folgas em lote e grupos de folga, Gerar o mês, **Mural aberto** (o Elenco publica, edita, remove e
 desfaz, reações, datas especiais) e **Mensagens com grupos** (privadas: a Administração não lê conversa),
 com o elenco de Snowland carregado e gerando o dia de verdade. O último handoff é
-`docs/handoff-2026-10-16-sessao-3.md` (Etapa 3: pedido de folga analisado, troca, mediação e regras; os de 15, 16 e 14/10 seguem valendo): leia antes de continuar.
+`docs/handoff-2026-10-18-sessao-1.md` (18/10: testes e revisão de telas, nenhum código alterado): leia antes de continuar.
 
 **Feito em 16/10 (ainda local, nada enviado ao GitHub nem promovido; 3 migrações só no banco de teste, 0067 a 0069):** a
 Etapa 3 de folgas (pedido analisado pela Supervisão da área, troca com colega de folga, mediação, regras configuráveis), a
@@ -189,13 +189,22 @@ Agenda, Tarefas, Cadastros, Painel e Biblioteca, as decisões da Babi (Direção
 remarcar, ensaio na folga com motivo, avisos e "quem já leu" na Biblioteca, lotes, push web de mensagem) e a
 **empresa de teste** (`docs/empresa-de-teste.md`): use-a para conferir telas com servidor de verdade.
 
+**Feito em 18/10, sessão 1 (nenhum código alterado; só build, tipos, testes e revisão parcial de telas):**
+`tsc`, build e D1 limpos. Bateria da API rodada contra o banco de teste (resultado parcial: `permission-matrix`
+com 1 falha de autorização — rerrun zerou, era transitória; `daily-book-session-blocks` com 4 falhas por
+EMAXCONNSESSION + teste de rollback; demais arquivos vistos: OK). Revisão de telas feita só com perfil ADM a
+375px: achados em `docs/handoff-2026-10-18-sessao-1.md`.
+
+**Feito em 18/10, sessão 2:** Livro do Dia corrigido — cartões aparecem logo após a lista chegar (detalhes
+carregam em fundo, sem travar o header em "carregando…"); removido "em 13 Shows" hardcoded da mensagem de livro
+sem cenas. `tsc` limpo após as mudanças.
+
 Pendente:
-- **A próxima revisão tela a tela**, com as 16 perguntas do crivo: Folgas e Solicitações, Mapa do mês e
-  Grupos de folga. A regra real de folgas está em `docs/regras-de-folgas.md` — leia antes de mexer.
-  As 3 perguntas das Etapas 3 e 4 foram respondidas em 16/10/2026 (folga chamada em emergência é
-  transferida, grupos só na alta temporada pelos supervisores, troca após publicação exige aceite do
-  colega com motivo escrito) e os 4 pontos de detalhe também; tudo em
-  `docs/plano-folga-como-troca-e-mes-em-rascunho.md`. Cobertura mínima por função só avisa e é configurável.
+- **Revisão das telas com Direção, Supervisão e Elenco** (a 375px e 1280px) — ficou para a próxima sessão.
+- **Folgas e Solicitações, Mapa do mês e Grupos de folga** — revisão com o crivo ainda não feita. A regra real
+  de folgas está em `docs/regras-de-folgas.md` — leia antes de mexer. Cobertura mínima por função só avisa e é configurável.
+- **`permission-matrix`:** a falha de autorização da sessão 1 desapareceu no rerun (0 falhas) — era transitória, EMAXCONNSESSION.
+- **Escala:** flash de dados antigos ao trocar de local — decidir se corrige.
 - **Quem constrói o app** confere no telefone o Perfil e o PDF da Biblioteca, e roda em produção
   `lib/db/scripts/limpar-texto-de-mensagens-no-registro.sql`. Só depois do "pode enviar" dessa pessoa: o envio do
   código ao GitHub (push) e a promoção (API primeiro, site depois). **Issues e rótulos do GitHub não
