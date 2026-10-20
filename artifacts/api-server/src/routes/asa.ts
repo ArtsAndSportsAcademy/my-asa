@@ -9869,15 +9869,23 @@ router.post("/asa/recognitions", requireAuth, requireOrganization, async (req, r
     return;
   }
 
-  const [rec] = await db.insert(recognitionsTable).values({
-    organizationId: user.organizationId!,
-    userId,
-    type,
-    title,
-    message,
-    createdBy: user.sub,
-    publishedAt: new Date(),
-  }).returning();
+  const rec = await db.transaction(async (tx) => {
+    const [created] = await tx.insert(recognitionsTable).values({
+      organizationId: user.organizationId!,
+      userId,
+      type,
+      title,
+      message,
+      createdBy: user.sub,
+      publishedAt: new Date(),
+    }).returning();
+    await writeHistoryEvent({
+      category: "NOTICE", action: "recognition.created", title: "Reconhecimento dado",
+      narrative: `Reconhecimento "${title}" dado a uma pessoa da equipe.`, entityType: "recognition", entityId: created!.id,
+      actorId: user.sub, orgId: user.organizationId!, beforeState: null, afterState: created, metadata: { userId, type },
+    }, tx as any);
+    return created!;
+  });
 
   try {
     await createNotification({

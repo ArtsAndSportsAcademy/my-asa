@@ -131,12 +131,21 @@ router.post("/library/categories", requireAuth, requireOrganization, async (req,
     const orgId = req.user!.organizationId;
 
     const role = await getUserRole(userId);
-    if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "Sem permissão" }); return; }
+    if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "FORBIDDEN", message: "Só a Administração e a Supervisão cuidam da Biblioteca. O Elenco e a Direção só leem." }); return; }
 
     const { name, description } = req.body;
     if (!name) { res.status(400).json({ error: "name obrigatório" }); return; }
 
-    const [cat] = await db.insert(libraryCategoriesTable).values({ orgId, name, description: description ?? null }).returning();
+    const cat = await db.transaction(async (tx) => {
+      const [created] = await tx.insert(libraryCategoriesTable).values({ orgId, name, description: description ?? null }).returning();
+      await writeHistoryEvent({
+        category: "OPERATIONAL_CHANGE", action: "library.category_created",
+        title: `Categoria criada: ${created!.name}`,
+        narrative: `A categoria ${created!.name} foi criada na Biblioteca.`, entityType: "library_category",
+        entityId: created!.id, actorId: userId, orgId, beforeState: null, afterState: created,
+      }, tx as any);
+      return created;
+    });
     res.status(201).json({ category: cat });
   } catch (err) {
     console.error("[library] POST /library/categories", err);
@@ -153,7 +162,7 @@ router.delete("/library/categories/:id", requireAuth, requireOrganization, async
     const categoryId = req.params.id as string;
 
     const role = await getUserRole(userId);
-    if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "Sem permissão" }); return; }
+    if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "FORBIDDEN", message: "Só a Administração e a Supervisão cuidam da Biblioteca. O Elenco e a Direção só leem." }); return; }
 
     const [cat] = await db
       .select()
@@ -278,7 +287,7 @@ router.post("/library/documents", requireAuth, requireOrganization, async (req, 
     const orgId = req.user!.organizationId;
 
     const role = await getUserRole(userId);
-    if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "Sem permissão" }); return; }
+    if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "FORBIDDEN", message: "Só a Administração e a Supervisão cuidam da Biblioteca. O Elenco e a Direção só leem." }); return; }
 
     const { title, type, summary, body, categoryId, responsibleId, fileUrl, tags, requiresConfirmation = false, scopeType = "HOUSE", areaId = null, locationId = null } = req.body;
     if (!title || !type) { res.status(400).json({ error: "title e type obrigatórios" }); return; }
@@ -410,7 +419,7 @@ router.put("/library/documents/:id/file", requireAuth, requireOrganization, expr
     const docId = String(req.params.id);
     if (!validarUuid(docId)) { res.status(404).json({ error: "Documento não encontrado" }); return; }
     const role = await getUserRole(userId);
-    if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "Sem permissão" }); return; }
+    if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "FORBIDDEN", message: "Só a Administração e a Supervisão cuidam da Biblioteca. O Elenco e a Direção só leem." }); return; }
     const [doc] = await db.select().from(libraryDocumentsTable).where(and(eq(libraryDocumentsTable.id, docId), eq(libraryDocumentsTable.orgId, orgId))).limit(1);
     if (!doc) { res.status(404).json({ error: "Documento não encontrado" }); return; }
     if (doc.status === "ARCHIVED") { res.status(400).json({ error: "Documento arquivado não aceita arquivo" }); return; }
@@ -440,7 +449,7 @@ router.put("/library/documents/:id/citations", requireAuth, requireOrganization,
     const docId = String(req.params.id);
     if (!validarUuid(docId)) { res.status(404).json({ error: "Documento não encontrado" }); return; }
     const role = await getUserRole(userId);
-    if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "Sem permissão" }); return; }
+    if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "FORBIDDEN", message: "Só a Administração e a Supervisão cuidam da Biblioteca. O Elenco e a Direção só leem." }); return; }
 
     const [doc] = await db.select().from(libraryDocumentsTable)
       .where(and(eq(libraryDocumentsTable.id, docId), eq(libraryDocumentsTable.orgId, orgId))).limit(1);
@@ -526,7 +535,7 @@ router.patch("/library/documents/:id", requireAuth, requireOrganization, async (
     if (!validarUuid(docId)) { res.status(404).json({ error: "Documento não encontrado" }); return; }
 
     const role = await getUserRole(userId);
-    if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "Sem permissão" }); return; }
+    if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "FORBIDDEN", message: "Só a Administração e a Supervisão cuidam da Biblioteca. O Elenco e a Direção só leem." }); return; }
 
     const [doc] = await db
       .select()
@@ -569,7 +578,7 @@ router.patch("/library/documents/:id", requireAuth, requireOrganization, async (
       await writeHistoryEvent({
         category: "DELIVERY", action: responsibleId !== undefined && responsibleId !== prevResponsible ? "library.responsible_changed" : "library.updated",
         title: `Documento atualizado: ${row.title}`,
-        narrative: `Documento atualizado por ${userId}.`, entityType: "library_document", entityId: docId,
+        narrative: `Documento "${doc.title}" atualizado.`, entityType: "library_document", entityId: docId,
         actorId: userId, orgId, beforeState: doc, afterState: row,
         metadata: { reason: req.body?.reason ?? null },
       }, tx as any);
@@ -593,7 +602,7 @@ router.post("/library/documents/:id/publish", requireAuth, requireOrganization, 
     if (!validarUuid(docId)) { res.status(404).json({ error: "Documento não encontrado" }); return; }
 
     const role = await getUserRole(userId);
-    if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "Sem permissão" }); return; }
+    if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "FORBIDDEN", message: "Só a Administração e a Supervisão cuidam da Biblioteca. O Elenco e a Direção só leem." }); return; }
 
     const [doc] = await db.select().from(libraryDocumentsTable)
       .where(and(eq(libraryDocumentsTable.id, docId), eq(libraryDocumentsTable.orgId, orgId))).limit(1);
@@ -642,7 +651,7 @@ router.post("/library/documents/:id/version", requireAuth, requireOrganization, 
     if (!validarUuid(docId)) { res.status(404).json({ error: "Documento não encontrado" }); return; }
 
     const role = await getUserRole(userId);
-    if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "Sem permissão" }); return; }
+    if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "FORBIDDEN", message: "Só a Administração e a Supervisão cuidam da Biblioteca. O Elenco e a Direção só leem." }); return; }
 
     const [doc] = await db.select().from(libraryDocumentsTable)
       .where(and(eq(libraryDocumentsTable.id, docId), eq(libraryDocumentsTable.orgId, orgId))).limit(1);
@@ -692,7 +701,7 @@ router.post("/library/documents/:id/archive", requireAuth, requireOrganization, 
     if (!validarUuid(docId)) { res.status(404).json({ error: "Documento não encontrado" }); return; }
 
     const role = await getUserRole(userId);
-    if (!role || role !== "ADMIN") { res.status(403).json({ error: "Apenas Admin pode arquivar documentos" }); return; }
+    if (!role || role !== "ADMIN") { res.status(403).json({ error: "FORBIDDEN", message: "Só a Administração arquiva documentos da Biblioteca." }); return; }
 
     const [doc] = await db.select().from(libraryDocumentsTable)
       .where(and(eq(libraryDocumentsTable.id, docId), eq(libraryDocumentsTable.orgId, orgId))).limit(1);
@@ -709,7 +718,7 @@ router.post("/library/documents/:id/archive", requireAuth, requireOrganization, 
       if (!row) throw new Error("Documento não encontrado");
       await writeHistoryEvent({
         category: "DELIVERY", action: "library.archived", title: `Documento arquivado: ${doc.title}`,
-        narrative: `Documento "${doc.title}" arquivado por ${userId}. Arquivado ≠ excluído.`,
+        narrative: `Documento "${doc.title}" arquivado. Arquivado não é excluído: o texto e as versões continuam guardados.`,
         entityType: "library_document", entityId: docId, actorId: userId, orgId,
         beforeState: doc, afterState: row,
       }, tx as any);
@@ -779,7 +788,7 @@ router.get("/library/documents/:id/versions", requireAuth, requireOrganization, 
     if (!validarUuid(docId)) { res.status(404).json({ error: "Documento não encontrado" }); return; }
 
     const role = await getUserRole(userId);
-    if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "Sem permissão" }); return; }
+    if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "FORBIDDEN", message: "Só a Administração e a Supervisão cuidam da Biblioteca. O Elenco e a Direção só leem." }); return; }
 
     const [document] = await db
       .select()

@@ -73,6 +73,42 @@ async function run() {
     const noteResponse = await request(`/show-books/${book!.id}`, "PATCH", { description: "Trocar faixas antes do ensaio.", reason: "Observações atualizadas" });
     const noteBody = await noteResponse.json() as any;
     assert(noteResponse.status === 200 && noteBody.showBook.description === "Trocar faixas antes do ensaio.", "Observações são texto editável e persistem no Livro do Show");
+
+    // Revisão 4: toda edição estrutural (cena, grupo, slot, linha, tag) grava Registro com o motivo.
+    const registroDe = async (entityId: string, action: string) =>
+      db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, entityId), eq(historyEventsTable.action, action)));
+    assert((await registroDe(group.id, "show_book.block.created")).length === 1, "Criar grupo grava Registro");
+    const grupoAlterado = await request(`/show-books/${book!.id}/blocks/${group.id}`, "PATCH", { name: "Pista central", reason: "Nome mais claro" });
+    const registroGrupo = await registroDe(group.id, "show_book.block.updated");
+    assert(grupoAlterado.status === 200 && registroGrupo.length === 1 && (registroGrupo[0]!.metadata as any).reason === "Nome mais claro", "Alterar grupo grava Registro com o motivo escrito");
+    const cenaAlterada = await request(`/show-books/${book!.id}/scenes/${sceneBody.scene.id}`, "PATCH", { name: "Bandeiras e fitas", reason: "Cena renomeada" });
+    assert(cenaAlterada.status === 200 && (await registroDe(sceneBody.scene.id, "show_book.scene.updated")).length === 1, "Alterar cena grava Registro");
+    const slotAlterado = await request(`/show-books/${book!.id}/positions/${position.id}`, "PATCH", { name: "BL 01 (reserva)", reason: "Slot renomeado" });
+    assert(slotAlterado.status === 200 && (await registroDe(position.id, "show_book.position.updated")).length === 1, "Alterar slot grava Registro");
+    const slotNovo = await request(`/show-books/${book!.id}/positions`, "POST", { name: "BL 02", order: 1, blockId: left.id, reason: "Mais um slot" });
+    const slotNovoId = (await slotNovo.json() as any).position.id as string;
+    assert(slotNovo.status === 201 && (await registroDe(slotNovoId, "show_book.position.created")).length === 1, "Criar slot grava Registro");
+    const tipoErrado = await request(`/show-books/${book!.id}/positions/${slotNovoId}/lines`, "POST", { type: "TEXT", reason: "Tipo inexistente" });
+    assert(tipoErrado.status === 400 && /não existe/.test((await tipoErrado.json() as any).message), "Tipo de linha inexistente responde 400 com a lista, não 500");
+    const linhaNova = await request(`/show-books/${book!.id}/positions/${slotNovoId}/lines`, "POST", { type: "MANUAL", config: { texto: "a" }, order: 0, reason: "Linha de teste" });
+    const linhaId = (await linhaNova.json() as any).line.id as string;
+    assert(linhaNova.status === 201 && (await registroDe(linhaId, "show_book.line.created")).length === 1, "Criar linha grava Registro");
+    await request(`/show-books/${book!.id}/lines/${linhaId}`, "PATCH", { config: { texto: "b" }, reason: "Texto corrigido" });
+    assert((await registroDe(linhaId, "show_book.line.updated")).length === 1, "Alterar linha grava Registro");
+    await request(`/show-books/${book!.id}/lines/${linhaId}`, "DELETE", { reason: "Linha desnecessária" });
+    assert((await registroDe(linhaId, "show_book.line.removed")).length === 1, "Remover linha grava Registro");
+    await request(`/show-books/${book!.id}/positions/${slotNovoId}`, "DELETE", { reason: "Slot desnecessário" });
+    assert((await registroDe(slotNovoId, "show_book.position.removed")).length === 1, "Remover slot grava Registro");
+    const grupoRemovido = await request(`/show-books/${book!.id}/blocks/${group.id}`, "DELETE", { reason: "Grupo desnecessário", confirm: true });
+    assert(grupoRemovido.status === 204 && (await registroDe(group.id, "show_book.block.removed")).length === 1, "Remover grupo grava Registro");
+    const cenaRemovida = await request(`/show-books/${book!.id}/scenes/${sceneBody.scene.id}`, "DELETE", { reason: "Cena desnecessária" });
+    assert(cenaRemovida.status === 204 && (await registroDe(sceneBody.scene.id, "show_book.scene.removed")).length === 1, "Remover cena grava Registro");
+    const tagCriada = await request(`/operations/${operation!.id}/tags`, "POST", { category: "ARTISTIC_SKILL", label: "Equilíbrio" });
+    const tagId = (await tagCriada.json() as any).tag.id as string;
+    assert(tagCriada.status === 201 && (await registroDe(tagId, "show_book_tag.created")).length === 1, "Criar tag grava Registro");
+    const tagDada = await request(`/users/${titular!.id}/tags`, "POST", { tagId });
+    const tagDadaId = (await tagDada.json() as any).userTag.id as string;
+    assert(tagDada.status === 201 && (await registroDe(tagDadaId, "user_tag.assigned")).length === 1, "Dar tag a uma pessoa grava Registro");
   } finally {
     if (server) await new Promise<void>((resolve) => server!.close(() => resolve()));
     await pool.query("DELETE FROM history_events WHERE org_id = $1", [org!.id]);
@@ -83,6 +119,8 @@ async function run() {
     await pool.query("DELETE FROM show_book_blocks WHERE show_book_id IN (SELECT id FROM show_books WHERE operation_id = $1)", [operation!.id]);
     await pool.query("DELETE FROM show_book_scenes WHERE show_book_id IN (SELECT id FROM show_books WHERE operation_id = $1)", [operation!.id]);
     await pool.query("DELETE FROM show_books WHERE operation_id = $1", [operation!.id]);
+    await pool.query("DELETE FROM user_tags WHERE user_id IN (SELECT id FROM users WHERE organization_id = $1)", [org!.id]);
+    await pool.query("DELETE FROM show_book_tags WHERE operation_id = $1", [operation!.id]);
     await pool.query("DELETE FROM user_roles WHERE operation_id = $1", [operation!.id]);
     await pool.query("DELETE FROM users WHERE organization_id = $1", [org!.id]);
     await pool.query("DELETE FROM operations WHERE id = $1", [operation!.id]);

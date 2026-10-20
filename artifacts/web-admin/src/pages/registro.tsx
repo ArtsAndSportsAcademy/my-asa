@@ -30,17 +30,17 @@ const PERIODOS = [
 
 /** Assuntos do filtro → entityType gravados pelas rotas. */
 const ASSUNTOS: { label: string; tipos: string[] }[] = [
-  { label: "Pessoas e acessos", tipos: ["user", "person", "user_role", "web_push_subscription", "pwa_installation"] },
+  { label: "Pessoas e acessos", tipos: ["user", "person", "user_role", "web_push_subscription", "pwa_installation", "organization"] },
   { label: "Escalas", tipos: ["scale", "scale_entry", "scale_allocation", "programacao"] },
   { label: "Livro do Dia", tipos: ["daily_book", "formation", "schedule_conflict"] },
-  { label: "Shows", tipos: ["show_book", "show_book_scene", "show_book_position", "show_book_block", "show_book_keyframe", "show_book_tag", "show_book_drive_link", "stage_format_preset", "character", "character_cast", "session"] },
-  { label: "Check-in e ocorrências", tipos: ["day_checkin", "check_in", "occurrence"] },
-  { label: "Folgas", tipos: ["folga", "leave_request", "leave_regime"] },
-  { label: "Tarefas e responsabilidades", tipos: ["task", "task_evidence", "responsibility", "responsibility_assignment", "delegation", "delivery", "delivery_assignment"] },
-  { label: "Mural, mensagens e biblioteca", tipos: ["announcement", "announcement_comment", "notice", "message", "message_thread", "thread", "library_document", "library_category", "library_document_file"] },
+  { label: "Shows", tipos: ["show_book", "show_book_scene", "show_book_position", "show_book_block", "show_book_keyframe", "show_book_tag", "show_book_line", "user_tag", "show_book_drive_link", "stage_format_preset", "character", "character_cast", "session"] },
+  { label: "Check-in e ocorrências", tipos: ["day_checkin", "check_in", "shift", "occurrence"] },
+  { label: "Folgas", tipos: ["folga", "leave_request", "leave_regime", "folga_config", "folga_grupo", "folga_mes"] },
+  { label: "Tarefas e responsabilidades", tipos: ["task", "task_evidence", "responsibility", "responsibility_assignment", "delegation", "delivery", "delivery_assignment", "responsibility_request", "responsibility_routine"] },
+  { label: "Mural, mensagens e biblioteca", tipos: ["announcement", "announcement_comment", "notice", "message", "message_thread", "thread", "library_document", "library_category", "library_document_file", "mural_data_especial"] },
   { label: "Agenda", tipos: ["agenda_event", "recurring_activity"] },
   { label: "Áreas, locais e grupos", tipos: ["area", "location", "area_local_supervisor", "operation", "group"] },
-  { label: "Pedidos e restrições", tipos: ["request", "supervisor_request", "restriction"] },
+  { label: "Pedidos e restrições", tipos: ["request", "supervisor_request", "restriction", "restricao_horario"] },
   { label: "Reconhecimentos", tipos: ["recognition"] },
 ];
 const TIPOS: Record<string, string> = Object.fromEntries(ASSUNTOS.flatMap((a) => a.tipos.map((t) => [t, a.label])));

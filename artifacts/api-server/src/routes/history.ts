@@ -8,8 +8,10 @@ import {
 import { eq, desc, and, gte, lte, or, isNull, inArray, ilike, like, sql, type SQL } from "drizzle-orm";
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
 import { semSegredos } from "../lib/history-helper.js";
+import { exigirUuidNosParametros, validarUuid } from "../lib/uuid.js";
 
 const router = Router();
+exigirUuidNosParametros(router, { narrativeId: "Narrativa não encontrada" });
 
 /**
  * Registro de auditoria: só Administração e Direção (12-seguranca-antes-do-lancamento.md —
@@ -66,6 +68,15 @@ router.get(
         limit = "50",
         offset = "0",
       } = req.query as Record<string, string>;
+
+      // Filtro por pessoa, operação ou grupo com código quebrado: o banco estouraria (500, "erro ao buscar").
+      // Responde dizendo qual filtro está errado.
+      for (const [nome, valor] of [["actorId", actorId], ["operationId", operationId], ["groupId", groupId]] as const) {
+        if (valor !== undefined && valor !== "" && !validarUuid(valor)) {
+          res.status(400).json({ error: "FILTRO_INVALIDO", message: `O filtro "${nome}" não é um código válido. Escolha o item na lista, sem digitar.` });
+          return;
+        }
+      }
 
       const conds: SQL[] = [daOrganizacao(req.user!.organizationId)];
       if (category)    conds.push(eq(historyEventsTable.category, category));

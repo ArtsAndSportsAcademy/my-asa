@@ -162,6 +162,17 @@ async function bumpVersion(
   return newVersion;
 }
 
+// Registro das edições estruturais do Livro do Show: entra na mesma transação da mudança e da versão nova,
+// para não existir versão sem Registro nem Registro de mudança que não aconteceu.
+type EdicaoDoLivro = { action: string; title: string; narrative: string; entityType: string; entityId: string; before: unknown; after: unknown; reason: string };
+function registrarEdicaoDoLivro(tx: Tx, req: any, book: { operationId: string }, e: EdicaoDoLivro) {
+  return writeHistoryEvent({
+    category: "OPERATIONAL_CHANGE", action: e.action, title: e.title, narrative: e.narrative,
+    entityType: e.entityType, entityId: e.entityId, actorId: req.user!.sub, operationId: book.operationId, orgId: req.user!.organizationId,
+    beforeState: (e.before ?? null) as any, afterState: (e.after ?? null) as any, metadata: { reason: e.reason },
+  }, tx as any);
+}
+
 // Apaga posições (papéis) por completo, resolvendo as FKs que não têm cascade:
 // as linhas pertencem à posição (apagar) e o histórico de escala aponta para ela
 // (desligar, preservando os registos). As refs de biblioteca têm cascade no schema.
@@ -867,14 +878,17 @@ router.patch("/show-books/:id/scenes/:sceneId", requireAuth, requireOrganization
     if (name !== undefined) updates.name = name;
     if (order !== undefined) updates.order = order;
     if (isOptional !== undefined) updates.isOptional = isOptional;
-    const [updated] = await db
-      .update(showBookScenesTable)
-      .set(updates as any)
-      .where(and(eq(showBookScenesTable.id, sceneId), eq(showBookScenesTable.showBookId, showBookId)))
-      .returning();
-    if (!updated) { res.status(404).json({ error: "Cena não encontrada" }); return; }
     const ct = changeType === "STRUCTURAL" ? "STRUCTURAL" : "CONFIG";
-    await bumpVersion(showBookId, ct, reason, req.user!.sub, req.requestId, req.correlationId);
+    const updated = await db.transaction(async (tx) => {
+      const [before] = await tx.select().from(showBookScenesTable)
+        .where(and(eq(showBookScenesTable.id, sceneId), eq(showBookScenesTable.showBookId, showBookId))).limit(1);
+      if (!before) return null;
+      const [after] = await tx.update(showBookScenesTable).set(updates as any).where(eq(showBookScenesTable.id, sceneId)).returning();
+      await registrarEdicaoDoLivro(tx, req, guard, { action: "show_book.scene.updated", title: "Cena do Livro do Show alterada", narrative: `Cena "${before.name}" alterada.`, entityType: "show_book_scene", entityId: sceneId, before, after, reason });
+      await bumpVersion(showBookId, ct, reason, req.user!.sub, req.requestId, req.correlationId, tx);
+      return after;
+    });
+    if (!updated) { res.status(404).json({ error: "Cena não encontrada" }); return; }
     res.json({ scene: updated });
   } catch (err) {
     res.status(500).json({ error: "Erro ao atualizar cena" });
@@ -888,7 +902,7 @@ router.delete("/show-books/:id/scenes/:sceneId", requireAuth, requireOrganizatio
   try {
     const guard = await requireShowManage(req, res);
     if (!guard) return;
-    const [owned] = await db.select({ id: showBookScenesTable.id }).from(showBookScenesTable)
+    const [owned] = await db.select().from(showBookScenesTable)
       .where(and(eq(showBookScenesTable.id, sceneId), eq(showBookScenesTable.showBookId, showBookId)));
     if (!owned) { res.status(404).json({ error: "Cena não encontrada" }); return; }
     await db.transaction(async (tx) => {
@@ -906,8 +920,9 @@ router.delete("/show-books/:id/scenes/:sceneId", requireAuth, requireOrganizatio
       }
       await tx.update(showBookScenesTable).set({ active: false, updatedAt: new Date() })
         .where(and(eq(showBookScenesTable.id, sceneId), eq(showBookScenesTable.showBookId, showBookId), eq(showBookScenesTable.active, true)));
+      await registrarEdicaoDoLivro(tx, req, guard, { action: "show_book.scene.removed", title: "Cena removida do Livro do Show", narrative: `Cena "${owned.name}" removida junto com seus grupos e slots, sem apagar o histórico.`, entityType: "show_book_scene", entityId: sceneId, before: owned, after: { ...owned, active: false }, reason });
+      await bumpVersion(showBookId, "STRUCTURAL", reason, req.user!.sub, req.requestId, req.correlationId, tx);
     });
-    await bumpVersion(showBookId, "STRUCTURAL", reason, req.user!.sub, req.requestId, req.correlationId);
     res.status(204).send();
   } catch (err) {
     requestLogger("show_book", req.requestId ?? "", req.correlationId ?? "")
@@ -931,11 +946,15 @@ router.post("/show-books/:id/blocks", requireAuth, requireOrganization, async (r
       if (!scene) { res.status(404).json({ error: "Cena não encontrada" }); return; }
     }
     const normalizedPrefix = String(prefix ?? deriveSlotPrefix(name)).trim().toUpperCase();
-    const [block] = await db
-      .insert(showBookBlocksTable)
-      .values({ showBookId, name, order, sceneId: sceneId ?? null, startTime: startTime ?? null, endTime: endTime ?? null, zone: zone ?? "CENTRO", prefix: normalizedPrefix, color: typeof color === "string" ? color : null } as any)
-      .returning();
-    await bumpVersion(showBookId, "STRUCTURAL", reason, req.user!.sub, req.requestId, req.correlationId);
+    const block = await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(showBookBlocksTable)
+        .values({ showBookId, name, order, sceneId: sceneId ?? null, startTime: startTime ?? null, endTime: endTime ?? null, zone: zone ?? "CENTRO", prefix: normalizedPrefix, color: typeof color === "string" ? color : null } as any)
+        .returning();
+      await registrarEdicaoDoLivro(tx, req, guard, { action: "show_book.block.created", title: "Grupo criado no Livro do Show", narrative: `Grupo "${name}" criado.`, entityType: "show_book_block", entityId: created!.id, before: null, after: created, reason });
+      await bumpVersion(showBookId, "STRUCTURAL", reason, req.user!.sub, req.requestId, req.correlationId, tx);
+      return created;
+    });
     res.status(201).json({ block });
   } catch (err) {
     res.status(500).json({ error: "Erro ao criar bloco" });
@@ -959,14 +978,17 @@ router.patch("/show-books/:id/blocks/:blockId", requireAuth, requireOrganization
     if (zone !== undefined) updates.zone = zone;
     if (prefix !== undefined) updates.prefix = String(prefix).trim().toUpperCase();
     if (color !== undefined) updates.color = color;
-    const [updated] = await db
-      .update(showBookBlocksTable)
-      .set(updates as any)
-      .where(and(eq(showBookBlocksTable.id, blockId), eq(showBookBlocksTable.showBookId, showBookId)))
-      .returning();
-    if (!updated) { res.status(404).json({ error: "Bloco não encontrado" }); return; }
     const ct = changeType === "STRUCTURAL" ? "STRUCTURAL" : "CONFIG";
-    await bumpVersion(showBookId, ct, reason, req.user!.sub, req.requestId, req.correlationId);
+    const updated = await db.transaction(async (tx) => {
+      const [before] = await tx.select().from(showBookBlocksTable)
+        .where(and(eq(showBookBlocksTable.id, blockId), eq(showBookBlocksTable.showBookId, showBookId))).limit(1);
+      if (!before) return null;
+      const [after] = await tx.update(showBookBlocksTable).set(updates as any).where(eq(showBookBlocksTable.id, blockId)).returning();
+      await registrarEdicaoDoLivro(tx, req, guard, { action: "show_book.block.updated", title: "Grupo do Livro do Show alterado", narrative: `Grupo "${before.name}" alterado.`, entityType: "show_book_block", entityId: blockId, before, after, reason });
+      await bumpVersion(showBookId, ct, reason, req.user!.sub, req.requestId, req.correlationId, tx);
+      return after;
+    });
+    if (!updated) { res.status(404).json({ error: "Bloco não encontrado" }); return; }
     res.json({ block: updated });
   } catch (err) {
     res.status(500).json({ error: "Erro ao atualizar bloco" });
@@ -981,7 +1003,7 @@ router.delete("/show-books/:id/blocks/:blockId", requireAuth, requireOrganizatio
   try {
     const guard = await requireShowManage(req, res);
     if (!guard) return;
-    const [owned] = await db.select({ id: showBookBlocksTable.id }).from(showBookBlocksTable)
+    const [owned] = await db.select().from(showBookBlocksTable)
       .where(and(eq(showBookBlocksTable.id, blockId), eq(showBookBlocksTable.showBookId, showBookId)));
     if (!owned) { res.status(404).json({ error: "Bloco não encontrado" }); return; }
     const [usage] = await db.select({ count: sql<number>`count(*)::int` }).from(showBookRolesTable)
@@ -994,8 +1016,9 @@ router.delete("/show-books/:id/blocks/:blockId", requireAuth, requireOrganizatio
       await purgePositions(tx, positions.map((p) => p.id));
       await tx.update(showBookBlocksTable).set({ active: false, updatedAt: new Date() })
         .where(and(eq(showBookBlocksTable.id, blockId), eq(showBookBlocksTable.showBookId, showBookId), eq(showBookBlocksTable.active, true)));
+      await registrarEdicaoDoLivro(tx, req, guard, { action: "show_book.block.removed", title: "Grupo removido do Livro do Show", narrative: `Grupo "${owned.name}" removido junto com seus slots, sem apagar o histórico.`, entityType: "show_book_block", entityId: blockId, before: owned, after: { ...owned, active: false }, reason });
+      await bumpVersion(showBookId, "STRUCTURAL", reason, req.user!.sub, req.requestId, req.correlationId, tx);
     });
-    await bumpVersion(showBookId, "STRUCTURAL", reason, req.user!.sub, req.requestId, req.correlationId);
     res.status(204).send();
   } catch (err) {
     requestLogger("show_book", req.requestId ?? "", req.correlationId ?? "")
@@ -1017,16 +1040,20 @@ router.post("/show-books/:id/positions", requireAuth, requireOrganization, async
         .where(and(eq(showBookBlocksTable.id, blockId), eq(showBookBlocksTable.showBookId, showBookId)));
       if (!block) { res.status(404).json({ error: "Bloco não encontrado" }); return; }
     }
-    const [position] = await db
-      .insert(showBookRolesTable)
-      .values({
-        showBookId, name, order,
-        blockId: blockId ?? null,
-        minimumCoverage: minimumCoverage ?? 1,
-        tagsJson: tagsJson ?? [],
-      })
-      .returning();
-    await bumpVersion(showBookId, "STRUCTURAL", reason, req.user!.sub, req.requestId, req.correlationId);
+    const position = await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(showBookRolesTable)
+        .values({
+          showBookId, name, order,
+          blockId: blockId ?? null,
+          minimumCoverage: minimumCoverage ?? 1,
+          tagsJson: tagsJson ?? [],
+        })
+        .returning();
+      await registrarEdicaoDoLivro(tx, req, guard, { action: "show_book.position.created", title: "Slot criado no Livro do Show", narrative: `Slot "${name}" criado.`, entityType: "show_book_position", entityId: created!.id, before: null, after: created, reason });
+      await bumpVersion(showBookId, "STRUCTURAL", reason, req.user!.sub, req.requestId, req.correlationId, tx);
+      return created;
+    });
     res.status(201).json({ position });
   } catch (err) {
     res.status(500).json({ error: "Erro ao criar posição" });
@@ -1047,14 +1074,17 @@ router.patch("/show-books/:id/positions/:positionId", requireAuth, requireOrgani
     if (tagsJson !== undefined) updates.tagsJson = tagsJson;
     if (positionJson !== undefined) updates.positionJson = positionJson;
     if (order !== undefined) updates.order = order;
-    const [updated] = await db
-      .update(showBookRolesTable)
-      .set(updates as any)
-      .where(and(eq(showBookRolesTable.id, positionId), eq(showBookRolesTable.showBookId, showBookId)))
-      .returning();
-    if (!updated) { res.status(404).json({ error: "Posição não encontrada" }); return; }
     const ct = changeType === "STRUCTURAL" ? "STRUCTURAL" : "CONFIG";
-    await bumpVersion(showBookId, ct, reason, req.user!.sub, req.requestId, req.correlationId);
+    const updated = await db.transaction(async (tx) => {
+      const [before] = await tx.select().from(showBookRolesTable)
+        .where(and(eq(showBookRolesTable.id, positionId), eq(showBookRolesTable.showBookId, showBookId))).limit(1);
+      if (!before) return null;
+      const [after] = await tx.update(showBookRolesTable).set(updates as any).where(eq(showBookRolesTable.id, positionId)).returning();
+      await registrarEdicaoDoLivro(tx, req, guard, { action: "show_book.position.updated", title: "Slot do Livro do Show alterado", narrative: `Slot "${before.name}" alterado.`, entityType: "show_book_position", entityId: positionId, before, after, reason });
+      await bumpVersion(showBookId, ct, reason, req.user!.sub, req.requestId, req.correlationId, tx);
+      return after;
+    });
+    if (!updated) { res.status(404).json({ error: "Posição não encontrada" }); return; }
     res.json({ position: updated });
   } catch (err) {
     res.status(500).json({ error: "Erro ao atualizar posição" });
@@ -1068,13 +1098,14 @@ router.delete("/show-books/:id/positions/:positionId", requireAuth, requireOrgan
   try {
     const guard = await requireShowManage(req, res);
     if (!guard) return;
-    const [owned] = await db.select({ id: showBookRolesTable.id }).from(showBookRolesTable)
+    const [owned] = await db.select().from(showBookRolesTable)
       .where(and(eq(showBookRolesTable.id, positionId), eq(showBookRolesTable.showBookId, showBookId)));
     if (!owned) { res.status(404).json({ error: "Posição não encontrada" }); return; }
     await db.transaction(async (tx) => {
       await purgePositions(tx, [positionId]);
+      await registrarEdicaoDoLivro(tx, req, guard, { action: "show_book.position.removed", title: "Slot removido do Livro do Show", narrative: `Slot "${owned.name}" removido, sem apagar o histórico.`, entityType: "show_book_position", entityId: positionId, before: owned, after: { ...owned, active: false }, reason });
+      await bumpVersion(showBookId, "STRUCTURAL", reason, req.user!.sub, req.requestId, req.correlationId, tx);
     });
-    await bumpVersion(showBookId, "STRUCTURAL", reason, req.user!.sub, req.requestId, req.correlationId);
     res.status(204).send();
   } catch (err) {
     requestLogger("show_book", req.requestId ?? "", req.correlationId ?? "")
@@ -1088,6 +1119,7 @@ router.post("/show-books/:id/positions/:positionId/lines", requireAuth, requireO
   const positionId = req.params.positionId as string;
   const { type, config, order, characterId } = req.body;
   if (!type) { res.status(400).json({ error: "type é obrigatório" }); return; }
+  if (!showBookLinesTable.type.enumValues.includes(type)) { res.status(400).json({ error: "BAD_REQUEST", message: `Tipo de linha "${String(type)}" não existe. Use um destes: ${showBookLinesTable.type.enumValues.join(", ")}.` }); return; }
   const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
     const guard = await requireShowManage(req, res);
@@ -1107,11 +1139,15 @@ router.post("/show-books/:id/positions/:positionId/lines", requireAuth, requireO
         .limit(1);
       if (!character) { res.status(404).json({ error: "Personagem não encontrado" }); return; }
     }
-    const [line] = await db
-      .insert(showBookLinesTable)
-      .values({ positionId, characterId: characterId ?? null, type, config: config ?? {}, order: order ?? 0 })
-      .returning();
-    await bumpVersion(showBookId, "STRUCTURAL", reason, req.user!.sub, req.requestId, req.correlationId);
+    const line = await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(showBookLinesTable)
+        .values({ positionId, characterId: characterId ?? null, type, config: config ?? {}, order: order ?? 0 })
+        .returning();
+      await registrarEdicaoDoLivro(tx, req, guard, { action: "show_book.line.created", title: "Linha criada no slot", narrative: "Linha acrescentada ao slot do Livro do Show.", entityType: "show_book_line", entityId: created!.id, before: null, after: created, reason });
+      await bumpVersion(showBookId, "STRUCTURAL", reason, req.user!.sub, req.requestId, req.correlationId, tx);
+      return created;
+    });
     res.status(201).json({ line });
   } catch (err) {
     requestLogger("show_book", req.requestId ?? "", req.correlationId ?? "")
@@ -1124,6 +1160,7 @@ router.patch("/show-books/:id/lines/:lineId", requireAuth, requireOrganization, 
   const showBookId = req.params.id as string;
   const lineId = req.params.lineId as string;
   const { type, config, order, characterId, changeType } = req.body;
+  if (type !== undefined && !showBookLinesTable.type.enumValues.includes(type)) { res.status(400).json({ error: "BAD_REQUEST", message: `Tipo de linha "${String(type)}" não existe. Use um destes: ${showBookLinesTable.type.enumValues.join(", ")}.` }); return; }
   const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
     const guard = await requireShowManage(req, res);
@@ -1148,14 +1185,16 @@ router.patch("/show-books/:id/lines/:lineId", requireAuth, requireOrganization, 
     if (characterId !== undefined) updates.characterId = characterId || null;
     if (config !== undefined) updates.config = config;
     if (order !== undefined) updates.order = order;
-    const [updated] = await db
-      .update(showBookLinesTable)
-      .set(updates as any)
-      .where(eq(showBookLinesTable.id, lineId))
-      .returning();
-    if (!updated) { res.status(404).json({ error: "Linha não encontrada" }); return; }
     const ct = changeType === "STRUCTURAL" ? "STRUCTURAL" : "CONFIG";
-    await bumpVersion(showBookId, ct, reason, req.user!.sub, req.requestId, req.correlationId);
+    const updated = await db.transaction(async (tx) => {
+      const [before] = await tx.select().from(showBookLinesTable).where(eq(showBookLinesTable.id, lineId)).limit(1);
+      if (!before) return null;
+      const [after] = await tx.update(showBookLinesTable).set(updates as any).where(eq(showBookLinesTable.id, lineId)).returning();
+      await registrarEdicaoDoLivro(tx, req, guard, { action: "show_book.line.updated", title: "Linha do slot alterada", narrative: "Linha do slot do Livro do Show alterada.", entityType: "show_book_line", entityId: lineId, before, after, reason });
+      await bumpVersion(showBookId, ct, reason, req.user!.sub, req.requestId, req.correlationId, tx);
+      return after;
+    });
+    if (!updated) { res.status(404).json({ error: "Linha não encontrada" }); return; }
     res.json({ line: updated });
   } catch (err) {
     res.status(500).json({ error: "Erro ao atualizar linha" });
@@ -1172,9 +1211,13 @@ router.delete("/show-books/:id/lines/:lineId", requireAuth, requireOrganization,
     if (!(await lineInShowBook(lineId, showBookId))) {
       res.status(404).json({ error: "Linha não encontrada" }); return;
     }
-    await db.update(showBookLinesTable).set({ active: false, updatedAt: new Date() })
-      .where(and(eq(showBookLinesTable.id, lineId), eq(showBookLinesTable.active, true)));
-    await bumpVersion(showBookId, "STRUCTURAL", reason, req.user!.sub, req.requestId, req.correlationId);
+    await db.transaction(async (tx) => {
+      const [before] = await tx.select().from(showBookLinesTable).where(eq(showBookLinesTable.id, lineId)).limit(1);
+      await tx.update(showBookLinesTable).set({ active: false, updatedAt: new Date() })
+        .where(and(eq(showBookLinesTable.id, lineId), eq(showBookLinesTable.active, true)));
+      await registrarEdicaoDoLivro(tx, req, guard, { action: "show_book.line.removed", title: "Linha removida do slot", narrative: "Linha removida do slot, sem apagar o histórico.", entityType: "show_book_line", entityId: lineId, before, after: before ? { ...before, active: false } : null, reason });
+      await bumpVersion(showBookId, "STRUCTURAL", reason, req.user!.sub, req.requestId, req.correlationId, tx);
+    });
     res.status(204).send();
   } catch (err) {
     requestLogger("show_book", req.requestId ?? "", req.correlationId ?? "")
@@ -1487,11 +1530,20 @@ router.post("/operations/:operationId/tags", requireAuth, requireOrganization, a
   if (!(await operacaoDaMinhaOrganizacao(req, operationId))) { res.status(404).json({ error: "Operação não encontrada" }); return; }
   const { category, label } = req.body;
   if (!category || !label) { res.status(400).json({ error: "category e label são obrigatórios" }); return; }
+  if (!showBookTagsTable.category.enumValues.includes(category)) { res.status(400).json({ error: "BAD_REQUEST", message: `Categoria de tag "${String(category)}" não existe. Use uma destas: ${showBookTagsTable.category.enumValues.join(", ")}.` }); return; }
   try {
-    const [tag] = await db
-      .insert(showBookTagsTable)
-      .values({ operationId, category, label, createdBy: req.user!.sub })
-      .returning();
+    const tag = await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(showBookTagsTable)
+        .values({ operationId, category, label, createdBy: req.user!.sub })
+        .returning();
+      await writeHistoryEvent({
+        category: "OPERATIONAL_CHANGE", action: "show_book_tag.created", title: "Tag criada",
+        narrative: `Tag "${label}" criada.`, entityType: "show_book_tag", entityId: created!.id,
+        actorId: req.user!.sub, operationId, orgId: req.user!.organizationId, beforeState: null, afterState: created,
+      }, tx as any);
+      return created;
+    });
     res.status(201).json({ tag });
   } catch (err) {
     res.status(500).json({ error: "Erro ao criar tag" });
@@ -1553,10 +1605,18 @@ router.post("/users/:userId/tags", requireAuth, requireOrganization, async (req,
     if (!tag || !(await operacaoDaMinhaOrganizacao(req, tag.operationId))) { res.status(404).json({ error: "Tag não encontrada" }); return; }
   }
   try {
-    const [userTag] = await db
-      .insert(userTagsTable)
-      .values({ userId, tagId, assignedBy: req.user!.sub })
-      .returning();
+    const userTag = await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(userTagsTable)
+        .values({ userId, tagId, assignedBy: req.user!.sub })
+        .returning();
+      await writeHistoryEvent({
+        category: "OPERATIONAL_CHANGE", action: "user_tag.assigned", title: "Tag dada a uma pessoa",
+        narrative: "A pessoa recebeu uma tag que entra na escolha de quem escala nos slots.", entityType: "user_tag", entityId: created!.id,
+        actorId: req.user!.sub, orgId: req.user!.organizationId, beforeState: null, afterState: created, metadata: { userId, tagId },
+      }, tx as any);
+      return created;
+    });
     res.status(201).json({ userTag });
   } catch (err) {
     res.status(500).json({ error: "Erro ao atribuir tag ao usuário" });

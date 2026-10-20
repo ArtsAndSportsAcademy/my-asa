@@ -97,6 +97,9 @@ async function run() {
     assert(pagina.body.events.length === 2 && pagina.body.hasMore === true, "paginação avisa que há mais");
     assert((await get(`/history?limit=2&offset=2`, asBarbara)).body.hasMore === false, "última página avisa que acabou");
     assert((await get(`/history?q=${encodeURIComponent("%")}`, asBarbara)).status === 200, "caractere curinga na busca não quebra a consulta");
+    const filtroQuebrado = await get(`/history?actorId=undefined`, asBarbara);
+    assert(filtroQuebrado.status === 400 && /actorId/.test(filtroQuebrado.body.message), "filtro por pessoa com código quebrado responde 400 dizendo qual filtro, não 500");
+    assert((await get(`/history/narratives/undefined`, asBarbara)).status === 404, "narrativa com id quebrado responde 404");
   } finally {
     if (server) { server.closeAllConnections?.(); await new Promise<void>((resolve, reject) => server!.close((error) => error ? reject(error) : resolve())); }
     await db.delete(historyEventsTable).where(or(inArray(historyEventsTable.orgId, [org!.id, outra!.id]), inArray(historyEventsTable.actorId, everyone)));
