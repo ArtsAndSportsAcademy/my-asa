@@ -9,6 +9,8 @@ import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { canSupervisorAccessPerson, listAreaLocalScopes } from "../services/area-local-scope.js";
 import { comoPublicada, montarEscalaDoDia, operationForLocation } from "../services/escala-dia.js";
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
+import { exigirUuidNosParametros } from "../lib/uuid.js";
+import { isUniqueViolation } from "../lib/erro-de-banco.js";
 import { enqueueNotification } from "../services/undo.js";
 import { avisarRepublicacaoFolgas, ultimoRetratoFolgas } from "../services/folgas-publicadas.js";
 import { operationalDate } from "../lib/operational-date.js";
@@ -19,6 +21,7 @@ import { analisarPedidoDeFolga } from "../services/analise-folga.js";
 import { protectShiftCheckIns } from "../middlewares/shift-checkin-legacy.js";
 
 const router: IRouter = Router();
+exigirUuidNosParametros(router, { id: "Pedido não encontrado." });
 router.use("/day-checkins", requireAuth, requireOrganization, protectShiftCheckIns);
 const isAdmin = (role: string) => role === "ADMIN";
 const isDirector = (role: string) => role === "DIR" || role === "DIRECTOR";
@@ -153,12 +156,20 @@ router.post("/leave-requests", requireAuth, requireOrganization, async (req, res
   // Todo pedido nasce PENDING e vai para a Supervisão da área (ou para a Administração quando a área
   // não tem Supervisão). Decisão de 19/10/2026: o pedido nunca mais entra como prioridade, mesmo
   // com o mapa do mês ainda não publicado.
-  const request = await db.transaction(async (tx) => {
+  let request;
+  try {
+  request = await db.transaction(async (tx) => {
     const [created] = await tx.insert(leaveRequestsTable).values({ organizationId: actor.organizationId, userId, areaId: person.areaId, startDate, endDate, reason }).returning();
     await record({ category: "ABSENCE", action: "leave.requested", title: "Folga solicitada", narrative: `Pedido de folga de ${periodoLegivel(startDate, endDate)}.`, entityType: "leave_request", entityId: created!.id, actorId: actor.sub, orgId: actor.organizationId, beforeState: null, afterState: created }, tx);
     await avisarGestaoDaFolga(tx, actor.organizationId, person.areaId, userId, created!.id, "Pedido de folga", `Há um pedido de folga de ${periodoLegivel(startDate, endDate)} para decidir.`, "leave.requested");
     return created!;
   });
+  } catch (err) {
+    // Toque duplo ou pedido repetido: o banco recusa o segundo pedido pendente igual (índice único). Diz o que houve.
+    if (isUniqueViolation(err)) { res.status(409).json({ error: "Conflict", message: "Você já tem um pedido pendente para esse mesmo período. Espere a resposta ou retire o pedido antes de pedir de novo." }); return; }
+    console.error("[folga] POST /leave-requests", err);
+    res.status(500).json({ error: "INTERNAL_ERROR", message: "Não consegui registrar o pedido agora. Nada foi alterado; tente de novo." }); return;
+  }
   res.status(201).json({ request });
 });
 

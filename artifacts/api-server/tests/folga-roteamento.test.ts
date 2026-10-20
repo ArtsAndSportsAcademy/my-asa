@@ -17,7 +17,7 @@ import app from "../src/application.js";
 import { signAccessToken } from "../src/lib/jwt.service.js";
 import { operationalDate, shiftOperationalDate } from "../src/lib/operational-date.js";
 import { avisarPrazoDaFolgaAberto } from "../src/services/operational-jobs.js";
-import { prazoAdminAberto } from "../src/services/folga-roteamento.js";
+import { prazoAdminAberto, supervisoresDaArea } from "../src/services/folga-roteamento.js";
 
 let passed = 0;
 const failures: string[] = [];
@@ -91,6 +91,15 @@ async function run() {
     assert(regPend.length === 1, "entrou no Registro como 'leave.requested', sem 'leave.priority'");
     const avPend = await avisosDe(pendId);
     assert(avPend.some((a) => a.userId === sup.id) && !avPend.some((a) => a.userId === admin.id), "a Supervisão da área é avisada; a Administração não");
+    // Revisão 4: toque duplo no mesmo pedido responde 409 com frase (hoje o índice único do banco recusa; antes virava 500 cru).
+    const repetido = await pedir(asAna, dezembro);
+    assert(repetido.status === 409 && /já tem um pedido pendente/.test(String(repetido.body.message)), "pedido igual e ainda pendente responde 409 com frase, não 500");
+    // Revisão 4: a Supervisão só conta se pode decidir (mesma regra do escopo): local encerrado tira a área da Supervisão.
+    assert((await supervisoresDaArea(db, pat!.id)).includes(sup.id), "preparo: a Supervisão com local aberto conta como Supervisão da área");
+    await db.update(locationsTable).set({ closed: true }).where(eq(locationsTable.id, local!.id));
+    assert(!(await supervisoresDaArea(db, pat!.id)).includes(sup.id), "Supervisão cujo único local está encerrado não conta (senão o pedido esperaria quem não pode abrir)");
+    await db.update(locationsTable).set({ closed: false }).where(eq(locationsTable.id, local!.id));
+    assert((await supervisoresDaArea(db, pat!.id)).includes(sup.id), "reaberto o local, a Supervisão volta a contar");
     // A rota /prioridades segue respondendo 200 (para registros antigos); o pedido novo não aparece lá.
     assert((await call("GET", "/leave-requests/prioridades", asSup)).status === 200, "a rota de prioridades ainda responde");
     assert((await call("GET", "/leave-requests/prioridades", asAdmin)).status === 200, "a Administração também lê a lista de prioridades");

@@ -6,7 +6,7 @@
  * "Publicado" é o mapa de folgas do mês (publicação ou retrato inicial), não a Escala do dia.
  */
 import { and, eq } from "drizzle-orm";
-import { areaLocalSupervisorsTable, db, operationsTable, userRolesTable, usersTable } from "@workspace/db";
+import { areaLocalSupervisorsTable, areasTable, db, locationsTable, operationsTable, userRolesTable, usersTable } from "@workspace/db";
 import { ultimoRetratoFolgas } from "./folgas-publicadas.js";
 import { operationalDate } from "../lib/operational-date.js";
 
@@ -55,9 +55,13 @@ export async function operacaoDaPessoa(executor: Executor, userId: string, organ
 /** Supervisão ativa da área da pessoa (a mesma regra que avisa o pedido). */
 export async function supervisoresDaArea(executor: Executor, areaId: string | null, menos?: string): Promise<string[]> {
   if (!areaId) return [];
+  // Só conta quem de fato pode decidir: a mesma regra do escopo de supervisão (área ativa e local aberto). Supervisão cujo único
+  // local foi encerrado não consegue abrir o pedido; se contasse aqui, o pedido ficaria esperando alguém que não pode responder.
   const rows = await executor.selectDistinct({ id: areaLocalSupervisorsTable.supervisorId }).from(areaLocalSupervisorsTable)
     .innerJoin(usersTable, eq(areaLocalSupervisorsTable.supervisorId, usersTable.id))
-    .where(and(eq(areaLocalSupervisorsTable.areaId, areaId), eq(areaLocalSupervisorsTable.active, true), eq(usersTable.status, "ACTIVE")));
+    .innerJoin(areasTable, eq(areaLocalSupervisorsTable.areaId, areasTable.id))
+    .innerJoin(locationsTable, eq(areaLocalSupervisorsTable.locationId, locationsTable.id))
+    .where(and(eq(areaLocalSupervisorsTable.areaId, areaId), eq(areaLocalSupervisorsTable.active, true), eq(usersTable.status, "ACTIVE"), eq(areasTable.active, true), eq(locationsTable.closed, false)));
   // Quem pediu a própria folga não decide por si: sem outra pessoa na Supervisão, a decisão vai para a Administração.
   return rows.map((r) => r.id).filter((id) => id !== menos);
 }
