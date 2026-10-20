@@ -7,6 +7,34 @@ um prompt pronto; todos mandam ler o `AGENTS.md` primeiro.
 A revisão 4 (Registro, Perfil e senha, Biblioteca, Cadastros pela tela, desktop da Supervisão e da
 Administração, concorrência) fica para depois destas etapas e está descrita no fim.
 
+## Situação em 20/10/2026 (leia primeiro)
+
+| Etapa | Situação | Prova |
+|---|---|---|
+| R3-A | **Feita.** 404 de id inválido (ajudante `lib/uuid.ts`), texto da Agenda com a Direção, teste de turno sem relógio. | `4502c06` |
+| R3-B | **Não feita.** Tarefas até a aprovação, responsabilidades, restrição de horário e ASA ao vivo seguem sem conferir. Nenhum commit. | — |
+| R3-C | **Respondida e feita.** Mural continua aberto; reconhecer a si mesma passou a ser recusado com frase. | `4502c06`, `8ce7965` |
+| R3-D | **Não feita.** Consulta de folgas invertidas em produção ainda não rodou. | — |
+| R3-E | **Não feita.** Conferência no aparelho. | — |
+| Rodada 3 (`f3cceb2`) | **Voltou ao branch em 20/10** (isolamento entre casas, intervalo de folga, ocorrências, Painel, limites do Mural). Estava só no branch local `backup/rodada3-e-etapa2-sem-enviar`. Testes do banco de teste e tipos passam. **Ainda não está no GitHub nem em produção.** | `667c8a0` |
+
+**Antes de começar a revisão 4, falta:**
+
+1. R3-B (a única de código que sobrou), R3-D e R3-E.
+2. Rodar isolados no banco de teste `block5-integrity`, `fase-b-regressoes` e `fase-c-perfil-regras`, que a Etapa 8
+   deixou sem confirmação.
+3. Olhar na tela a correção do flash da Escala ao trocar de local (`escalas.tsx`, já commitada em `5669e9d`
+   sem conferência).
+4. Decidir o que fazer com o que `5669e9d` levou a mais (`.gitignore`, `package.json` do web-admin,
+   `pnpm-lock.yaml`, `skills-lock.json`) antes do push.
+5. Há arquivos modificados no disco de outra sessão (`analise-folga.ts`, `folga-analise.test.ts`,
+   `operational-cycle.tsx`, `docs/regras-de-folgas.md`); descobrir de quem são e commitar à parte.
+6. Resíduos soltos na raiz (`bateria-resultados.txt`, `ciclo-paralelo-debug.txt`, `perm-debug.txt`,
+   `rerun-*.txt`): apagar ou pôr no `.gitignore`.
+7. Ordem para promover o que está local: API primeiro, site depois. Só quando você mandar.
+
+O branch de backup pode ser apagado quando o `667c8a0` for enviado; até lá, fica.
+
 ## Ordem
 
 | Etapa | Assunto | Quem | Depende de |
