@@ -15,13 +15,13 @@ Administração, concorrência) fica para depois destas etapas e está descrita 
 | R3-B | **Feita em 20/10, com um limite.** Roteiro ao vivo contra o servidor compilado, entrando como Administração, Direção, Supervisão e Elenco da empresa "ASA Teste": fila de 3 etapas até a aprovação, quem não pode é barrado, Direção lê, Elenco não cria responsabilidade (18 de 18). Os testes de Tarefas, Responsabilidades e ASA sem IA passam (15 arquivos), e `restricao-horario` passa (83). **Achou e corrigiu** id inválido dando 500 em Tarefas, Responsabilidades, Pessoas, Livros do Show e Ocorrências (agora 404 com frase). **Limite:** o ASA com IA não foi conferido (o `.env.test` não tem chave). | `377d849` |
 | Etapa 8 (plano de 17/10) | **Fechada com ressalva.** Achou e corrigiu o Livro do dia de show misto herdando a hora da sessão separada; `restricao-horario` entrou na bateria. Rodaram, todos verdes: os 6 sem decisão, os 13 ligados à rodada 3, os 12 do ajuste de id e os 15 da R3-B. **A bateria completa (72 arquivos de uma vez) ficou para o fim da revisão 4**, por decisão sua. Tipos, build e `verificar-nomes-build` limpos. | `20db0e8` |
 | R3-C | **Respondida e feita.** Mural continua aberto; reconhecer a si mesma passou a ser recusado com frase. | `4502c06`, `8ce7965` |
-| R3-D | **Não feita.** Consulta de folgas invertidas em produção ainda não rodou. | — |
-| R3-E | **Não feita.** Conferência no aparelho. | — |
+| R3-D | **Feita em 20/10 (por você, no SQL Editor de produção).** Consulta de folgas ativas com o fim antes do começo: "No rows returned", nenhuma folga quebrada. | — |
+| R3-E | **Feita em 20/10 (por você, no iPhone com iOS 27).** Perfil (foto e nome), PDF da Biblioteca, Livro do Dia com teclado aberto, mapa do palco e impressão da Escala: ok. Aviso no celular: instalado pela Tela de Início, "Ativar notificações" no cartão do Meu Dia, funcionou. | — |
 | Rodada 3 (`f3cceb2`) | **Voltou ao branch em 20/10** (isolamento entre casas, intervalo de folga, ocorrências, Painel, limites do Mural). Estava só no branch local `backup/rodada3-e-etapa2-sem-enviar`. Testes do banco de teste e tipos passam. **Ainda não está no GitHub nem em produção.** | `667c8a0` |
 
 **Antes de começar a revisão 4, falta:**
 
-1. R3-D e R3-E (as duas são suas: consulta em produção e conferência no aparelho). A R3-B está feita.
+1. (Feito em 20/10) R3-B, R3-D e R3-E. Nada de R3 sobra.
 2. (Feito em 20/10) `block5-integrity`, `fase-b-regressoes` e `fase-c-perfil-regras` passam.
 3. (Feito em 20/10, na tela) Flash da Escala ao trocar de local: com Chromium de verdade, login da empresa de 4 locais e a resposta do dia
    atrasada em 6 s, a grade do local anterior NÃO fica na tela (aparece "Montando a escala..."). Desligando a correção, o defeito
