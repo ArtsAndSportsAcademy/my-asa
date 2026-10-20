@@ -9933,8 +9933,9 @@ router.get("/asa/audit", requireAuth, requireOrganization, async (req, res): Pro
 
 router.get("/asa/library-gaps", requireAuth, requireOrganization, async (req, res): Promise<void> => {
   const user = req.user!;
-  if (user.role !== "ADMIN") {
-    res.status(403).json({ error: "Apenas Administração pode consultar temas sem documento correspondente." });
+  // A Supervisão cuida da Biblioteca junto com a Administração, então vê o que a ASA não achou em documento.
+  if (!["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"].includes(user.role)) {
+    res.status(403).json({ error: "FORBIDDEN", message: "Os temas que a ASA não achou na Biblioteca são da Administração e da Supervisão." });
     return;
   }
   const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);

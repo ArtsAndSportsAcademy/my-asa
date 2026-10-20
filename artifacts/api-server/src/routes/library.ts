@@ -403,7 +403,7 @@ router.get("/library/documents/:id", requireAuth, requireOrganization, async (re
 
     // canManage: quem pode editar, trocar o PDF, publicar versão nova e ver quem leu (Administração, ou Supervisão no documento da própria área).
     const canManage = doc.status !== "ARCHIVED" && await canManageDocumentScope(role, userId, doc);
-    res.json({ document: { ...doc, myConfirmed, waitingMe: doc.requiresConfirmation && !myConfirmed && doc.createdBy !== userId && (doc.status === "PUBLISHED" || doc.status === "UPDATED") }, versions, citations, canManageCitations, canManage, canArchive: role === "ADMIN" && doc.status !== "ARCHIVED", canSeeReaders: canManage || role === "DIR" || role === "DIRECTOR" });
+    res.json({ document: { ...doc, myConfirmed, waitingMe: doc.requiresConfirmation && !myConfirmed && doc.createdBy !== userId && (doc.status === "PUBLISHED" || doc.status === "UPDATED") }, versions, citations, canManageCitations, canManage, canArchive: role === "ADMIN" && doc.status !== "ARCHIVED", canRestore: role === "ADMIN" && doc.status === "ARCHIVED", canSeeReaders: canManage || role === "DIR" || role === "DIRECTOR" });
   } catch (err) {
     console.error("[library] GET /library/documents/:id", err);
     res.status(500).json({ error: "Erro interno" });
@@ -734,6 +734,47 @@ router.post("/library/documents/:id/archive", requireAuth, requireOrganization, 
   }
 });
 
+// ─── POST /library/documents/:id/restore — Traz de volta um documento arquivado ───────────────────────────────────────
+// Só a Administração (como arquiva). Volta como RASCUNHO e sem aviso a ninguém: o Elenco só volta a ver depois de publicar de
+// novo, e quem publica decide se o público é avisado outra vez. O texto, as versões e quem já leu continuam como estavam.
+router.post("/library/documents/:id/restore", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  try {
+    const userId = req.user!.sub;
+    const orgId = req.user!.organizationId;
+    const docId = String(req.params.id);
+    if (!validarUuid(docId)) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Documento não encontrado." }); return; }
+
+    const role = await getUserRole(userId);
+    if (!role || role !== "ADMIN") { res.status(403).json({ error: "FORBIDDEN", message: "Só a Administração restaura documentos arquivados da Biblioteca." }); return; }
+
+    const [doc] = await db.select().from(libraryDocumentsTable)
+      .where(and(eq(libraryDocumentsTable.id, docId), eq(libraryDocumentsTable.orgId, orgId))).limit(1);
+    if (!doc) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Documento não encontrado." }); return; }
+    if (doc.status !== "ARCHIVED") { res.status(409).json({ error: "ESTADO_INVALIDO", message: "Este documento não está arquivado, então não há o que restaurar." }); return; }
+
+    const now = new Date();
+    const [updated] = await db.transaction(async (tx) => {
+      // Confere de novo dentro da transação: dois cliques (ou duas pessoas) restauram uma vez só.
+      const [row] = await tx.update(libraryDocumentsTable)
+        .set({ status: "DRAFT", archivedAt: null, updatedAt: now })
+        .where(and(eq(libraryDocumentsTable.id, docId), eq(libraryDocumentsTable.status, "ARCHIVED"))).returning();
+      if (!row) return [] as const;
+      await writeHistoryEvent({
+        category: "DELIVERY", action: "library.restored", title: `Documento restaurado: ${doc.title}`,
+        narrative: `Documento "${doc.title}" voltou do arquivo como rascunho. Ninguém foi avisado; o Elenco só volta a ver depois que a Administração publicar de novo.`,
+        entityType: "library_document", entityId: docId, actorId: userId, orgId,
+        beforeState: doc, afterState: row,
+      }, tx as any);
+      return [row] as const;
+    });
+    if (!updated) { res.status(409).json({ error: "ESTADO_INVALIDO", message: "Este documento acabou de ser restaurado por outra pessoa." }); return; }
+    res.json({ document: updated });
+  } catch (err) {
+    console.error("[library] POST /library/documents/:id/restore", err);
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não consegui restaurar agora. Nada foi alterado; tente de novo." });
+  }
+});
+
 // ─── GET /library/documents/:id/versions — Histórico de versões ──────────────
 
 router.post("/library/documents/:id/confirm", requireAuth, requireOrganization, async (req, res): Promise<void> => {
@@ -789,7 +830,8 @@ router.get("/library/documents/:id/versions", requireAuth, requireOrganization, 
     if (!validarUuid(docId)) { res.status(404).json({ error: "Documento não encontrado" }); return; }
 
     const role = await getUserRole(userId);
-    if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "FORBIDDEN", message: "Só a Administração e a Supervisão cuidam da Biblioteca. O Elenco e a Direção só leem." }); return; }
+    // A Direção acompanha toda a Biblioteca, inclusive o histórico de versões, só para ler. O Elenco não vê o histórico.
+    if (!role || !isLibraryFullReader(role)) { res.status(403).json({ error: "FORBIDDEN", message: "O histórico de versões é da Administração, da Supervisão e da Direção. O Elenco lê só a versão atual." }); return; }
 
     const [document] = await db
       .select()

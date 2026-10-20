@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
-import { Archive, CheckCircle2, FilePlus2, FileUp, Pencil, Users } from "lucide-react";
+import { Archive, ArchiveRestore, CheckCircle2, FilePlus2, FileUp, Pencil, Users } from "lucide-react";
 import { customFetch } from "@workspace/api-client-react";
 import { serverError } from "@/components/comm-ui";
 
@@ -7,9 +7,9 @@ import { serverError } from "@/components/comm-ui";
 // Editar muda título, resumo, etiquetas e se pede leitura; texto novo é "Nova versão", que recomeça a leitura de todos.
 type Doc = { id: string; title: string; summary?: string | null; body?: string | null; tags?: string[]; requiresConfirmation?: boolean; version: number; status: string; scopeType?: string };
 type Leituras = { scopeType?: string; version: number; requiresConfirmation: boolean; total: number; abriram: number; confirmaram: number; pessoas: { id: string; name: string; areaName?: string | null; abriu: boolean; confirmou: boolean }[] };
-type Modo = null | "editar" | "versao" | "pdf" | "leituras" | "arquivar";
+type Modo = null | "editar" | "versao" | "pdf" | "leituras" | "arquivar" | "restaurar";
 
-export function GestaoDoDocumento({ doc, canManage, canArchive, canSeeReaders, onChanged, onArchived, onNotice }: { doc: Doc; canManage: boolean; canArchive: boolean; canSeeReaders: boolean; onChanged: () => void; onArchived: () => void; onNotice: (texto: string) => void }) {
+export function GestaoDoDocumento({ doc, canManage, canArchive, canRestore = false, canSeeReaders, onChanged, onArchived, onNotice }: { doc: Doc; canManage: boolean; canArchive: boolean; canRestore?: boolean; canSeeReaders: boolean; onChanged: () => void; onArchived: () => void; onNotice: (texto: string) => void }) {
   const [modo, setModo] = useState<Modo>(null), [busy, setBusy] = useState(false), [erro, setErro] = useState("");
   const [leituras, setLeituras] = useState<Leituras | null>(null), [soFaltam, setSoFaltam] = useState(false);
   const abrir = (proximo: Modo) => { setErro(""); setModo((atual) => atual === proximo ? null : proximo); };
@@ -59,7 +59,12 @@ export function GestaoDoDocumento({ doc, canManage, canArchive, canSeeReaders, o
     onArchived();
   }, "Não consegui arquivar agora. Nada foi alterado; tente de novo.");
 
-  if (!canManage && !canSeeReaders) return null;
+  const restaurar = () => void enviar(async () => {
+    await customFetch(`/api/library/documents/${doc.id}/restore`, { method: "POST" });
+    fechar(); onNotice("Documento restaurado como rascunho. Ninguém foi avisado e o Elenco ainda não o vê: quando quiser, publique de novo."); onChanged();
+  }, "Não consegui restaurar agora. Nada foi alterado; tente de novo.");
+
+  if (!canManage && !canSeeReaders && !canRestore) return null;
   const lista = leituras ? leituras.pessoas.filter((pessoa) => !soFaltam || !(leituras.requiresConfirmation ? pessoa.confirmou : pessoa.abriu)) : [];
   return <section aria-label="Gerenciar o documento" style={{ borderTop: "1px solid #e8e5ee", paddingTop: 12, display: "grid", gap: 10 }}>
     <div><h3 style={{ margin: 0, fontSize: 14 }}>Gerenciar o documento</h3><small style={{ color: "#6b6482" }}>Só quem cuida deste documento vê estes botões.</small></div>
@@ -68,6 +73,7 @@ export function GestaoDoDocumento({ doc, canManage, canArchive, canSeeReaders, o
       {canManage && <button type="button" className={modo === "versao" ? "comm-secondary active" : "comm-secondary"} onClick={() => abrir("versao")}><FilePlus2 size={15}/> Nova versão</button>}
       {canManage && <button type="button" className={modo === "pdf" ? "comm-secondary active" : "comm-secondary"} onClick={() => abrir("pdf")}><FileUp size={15}/> Trocar o PDF</button>}
       {canSeeReaders && <button type="button" className={modo === "leituras" ? "comm-secondary active" : "comm-secondary"} onClick={() => abrir("leituras")}><Users size={15}/> Quem já leu</button>}
+      {canRestore && <button type="button" className={modo === "restaurar" ? "comm-secondary active" : "comm-secondary"} onClick={() => abrir("restaurar")}><ArchiveRestore size={15}/> Restaurar</button>}
       {canArchive && <button type="button" className={modo === "arquivar" ? "comm-secondary active" : "comm-secondary"} onClick={() => abrir("arquivar")}><Archive size={15}/> Arquivar</button>}
     </div>
     {modo === "editar" && <form className="comm-form" onSubmit={editar}><label>Título<input name="title" required defaultValue={doc.title}/></label><label>Resumo<textarea name="summary" required defaultValue={doc.summary ?? ""}/></label><label>Etiquetas, separadas por vírgula<input name="tags" defaultValue={(doc.tags ?? []).join(", ")}/></label><label className="comm-check"><input name="requiresConfirmation" type="checkbox" defaultChecked={Boolean(doc.requiresConfirmation)}/> Pede confirmação de leitura</label><p className="comm-note">Isto não cria versão nova nem pede leitura de novo. Para mudar o texto, use “Nova versão”.</p>{erro && <p className="comm-form-error" role="alert">{erro}</p>}<footer><button type="button" onClick={fechar}>Cancelar</button><button className="comm-primary" disabled={busy}>{busy ? "Salvando…" : "Salvar"}</button></footer></form>}
@@ -79,5 +85,6 @@ export function GestaoDoDocumento({ doc, canManage, canArchive, canSeeReaders, o
       <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 4, maxHeight: 240, overflowY: "auto" }}>{lista.map((pessoa) => <li key={pessoa.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13 }}><span>{pessoa.name}{pessoa.areaName ? ` · ${pessoa.areaName}` : ""}</span><b style={{ color: pessoa.confirmou ? "#075d57" : pessoa.abriu ? "#805012" : "#99253c", whiteSpace: "nowrap" }}>{pessoa.confirmou ? "confirmou" : pessoa.abriu ? "abriu, não confirmou" : "não abriu"}</b></li>)}{!lista.length && <li style={{ fontSize: 13 }}>Ninguém falta.</li>}</ul>
       <footer><button type="button" onClick={fechar}>Fechar</button></footer></>}</div>}
     {modo === "arquivar" && <div className="comm-form"><p className="comm-note">Arquivar tira “{doc.title}” da Biblioteca de todos. Nada é apagado: o histórico fica preservado. Logo depois de arquivar aparece um aviso com “Desfazer” por alguns segundos.</p>{erro && <p className="comm-form-error" role="alert">{erro}</p>}<footer><button type="button" onClick={fechar}>Cancelar</button><button type="button" className="comm-primary" disabled={busy} onClick={arquivar}>{busy ? "Arquivando…" : "Arquivar documento"}</button></footer></div>}
+    {modo === "restaurar" && <div className="comm-form"><p className="comm-note">Restaurar traz “{doc.title}” de volta como <b>rascunho</b>. Ninguém é avisado, e o Elenco só volta a ver o documento depois que você publicar de novo. O texto, as versões e quem já leu continuam como estavam.</p>{erro && <p className="comm-form-error" role="alert">{erro}</p>}<footer><button type="button" onClick={fechar}>Cancelar</button><button type="button" className="comm-primary" disabled={busy} onClick={restaurar}>{busy ? "Restaurando…" : "Restaurar como rascunho"}</button></footer></div>}
   </section>;
 }
