@@ -146,13 +146,20 @@ inicial. Pode haver linha assim em produção.
 Rode **só leitura** e me conte o resultado antes de qualquer correção:
 
 ```sql
--- folgas ativas com intervalo invertido
-select id, user_id, start_date, end_date
+-- 1) folgas ativas com o fim ANTES do começo (o defeito de 18/10)
+select id, user_id, operation_id, start_date, end_date, created_at
 from folgas
-where active = true and end_date < start_date;
+where status = 'ACTIVE' and end_date < start_date;
+
+-- 2) folgas ativas sobrepostas para a mesma pessoa (efeito do mesmo defeito: pedaços duplicados)
+select a.user_id, a.id as folga_a, b.id as folga_b, a.start_date, a.end_date, b.start_date as b_inicio, b.end_date as b_fim
+from folgas a
+join folgas b on a.user_id = b.user_id and a.id < b.id and a.status = 'ACTIVE' and b.status = 'ACTIVE'
+ and a.operation_id = b.operation_id and a.start_date <= b.end_date and b.start_date <= a.end_date
+order by a.user_id, a.start_date;
 ```
 
-Ajuste o nome da tabela e das colunas ao esquema real (confira em `lib/db/src/schema`). Se aparecer linha,
+Os nomes já estão conferidos com `lib/db/src/schema/folgas.ts` (tabela `folgas`, coluna `status`). Se aparecer linha,
 não corrija na mão: me traga as linhas, que eu preparo um script de correção com rollback, para você rodar.
 
 ---
