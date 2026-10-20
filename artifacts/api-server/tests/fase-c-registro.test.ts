@@ -65,7 +65,9 @@ async function run() {
     assert(adm.status === 200, "Administração lê o Registro");
     assert((await get("/history", as(cris, "DIR"))).status === 200, "Direção lê o Registro");
     assert((await get("/history", as(deborah, "SUPERVISOR_A"))).status === 403, "Supervisão não lê o Registro (contém o antes de tudo)");
-    assert((await get("/history", as(julia, "MEMBER"))).status === 403, "Elenco não lê o Registro");
+    const recusaElenco = await get("/history", as(julia, "MEMBER"));
+    assert(recusaElenco.status === 403, "Elenco não lê o Registro");
+    assert(/Administração e Direção/.test(recusaElenco.body.message) && /Elenco/.test(recusaElenco.body.message) && !/Role/.test(recusaElenco.body.message), "a recusa por perfil diz em português quem pode e qual é o perfil de quem tentou");
 
     // Recorte por organização
     const ids = (adm.body.events as { id: string }[]).map((e) => e.id);

@@ -42,6 +42,17 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   }
 }
 
+const PERFIL_POR_EXTENSO: Record<string, string> = {
+  ADMIN: "Administração", DIR: "Direção", DIRECTOR: "Direção", SUPERVISOR_A: "Supervisão", SUPERVISOR_B: "Supervisão", MEMBER: "Elenco",
+};
+
+/** Frase da recusa por perfil: quem pode fazer e qual é o perfil de quem tentou (nada de código de perfil em inglês). */
+export function fraseDeRecusaPorPerfil(permitidos: string[], perfilDeQuemPede: string): string {
+  const quem = [...new Set(permitidos.map((r) => PERFIL_POR_EXTENSO[r] ?? r))];
+  const lista = quem.length > 1 ? `${quem.slice(0, -1).join(", ")} e ${quem[quem.length - 1]}` : quem[0] ?? "outro perfil";
+  return `Esta ação é só de: ${lista}. O seu perfil (${PERFIL_POR_EXTENSO[perfilDeQuemPede] ?? perfilDeQuemPede}) não faz isso.`;
+}
+
 export function requireRole(...roles: string[]) {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
@@ -51,7 +62,7 @@ export function requireRole(...roles: string[]) {
     if (!roles.includes(req.user.role)) {
       res.status(403).json({
         error: "Forbidden",
-        message: `Role ${req.user.role} is not authorized for this resource`,
+        message: fraseDeRecusaPorPerfil(roles, req.user.role),
       });
       return;
     }
@@ -61,7 +72,7 @@ export function requireRole(...roles: string[]) {
 
 export function requireOrganization(req: Request, res: Response, next: NextFunction): void {
   if (!req.user?.organizationId) {
-    res.status(403).json({ error: "Forbidden", message: "No organization context" });
+    res.status(403).json({ error: "Forbidden", message: "Sua conta ainda não está ligada a uma casa. Fale com a Administração." });
     return;
   }
   next();
