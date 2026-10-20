@@ -337,7 +337,8 @@ function Editar({ post, sample, onClose, onDone }: { post: Post; sample: boolean
   const salvar = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const corpo: Record<string, unknown> = { body: String(form.get("body") ?? "").trim() };
+    // A edição vale sobre a versão que está aberta: se alguém editou antes, o servidor recusa em vez de apagar a edição dela.
+    const corpo: Record<string, unknown> = { body: String(form.get("body") ?? "").trim(), baseEditedAt: post.editedAt ?? null };
     if (recon) corpo.reason = String(form.get("reason") ?? "").trim();
     else { corpo.title = String(form.get("title") ?? "").trim() || null; corpo.eventDate = String(form.get("eventDate") ?? "") || null; }
     if (oficial) { corpo.pedirCienteDeNovo = Boolean(form.get("pedirCienteDeNovo")); corpo.avisar = Boolean(form.get("avisar")); }

@@ -95,6 +95,13 @@ async function run() {
     const editou = await patch(memApi, `/communication/mural/${casa.id}`, { body: `${tag} oi, casa (corrigido)` });
     const editouBody = await editou.json() as { post: { body: string; editedAt: string | null } };
     assert(editou.status === 200 && editouBody.post.body.endsWith("(corrigido)") && editouBody.post.editedAt !== null, "Quem publicou edita, e o cartão passa a ter a marca de editado");
+    // Revisão 4 (concorrência): quem abriu a versão antiga não apaga, em silêncio, a edição que já foi salva.
+    const textoSalvo = (await linha(casa.id)).body;
+    const velha = await patch(memApi, `/communication/mural/${casa.id}`, { body: `${tag} edição de quem abriu antes`, baseEditedAt: null });
+    const velhaBody = await velha.json() as { message?: string; code?: string };
+    assert(velha.status === 409 && velhaBody.code === "VERSAO_MUDOU" && /Nada foi salvo/.test(velhaBody.message ?? "") && (await linha(casa.id)).body === textoSalvo, "Edição sobre versão velha é recusada com frase e não apaga a edição que já estava salva");
+    const emDia = await patch(memApi, `/communication/mural/${casa.id}`, { body: textoSalvo, baseEditedAt: editouBody.post.editedAt });
+    assert(emDia.status === 400, "Sobre a versão que está salva, a checagem de versão passa (e a recusa é só a de 'nada mudou')");
     assert((await patch(mem2Api, `/communication/mural/${casa.id}`, { body: "invasão" })).status === 403, "Outra pessoa não edita publicação alheia");
     assert((await patch(adminApi, `/communication/mural/${casa.id}`, { body: "invasão" })).status === 403, "A Administração derruba, mas não reescreve a publicação do Elenco");
     assert((await patch(memApi, `/communication/mural/${casa.id}`, { body: "   " })).status === 400, "Texto vazio na edição é recusado");

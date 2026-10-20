@@ -318,15 +318,21 @@ async function loadAccessiblePost(req: any, id: string) {
 
 // ─── Editar ───────────────────────────────────────────────────────────────────
 
+const MENSAGEM_EDICAO_CONFLITO = "Alguém editou ou removeu esta publicação depois que você abriu. Nada foi salvo: feche, abra de novo e confira a versão nova antes de editar.";
+class ConflitoDeEdicao extends Error { constructor() { super(MENSAGEM_EDICAO_CONFLITO); } }
+
 // Quem publicou edita o que publicou; Administração e Direção também editam o aviso oficial. O cartão passa a
 // mostrar "editado". No aviso que pede ciente, quem edita escolhe se o ciente de todo mundo vale de novo, e se
 // o sino avisa da mudança — por padrão a edição é silenciosa (corrigir uma vírgula não acorda ninguém).
 router.patch("/communication/mural/:id", requireAuth, requireOrganization, async (req, res): Promise<void> => {
   try {
     const id = String(req.params.id), orgId = req.user!.organizationId!, quem = req.user!.sub;
-    const { title, body, eventDate: rawEventDate, reason, pedirCienteDeNovo, avisar } = (req.body ?? {}) as { title?: unknown; body?: unknown; eventDate?: unknown; reason?: unknown; pedirCienteDeNovo?: unknown; avisar?: unknown };
+    const { title, body, eventDate: rawEventDate, reason, pedirCienteDeNovo, avisar, baseEditedAt } = (req.body ?? {}) as { title?: unknown; body?: unknown; eventDate?: unknown; reason?: unknown; pedirCienteDeNovo?: unknown; avisar?: unknown; baseEditedAt?: unknown };
     const post = await loadAccessiblePost(req, id);
     if (!post || !KINDS.includes(post.type as Kind)) { res.status(404).json({ error: "Publicação não encontrada" }); return; }
+    // Versão que a pessoa tinha aberta (o "editado em" do cartão; nulo = nunca editada). Quem não manda continua como antes.
+    const versaoAberta = baseEditedAt === undefined ? undefined : (typeof baseEditedAt === "string" && !Number.isNaN(Date.parse(baseEditedAt)) ? new Date(baseEditedAt).getTime() : null);
+    if (versaoAberta !== undefined && versaoAberta !== (post.editedAt ? new Date(post.editedAt).getTime() : null)) { res.status(409).json({ error: MENSAGEM_EDICAO_CONFLITO, message: MENSAGEM_EDICAO_CONFLITO, code: "VERSAO_MUDOU" }); return; }
     if (!podeEditar(req, post)) { res.status(403).json({ error: "Só quem publicou pode editar. A Administração e a Direção também editam o aviso oficial." }); return; }
     const mudanca: Partial<typeof announcementsTable.$inferInsert> = {};
     if (body !== undefined) {
@@ -357,8 +363,9 @@ router.patch("/communication/mural/:id", requireAuth, requireOrganization, async
     const agora = new Date();
     const [updated] = await db.transaction(async tx => {
       const [row] = await tx.update(announcementsTable).set({ ...mudanca, editedAt: agora, updatedAt: agora })
-        .where(and(eq(announcementsTable.id, id), isNull(announcementsTable.cancelledAt))).returning();
-      if (!row) throw new Error("A publicação foi removida enquanto você editava");
+        .where(and(eq(announcementsTable.id, id), isNull(announcementsTable.cancelledAt), post.editedAt ? eq(announcementsTable.editedAt, post.editedAt) : isNull(announcementsTable.editedAt))).returning();
+      // Não achou: ou removeram a publicação, ou alguém salvou uma edição entre a leitura e a gravação.
+      if (!row) throw new ConflitoDeEdicao();
       if (pedir) await tx.update(announcementReadsTable).set({ confirmedAt: null }).where(eq(announcementReadsTable.announcementId, id));
       await writeHistoryEvent({ category: "NOTICE", action: "mural.edited", title: post.type === "NOTICE" ? "Aviso editado" : post.type === "POST" ? "Publicação editada" : "Reconhecimento editado", narrative: row.title ?? row.body.slice(0, 120), entityType: "announcement", entityId: id, actorId: quem, orgId, beforeState: post, afterState: row, metadata: { campos: Object.keys(mudanca), pedirCienteDeNovo: pedir, avisados: quemSabe.length } }, tx as any);
       await avisarNoSino(tx, quemSabe, `mural:${id}:editado:${agora.getTime()}`, userId => ({
@@ -370,7 +377,10 @@ router.patch("/communication/mural/:id", requireAuth, requireOrganization, async
       return [row] as const;
     });
     res.json({ post: updated });
-  } catch (error) { console.error("[communication] PATCH mural", error); res.status(500).json({ error: "Não consegui salvar a edição agora" }); }
+  } catch (error) {
+    if (error instanceof ConflitoDeEdicao) { res.status(409).json({ error: MENSAGEM_EDICAO_CONFLITO, message: MENSAGEM_EDICAO_CONFLITO, code: "VERSAO_MUDOU" }); return; }
+    console.error("[communication] PATCH mural", error); res.status(500).json({ error: "Não consegui salvar a edição agora. Nada foi alterado; tente de novo." });
+  }
 });
 
 // ─── Ciente, reação, comentário ───────────────────────────────────────────────
