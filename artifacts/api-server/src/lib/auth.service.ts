@@ -19,6 +19,7 @@ import { requestLogger } from "./logger.js";
 import { loadAuthorizationContext } from "./authorization.service.js";
 import { selfProfile } from "./person-projection.js";
 import { operationalDate } from "./operational-date.js";
+import { chaveDeLogin, consultarBloqueio, fraseDoBloqueio, limparErrosDeSenha, registrarErroDeSenha } from "./tentativas-de-acesso.js";
 
 export interface AuthContext {
   requestId: string;
@@ -65,6 +66,11 @@ export async function loginUser(
   const log = requestLogger("identity", ctx.requestId, ctx.correlationId);
 
   const normalizedUsername = username.toLowerCase().trim();
+  // Limite de tentativas: antes de olhar o usuário, para a resposta ser igual exista ele ou não. Conta pausada recusa até a
+  // senha certa (senão quem adivinha continuaria tentando durante a pausa).
+  const chave = chaveDeLogin(normalizedUsername);
+  const pausadaAte = await consultarBloqueio(chave);
+  if (pausadaAte) throw new AuthError("TENTATIVAS_DEMAIS", fraseDoBloqueio(pausadaAte));
   const user = await db.query.usersTable.findFirst({
     where: eq(usersTable.username, normalizedUsername),
   });
@@ -78,6 +84,8 @@ export async function loginUser(
       metadata: { reason: "user_not_found_or_no_password" },
     });
     log.warn({ username: normalizedUsername }, "Login failed: user not found or no password");
+    const pausou = await registrarErroDeSenha(chave, "login", null);
+    if (pausou) throw new AuthError("TENTATIVAS_DEMAIS", fraseDoBloqueio(pausou));
     throw new AuthError("INVALID_CREDENTIALS", "Nome de usuário ou senha inválidos");
   }
 
@@ -94,8 +102,11 @@ export async function loginUser(
       metadata: { reason: "wrong_password" },
     });
     log.warn({ userId: user.id }, "Login failed: wrong password");
+    const pausou = await registrarErroDeSenha(chave, "login", { id: user.id, organizationId: user.organizationId, nome: user.preferredName ?? user.name, username: user.username });
+    if (pausou) throw new AuthError("TENTATIVAS_DEMAIS", fraseDoBloqueio(pausou));
     throw new AuthError("INVALID_CREDENTIALS", "Nome de usuário ou senha inválidos");
   }
+  await limparErrosDeSenha(chave);
 
   const { roles, operationIds, primaryRole, capabilities } = await loadAuthorizationContext(user.id);
   if (!primaryRole) {

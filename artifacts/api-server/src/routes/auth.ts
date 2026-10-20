@@ -74,7 +74,7 @@ router.post("/login", async (req, res) => {
     res.json(result);
   } catch (err) {
     if (err instanceof AuthError) {
-      const status = ["USER_INACTIVE", "GUEST_ACCESS_EXPIRED", "ACCOUNT_UNCONFIGURED"].includes(err.code) ? 403 : 401;
+      const status = err.code === "TENTATIVAS_DEMAIS" ? 429 : ["USER_INACTIVE", "GUEST_ACCESS_EXPIRED", "ACCOUNT_UNCONFIGURED"].includes(err.code) ? 403 : 401;
       res.status(status).json({ error: err.code, message: err.message });
       return;
     }

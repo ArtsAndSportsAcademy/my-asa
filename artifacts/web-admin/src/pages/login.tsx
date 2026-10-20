@@ -46,6 +46,8 @@ export default function Login() {
         onError: (err) => {
           const codigo = err instanceof ApiError ? (err.data as { error?: string } | null)?.error : undefined;
           if (codigo === "USER_INACTIVE") { setTela("desativada"); return; }
+          // Pausa por senhas erradas: a frase do servidor diz por quanto tempo e o que fazer; não é "senha não confere".
+          if (codigo === "TENTATIVAS_DEMAIS") { setErro((err instanceof ApiError ? (err.data as { message?: string } | null)?.message : undefined) ?? "Muitas tentativas de senha erradas. Esta conta fica pausada por alguns minutos."); return; }
           if (codigo && MENSAGEM_DE_ERRO[codigo]) { setErro(MENSAGEM_DE_ERRO[codigo]); return; }
           if (!(err instanceof ApiError)) { setErro("Sem conexão. Tente de novo quando a internet voltar."); return; }
           // Só 401 é senha errada. Dizer "senha não confere" quando o servidor falhou faz a

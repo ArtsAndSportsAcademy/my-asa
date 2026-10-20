@@ -39,6 +39,7 @@ import { enqueueNotification } from "../services/undo.js";
 import { canSupervisorAccessPerson } from "../services/area-local-scope.js";
 
 import { exigirUuidNosParametros } from "../lib/uuid.js";
+import { chaveDeLogin, chaveDeTroca, consultarBloqueio, fraseDoBloqueio, limparErrosDeSenha, registrarErroDeSenha } from "../lib/tentativas-de-acesso.js";
 const router: IRouter = Router();
 exigirUuidNosParametros(router, { id: "Pessoa não encontrada." });
 
@@ -620,11 +621,17 @@ router.post("/users/me/password", requireAuth, async (req, res) => {
       return;
     }
 
+    // Limite de tentativas: quem tem a sessão aberta (ou o aparelho na mão) também não pode ficar adivinhando a senha atual.
+    const pausadaAte = await consultarBloqueio(chaveDeTroca(me.id));
+    if (pausadaAte) { res.status(429).json({ error: "TENTATIVAS_DEMAIS", message: fraseDoBloqueio(pausadaAte) }); return; }
     const valid = await bcrypt.compare(currentPassword as string, me.passwordHash);
     if (!valid) {
+      const pausou = await registrarErroDeSenha(chaveDeTroca(me.id), "troca", { id: me.id, organizationId: me.organizationId, nome: me.preferredName ?? me.name, username: me.username });
+      if (pausou) { res.status(429).json({ error: "TENTATIVAS_DEMAIS", message: fraseDoBloqueio(pausou) }); return; }
       res.status(401).json({ error: "INVALID_CREDENTIALS", message: "Senha atual incorreta" });
       return;
     }
+    await limparErrosDeSenha(chaveDeTroca(me.id));
 
     const passwordHash = await bcrypt.hash(newPassword as string, 12);
     // Trocar a senha encerra as sessões dos outros aparelhos; a deste aparelho continua.
@@ -715,6 +722,8 @@ router.post("/users/:id/password-reset", requireAuth, requireOrganization, requi
       }, tx as any);
       return n;
     });
+    // A pessoa recebeu uma senha provisória: se estava pausada por erros, a pausa acaba junto.
+    await limparErrosDeSenha(...(person.username ? [chaveDeLogin(person.username.toLowerCase())] : []), chaveDeTroca(person.id));
     await recordAudit({ actorId: req.user!.sub, action: "USER_UPDATED", targetResource: `user:${person.id}`, metadata: { change: "password_reset", sessoesEncerradas: encerradas } });
     log.info({ userId: person.id }, "Password reset by admin");
     res.json({ senhaProvisoria: temporaria, sessoesEncerradas: encerradas });

@@ -150,3 +150,16 @@ export const insertUserSchema = createInsertSchema(usersTable).omit({
 });
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof usersTable.$inferSelect;
+
+/**
+ * Tentativas de senha erradas (20/10/2026). Uma linha por "chave": `login:<usuário>` (cobre também usuário que não existe,
+ * para a resposta ser igual) e `troca:<id da pessoa>` (a senha atual errada na troca de senha). O servidor é sem estado
+ * (Vercel), então só o banco serve de memória. Depois de 8 erros dentro de 15 minutos, `bloqueado_ate` pausa a chave por 15.
+ */
+export const tentativasDeAcessoTable = pgTable("tentativas_de_acesso", {
+  chave: text("chave").primaryKey(),
+  falhas: integer("falhas").notNull().default(0),
+  janelaInicio: timestamp("janela_inicio", { withTimezone: true }).notNull().defaultNow(),
+  bloqueadoAte: timestamp("bloqueado_ate", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
