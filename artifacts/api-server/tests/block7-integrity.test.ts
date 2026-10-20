@@ -175,6 +175,8 @@ async function run() {
     assert(!mar.groups[0].items.some((row: any) => row.id === otherArea!.id), "MEM não recebe pessoa de outra área na busca");
     assert((await request(`/directory/people/${otherArea!.id}`, mem)).status === 403, "Diretório também recusa pessoa fora da área");
     assert((await search("antonio")).groups[0].items[0]?.id === antonio!.id, "Busca ignora acento");
+    const destinos = (await search("antonio")).groups.flatMap((g: any) => g.items.map((i: any) => i.href as string));
+    assert(destinos.length > 0 && destinos.every((h) => /^\/(pessoas|escalas|shows|biblioteca|mural)(\?|$)/.test(h)), "todo resultado da Busca leva a uma tela que existe (não ao antigo /admin/search)");
     assert((await search("GEOVANI")).groups[0].items[0]?.id === geovanni!.id, "Busca ignora caixa e perdoa uma letra errada");
     assert((await search("Carol")).groups[0].items[0]?.id === carol!.id, "Apelido é pesquisável");
     assert((await search("marila")).groups[0].items[0]?.id === member!.id, "Marila encontra Mariela");

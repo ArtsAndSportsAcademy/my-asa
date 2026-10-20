@@ -54,6 +54,8 @@ export function asaSearchAtTop(query: string, total: number) {
   const q = normalizeSearch(query);
   return q.split(" ").length >= 4 || /^(quem|quando|onde|quantos|por que|como)\b/.test(q) || q.endsWith("?") || total === 0;
 }
+// O href de cada resultado é uma tela que existe no app (o shell manda para o Meu Dia o que não conhece).
+// Só Escala (?data=) e Biblioteca (?document=) abrem direto no item; as outras telas abrem na lista.
 export type SearchHit = { id: string; label: string; href: string; subtitle?: string };
 function ranked<T extends { id: string }>(rows: T[], query: string, name: (row: T) => string, alias: (row: T) => string = () => "", limit = 3) {
   return rows.map(row => ({ row, rank: searchRank(query, name(row), alias(row)) })).filter((item): item is { row: T; rank: number } => item.rank !== null)
@@ -95,19 +97,19 @@ export async function globalSearch(actor: AccessTokenPayload, query: string) {
     id: row.id,
     label: row.name,
     subtitle: row.areaName ?? undefined,
-    href: `/admin/search?person=${row.id}`,
+    href: "/pessoas",
   }));
   const date = searchDate(query);
-  const dates: SearchHit[] = date ? [{ id: date, label: date.split("-").reverse().join("/"), href: `/admin/search?date=${date}` }] : [];
+  const dates: SearchHit[] = date ? [{ id: date, label: date.split("-").reverse().join("/"), href: `/escalas?data=${date}` }] : [];
   const visibleShows = [];
   // Authorize only matching candidates, but limit AFTER authorization (no hidden hit counts).
   for (const show of ranked(showRows.map(row => row.show), query, row => row.title, undefined, Infinity)) {
     if (await canViewShowBook(actor, show, show.operationId)) visibleShows.push(show);
     if (visibleShows.length === 3) break;
   }
-  const shows = ranked(visibleShows, query, row => row.title).map(row => ({ id: row.id, label: row.title, href: `/admin/search?show=${row.id}` }));
-  const documents = ranked(docs, query, row => row.title).map(row => ({ id: row.id, label: row.title, href: `/admin/search?document=${row.id}` }));
-  const noticesHits = ranked(notices, query, row => row.title ?? "Aviso").map(row => ({ id: row.id, label: row.title ?? "Aviso", href: `/admin/search?notice=${row.id}` }));
+  const shows = ranked(visibleShows, query, row => row.title).map(row => ({ id: row.id, label: row.title, href: "/shows" }));
+  const documents = ranked(docs, query, row => row.title).map(row => ({ id: row.id, label: row.title, href: `/biblioteca?document=${row.id}` }));
+  const noticesHits = ranked(notices, query, row => row.title ?? "Aviso").map(row => ({ id: row.id, label: row.title ?? "Aviso", href: "/mural" }));
   const groups = [ { key: "people", label: "Pessoas", items: people }, { key: "dates", label: "Datas", items: dates }, { key: "shows", label: "Shows", items: shows }, { key: "documents", label: "Documentos", items: documents }, { key: "notices", label: "Avisos", items: noticesHits } ];
   return { groups, asaAtTop: asaSearchAtTop(query, groups.reduce((sum, group) => sum + group.items.length, 0)) };
 }

@@ -46,7 +46,8 @@ export default function PrintDayPage() {
 
   useEffect(() => {
     if (!locationId) return;
-    setLoading(true); setError("");
+    // Esvazia o dia anterior: se a nova escala falhar ao carregar, o botão de imprimir não pode seguir ligado com a folha velha.
+    setDia(null); setLoading(true); setError("");
     if (review) { setDia(sampleDia(locationId, date) as unknown as Dia); setLoading(false); return; }
     customFetch<{ dia: Dia }>(`/api/escalas/dia?locationId=${locationId}&date=${date}`)
       .then((r) => setDia(r.dia))
