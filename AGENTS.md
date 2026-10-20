@@ -105,6 +105,13 @@ formulário: é a lista do que já escapou antes.
     diz quem pode fazer e qual é o perfil de quem tentou; erro de dado que a pessoa digitou é 400 com a lista do
     que vale, nunca 500. Id quebrado na URL é 404 com frase (`exigirUuidNosParametros`).
 
+19. **E se duas pessoas mexerem na mesma coisa ao mesmo tempo — e o "não" diz o motivo de verdade?**
+    *Pegou (revisão 4):* editar uma publicação do Mural, ou um bloco da Programação, sobre uma versão velha apagava, em
+    silêncio, a mudança que a outra pessoa tinha acabado de salvar. O conserto (a tela manda a versão que abriu, o servidor
+    recusa com 409 e uma frase) ainda tinha um furo que só apareceu com dois navegadores abertos: o rodapé do editor
+    trocava a frase do servidor por "Não consegui salvar… tente de novo", e a pessoa lia como falha de rede. Toda edição de
+    algo que mais de uma pessoa mexe confere a versão, e a frase da recusa chega até quem salvou.
+
 Erro aparece no teste; isso aqui só aparece se alguém perguntar. Traga as duas coisas juntas no
 relato, separando o que já foi corrigido do que depende de decisão dela. Quando uma pergunta nova
 pegar um defeito, acrescente-a aqui com o caso — a lista cresce pelo que acontece, não pelo que se
@@ -181,7 +188,7 @@ só isso; não conclua que quebrou antes de esperar.
 
 ## Estado em 15/10/2026 (depois da revisão das telas)
 
-**Atualização de 17/10/2026 (revisão de ponta a ponta com empresa fictícia):** pronta só de área com gente ou supervisão no local; Supervisão vê e cobra as tarefas da própria área (sem a responsabilidade "Aprovação de tarefas"); Livro do Dia lê os horários da Programação; ajuste em lote conferido antes de gravar; cadastro de local pergunta a operação quando há mais de uma ativa; Painel com quatro números distintos; banco de produção na porta 6543 (migrações seguem na 5432; as 75 migrações, da 0000 à 0074, estão aplicadas em produção; a 0074, do formato do palco no show, foi promovida depois, com a API e o site, e o mapa e as formações já aparecem para o elenco). Os commits foram enviados à `codex/myasa-novo` (nada na `main`). O que falta está em `docs/plano-etapas-pos-revisao-2026-10-17.md`, em oito etapas com prompt pronto (a 1, cadastro de operações, é a importante).
+**Atualização de 17/10/2026 (revisão de ponta a ponta com empresa fictícia):** pronta só de área com gente ou supervisão no local; Supervisão vê e cobra as tarefas da própria área (sem a responsabilidade "Aprovação de tarefas"); Livro do Dia lê os horários da Programação; ajuste em lote conferido antes de gravar; cadastro de local pergunta a operação quando há mais de uma ativa; Painel com quatro números distintos; banco de produção na porta 6543 (migrações seguem na 5432; as migrações da 0000 à 0074 estão aplicadas em produção (a 0075, limite de tentativas de senha, só no banco de teste até 20/10); a 0074, do formato do palco no show, foi promovida depois, com a API e o site, e o mapa e as formações já aparecem para o elenco). Os commits foram enviados à `codex/myasa-novo` (nada na `main`). O que falta está em `docs/plano-etapas-pos-revisao-2026-10-17.md`, em oito etapas com prompt pronto (a 1, cadastro de operações, é a importante).
 
 Pronto e em produção: Escala do dia, Programação (com rascunho e rodapé), Livro do Dia, check-in por turno,
 Meu Dia, Folgas em lote e grupos de folga, Gerar o mês, **Mural aberto** (o Elenco publica, edita, remove e
@@ -216,22 +223,25 @@ para todos os quatro perfis (ADM, DIR, SUP, MEM) a 375px e 1280px — Meu Dia, E
 Tarefas. `permission-matrix` rerodado: 463/463 rotas sem auth + 25 cases de autorização real = 0 falhas. Nenhum código
 alterado. O último handoff é `docs/handoff-2026-10-19.md`; leia antes de continuar.
 
+**Feito em 20/10/2026 (revisão 3, revisão 4 e fechamento; enviado ao GitHub até `82c98a3`, o resto ainda local):** a rodada 3
+voltou ao branch; R3-B, R3-D e R3-E fechadas; Livro do dia de show misto não herda a hora da sessão separada; id inválido na URL
+dá 404 com frase (`exigirUuidNosParametros`); Registro, recusas em português, Busca, Mural, Cadastros, Folgas (revisão 4). Depois do
+"pode enviar" de 20/10, e ainda **só local**: **limite de tentativas de senha (migração 0075, só no banco de teste)**, restaurar
+documento arquivado da Biblioteca, Direção lê as versões e Supervisão vê os temas sem documento, conferência de versão nos
+blocos da Programação, "(local encerrado)" no cartão da Área, 114 telas mortas tiradas do site. **Ordem para promover o que
+está local: migração 0075, depois a API, depois o site.** Tudo está em `docs/handoff-2026-10-20-fechamento.md`: leia antes de continuar.
+Decisões já tomadas (não reabrir): **Supervisão da área que só tem local encerrado vale como "área sem Supervisão"** (a Administração
+decide na hora); **Mural continua aberto**; **a "grade pessoa × dia" e a Etapa 4 (experimentar grupos) foram descartadas até o primeiro
+mês real mostrar desequilíbrio** (a Babi só confirma). Sem tela e sem pedido: desativar formação (só a API).
+
 Pendente:
-- **Folgas e Solicitações, Mapa do mês e Grupos de folga** — telas revisadas com o crivo em 16/10; o que mudou depois (regra de
-  19/10: todo pedido passa pela Supervisão da área, aviso do grupo de folga na análise, textos novos) foi revisado em 20/10
-  (revisão 4, assunto 8; ver `docs/handoff-2026-10-20-revisao-4.md`). A regra real de folgas está em `docs/regras-de-folgas.md` —
-  leia antes de mexer. Cobertura mínima por função só avisa e é configurável. Continua em aberto só a "grade pessoa × dia" e a
-  Etapa 4 (experimentar grupos): dependem da Babi (ver `docs/revisao-4-codigo-sem-uso-2026-10-20.md`).
-- **`daily-book-session-blocks`:** 4 falhas na sessão 1 eram bug no teste (lia `blockedBody.error` em vez de
-  `blockedBody.message` para verificar a mensagem do 409); corrigido em 19/10. Rerun com a correção em andamento
-  quando o handoff foi escrito — ver resultado ou rerodá-lo.
-- **Bateria completa de testes** (escala-mes, mural-avisos, tarefas-*, folga-*, revisao-agenda-biblioteca,
-  asa-actions-http e ~60 outros arquivos) ainda não rodada do zero nesta sessão.
-- **Escala:** flash de dados antigos ao trocar de local — decidir se corrige.
-- **Quem constrói o app** confere no telefone o Perfil e o PDF da Biblioteca, e roda em produção
-  `lib/db/scripts/limpar-texto-de-mensagens-no-registro.sql`. Só depois do "pode enviar" dessa pessoa: o envio do
-  código ao GitHub (push) e a promoção (API primeiro, site depois). **Issues e rótulos do GitHub não
-  esperam por isso** (decisão de 16/10/2026): podem ser criados e usados a qualquer momento.
+- **Bateria completa de testes:** rodada em 20/10 depois de tudo (resultado no handoff de fechamento). Rode-a de novo antes de cada promoção.
+- **A Babi confirma duas regras** (a decisão já está aplicada como recomendado): a Supervisão só com local encerrado; descartar "grade pessoa × dia" e grupos experimentais.
+- **Quem constrói o app** roda em produção `lib/db/scripts/limpar-texto-de-mensagens-no-registro.sql` (se ainda não rodou), a
+  migração 0075 e promove (API primeiro, site depois), e depois faz o teste de fumaça em produção com cada perfil e confere o backup do
+  banco no Supabase. **Issues e rótulos do GitHub não esperam por isso** (decisão de 16/10/2026).
+- **Não conferido, por falta de meio:** o assistente ASA com IA (o banco de teste não tem chave de IA); o desempenho em produção
+  (no banco de teste cada tela leva de 7 a 10 s; produção não foi medida).
 - **Acquamotion** não tem as vagas de personagem dos shows (a planilha ainda está "a definir"), por
   isso os Livros do Dia de lá nascem vazios. Não é defeito.
 - **Buona e Bella** têm as filas definidas e as vagas a criar.

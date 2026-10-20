@@ -37,6 +37,9 @@ quase toda semana. A verificação é no mês, e precisa conhecer quem tem jorna
   também pode decidir. Quem analisa recebe um aviso por pedido; a pessoa recebe a decisão.
 - Na análise, a Supervisão vê um **aviso (não bloqueia)** quando a pessoa está num grupo de folga: se o dia
   pedido já é folga do grupo (talvez ela já esteja de folga) ou se foge do padrão do grupo.
+- **Supervisão só com local encerrado vale como "área sem Supervisão"** (decisão aplicada em 20/10/2026, a Babi só confirma): se a
+  única Supervisão ligada à área está num local que foi encerrado, ela não segura o pedido, e a Administração decide na hora. O
+  cartão da Área marca "(local encerrado)" ao lado dessa Supervisão, para ninguém achar que ela ainda decide.
 - Pedidos antigos que entraram como prioridade seguem como estão, e a gerência ainda pode desfazê-los
   (`routes/folga-prioridade.ts`).
 

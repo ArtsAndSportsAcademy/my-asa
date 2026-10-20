@@ -19,7 +19,7 @@ Legenda: **Revisada** = passou pelas 16 perguntas e foi vista no navegador. **Pa
 | Tela | Situação | De onde vem a informação |
 |---|---|---|
 | Agenda | **Revisada** em 15/10, a 375 px, com a empresa de teste | handoff 15/10 |
-| Escalas (Escala do dia e Programação) | Revisada (Programação com rascunho e rodapé) | AGENTS.md; commit c64e2bf |
+| Escalas (Escala do dia e Programação) | Revisada (Programação com rascunho e rodapé) **20/10/2026:** salvar um bloco da Programação sobre versão velha dá 409 com frase (duas pessoas conferidas ao vivo, dois navegadores); flash ao trocar de local conferido na tela; folha de impressão conferida com escala preenchida (desktop e 375 px). | AGENTS.md; commit c64e2bf |
 | Shows | **Revisada em 16/10** (Administração e Elenco, 375 px): o Elenco recebia "não consegui carregar os shows" junto com "ainda não há shows" porque a lista de locais devolve 403 para ele (corrigido); "1 shows" virou "1 show"; o vazio do Elenco fala com quem só lê | revisão 16/10 |
 | Livro do Dia | Revisada (vivo, Hoje/Amanhã, hora e local na lista) | AGENTS.md; commit 4eea7b4 |
 | Check-in e ocorrências | Revisada (check-in por turno) | AGENTS.md |
@@ -32,9 +32,9 @@ Legenda: **Revisada** = passou pelas 16 perguntas e foi vista no navegador. **Pa
 |---|---|---|
 | Painel | **Revisada** em 15/10 (navegação de dia, vagas por dia, folgas) | handoff 15/10 |
 | Locais | **Revisada** em 15/10 (dentro de Cadastros; reabrir local pede motivo) | handoff 15/10 |
-| Pessoas e acessos | **Revisada** em 15/10 (dentro de Cadastros; desligar várias pessoas) | handoff 15/10 |
-| Áreas | **Revisada** em 15/10 (dentro de Cadastros; reabrir área) | handoff 15/10 |
-| Registro | **Revisada em 16/10** (375 px): sem transbordo, filtros e frases claros; as frases de pedido de folga que mostravam data crua (2027-03-15) passaram a "15/03/2027" | revisão 16/10 |
+| Pessoas e acessos | **Revisada** em 15/10 (dentro de Cadastros; desligar várias pessoas) **20/10/2026:** criar pessoa clicando conferido (rodapé, senha provisória, Registro) a 1280 e 375 px. | handoff 15/10 |
+| Áreas | **Revisada** em 15/10 (dentro de Cadastros; reabrir área) **20/10/2026:** o cartão marca "(local encerrado)" na Supervisão ligada a local encerrado. | handoff 15/10 |
+| Registro | **Revisada em 16/10** (375 px): sem transbordo, filtros e frases claros; as frases de pedido de folga que mostravam data crua (2027-03-15) passaram a "15/03/2027" **20/10/2026:** escritas que ficavam fora do Registro fechadas; filtro com código quebrado dá 400; passe a 375 px sem estouro. | revisão 16/10 |
 | ~~Grupos~~ | **Removida do menu em 16/10/2026** a pedido da Babi (era a tela antiga de equipes operacionais). Ver "Os três 'grupos'" abaixo | esta sessão |
 
 ## Comunicação
@@ -43,7 +43,7 @@ Legenda: **Revisada** = passou pelas 16 perguntas e foi vista no navegador. **Pa
 |---|---|---|
 | Avisos e Mural | Revisada (Mural aberto) em 14/10. Datas especiais: cadastro vazio, a Babi passa a lista | handoff 16/10 |
 | Mensagens | Revisada (com grupos) em 14–15/10. Push web de mensagem ligado, genérico | handoffs 16/10 e 15/10 |
-| Biblioteca | **Revisada** em 15/10 (avisos, "quem já leu", versões, arquivar) | handoff 15/10 |
+| Biblioteca | **Revisada** em 15/10 (avisos, "quem já leu", versões, arquivar) **20/10/2026:** "Restaurar" documento arquivado (só Administração, volta como rascunho, sem aviso), conferido na tela a 1280 e 375 px; Direção lê as versões; Supervisão vê os temas sem documento. | handoff 15/10 |
 
 ## Fora do menu principal
 
@@ -51,7 +51,7 @@ Legenda: **Revisada** = passou pelas 16 perguntas e foi vista no navegador. **Pa
 |---|---|
 | Perfil (silêncio noturno) | **Revisada em 16/10** a 375 px com a empresa de teste: o grupo de opções do aniversário passava 3 px da largura (corrigido); links de toque pequeno já têm área de 44 px. Em **celular simulado** (375 px, toque, Android): silêncio noturno mostra "Ainda não vale" com Descartar e Salvar horário, descartar volta, salvar persiste depois de recarregar; opções de aniversário passaram a 44 px. Falta conferir **no telefone de verdade** (teclado real) |
 | Solicitações (aba de Folgas) | **Revisada em 20/10** junto com Folgas (revisão 4): pedido nasce pendente, com quem está o pedido, avisos, 375 px sem estouro. Ressalva: "Retirar pedido" mede 40 px (as outras ações, 44) |
-| Login e troca de senha | **Revisado em 16/10** (login a 375 px: campos de 48 px, sem transbordo, "Usuário ou senha não conferem" só quando é isso); **Troca de senha obrigatória** vista em celular simulado em 16/10 (primeiro acesso: campos de 48 px, regras se marcando, mensagens de senha fraca e de "igual à provisória", botão visível, entra no app). Falta o teclado real |
+| Login e troca de senha | **Revisado em 16/10** (login a 375 px: campos de 48 px, sem transbordo, "Usuário ou senha não conferem" só quando é isso); **Troca de senha obrigatória** vista em celular simulado em 16/10 (primeiro acesso: campos de 48 px, regras se marcando, mensagens de senha fraca e de "igual à provisória", botão visível, entra no app). Falta o teclado real **20/10/2026:** limite de tentativas de senha (8 erros em 15 min pausam por 15 min), mensagem conferida na tela a 375 px. |
 
 ## O que falta, em ordem
 

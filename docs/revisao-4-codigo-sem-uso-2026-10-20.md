@@ -92,3 +92,18 @@ Os dois itens aparecem como "pendentes" no `mapa-de-revisao.md`, nos handoffs de
 **Recomendação:** tratar as duas como *descartadas até haver motivo*, e reabrir só se o primeiro mês real mostrar desequilíbrio de
 folga entre as pessoas. Precisa da resposta da Babi (regra de negócio): "vocês ainda querem ver a grade pessoa × dia, ou o
 Mapa do mês basta?".
+
+## Decisões de 20/10/2026 (depois deste levantamento)
+
+Todas as recomendações acima foram aceitas por quem constrói o app e aplicadas:
+
+1. **Telas mortas tiradas do site** em um commit só (`940ba1c`): os mesmos 114 arquivos (33.814 linhas, contando os componentes de
+   interface). O alcance foi recalculado por outro script e bateu arquivo por arquivo. tsc, build e `verificar-nomes-build` limpos; o
+   pacote ficou do mesmo tamanho (o build já descartava esse código).
+2. **API mantida**, com dois comentários no topo de cada um dos 12 roteadores sem tela (`ae343ff`). Tirá-los fica para uma etapa própria,
+   depois da bateria, porque mexe em `permission-matrix` e em cerca de dez testes.
+3. **`groups.ts` mantido** (a ASA, a mesclagem de escala e a Supervisão antiga ainda usam as funções).
+4. **Formação:** desativar continua só pela API, sem tela. Ninguém pediu; não se faz tela sem demanda.
+5. **Visão do mês (grade pessoa × dia) e Etapa 4 (experimentar grupos):** descartadas até o primeiro mês real mostrar desequilíbrio de
+   folga. A Babi só confirma ("o Mapa do mês basta?").
+6. **Narrativas do Registro** (`/history/narratives`, sem tela): a API fica; não tem custo e pode servir a uma tela futura.
