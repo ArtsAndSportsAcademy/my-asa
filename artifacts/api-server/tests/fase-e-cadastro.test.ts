@@ -96,6 +96,18 @@ async function run() {
     assert(Boolean(registroTroca) && registroTroca!.narrative.includes("assumiu a supervisão"), "a troca entra no Registro com o motivo");
     assert((await call("PUT", `/users/${semPerfil.body.user.id}/perfil`, asBarbara, { perfil: "DIR" })).status === 200, "dar perfil a quem não tinha não exige motivo");
 
+    // ── Revisão 4: id quebrado é 404 com frase, e falha do servidor não vira "já existe" ──
+    assert((await call("PATCH", "/areas/undefined", asBarbara, { name: "x" })).status === 404, "área com id quebrado responde 404, não 500");
+    assert((await call("PATCH", "/locations/undefined", asBarbara, { name: "x" })).status === 404, "local com id quebrado responde 404, não 500");
+    const nomeRepetido = await call("POST", "/areas", asBarbara, { name: `${tag}_Patinadores` });
+    assert(nomeRepetido.status === 409 && /Já existe/.test(nomeRepetido.body.message), "nome repetido continua dizendo que já existe");
+    const nomeDaFalha = `${tag}_Falha`;
+    process.env.MYASA_TEST_FAIL_HISTORY = "1";
+    const falhaDoServidor = await call("POST", "/areas", asBarbara, { name: nomeDaFalha });
+    delete process.env.MYASA_TEST_FAIL_HISTORY;
+    const criouMesmoAssim = await db.select().from(areasTable).where(eq(areasTable.name, nomeDaFalha));
+    assert(falhaDoServidor.status === 500 && /Nada foi alterado/.test(falhaDoServidor.body.message) && !/Já existe/.test(falhaDoServidor.body.message) && criouMesmoAssim.length === 0, "falha do servidor diz que falhou (e nada foi criado), não que o nome já existe");
+
     // ── Editar a pessoa de uma vez (18/10): tudo ou nada, um evento no Registro, um aviso ──
     const [areaB] = await db.insert(areasTable).values({ organizationId: org!.id, name: `${tag}_Bailarinos` }).returning();
     areasExtras.push(areaB!.id);

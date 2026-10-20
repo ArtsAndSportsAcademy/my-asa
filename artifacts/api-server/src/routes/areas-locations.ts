@@ -15,8 +15,11 @@ import { requireReason } from "../lib/reason.js";
 import { writeEntityHistory } from "../lib/entity-history.js";
 import { listAreaLocalScopes } from "../services/area-local-scope.js";
 import { listReadableLocations } from "../services/location-directory.js";
+import { isUniqueViolation } from "../lib/erro-de-banco.js";
+import { exigirUuidNosParametros } from "../lib/uuid.js";
 
 const router: IRouter = Router();
+exigirUuidNosParametros(router, { id: "Registro não encontrado.", locationId: "Local não encontrado.", operationId: "Operação não encontrada." });
 
 /** Um id que nem tem cara de id é "não encontrada", não erro do servidor. */
 router.param("operationId", (_req, res, next, id) => {
@@ -62,7 +65,11 @@ router.post("/areas", requireAuth, requireOrganization, requireRole("ADMIN"), as
       return created;
     });
     res.status(201).json({ area });
-  } catch { res.status(409).json({ error: "CONFLITO", message: "Já existe uma área ativa com este nome." }); }
+  } catch (err) {
+    if (isUniqueViolation(err)) { res.status(409).json({ error: "CONFLITO", message: "Já existe uma área ativa com este nome." }); return; }
+    // Falha de banco ou de rede não é nome repetido: dizer que é faria a pessoa trocar o nome atrás de um problema que não é dela.
+    res.status(500).json({ error: "INTERNAL_ERROR", message: "Não consegui salvar agora. Nada foi alterado; tente de novo." });
+  }
 });
 
 router.patch("/areas/:id", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
@@ -78,7 +85,11 @@ router.patch("/areas/:id", requireAuth, requireOrganization, requireRole("ADMIN"
       return next;
     });
     res.json({ area });
-  } catch { res.status(409).json({ error: "CONFLITO", message: "Já existe uma área ativa com este nome." }); }
+  } catch (err) {
+    if (isUniqueViolation(err)) { res.status(409).json({ error: "CONFLITO", message: "Já existe uma área ativa com este nome." }); return; }
+    // Falha de banco ou de rede não é nome repetido: dizer que é faria a pessoa trocar o nome atrás de um problema que não é dela.
+    res.status(500).json({ error: "INTERNAL_ERROR", message: "Não consegui salvar agora. Nada foi alterado; tente de novo." });
+  }
 });
 
 router.delete("/areas/:id", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
@@ -178,7 +189,11 @@ router.post("/locations", requireAuth, requireOrganization, requireRole("ADMIN")
       return created;
     });
     res.status(201).json({ location });
-  } catch { res.status(409).json({ error: "CONFLITO", message: "Já existe um local com este nome." }); }
+  } catch (err) {
+    if (isUniqueViolation(err)) { res.status(409).json({ error: "CONFLITO", message: "Já existe um local com este nome." }); return; }
+    // Falha de banco ou de rede não é nome repetido: dizer que é faria a pessoa trocar o nome atrás de um problema que não é dela.
+    res.status(500).json({ error: "INTERNAL_ERROR", message: "Não consegui salvar agora. Nada foi alterado; tente de novo." });
+  }
 });
 
 router.patch("/locations/:id", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
@@ -204,7 +219,11 @@ router.patch("/locations/:id", requireAuth, requireOrganization, requireRole("AD
       return next;
     });
     res.json({ location });
-  } catch { res.status(409).json({ error: "CONFLITO", message: "Já existe um local com este nome." }); }
+  } catch (err) {
+    if (isUniqueViolation(err)) { res.status(409).json({ error: "CONFLITO", message: "Já existe um local com este nome." }); return; }
+    // Falha de banco ou de rede não é nome repetido: dizer que é faria a pessoa trocar o nome atrás de um problema que não é dela.
+    res.status(500).json({ error: "INTERNAL_ERROR", message: "Não consegui salvar agora. Nada foi alterado; tente de novo." });
+  }
 });
 
 /** Operações ATIVAS que ficariam sem nenhum local aberto se este local fechasse. */
