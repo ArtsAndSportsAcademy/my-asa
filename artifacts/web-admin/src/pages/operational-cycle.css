@@ -1179,7 +1179,7 @@
 
 .cycle-request .cycle-sim,
 .cycle-request .cycle-nao {
-  min-height: 40px;
+  min-height: 44px; /* alvo de toque mínimo do app: "Retirar pedido" e "Recusar proposta" mediam 40 px */
   border-radius: 999px;
   padding: 6px 14px;
   white-space: nowrap;
