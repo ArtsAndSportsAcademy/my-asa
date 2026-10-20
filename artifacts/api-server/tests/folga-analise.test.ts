@@ -10,7 +10,7 @@ import {
   showBooksTable, showBookScenesTable, showBookBlocksTable, showBookRolesTable, showBookLinesTable,
   folgasTable, agendaEventsTable, historyEventsTable, operationalChangesTable,
   dailyBooksTable, dailyBookScenesTable, dailyBookBlocksTable, dailyBookPositionsTable, dailyBookAssignmentsTable,
-  userRolesTable, leaveRequestsTable,
+  userRolesTable, leaveRequestsTable, folgaGruposTable,
 } from "@workspace/db";
 import { count, eq, inArray, or } from "drizzle-orm";
 import app from "../src/application.js";
@@ -162,6 +162,23 @@ async function run() {
     const aLongo = await call("GET", `/leave-requests/${pedidoLongo}/analise`, asSup);
     assert(aLongo.body.dias?.length === 14 && aLongo.body.cortado === true, "pedido de 20 dias: mostra os 14 primeiros e avisa que cortou");
 
+    // 4b · Grupo de folga: a Supervisão vê se o dia pedido é a folga do grupo ou foge do padrão (só avisa, não bloqueia).
+    // 10/11/2026 é terça; 11/11, quarta.
+    const [grupoSemana] = await db.insert(folgaGruposTable).values({ operationId: operation!.id, nome: `${tag}_G1`, diasFolga: [1, 2], pessoaIds: [ana.id], createdBy: admin.id }).returning();
+    const [grupoRecesso] = await db.insert(folgaGruposTable).values({ operationId: operation!.id, nome: `${tag}_Recesso`, diasFolga: [], dataInicio: "2026-11-14", dataFim: "2026-11-16", pessoaIds: [ana.id], createdBy: admin.id }).returning();
+    const [grupoDeOutros] = await db.insert(folgaGruposTable).values({ operationId: operation!.id, nome: `${tag}_G9`, diasFolga: [3], pessoaIds: [carol.id], createdBy: admin.id }).returning();
+    assert(!!grupoSemana && !!grupoRecesso && !!grupoDeOutros, "preparo: grupos de folga criados");
+    const deGrupo = await call("GET", `/leave-requests/${pedido1}/analise`, asSup);
+    assert(deGrupo.status === 200 && new RegExp(`${tag}_G1.*já é de folga do grupo.*segunda e terça`).test(deGrupo.body.dias?.[0]?.aviso ?? ""), "dia que é folga do grupo da pessoa: o aviso nomeia o grupo e os dias, e diz para conferir");
+    assert(deGrupo.body.dias?.[0]?.resultado.da === true, "o aviso de grupo não bloqueia: o resultado da análise segue o mesmo");
+    const foraDoGrupo = await call("GET", `/leave-requests/${pedido2}/analise`, asSup);
+    assert(new RegExp(`${tag}_G1.*foge do padrão do grupo`).test(foraDoGrupo.body.dias?.[0]?.aviso ?? ""), "dia fora da folga do grupo: o aviso diz que foge do padrão");
+    assert(!/_G9/.test(deGrupo.body.dias?.[0]?.aviso ?? "") && !/_G9/.test(foraDoGrupo.body.dias?.[0]?.aviso ?? ""), "grupo de outra pessoa não aparece na análise");
+    const noRecesso = await call("GET", `/leave-requests/${pedidoLongo}/analise`, asSup);
+    const avisoDe = (data: string) => (noRecesso.body.dias as Dia[] | undefined)?.find((d) => d.date === data)?.aviso ?? "";
+    assert(new RegExp(`${tag}_Recesso.*já é de folga do grupo`).test(avisoDe("2026-11-15")), "grupo por período corrido: dentro do intervalo, o aviso aparece");
+    assert(!new RegExp(`${tag}_Recesso`).test(avisoDe("2026-11-18")), "grupo por período corrido: fora do intervalo, não há aviso desse grupo");
+
     // 5 · Quem pode ler.
     assert((await call("GET", `/leave-requests/${pedido1}/analise`, asAdmin)).status === 200, "Administração lê a análise");
     assert((await call("GET", `/leave-requests/${pedido1}/analise`, asDir)).status === 200, "Direção lê a análise");
@@ -199,6 +216,7 @@ async function run() {
     }
     await pool.query(`delete from user_notifications where user_id = any($1::uuid[])`, [ids]).catch(() => undefined);
     await pool.query(`delete from notification_outbox where user_id = any($1::uuid[])`, [ids]).catch(() => undefined);
+    await db.delete(folgaGruposTable).where(eq(folgaGruposTable.operationId, operation!.id));
     await db.delete(leaveRequestsTable).where(eq(leaveRequestsTable.organizationId, org!.id));
     await db.delete(folgasTable).where(eq(folgasTable.operationId, operation!.id));
     await db.delete(areaLocalSupervisorsTable).where(eq(areaLocalSupervisorsTable.locationId, local!.id));

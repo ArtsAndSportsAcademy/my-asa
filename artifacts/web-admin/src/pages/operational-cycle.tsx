@@ -144,7 +144,7 @@ export function FolgasPage({ role }: { role: Role }) {
     setEnviando(true);
     try {
       await customFetch("/api/leave-requests", { method: "POST", body: JSON.stringify(body) });
-      setPedidoFeito(`Pedido enviado para ${porExtenso(body.startDate, body.endDate)}. A Supervisão da sua área responde, e você vê a resposta aqui e no sino.`);
+      setPedidoFeito(`Pedido enviado para ${porExtenso(body.startDate, body.endDate)}. Ele espera a Supervisão da sua área: a folga só vale depois da resposta, que você vê aqui e no sino.`);
       setAskOpen(false); reload();
     }
     catch (e) { setPedidoErro(mensagemDoErro(e, "Não consegui enviar o pedido agora. Nada foi enviado; tente de novo.")); }
@@ -276,7 +276,7 @@ export function FolgasPage({ role }: { role: Role }) {
     if (!d) return "";
     if (d.quem === "ADMINISTRACAO") return role === "mem" ? "Aguardando a Administração decidir" : "Sem Supervisão cadastrada na área: a decisão é da Administração.";
     const area = d.area ? ` de ${d.area}` : "";
-    if (role === "mem") return `Aguardando a Supervisão${area} responder`;
+    if (role === "mem") return `Aguardando a Supervisão${area} responder. ${d.adminPodeAgora ? "Como a data está perto, a Administração também já pode decidir." : d.adminPodeDecidirEm ? `Se ela não responder, a Administração também pode decidir a partir de ${dia(d.adminPodeDecidirEm)}.` : ""}`.trim();
     return bloqueadaParaAdm(request) && d.adminPodeDecidirEm ? `Com a Supervisão${area}. Você poderá decidir a partir de ${dia(d.adminPodeDecidirEm)}.` : `Com a Supervisão${area}.`;
   };
   const esperandoColega = (request: LeaveRequest) => request.troca?.estado === "ESPERANDO" || request.alternativa?.estado === "ESPERANDO";

@@ -34,6 +34,7 @@ export type DiaAnalisado = {
 };
 
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const NOMES_DOS_DIAS = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
 const curta = (iso: string) => { const [, m, d] = iso.split("-").map(Number); return `${d} ${MESES[m! - 1]}`; };
 
 function diasDoPedido(startDate: string, endDate: string): { dias: string[]; cortado: boolean } {
@@ -185,15 +186,17 @@ export async function analisarPedidoDeFolga(input: { organizationId: string; use
       if (total) aviso = [aviso, fraseDoLimite(total)].filter(Boolean).join(" ");
     }
 
-    // Grupo de folga da temporada: avisa se este dia cai no padrão do grupo de quem pediu.
+    // Grupo de folga da temporada: a Supervisão precisa saber se o dia pedido é a folga do grupo da pessoa
+    // (então talvez já esteja de folga) ou se foge do padrão do grupo. Só avisa; quem decide é a Supervisão.
     const diaDaSemana = new Date(`${date}T12:00:00Z`).getUTCDay();
     for (const grupo of gruposDaPessoa) {
-      const nosDiasSemana = grupo.diasFolga.length > 0 && grupo.diasFolga.includes(diaDaSemana);
-      const noPeriodo = grupo.dataInicio && grupo.dataFim && date >= grupo.dataInicio && date <= grupo.dataFim;
-      if (nosDiasSemana || noPeriodo) {
-        const avisoGrupo = `Grupo "${grupo.nome}": este dia está no padrão de folga do grupo desta pessoa. Verifique se já foi aplicado antes de decidir.`;
-        aviso = [aviso, avisoGrupo].filter(Boolean).join(" ");
-      }
+      const porDiaDaSemana = grupo.diasFolga.length > 0;
+      const diasTexto = grupo.diasFolga.map((d) => NOMES_DOS_DIAS[d]).join(" e ");
+      const eFolgaDoGrupo = porDiaDaSemana ? grupo.diasFolga.includes(diaDaSemana) : Boolean(grupo.dataInicio && grupo.dataFim && date >= grupo.dataInicio && date <= grupo.dataFim);
+      let avisoGrupo: string | null = null;
+      if (eFolgaDoGrupo) avisoGrupo = `Grupo "${grupo.nome}": este dia já é de folga do grupo desta pessoa${porDiaDaSemana ? ` (${diasTexto})` : ""}. Se o grupo já foi aplicado, ela já está de folga; confira antes de decidir.`;
+      else if (porDiaDaSemana) avisoGrupo = `Grupo "${grupo.nome}": a folga fixa desta pessoa é ${diasTexto}; este dia foge do padrão do grupo.`;
+      if (avisoGrupo) aviso = [aviso, avisoGrupo].filter(Boolean).join(" ");
     }
 
     dias.push({ date, deFolga: lista(folgam), trabalham: lista(trabalham), vagas: vagasAnalisadas, resultado, aviso, semEscala });
