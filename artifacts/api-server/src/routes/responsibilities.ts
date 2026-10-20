@@ -23,7 +23,9 @@ import { atualizarItem, criarItem, desmarcarItem, marcarItem, removerItem, resta
 import { processNotificationOutbox } from "../services/notification-outbox.js";
 import { logger } from "../lib/logger.js";
 
+import { exigirUuidNosParametros } from "../lib/uuid.js";
 const router: IRouter = Router();
+exigirUuidNosParametros(router, { id: "Responsabilidade não encontrada.", assignmentId: "Atribuição não encontrada.", routineId: "Item da rotina não encontrado." });
 
 const MANAGER_ROLES = ["ADMIN", "DIR", "SUPERVISOR_A", "SUPERVISOR_B"];
 const SUPERVISOR_ROLES = ["SUPERVISOR_A", "SUPERVISOR_B"];

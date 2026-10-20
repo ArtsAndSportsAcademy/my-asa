@@ -13,7 +13,9 @@ import {
 } from "../services/occurrence-lifecycle.js";
 import { canSupervisorAccessPerson } from "../services/area-local-scope.js";
 
+import { exigirUuidNosParametros } from "../lib/uuid.js";
 const router: IRouter = Router();
+exigirUuidNosParametros(router, { id: "Ocorrência não encontrada." });
 const SUPERVISOR_ROLES = new Set(["SUPERVISOR_A", "SUPERVISOR_B"]);
 
 async function occurrenceInOrganization(id: string, organizationId: string) {

@@ -86,6 +86,11 @@ async function run() {
     assert(intrusa.status === 403 && /não é sua|não participa|sem acesso/i.test(`${intrusa.json?.message ?? ""}`), `Quem não é da tarefa não a vê, com uma frase que explica (${intrusa.status} ${intrusa.json?.message})`);
     const veAdmin = await adminApi(`/tasks/${tarefaId}`), veDir = await dirApi(`/tasks/${tarefaId}`), veCria = await anaApi(`/tasks/${tarefaId}`);
     assert(veAdmin.status === 200 && veAdmin.json?.steps?.length === 4 && veDir.status === 200 && veCria.status === 200, "Administração, Direção e quem criou veem a tarefa com as etapas");
+    // Id que não é UUID ("undefined" vindo de uma tela) responde 404 com frase, não 500, em todas as rotas com :id destes roteadores.
+    for (const caminho of ["/tasks/undefined", "/tasks/undefined/comments", `/tasks/${tarefaId}/steps/undefined/start`, "/responsibilities/undefined", "/responsibilities/undefined/requests", "/users/undefined", "/show-books/undefined", "/occurrences/undefined"]) {
+      const resposta = await adminApi(caminho, caminho.endsWith("/start") ? { method: "POST", body: {} } : undefined);
+      assert(resposta.status === 404 && typeof resposta.json?.message === "string" && /não encontrad/i.test(resposta.json.message), `Id inválido em ${caminho} responde 404 com frase, não 500 (${resposta.status} ${JSON.stringify(resposta.json).slice(0, 80)})`);
+    }
     const dirCria = await dirApi("/tasks", { method: "POST", body: { operationId: operation!.id, title: "Direção pede", steps: [{ title: "Fazer", assigneeId: eva.id }] } });
     assert(dirCria.status === 201 && dirCria.json?.task?.dueDate === null, `Direção cria, e a tarefa pode ficar sem prazo (${dirCria.status} ${dirCria.json?.task?.dueDate})`);
 

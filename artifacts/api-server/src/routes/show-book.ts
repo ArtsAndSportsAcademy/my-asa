@@ -36,6 +36,7 @@ import { buildShowBookTree, collectUserIdsFromConfig, resolveShowBookCast } from
 import { detectShowBookResolveConflicts } from "../services/schedule-conflicts.js";
 import { canManageShowBook, canOperateDailyBook, canViewShowBook, isOperationManager } from "../lib/show-responsibility.js";
 
+import { exigirUuidNosParametros } from "../lib/uuid.js";
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"] as const;
 
 const DEFAULT_STRUCTURAL_REASON = "Edição estrutural (sem motivo informado)";
@@ -55,6 +56,7 @@ function isValidBlockTime(v: unknown): boolean {
 }
 
 const router: IRouter = Router();
+exigirUuidNosParametros(router, { id: "Livro do Show não encontrado.", sceneId: "Cena não encontrada.", blockId: "Bloco não encontrado.", positionId: "Posição não encontrada.", lineId: "Fala não encontrada.", linkId: "Vínculo não encontrado.", keyframeId: "Marcação não encontrada.", tagId: "Etiqueta não encontrada.", userId: "Pessoa não encontrada.", operationId: "Operação não encontrada." });
 
 async function getShowBookOrFail(req: any, res: any) {
   const id = req.params.id as string;

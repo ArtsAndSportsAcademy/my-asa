@@ -27,9 +27,10 @@ import {
 } from "../services/task-steps.js";
 import { processNotificationOutbox } from "../services/notification-outbox.js";
 import { checarCompartilhamento, lerLinkDrive } from "../services/drive-link.js";
-import { validarUuid } from "../lib/uuid.js";
+import { exigirUuidNosParametros, validarUuid } from "../lib/uuid.js";
 
 const router: IRouter = Router();
+exigirUuidNosParametros(router, { id: "Tarefa não encontrada.", stepId: "Etapa não encontrada." });
 
 /** Quem age, já com o "sou da gestão desta tarefa?" resolvido (Administração, Direção ou Supervisão da área). */
 async function atorDa(user: NonNullable<Express.Request["user"]>, task: { operationId: string; responsibilityId: string | null; assigneeId: string }): Promise<Ator> {

@@ -38,7 +38,9 @@ import { listAreaLocalScopes } from "../services/area-local-scope.js";
 import { enqueueNotification } from "../services/undo.js";
 import { canSupervisorAccessPerson } from "../services/area-local-scope.js";
 
+import { exigirUuidNosParametros } from "../lib/uuid.js";
 const router: IRouter = Router();
+exigirUuidNosParametros(router, { id: "Pessoa não encontrada." });
 
 /** Perfil de acesso na tela Pessoas ↔ papel gravado em user_roles (um vínculo por operação ativa). */
 type Perfil = "ADM" | "DIR" | "SUP" | "MEM";
