@@ -1062,12 +1062,17 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
         const next = list.map((p) => p.id !== b.programacaoId ? p : { ...p, blocos: p.blocos.map((x) => x.id === b.id ? { ...x, ...patch } : x) });
         saveSampleProgramacoes(localId, next as SampleProgramacao[]); setList(next);
       } else {
-        await customFetch(`/api/programacoes/${b.programacaoId}/blocos/${b.id}`, { method: "PATCH", body: JSON.stringify(patch) });
+        await customFetch(`/api/programacoes/${b.programacaoId}/blocos/${b.id}`, { method: "PATCH", body: JSON.stringify({ ...patch, baseUpdatedAt: (b as { updatedAt?: string }).updatedAt }) });
         setTick((n) => n + 1);
       }
       onChanged();
       return true;
-    } catch (err) { setError(err instanceof ApiError && err.data && typeof (err.data as { error?: unknown }).error === "string" ? (err.data as { error: string }).error : "Não consegui salvar o bloco."); return false; }
+    } catch (err) {
+      // Outra pessoa salvou antes: recarrega para a tela mostrar a versão nova (a frase do servidor explica o que houve).
+      if (err instanceof ApiError && err.status === 409 && (err.data as { error?: unknown } | null)?.error === "VERSAO_MUDOU") setTick((n) => n + 1);
+      setError(err instanceof ApiError && err.data && typeof (err.data as { message?: unknown }).message === "string" ? (err.data as { message: string }).message : err instanceof ApiError && err.data && typeof (err.data as { error?: unknown }).error === "string" ? (err.data as { error: string }).error : "Não consegui salvar o bloco.");
+      return false;
+    }
   };
 
   // Rascunho do bloco aberto: nada vai para o molde enquanto a pessoa não confirmar no rodapé.

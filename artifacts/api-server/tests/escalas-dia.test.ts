@@ -139,6 +139,20 @@ async function run() {
     assert(desativar.status === 200 && Boolean(depoisDeTirar) && depoisDeTirar!.active === false, "bloco tirado do molde continua na lista, inativo, para poder voltar");
     await asAdmin(`/programacoes/${prog.id}/blocos/${tirado.id}`, { method: "PATCH", body: JSON.stringify({ active: true }) });
     assert((await listaProg()).find((b) => b.id === tirado.id)?.active === true, "bloco devolvido ao molde volta a valer");
+
+    // Duas pessoas no mesmo bloco: quem salva sobre uma versão velha não apaga, em silêncio, o que já foi salvo.
+    const umBloco = async () => ((await (await asAdmin(`/programacoes?locationId=${local!.id}`)).json()) as { programacoes: { blocos: { id: string; rotulo: string; updatedAt: string }[] }[] }).programacoes.flatMap((p) => p.blocos).find((b) => b.id === tirado.id)!;
+    const aberto = await umBloco();
+    const primeira = await asAdmin(`/programacoes/${prog.id}/blocos/${tirado.id}`, { method: "PATCH", body: JSON.stringify({ rotulo: "PRIMEIRA PESSOA", baseUpdatedAt: aberto.updatedAt }) });
+    assert(primeira.status === 200, "salvar sobre a versão que está aberta funciona");
+    const velha = await asAdmin(`/programacoes/${prog.id}/blocos/${tirado.id}`, { method: "PATCH", body: JSON.stringify({ rotulo: "SEGUNDA PESSOA", baseUpdatedAt: aberto.updatedAt }) });
+    const velhaBody = (await velha.json()) as { error?: string; message?: string };
+    assert(velha.status === 409 && velhaBody.error === "VERSAO_MUDOU" && /Outra pessoa alterou/.test(velhaBody.message ?? ""), `salvar sobre versão velha dá 409 VERSAO_MUDOU com frase (${velha.status} ${velhaBody.error})`);
+    assert((await umBloco()).rotulo === "PRIMEIRA PESSOA", "a recusa não apaga a edição que já estava salva");
+    assert((await asAdmin(`/programacoes/${prog.id}/blocos/${tirado.id}`, { method: "PATCH", body: JSON.stringify({ rotulo: "SEM VERSAO" }) })).status === 200, "quem não manda a versão segue como antes (compatível)");
+    const blocoBase = await umBloco();
+    const juntos = await Promise.all([1, 2, 3].map((n) => asAdmin(`/programacoes/${prog.id}/blocos/${tirado.id}`, { method: "PATCH", body: JSON.stringify({ rotulo: `JUNTOS ${n}`, baseUpdatedAt: blocoBase.updatedAt }) })));
+    assert(juntos.filter((r) => r.status === 200).length === 1 && juntos.filter((r) => r.status === 409).length === 2, `três salvando ao mesmo tempo sobre a mesma versão: um grava, dois recebem 409 (${juntos.map((r) => r.status).join(",")})`);
     for (const b of variosBody.blocos) await asAdmin(`/programacoes/${prog.id}/blocos/${b.id}`, { method: "PATCH", body: JSON.stringify({ active: false }) });
 
     // Temporada nova a partir do molde atual.

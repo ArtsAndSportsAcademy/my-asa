@@ -8,7 +8,7 @@
  * Toda escrita entra no Registro na mesma transação.
  */
 import { Router, type IRouter } from "express";
-import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import {
   areaLocalSupervisorsTable,
   db,
@@ -743,6 +743,7 @@ router.post("/programacoes/:id/blocos", requireAuth, requireOrganization, async 
   res.status(201).json({ bloco: created[0], blocos: created });
 });
 
+const MENSAGEM_BLOCO_MUDOU = "Outra pessoa alterou este bloco depois que você abriu. Nada foi salvo: a tela foi atualizada, confira a versão nova e refaça a mudança se ainda for preciso.";
 router.patch("/programacoes/:id/blocos/:blocoId", requireAuth, requireOrganization, async (req, res) => {
   const actor = req.user! as Actor;
   const programacao = await programacaoInOrg(req.params.id as string, actor.organizationId);
@@ -750,16 +751,25 @@ router.patch("/programacoes/:id/blocos/:blocoId", requireAuth, requireOrganizati
   if (!(await canManageLocal(actor, programacao.locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Você não altera a Programação deste local." }); return; }
   const [current] = await db.select().from(programacaoBlocosTable).where(and(eq(programacaoBlocosTable.id, req.params.blocoId as string), eq(programacaoBlocosTable.programacaoId, programacao.id))).limit(1);
   if (!current) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Bloco não encontrado." }); return; }
+  // Versão que a pessoa tinha aberta (o "atualizado em" do bloco). Se outra pessoa salvou antes, nada é gravado: quem salva por
+  // cima apagaria, em silêncio, a mudança que já estava feita. Quem não manda a versão segue como antes.
+  const baseUpdatedAt = (req.body as { baseUpdatedAt?: unknown } | undefined)?.baseUpdatedAt;
+  const versaoAberta = baseUpdatedAt === undefined ? undefined : (typeof baseUpdatedAt === "string" && !Number.isNaN(Date.parse(baseUpdatedAt)) ? new Date(baseUpdatedAt).getTime() : null);
+  if (versaoAberta !== undefined && versaoAberta !== current.updatedAt.getTime()) { res.status(409).json({ error: "VERSAO_MUDOU", message: MENSAGEM_BLOCO_MUDOU }); return; }
   const parsed = parseBloco(req.body ?? {}, true);
   if (!parsed.ok) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: parsed.error }); return; }
   const merged = { ...current, ...parsed.value } as typeof current;
   if (merged.regra === "livro" && !merged.showBookId) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "Escolha de qual show é este bloco do Livro.." }); return; }
   if (merged.fim && merged.fim.slice(0, 5) <= merged.inicio.slice(0, 5)) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "fim precisa ser depois do início." }); return; }
   const updated = await db.transaction(async (tx) => {
-    const [row] = await tx.update(programacaoBlocosTable).set({ ...parsed.value, updatedAt: new Date() }).where(eq(programacaoBlocosTable.id, current.id)).returning();
+    // A conferência vale também na gravação (duas pessoas salvando ao mesmo tempo): só grava se o bloco ainda é o que foi lido.
+    const [row] = await tx.update(programacaoBlocosTable).set({ ...parsed.value, updatedAt: new Date() })
+      .where(and(eq(programacaoBlocosTable.id, current.id), sql`date_trunc('milliseconds', ${programacaoBlocosTable.updatedAt}) = ${current.updatedAt}`)).returning();
+    if (!row) return null;
     await writeHistoryEvent({ category: "SCALE", action: row!.active ? "programacao.bloco_alterado" : "programacao.bloco_desativado", title: row!.active ? "Bloco da Programação alterado" : "Bloco da Programação desativado", narrative: `Bloco ${row!.rotulo} ${row!.active ? "alterado" : "desativado (sem exclusão)"} na programação ${programacao.nome}.`, entityType: "programacao", entityId: programacao.id, actorId: actor.sub, orgId: actor.organizationId, beforeState: { bloco: current }, afterState: { bloco: row } }, tx as unknown as HistoryExecutor);
     return row!;
   });
+  if (!updated) { res.status(409).json({ error: "VERSAO_MUDOU", message: MENSAGEM_BLOCO_MUDOU }); return; }
   res.json({ bloco: updated });
 });
 
