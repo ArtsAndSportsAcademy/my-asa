@@ -53,7 +53,7 @@ import {
 import { detectConflictsForDailyBooks, detectDailyBookConflicts, type PublicScheduleConflict } from "../services/schedule-conflicts.js";
 import { lembrarOuLer, type LeiturasDoMes } from "../services/leituras-do-mes.js";
 import { escalaDoDiaDoLivro, escalaPublicada, horariosDoShowNaProgramacao, horariosDosShowsNaProgramacao, marcarEscalaAlteradaPeloLivro } from "../services/escala-dia.js";
-import { eligibleSessions, isNotSessionBlock, listSessionBlocks, syncSessionBlocks } from "../services/session-blocks.js";
+import { eligibleSessions, eligibleSessionsDoDia, isNotSessionBlock, listSessionBlocks, syncSessionBlocks } from "../services/session-blocks.js";
 
 const router: IRouter = Router();
 /** O que a geração devolve sobre conflitos de horário. "adiada": quem gera vários Livros confere o dia todo no fim. */
@@ -944,7 +944,10 @@ export async function generateDailyBookDraftForScale(input: {
   // Livro do dia inteiro (sem sessão separada): a hora vem da Programação do local, que é o que a Escala lê
   // (decisão de 17/10/2026). Vale a primeira hora do dia; as outras o cartão lista a partir da própria
   // Programação. Hora que já existe na Agenda não é apagada.
-  const horaDaProgramacao = session ? null : (await lembrarOuLer(leituras, `programacao:${showBookId}:${date}`, () => horariosDoShowNaProgramacao(showBookId, date)))[0] ?? null;
+  // Show misto: a hora de uma sessão SEPARADA tem o Livro e o evento dela; o Livro do dia não pode herdá-la só por ser a
+  // primeira do dia (09:00 da separada no lugar das 17:00 da comum). Por isso essas horas saem da conta.
+  const horasDeSeparadas = session ? new Set<string>() : new Set((await eligibleSessionsDoDia(showBookId, date, leituras)).filter((x) => x.separada).map((x) => x.startTime.slice(0, 5)));
+  const horaDaProgramacao = session ? null : (await lembrarOuLer(leituras, `programacao:${showBookId}:${date}`, () => horariosDoShowNaProgramacao(showBookId, date))).find((h) => !horasDeSeparadas.has(h.inicio.slice(0, 5))) ?? null;
   if (event && horaDaProgramacao && !event.startTime && !session) {
     [event] = await db.update(agendaEventsTable).set({
       startTime: horaDaProgramacao.inicio, endTime: event.endTime ?? horaDaProgramacao.fim, updatedAt: new Date(),

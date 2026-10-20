@@ -157,7 +157,8 @@ async function run() {
     const comum = await livrosDe(sozinho.id);
     assert(comum.length === 1 && comum[0]!.sessionId === null, "sessão não separada continua num Livro do dia só, sem sessão");
     const comumEvento = await eventoDe(comum[0]!.agendaEventId);
-    assert(comumEvento.startTime === null, "o evento do Livro comum continua sem horário, como hoje");
+    // Desde a Etapa 6 a geração grava na Agenda a primeira hora que a Programação dá ao show naquele dia (aqui, SHOW COMUM às 10:00).
+    assert((comumEvento.startTime ?? "").startsWith("10:00"), `o evento do Livro comum recebe a hora da Programação (10:00) (veio ${comumEvento.startTime})`);
 
     const mistoLivros = await livrosDe(misto.id);
     assert(mistoLivros.length === 2 && mistoLivros.filter((l) => l.sessionId === mSep!.id).length === 1 && mistoLivros.filter((l) => l.sessionId === null).length === 1,
@@ -396,7 +397,9 @@ async function run() {
     await db.delete(escalaRegrasLocalTable).where(eq(escalaRegrasLocalTable.locationId, local!.id));
 
     // 5) Livro do dia de show misto tem a hora da sessão não separada, não a do bloco da sessão separada.
-    const livroDiaMisto = (await livrosDe(misto.id)).find((l) => l.sessionId === null)!;
+    // Só o Livro de segunda: mais acima o teste cria Livros de apoio do mesmo show em outras datas (30/11 às 17:30).
+    const livrosMisto = await livrosDe(misto.id);
+    const livroDiaMisto = (await Promise.all(livrosMisto.map(async (l) => ({ l, ev: await eventoDe(l.agendaEventId) })))).find(({ l, ev }) => l.sessionId === null && String(ev.date).slice(0, 10) === segunda)!.l;
     const horaMisto = await horarioDoLivro({ id: livroDiaMisto.id, agendaEventId: livroDiaMisto.agendaEventId, showBookId: misto.id, sessionId: null }, segunda);
     assert(horaMisto?.start === "17:00", `Livro do dia de show misto: a hora vem da sessão não separada (17:00), não do bloco da sessão separada (09:00) (veio ${JSON.stringify(horaMisto)})`);
 
