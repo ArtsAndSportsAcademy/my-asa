@@ -12,7 +12,8 @@ Administração, concorrência) fica para depois destas etapas e está descrita 
 | Etapa | Situação | Prova |
 |---|---|---|
 | R3-A | **Feita.** 404 de id inválido (ajudante `lib/uuid.ts`), texto da Agenda com a Direção, teste de turno sem relógio. | `4502c06` |
-| R3-B | **Não feita.** Tarefas até a aprovação, responsabilidades, restrição de horário e ASA ao vivo seguem sem conferir. Nenhum commit. | — |
+| R3-B | **Feita em 20/10, com um limite.** Roteiro ao vivo contra o servidor compilado, entrando como Administração, Direção, Supervisão e Elenco da empresa "ASA Teste": fila de 3 etapas até a aprovação, quem não pode é barrado, Direção lê, Elenco não cria responsabilidade (18 de 18). Os testes de Tarefas, Responsabilidades e ASA sem IA passam (15 arquivos), e `restricao-horario` passa (83). **Achou e corrigiu** id inválido dando 500 em Tarefas, Responsabilidades, Pessoas, Livros do Show e Ocorrências (agora 404 com frase). **Limite:** o ASA com IA não foi conferido (o `.env.test` não tem chave). | `377d849` |
+| Etapa 8 (plano de 17/10) | **Fechada com ressalva.** Achou e corrigiu o Livro do dia de show misto herdando a hora da sessão separada; `restricao-horario` entrou na bateria. Rodaram, todos verdes: os 6 sem decisão, os 13 ligados à rodada 3, os 12 do ajuste de id e os 15 da R3-B. **A bateria completa (72 arquivos de uma vez) ficou para o fim da revisão 4**, por decisão sua. Tipos, build e `verificar-nomes-build` limpos. | `20db0e8` |
 | R3-C | **Respondida e feita.** Mural continua aberto; reconhecer a si mesma passou a ser recusado com frase. | `4502c06`, `8ce7965` |
 | R3-D | **Não feita.** Consulta de folgas invertidas em produção ainda não rodou. | — |
 | R3-E | **Não feita.** Conferência no aparelho. | — |
@@ -20,9 +21,8 @@ Administração, concorrência) fica para depois destas etapas e está descrita 
 
 **Antes de começar a revisão 4, falta:**
 
-1. R3-B (a única de código que sobrou), R3-D e R3-E.
-2. Rodar isolados no banco de teste `block5-integrity`, `fase-b-regressoes` e `fase-c-perfil-regras`, que a Etapa 8
-   deixou sem confirmação.
+1. R3-D e R3-E (as duas são suas: consulta em produção e conferência no aparelho). A R3-B está feita.
+2. (Feito em 20/10) `block5-integrity`, `fase-b-regressoes` e `fase-c-perfil-regras` passam.
 3. Olhar na tela a correção do flash da Escala ao trocar de local (`escalas.tsx`, já commitada em `5669e9d`
    sem conferência).
 4. Decidir o que fazer com o que `5669e9d` levou a mais (`.gitignore`, `package.json` do web-admin,
