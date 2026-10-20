@@ -14,6 +14,8 @@ import { writeHistoryEvent } from "../lib/history-helper.js";
 type RoleValue = "MEMBER" | "SUPERVISOR_A" | "SUPERVISOR_B" | "ADMIN";
 const MANAGER_ROLES: RoleValue[] = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
 
+// Sem tela desde 20/10/2026: nenhum arquivo vivo do site chama estas rotas (levantamento da revisão 4, docs/revisao-4-codigo-sem-uso-2026-10-20.md).
+// Ficam porque os testes, a ASA ou outros roteadores ainda usam; tirá-las mexe em permission-matrix e em testes, e vale uma etapa própria.
 const router: IRouter = Router();
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

@@ -16,6 +16,8 @@ import { requestLogger } from "../lib/logger.js";
 import { registerUndo, type UndoChange } from "../services/undo.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 
+// Sem tela desde 20/10/2026: nenhum arquivo vivo do site chama estas rotas (levantamento da revisão 4, docs/revisao-4-codigo-sem-uso-2026-10-20.md).
+// Ficam porque os testes, a ASA ou outros roteadores ainda usam; tirá-las mexe em permission-matrix e em testes, e vale uma etapa própria.
 const router: IRouter = Router();
 
 const GROUP_STATUSES = ["ACTIVE", "INACTIVE", "ARCHIVED"] as const;

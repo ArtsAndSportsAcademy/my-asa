@@ -18,6 +18,8 @@ import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { operationalDate } from "../lib/operational-date.js";
 import { checkInPeriodDates, summarizeCheckIns } from "../services/checkin-insights.js";
 
+// Sem tela desde 20/10/2026: nenhum arquivo vivo do site chama estas rotas (levantamento da revisão 4, docs/revisao-4-codigo-sem-uso-2026-10-20.md).
+// Ficam porque os testes, a ASA ou outros roteadores ainda usam; tirá-las mexe em permission-matrix e em testes, e vale uma etapa própria.
 const router: IRouter = Router();
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
 
