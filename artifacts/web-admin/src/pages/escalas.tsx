@@ -1054,9 +1054,11 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
     return [];
   };
 
+  /** A frase do servidor da última falha ao salvar (por exemplo "outra pessoa alterou este bloco"), para o rodapé dizer o motivo de verdade. */
+  const falhaDoServidor = useRef<string | null>(null);
   /** Devolve se salvou: quem chama decide o que mostrar (o rodapé do bloco só limpa o rascunho se deu certo). */
   const salvarBloco = async (b: ProgBloco, patch: Partial<ProgBloco>): Promise<boolean> => {
-    setError("");
+    setError(""); falhaDoServidor.current = null;
     try {
       if (review) {
         const next = list.map((p) => p.id !== b.programacaoId ? p : { ...p, blocos: p.blocos.map((x) => x.id === b.id ? { ...x, ...patch } : x) });
@@ -1070,7 +1072,9 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
     } catch (err) {
       // Outra pessoa salvou antes: recarrega para a tela mostrar a versão nova (a frase do servidor explica o que houve).
       if (err instanceof ApiError && err.status === 409 && (err.data as { error?: unknown } | null)?.error === "VERSAO_MUDOU") setTick((n) => n + 1);
-      setError(err instanceof ApiError && err.data && typeof (err.data as { message?: unknown }).message === "string" ? (err.data as { message: string }).message : err instanceof ApiError && err.data && typeof (err.data as { error?: unknown }).error === "string" ? (err.data as { error: string }).error : "Não consegui salvar o bloco.");
+      const frase = err instanceof ApiError && err.data && typeof (err.data as { message?: unknown }).message === "string" ? (err.data as { message: string }).message : err instanceof ApiError && err.data && typeof (err.data as { error?: unknown }).error === "string" ? (err.data as { error: string }).error : "Não consegui salvar o bloco.";
+      falhaDoServidor.current = frase;
+      setError(frase);
       return false;
     }
   };
@@ -1099,7 +1103,7 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
     const antes = Object.fromEntries(Object.keys(patch).map((campo) => [campo, (bloco as unknown as Record<string, unknown>)[campo]])) as Partial<ProgBloco>;
     const deuCerto = await salvarBloco(bloco, patch);
     setSalvando(false);
-    if (deuCerto) { setRascunho(null); setSalvoAntes({ bloco, antes }); } else setErroBloco("Não consegui salvar. O que você mudou continua aqui; tente de novo.");
+    if (deuCerto) { setRascunho(null); setSalvoAntes({ bloco, antes }); } else setErroBloco(falhaDoServidor.current ? `${falhaDoServidor.current} O que você mudou continua aqui.` : "Não consegui salvar. O que você mudou continua aqui; tente de novo.");
   };
   const desfazerUltimo = async () => {
     if (!salvoAntes) return;
