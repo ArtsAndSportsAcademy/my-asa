@@ -23,15 +23,15 @@ Administração, concorrência) fica para depois destas etapas e está descrita 
 
 1. R3-D e R3-E (as duas são suas: consulta em produção e conferência no aparelho). A R3-B está feita.
 2. (Feito em 20/10) `block5-integrity`, `fase-b-regressoes` e `fase-c-perfil-regras` passam.
-3. Olhar na tela a correção do flash da Escala ao trocar de local (`escalas.tsx`, já commitada em `5669e9d`
-   sem conferência).
-4. Decidir o que fazer com o que `5669e9d` levou a mais (`.gitignore`, `package.json` do web-admin,
-   `pnpm-lock.yaml`, `skills-lock.json`) antes do push.
-5. Há arquivos modificados no disco de outra sessão (`analise-folga.ts`, `folga-analise.test.ts`,
-   `operational-cycle.tsx`, `docs/regras-de-folgas.md`); descobrir de quem são e commitar à parte.
-6. Resíduos soltos na raiz (`bateria-resultados.txt`, `ciclo-paralelo-debug.txt`, `perm-debug.txt`,
-   `rerun-*.txt`): apagar ou pôr no `.gitignore`.
-7. Ordem para promover o que está local: API primeiro, site depois. Só quando você mandar.
+3. (Feito em 20/10, na tela) Flash da Escala ao trocar de local: com Chromium de verdade, login da empresa de 4 locais e a resposta do dia
+   atrasada em 6 s, a grade do local anterior NÃO fica na tela (aparece "Montando a escala..."). Desligando a correção, o defeito
+   reaparece (cabeçalho do local novo com a grade do antigo). Local e dia cobertos.
+4. (Feito em 20/10) O que o `5669e9d` levou a mais: `package.json` do web-admin, `pnpm-lock.yaml` e `skills-lock.json` voltaram à versão do GitHub
+   em `646359d` (o Playwright e seus testes ficam só na máquina); o `.gitignore` novo ficou.
+5. (Feito em 20/10) Os 4 arquivos soltos (aviso do grupo de folga na análise, textos, `regras-de-folgas.md`) foram commitados à parte em `e466136`,
+   com `folga-analise`, `folga-roteamento` e `folga-config` passando.
+6. (Feito em 20/10) Os 6 `.txt` de depuração na raiz foram apagados.
+7. Ordem para promover: nenhuma migração nova (a última, 0074, já está em produção); API primeiro, site depois. Só quando você mandar.
 
 O branch de backup pode ser apagado quando o `667c8a0` for enviado; até lá, fica.
 
