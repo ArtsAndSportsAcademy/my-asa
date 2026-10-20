@@ -17,11 +17,12 @@ import {
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { canReadLibraryScope as canReadScope, isLibraryFullReader, isLibraryManager, LIBRARY_MANAGER_ROLES, type LibraryRole as RoleValue } from "../services/library-access.js";
-import { validarUuid } from "../lib/uuid.js";
+import { exigirUuidNosParametros, validarUuid } from "../lib/uuid.js";
 
 const MANAGER_ROLES = LIBRARY_MANAGER_ROLES;
 
 const router: IRouter = Router();
+exigirUuidNosParametros(router, { id: "Documento ou categoria não encontrado" });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

@@ -119,6 +119,8 @@ async function run() {
     const leituras1 = (await (await adminApi(`/library/documents/${docId}/leituras`)).json()) as { total: number; confirmaram: number; pessoas: { name: string; confirmou: boolean }[] };
     assert(leituras1.total === 4 && leituras1.confirmaram === 1 && leituras1.pessoas.find(p => p.name === `${tag}_ana`)?.confirmou === true, `A Administração vê quem já leu (${leituras1.confirmaram} de ${leituras1.total})`);
     assert((await anaApi(`/library/documents/${docId}/leituras`)).status === 403, "Elenco não vê quem leu");
+    assert((await adminApi("/library/documents/undefined/leituras")).status === 404, "quem já leu com id quebrado responde 404, não 500");
+    assert((await adminApi("/library/categories/undefined", { method: "DELETE" })).status === 404, "remover categoria com id quebrado responde 404, não 500");
 
     await espera(1200);
     const versao = await post(adminApi, `/library/documents/${docId}/version`, { title: "Regras de camarim (v2)", body: "Texto 2", summary: "Mudou o horário" });
