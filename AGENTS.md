@@ -92,6 +92,18 @@ formulário: é a lista do que já escapou antes.
     **toda** janela, painel e formulário: se a pessoa altera algo, tem que existir o botão que confirma
     e o que cancela, visíveis também a 375 px (no telefone o rodapé não pode ficar escondido atrás do
     teclado nem da barra de baixo). Janela sem rodapé é defeito mesmo quando "funciona".
+17. **Todo link, atalho e resultado leva a uma tela que existe — e à coisa que a pessoa tocou?**
+    *Pegou (revisão 4):* todo resultado da Busca apontava para `/admin/search?...`, endereço que nenhuma tela
+    atende desde que o shell novo entrou; o shell manda para o Meu Dia o que não conhece, então a pessoa tocava
+    numa data ou num documento e caía no Meu Dia, sem erro nem explicação. Ninguém percebeu porque a Busca
+    "funcionava" (listava certo). Ao mexer em rotas, procure no servidor e nas telas todo `href` e
+    `actionUrl` gerado e confira que cada um abre uma tela viva; no celular, confira também que a gaveta ou
+    a janela de onde a pessoa saiu fechou.
+18. **A recusa e o erro falam a língua de quem lê?**
+    *Pegou (revisão 4):* toda rota protegida por perfil respondia "Role DIR is not authorized for this resource",
+    e valor fora da lista respondia 500 "Erro ao criar linha". A Direção lia isso como "o app quebrou". A frase
+    diz quem pode fazer e qual é o perfil de quem tentou; erro de dado que a pessoa digitou é 400 com a lista do
+    que vale, nunca 500. Id quebrado na URL é 404 com frase (`exigirUuidNosParametros`).
 
 Erro aparece no teste; isso aqui só aparece se alguém perguntar. Traga as duas coisas juntas no
 relato, separando o que já foi corrigido do que depende de decisão dela. Quando uma pergunta nova
@@ -205,8 +217,11 @@ Tarefas. `permission-matrix` rerodado: 463/463 rotas sem auth + 25 cases de auto
 alterado. O último handoff é `docs/handoff-2026-10-19.md`; leia antes de continuar.
 
 Pendente:
-- **Folgas e Solicitações, Mapa do mês e Grupos de folga** — revisão com o crivo ainda não feita. A regra real
-  de folgas está em `docs/regras-de-folgas.md` — leia antes de mexer. Cobertura mínima por função só avisa e é configurável.
+- **Folgas e Solicitações, Mapa do mês e Grupos de folga** — telas revisadas com o crivo em 16/10; o que mudou depois (regra de
+  19/10: todo pedido passa pela Supervisão da área, aviso do grupo de folga na análise, textos novos) foi revisado em 20/10
+  (revisão 4, assunto 8; ver `docs/handoff-2026-10-20-revisao-4.md`). A regra real de folgas está em `docs/regras-de-folgas.md` —
+  leia antes de mexer. Cobertura mínima por função só avisa e é configurável. Continua em aberto só a "grade pessoa × dia" e a
+  Etapa 4 (experimentar grupos): dependem da Babi (ver `docs/revisao-4-codigo-sem-uso-2026-10-20.md`).
 - **`daily-book-session-blocks`:** 4 falhas na sessão 1 eram bug no teste (lia `blockedBody.error` em vez de
   `blockedBody.message` para verificar a mensagem do 409); corrigido em 19/10. Rerun com a correção em andamento
   quando o handoff foi escrito — ver resultado ou rerodá-lo.

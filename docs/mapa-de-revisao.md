@@ -50,7 +50,7 @@ Legenda: **Revisada** = passou pelas 16 perguntas e foi vista no navegador. **Pa
 | Tela | Situação |
 |---|---|
 | Perfil (silêncio noturno) | **Revisada em 16/10** a 375 px com a empresa de teste: o grupo de opções do aniversário passava 3 px da largura (corrigido); links de toque pequeno já têm área de 44 px. Em **celular simulado** (375 px, toque, Android): silêncio noturno mostra "Ainda não vale" com Descartar e Salvar horário, descartar volta, salvar persiste depois de recarregar; opções de aniversário passaram a 44 px. Falta conferir **no telefone de verdade** (teclado real) |
-| Solicitações (aba de Folgas) | **Parcial**, junto com Folgas |
+| Solicitações (aba de Folgas) | **Revisada em 20/10** junto com Folgas (revisão 4): pedido nasce pendente, com quem está o pedido, avisos, 375 px sem estouro. Ressalva: "Retirar pedido" mede 40 px (as outras ações, 44) |
 | Login e troca de senha | **Revisado em 16/10** (login a 375 px: campos de 48 px, sem transbordo, "Usuário ou senha não conferem" só quando é isso); **Troca de senha obrigatória** vista em celular simulado em 16/10 (primeiro acesso: campos de 48 px, regras se marcando, mensagens de senha fraca e de "igual à provisória", botão visível, entra no app). Falta o teclado real |
 
 ## O que falta, em ordem
@@ -102,3 +102,16 @@ abre ou fechou; arquivo grande demais respondia uma página HTML (413). Ambos co
 **Decisão dela / ainda aberto:** encerrar um local não pede motivo (reabrir pede), e encerrar local derruba a geração de escalas
 dele. "Gerar o mês" faz poucos dias por chamada (o servidor devolve `restantes` e `proximoDia`): conferir que a tela continua sozinha
 até fechar. Agenda e Mensagens foram criadas só pela API; criar pela interface fica para outra rodada.
+
+## Revisão 4 (20/10/2026): as telas que não tinham registro
+
+Detalhe de cada achado em `docs/handoff-2026-10-20-revisao-4.md`.
+
+| Tela | Situação |
+|---|---|
+| Busca (`global-search` + `search-result`) | **Revisada em 20/10, a 375 px como Elenco.** Defeito sério: todo resultado levava ao Meu Dia (apontava para `/admin/search`, endereço sem tela). Agora data abre a Escala do dia, documento abre na Biblioteca, pessoa/show/aviso abrem a lista da tela. No celular a gaveta fecha ao tocar no resultado. `search-result.tsx` é página morta |
+| Impressão do dia (`print-day.tsx`) | **Revisada em 20/10** (lida; vista a 375 px sem local). Corrigido: com falha ao carregar outro dia, o botão Imprimir seguia ligado com a folha velha. Não vi a folha com escala preenchida (a empresa de teste não tem escala) |
+| Restrições de horário | **Revisada em 20/10**: Elenco a 375 px (vazio explicado, sem estouro); Administração e Supervisão a 1280 px sem erro |
+| Faixa de aniversários | **Revisada em 20/10 (código)**: só a semana; some quando vazia; falha de rede some em silêncio de propósito |
+| Ações de formação, ações de local | **Não são telas vivas** (sem rota). Reabrir local com motivo já existe em Cadastros → Locais; **desativar formação não tem tela** (a API existe). Ver `docs/revisao-4-codigo-sem-uso-2026-10-20.md` |
+| Desktop da Administração e da Supervisão | **Vistas em 20/10 a 1280 px** (20 e 18 telas): sem estouro de largura, sem frase de erro; Supervisão em Operações e Registro cai no Meu Dia |
