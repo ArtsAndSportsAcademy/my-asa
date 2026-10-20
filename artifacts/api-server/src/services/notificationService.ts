@@ -225,6 +225,8 @@ export async function notifyMany(
   userIds: string[],
   input: Omit<CreateNotificationInput, "userId">,
 ): Promise<void> {
-  if (userIds.length === 0) return;
-  await Promise.all(userIds.map((userId) => sendNotification({ ...input, userId })));
+  // Um aviso por pessoa: quem aparece duas vezes na lista (autor e público, supervisor e administrador) recebe uma só vez.
+  const destinatarios = [...new Set(userIds)];
+  if (destinatarios.length === 0) return;
+  await Promise.all(destinatarios.map((userId) => sendNotification({ ...input, userId })));
 }
