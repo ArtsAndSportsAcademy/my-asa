@@ -9907,6 +9907,14 @@ router.post("/asa/recognitions", requireAuth, requireOrganization, async (req, r
 // Audit Log
 // ────────────────────────────────────────────────────────────────────────────
 
+/** Linha do registro da ASA sem o texto de conversas privadas (consulta de mensagens e respostas de mensagem). */
+export function semConteudoDeMensagem<T extends { question: string; response: string; toolsUsed: string[] | null; actionsExecuted: Record<string, unknown>[] | null }>(row: T): T {
+  const usouMensagens = (row.toolsUsed ?? []).some((nome) => /mensage|message/i.test(String(nome)))
+    || (row.actionsExecuted ?? []).some((acao) => /^MESSAGE_/.test(String(acao.actionType ?? "")));
+  if (!usouMensagens) return row;
+  return { ...row, question: "(consulta de mensagens)", response: "O conteúdo de conversas não aparece no registro da ASA.", actionsExecuted: (row.actionsExecuted ?? []).map((acao) => ({ action: acao.action, actionType: acao.actionType, state: acao.state })) };
+}
+
 router.get("/asa/audit", requireAuth, requireOrganization, async (req, res): Promise<void> => {
   const user = req.user!;
 
@@ -9928,7 +9936,9 @@ router.get("/asa/audit", requireAuth, requireOrganization, async (req, res): Pro
     .orderBy(desc(asaAuditLogTable.createdAt))
     .limit(limit);
 
-  res.json(rows);
+  // A Administração e a Supervisão não leem conversa de ninguém. Quando a pessoa pediu "minhas mensagens", a resposta guardada traz o texto das mensagens;
+  // aqui sai só que a consulta aconteceu, não o conteúdo (vale também para linhas antigas, gravadas antes deste filtro).
+  res.json(rows.map(semConteudoDeMensagem));
 });
 
 router.get("/asa/library-gaps", requireAuth, requireOrganization, async (req, res): Promise<void> => {
