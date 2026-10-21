@@ -690,6 +690,11 @@ router.delete("/operational-groups/:id/supervisors/:userId", requireAuth, requir
   const userId = req.params.userId as string;
 
   try {
+    // O grupo tem de ser da casa de quem pede: sem isso, a Administração de uma casa tirava a Supervisão de um grupo de outra casa só sabendo o id.
+    if (!(await loadGroupInOrg(id, req.user!.organizationId))) {
+      res.status(404).json({ error: "NOT_FOUND", message: "Grupo não encontrado" });
+      return;
+    }
     const roleRecord = await db.query.userRolesTable.findFirst({
       where: and(
         eq(userRolesTable.userId, userId),
