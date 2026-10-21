@@ -1283,3 +1283,51 @@
   align-items: center;
   min-height: 44px;
 }
+
+/* Faixa do Painel: o relógio do sistema parou. Texto + ícone + botão, nunca só a cor. A 375 px o botão desce para a linha de baixo. */
+.cycle-relogio {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border: 1px solid var(--asa-red);
+  border-radius: 10px;
+  background: var(--asa-red-surface);
+  color: var(--asa-red-text);
+}
+
+.cycle-relogio > svg {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+}
+
+.cycle-relogio > div {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.cycle-relogio strong {
+  display: block;
+  font: 700 15px Outfit, sans-serif;
+}
+
+.cycle-relogio p {
+  margin: 4px 0 0;
+  color: var(--asa-ink);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.cycle-relogio .cycle-secondary {
+  min-height: 44px;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 520px) {
+  .cycle-relogio .cycle-secondary {
+    width: 100%;
+  }
+}

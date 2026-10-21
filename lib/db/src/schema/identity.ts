@@ -163,3 +163,17 @@ export const tentativasDeAcessoTable = pgTable("tentativas_de_acesso", {
   bloqueadoAte: timestamp("bloqueado_ate", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Relógio do sistema (21/10/2026): uma linha por tarefa agendada (hoje só `ciclo`, o POST /api/internal/ciclo do pg_cron).
+ * Guarda quando ela começou, terminou bem e falhou pela última vez, e, enquanto há uma parada já avisada, `parado_desde`.
+ * É só o banco que serve de memória (servidor sem estado, Vercel).
+ */
+export const relogioDoSistemaTable = pgTable("relogio_do_sistema", {
+  chave: text("chave").primaryKey(),
+  ultimoInicioEm: timestamp("ultimo_inicio_em", { withTimezone: true }),
+  ultimoSucessoEm: timestamp("ultimo_sucesso_em", { withTimezone: true }),
+  ultimoErroEm: timestamp("ultimo_erro_em", { withTimezone: true }),
+  paradoDesde: timestamp("parado_desde", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

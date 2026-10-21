@@ -8,6 +8,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { pool } from "@workspace/db";
 import { rodarCicloOperacional } from "../services/operational-jobs.js";
 import { enqueueTaskReminders } from "../services/task-reminders.js";
+import { registrarCicloBemSucedido, registrarCicloComFalha, registrarInicioDoCiclo } from "../services/relogio-do-sistema.js";
 import { logger } from "../lib/logger.js";
 
 const router: IRouter = Router();
@@ -45,12 +46,16 @@ router.post("/internal/ciclo", async (req, res) => {
       return;
     }
     const inicio = Date.now();
+    await registrarInicioDoCiclo();
     const resultado = await rodarCicloOperacional(new Date());
     await client.query("commit");
     aberta = false;
+    // Só depois do commit: o vigia anota "terminou bem" (e, se havia parada avisada, avisa que voltou) fora da trava do ciclo.
+    await registrarCicloBemSucedido();
     res.json({ ok: true, ms: Date.now() - inicio, ...resultado });
   } catch (err) {
     log.error({ err }, "ciclo operacional falhou");
+    await registrarCicloComFalha();
     res.status(500).json({ error: "CICLO_FALHOU" });
   } finally {
     // Falha no meio: o rollback solta a trava; sem ele a conexão voltaria ao pool com a transação aberta.

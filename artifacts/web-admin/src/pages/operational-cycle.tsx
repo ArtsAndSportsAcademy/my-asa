@@ -320,6 +320,34 @@ export function FolgasPage({ role }: { role: Role }) {
   </section>;
 }
 
+/**
+ * Faixa do Painel: o relógio do sistema (o ciclo por minuto que manda os lembretes de check-in e entrega os avisos) parou.
+ * Só Administração e Direção veem. Confere de minuto em minuto enquanto o Painel está aberto, para a faixa ligar e sumir sozinha.
+ * Se a conferência falhar, não afirma nada (nem "parou", nem "tudo bem"): o Painel já mostra o erro dos números por conta própria.
+ */
+function FaixaDoRelogio({ role, review }: { role: Role; review: boolean }) {
+  const [minutos, setMinutos] = useState(0), [conferindo, setConferindo] = useState(false), [tentativa, setTentativa] = useState(0);
+  const ve = role === "adm" || role === "dir";
+  useEffect(() => {
+    if (!ve) return;
+    // Amostra: ?relogio=parado liga a faixa com dados de exemplo, para conferir o desenho sem servidor.
+    if (review) { setMinutos(new URLSearchParams(window.location.search).get("relogio") === "parado" ? 12 : 0); return; }
+    let vivo = true;
+    const conferir = () => customFetch<{ parado: boolean; minutosParado: number }>("/api/painel/relogio")
+      .then((r) => { if (vivo) setMinutos(r.parado ? r.minutosParado : 0); }).catch(() => undefined).finally(() => { if (vivo) setConferindo(false); });
+    conferir();
+    const timer = window.setInterval(conferir, 60_000);
+    return () => { vivo = false; window.clearInterval(timer); };
+  }, [ve, review, tentativa]);
+  if (!ve || minutos <= 0) return null;
+  return <div className="cycle-relogio" role="alert">
+    <CircleAlert aria-hidden="true"/>
+    <div><strong>O relógio do sistema parou há {minutos} {minutos === 1 ? "minuto" : "minutos"}</strong>
+      <p>Check-ins e lembretes podem não ter saído. Os números abaixo continuam certos, mas ninguém está sendo avisado sozinho. Se não voltar em alguns minutos, avise quem cuida do app.</p></div>
+    <button type="button" className="cycle-secondary" disabled={conferindo} onClick={() => { setConferindo(true); setTentativa((n) => n + 1); }}>{conferindo ? "Conferindo…" : "Conferir de novo"}</button>
+  </div>;
+}
+
 export function PanelPage({ role }: { role: Role }) {
   const review = import.meta.env.DEV && new URLSearchParams(window.location.search).get("amostra") === "1";
   const [data, setData] = useState<{ coverage: { expected: number; checkedIn: number; pct: number }; checkIns: { checkedIn: number; late: number; absent: number }; leaves: { approved: number }; vacancies: { open: number }; scales: { drafts: number } } | null>(null), [loading, setLoading] = useState(true), [error, setError] = useState("");
@@ -340,7 +368,7 @@ export function PanelPage({ role }: { role: Role }) {
     // O atalho leva ao dia que o Painel está mostrando, não ao "amanhã" que a Escala abre por padrão.
     { n: data.scales.drafts, texto: data.scales.drafts === 1 ? "Escala em rascunho, ainda sem publicar" : "Escalas em rascunho, ainda sem publicar", abrir: "Escalas", href: `/escalas?data=${dia}` },
   ].filter((acao) => acao.n > 0) : [];
-  return <section className="cycle-page"><div className="cycle-toolbar"><div><button type="button" onClick={() => mudarDia(-1)} aria-label="Dia anterior"><ChevronLeft/></button><strong>{label(dia)}</strong><button type="button" onClick={() => mudarDia(1)} aria-label="Próximo dia"><ChevronRight/></button></div><div><button type="button" className="cycle-secondary" disabled={ehHoje} onClick={() => setDia(todayISO())}>Hoje</button></div></div><State loading={loading} error={error} empty={false} onRetry={() => setTentativaPainel((n) => n + 1)}><div className="cycle-panel-head"><div><span className="cycle-kicker">{ehHoje ? "hoje · " : ""}{label(dia)}</span><h2>Painel da operação</h2><p>Quatro números do dia para decidir o próximo passo.</p></div>{role === "dir" && <span className="cycle-tag">somente leitura</span>}</div><div className="cycle-panel-grid">{cards.map((card) => <article className={`cycle-card cycle-metric ${card.tone}`} key={card.label}><span>{card.label}</span><b>{card.value}</b><small>{card.sub}</small></article>)}</div><div className="cycle-panel-columns"><article className="cycle-card"><span className="cycle-kicker">o que pede ação</span>{data && (acoes.length ? <div className="cycle-action-list">{acoes.map((acao) => <Link key={acao.texto} href={acao.href}><b>{acao.n}</b><span>{acao.texto} · abrir {acao.abrir}{ehHoje ? "" : " e escolher o dia"}</span></Link>)}</div> : <p role="status">Nada pedindo ação {quando}.</p>)}</article><article className="cycle-card"><span className="cycle-kicker">um dia por vez</span><p>O Painel mostra um dia de cada vez: use as setas para olhar o dia seguinte ou um dia que já passou.</p></article></div></State></section>;
+  return <section className="cycle-page"><FaixaDoRelogio role={role} review={review}/><div className="cycle-toolbar"><div><button type="button" onClick={() => mudarDia(-1)} aria-label="Dia anterior"><ChevronLeft/></button><strong>{label(dia)}</strong><button type="button" onClick={() => mudarDia(1)} aria-label="Próximo dia"><ChevronRight/></button></div><div><button type="button" className="cycle-secondary" disabled={ehHoje} onClick={() => setDia(todayISO())}>Hoje</button></div></div><State loading={loading} error={error} empty={false} onRetry={() => setTentativaPainel((n) => n + 1)}><div className="cycle-panel-head"><div><span className="cycle-kicker">{ehHoje ? "hoje · " : ""}{label(dia)}</span><h2>Painel da operação</h2><p>Quatro números do dia para decidir o próximo passo.</p></div>{role === "dir" && <span className="cycle-tag">somente leitura</span>}</div><div className="cycle-panel-grid">{cards.map((card) => <article className={`cycle-card cycle-metric ${card.tone}`} key={card.label}><span>{card.label}</span><b>{card.value}</b><small>{card.sub}</small></article>)}</div><div className="cycle-panel-columns"><article className="cycle-card"><span className="cycle-kicker">o que pede ação</span>{data && (acoes.length ? <div className="cycle-action-list">{acoes.map((acao) => <Link key={acao.texto} href={acao.href}><b>{acao.n}</b><span>{acao.texto} · abrir {acao.abrir}{ehHoje ? "" : " e escolher o dia"}</span></Link>)}</div> : <p role="status">Nada pedindo ação {quando}.</p>)}</article><article className="cycle-card"><span className="cycle-kicker">um dia por vez</span><p>O Painel mostra um dia de cada vez: use as setas para olhar o dia seguinte ou um dia que já passou.</p></article></div></State></section>;
 }
 
 /* ---------- definir folga: pessoas em lote, datas de três jeitos ---------- */
