@@ -131,7 +131,7 @@ faz sem ser gestão; **MÉDIO** = exige condição extra ou só aparece se algo 
 1. **ASA antiga (M2) — FEITA em 21/10 (ver "Decisão 1" no fim).** Original: apagar as mais de 100 ferramentas que o chat não alcança (recomendado) e **não guardar** o texto das mensagens em `asa_audit_log` (A5: o conserto atual esconde na leitura, mas o texto continua no banco).
 2. **Pausa de senha (M3) — FEITA em 21/10 (ver "Decisão 2" no fim).** Original: manter por usuário (hoje), ou somar um limite por origem (IP) para que uma pessoa de fora não pause a conta de outra. Recomendo somar o limite por origem, sem trocar o por usuário.
 3. **Formações da biblioteca comum (M4) — FEITA em 21/10 (ver "Decisão 3" no fim).** Original: a Administração de qualquer casa pode editá-las: manter (biblioteca compartilhada) ou travar para só a Administração da "casa dona".
-4. **Cabeçalhos e limites (M5):** CSP em modo "só relatar" no site; limite por origem no `esqueci-senha`; estender o `migration-runner` para também recusar privilégio de `authenticated`.
+4. **Cabeçalhos e limites (M5) — FEITA em 21/10 (ver "Decisão 4" no fim).** Original: CSP em modo "só relatar" no site; limite por origem no `esqueci-senha`; estender o `migration-runner` para também recusar privilégio de `authenticated`.
 
 ## Commits desta etapa
 
@@ -185,3 +185,22 @@ Fora o teste e os documentos, um commit por assunto (todos em `codex/myasa-novo`
 - **Efeito no dia a dia:** nenhum para quem usa formação da própria casa. Se algum dia for preciso mexer numa formação sem casa, é por script, de quem constrói o app.
 - **Testes:** `seguranca-revisao-etapa3` ganhou 4 verificações (editar e desativar formação sem casa dão 404 e ela fica intacta; a lista do show a mostra junto com a da própria casa; a Administração edita a formação da própria casa). Passaram também `isolamento-entre-casas`, `block2-integrity`, `block4-integrity` e `daily-book-formation-today`.
 - **Não conferido (produção):** se existe alguma formação sem casa lá. Consulta só de leitura: `select count(*) from formations where organization_id is null;`.
+
+## Decisão 4 — feita (21/10/2026)
+
+**4a. Limite no "esqueci minha senha"** (`routes/auth.ts`, `lib/tentativas-de-acesso.ts`)
+- *Risco que fecha:* a rota é pública e cada pessoa diferente gera um aviso no sino da Administração; de fora, dava para encher o sino pedindo senha de todo mundo, um login de cada vez.
+- *O que mudou:* cada pedido conta para a conexão; 10 pedidos em 15 minutos pausam os pedidos daquela conexão por 15 minutos. A resposta é a mesma de sempre (quem está de fora não descobre nada); só deixa de avisar a Administração e de gravar no Registro. `MYASA_LIMITE_DE_ESQUECI_POR_ORIGEM` muda o número, `0` desliga. Sem origem conhecida não limita.
+- *Risco de ter feito:* uma pessoa de verdade que pede ajuda de um wi-fi cheio, depois de 10 pedidos de gente do mesmo wi-fi, não avisa a Administração por até 15 minutos (ela vê a mesma tela de sucesso). Por isso o número é folgado e a Administração ainda pode redefinir a senha pelo cadastro. Vale a mesma ressalva da decisão 2: confira em produção que o IP chega certo.
+
+**4b. CSP só-relatar no site** (`artifacts/web-admin/vercel.json`, rota pública `POST /api/auth/csp-report`)
+- *Risco que fecha (em etapas):* sem CSP, um script injetado no site roda sem freio (os tokens ficam no navegador). Hoje não achei por onde injetar, então é a segunda trava.
+- *O que mudou:* o site envia `Content-Security-Policy-Report-Only` (só relata, **não bloqueia nada**): scripts só do próprio site, estilos do site e das fontes do Google, imagens do site/`data:`/`blob:`, conexões do site e do Sentry, `frame-src` só para o Drive/Docs embutidos, sem `object`. Os relatórios chegam à API e entram no log (regra violada, o que foi bloqueado e a página, **sem** consulta nem texto de pessoa; devolve 204).
+- *Risco de ter feito:* nenhum para quem usa, porque nada é bloqueado. Custo: a rota pública grava uma linha de log por relatório (sem limite próprio). **O passo seguinte é seu e não foi feito:** depois de uma semana de uso real, ler os relatórios no log da Vercel (procure "Relatório de CSP"), ajustar a política e só então trocar para `Content-Security-Policy` (que bloqueia). Trocar sem ler os relatórios pode quebrar o Drive embutido, as fontes ou o Sentry.
+
+**4c. Checagem de `authenticated` na migração** (`lib/db/src/migration-runner.ts`)
+- *Risco que fecha:* o login do Supabase (papel `authenticated`) não é usado pelo app; se uma tabela nova nascesse acessível a ele, ficaria exposta pela API de dados do Supabase. A checagem só olhava `anon`.
+- *O que mudou:* depois de aplicar migrações, o runner também recusa tabela pública com acesso de `authenticated` (uso do schema, SELECT/INSERT/UPDATE/DELETE) ou com **qualquer política** de RLS. No banco de teste: 0 tabelas nessas condições, e a migração roda limpa.
+- *Risco de ter feito:* se em **produção** alguma tabela tiver acesso de `authenticated` ou política (a 0029 foi feita para tirar), o próximo `migrar-producao.ts` termina com erro **depois** de aplicar as migrações (o aviso é depois, não impede nem desfaz). Antes de usar, rode `lib/db/src/audit-rls.ts` com a URL de produção (só lê). Em conta de teste, nada muda.
+
+**Testes:** `seguranca-decisao-4` (novo, na lista da bateria: limite do esqueci-senha com resposta idêntica, relatório de CSP, política só-relatar e que ela libera o Drive), `permission-matrix` (a rota de relatório entrou como pública), `tentativas-por-origem` e `fase-d-seguranca` passaram. Tipos limpos. O build do site não foi rodado (só mudou o `vercel.json`).

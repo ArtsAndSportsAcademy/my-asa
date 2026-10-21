@@ -67,7 +67,7 @@ async function inventoryRoutes(routeDir: string): Promise<RouteCase[]> {
       const basename = path.basename(file);
       const publicRoute = basename === "health.ts"
         // "Esqueci minha senha" é pública por definição (quem pede não consegue entrar); responde sempre igual.
-        || (basename === "auth.ts" && (route === "/login" || route === "/refresh" || route === "/esqueci-senha"));
+        || (basename === "auth.ts" && (route === "/login" || route === "/refresh" || route === "/esqueci-senha" || route === "/csp-report"));
       routeCases.push({ file, method, route: basename === "auth.ts" ? `/auth${route}` : route, public: publicRoute });
     }
   }

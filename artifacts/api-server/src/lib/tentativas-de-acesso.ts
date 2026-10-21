@@ -36,6 +36,28 @@ export function origemDaRequisicao(cabecalhos: Record<string, string | string[] 
   return ip && ip.length <= 64 && /^[0-9a-fA-F:.]+$/.test(ip) ? ip.toLowerCase() : null;
 }
 
+/**
+ * "Esqueci minha senha" (decisão 4 da revisão de segurança): a rota é pública e cada pedido de uma pessoa diferente vira um aviso no sino da Administração
+ * (um por pessoa a cada 30 minutos). Sem limite por origem, alguém de fora encheria o sino pedindo senha de todo mundo, um login de cada vez. Aqui cada pedido conta
+ * para a conexão: 10 pedidos em 15 minutos pausam os pedidos daquela conexão por 15 minutos. A resposta continua a mesma (a pessoa de fora não descobre nada); só deixa de
+ * avisar a Administração. `MYASA_LIMITE_DE_ESQUECI_POR_ORIGEM` muda o número e `0` desliga. Sem origem conhecida (teste, máquina local), não limita.
+ */
+export function limiteDeEsqueciPorOrigem(): number {
+  const bruto = process.env.MYASA_LIMITE_DE_ESQUECI_POR_ORIGEM;
+  if (bruto === undefined || bruto.trim() === "") return 10;
+  const n = Number(bruto);
+  return Number.isInteger(n) && n >= 0 ? n : 10;
+}
+
+/** true = pode processar o pedido (e avisar a Administração); false = esta conexão já passou do limite. Conta o pedido. */
+export async function esqueciSenhaLiberado(origem: string | null): Promise<boolean> {
+  const limite = limiteDeEsqueciPorOrigem();
+  if (!origem || limite === 0) return true;
+  const chave = `esqueci:${origem}`;
+  if (await consultarBloqueio(chave)) return false;
+  return (await registrarErroDeSenha(chave, "esqueci", null, limite)) === null;
+}
+
 export const chaveDeOrigem = (origem: string) => `origem:${origem}`;
 
 export const chaveDeLogin = (usernameEmMinusculas: string) => `login:${usernameEmMinusculas}`;
@@ -67,7 +89,7 @@ export type PessoaDoBloqueio = { id: string; organizationId: string; nome: strin
  * Conta um erro de senha. Devolve até quando a chave ficou pausada (só quando ESTE erro foi o que passou do limite).
  * Dois erros ao mesmo tempo são contados um de cada vez (trava de linha), então ninguém passa do limite por corrida.
  */
-export async function registrarErroDeSenha(chave: string, origem: "login" | "troca" | "origem", pessoa: PessoaDoBloqueio | null, limite = LIMITE_DE_ERROS): Promise<Date | null> {
+export async function registrarErroDeSenha(chave: string, origem: "login" | "troca" | "origem" | "esqueci", pessoa: PessoaDoBloqueio | null, limite = LIMITE_DE_ERROS): Promise<Date | null> {
   const agora = new Date();
   const bloqueouAgora = await db.transaction(async (tx) => {
     await tx.insert(tentativasDeAcessoTable).values({ chave, falhas: 0, janelaInicio: agora }).onConflictDoNothing();
@@ -106,7 +128,7 @@ export async function registrarErroDeSenha(chave: string, origem: "login" | "tro
   });
   if (bloqueouAgora) {
     await recordAudit({
-      actorId: pessoa?.id, action: "INVALID_ACCESS_ATTEMPT", targetResource: origem === "login" ? "login" : origem === "origem" ? "login_por_origem" : "troca_de_senha",
+      actorId: pessoa?.id, action: "INVALID_ACCESS_ATTEMPT", targetResource: origem === "login" ? "login" : origem === "origem" ? "login_por_origem" : origem === "esqueci" ? "esqueci_senha_por_origem" : "troca_de_senha",
       metadata: { reason: "account_locked", falhas: limite, minutos: PAUSA_APOS_LIMITE_MS / 60_000, conhecido: Boolean(pessoa) },
     });
   }

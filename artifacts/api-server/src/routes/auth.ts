@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import express, { Router, type IRouter } from "express";
 import {
   loginUser,
   refreshSession,
@@ -7,7 +7,7 @@ import {
   AuthError,
 } from "../lib/auth.service.js";
 import { requireAuth } from "../middlewares/auth.js";
-import { origemDaRequisicao } from "../lib/tentativas-de-acesso.js";
+import { esqueciSenhaLiberado, origemDaRequisicao } from "../lib/tentativas-de-acesso.js";
 import { hashToken } from "../lib/jwt.service.js";
 import { requestLogger } from "../lib/logger.js";
 import { and, eq, gt } from "drizzle-orm";
@@ -25,6 +25,8 @@ router.post("/esqueci-senha", async (req, res) => {
   const username = String((req.body as { username?: unknown })?.username ?? "").trim().toLowerCase();
   if (!username || username.length > 120) { res.json(RESPOSTA_ESQUECI); return; }
   try {
+    // Limite por conexão: passou do limite, a resposta é a mesma, mas ninguém é avisado (nem se grava no Registro).
+    if (!(await esqueciSenhaLiberado(origemDaRequisicao(req.headers)))) { res.json(RESPOSTA_ESQUECI); return; }
     await db.transaction(async (tx) => {
       // Serializa pedidos da mesma conta: duas requisições simultâneas não podem
       // passar juntas pela janela de 30 minutos e duplicar avisos no Registro.
@@ -54,6 +56,24 @@ router.post("/esqueci-senha", async (req, res) => {
     log.error({ err }, "erro ao registrar pedido de senha nova");
   }
   res.json(RESPOSTA_ESQUECI);
+});
+
+// Relatórios do navegador sobre a política de segurança do site (CSP em modo "só relatar"). Pública de propósito: o navegador manda sem login. Só entra no log o
+// que ajuda a ajustar a política (qual regra, o que foi bloqueado e em qual página), sem consulta nem texto da pessoa; devolve sempre 204.
+const textoCurto = (v: unknown) => (typeof v === "string" ? v.split(/[?#]/)[0]!.slice(0, 200) : undefined);
+router.post("/csp-report", express.json({ type: ["application/json", "application/csp-report", "application/reports+json"], limit: "20kb" }), (req, res) => {
+  try {
+    const bruto = Array.isArray(req.body) ? req.body[0]?.body : (req.body as Record<string, unknown> | undefined)?.["csp-report"] ?? req.body;
+    const r = (bruto && typeof bruto === "object" ? bruto : {}) as Record<string, unknown>;
+    requestLogger("identity", req.requestId, req.correlationId).warn({
+      csp: {
+        regra: textoCurto(r["violated-directive"] ?? r["effectiveDirective"]),
+        bloqueado: textoCurto(r["blocked-uri"] ?? r["blockedURL"]),
+        pagina: textoCurto(r["document-uri"] ?? r["documentURL"]),
+      },
+    }, "Relatório de CSP");
+  } catch { /* relatório quebrado não merece resposta de erro */ }
+  res.status(204).end();
 });
 
 router.post("/login", async (req, res) => {

@@ -28,6 +28,13 @@ export async function applyMigrations(pool: Pool): Promise<void> {
         OR has_table_privilege('anon', c.oid, 'INSERT')
         OR has_table_privilege('anon', c.oid, 'UPDATE')
         OR has_table_privilege('anon', c.oid, 'DELETE')
+        -- authenticated é o papel de quem entra pelo login do Supabase; o app não usa esse login, então ele também não pode ter acesso nem política (decisão 4 da revisão de segurança de 21/10/2026)
+        OR has_schema_privilege('authenticated', n.oid, 'USAGE')
+        OR has_table_privilege('authenticated', c.oid, 'SELECT')
+        OR has_table_privilege('authenticated', c.oid, 'INSERT')
+        OR has_table_privilege('authenticated', c.oid, 'UPDATE')
+        OR has_table_privilege('authenticated', c.oid, 'DELETE')
+        OR EXISTS (SELECT 1 FROM pg_policies p WHERE p.schemaname = n.nspname AND p.tablename = c.relname)
       )
     ORDER BY c.relname
   `);
