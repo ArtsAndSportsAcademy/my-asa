@@ -90,7 +90,8 @@ async function run() {
     assert(fantasmaErros.every((r) => r.status === 401 && r.body.error === "INVALID_CREDENTIALS"), "usuário que não existe: 7 erros respondem 401 como qualquer outro");
     const fantasmaOitavo = await login(fantasma, "errada999");
     assert(fantasmaOitavo.status === 429 && fantasmaOitavo.body.error === "TENTATIVAS_DEMAIS" && /15 minutos/.test(fantasmaOitavo.body.message ?? ""), "usuário que não existe também é pausado no 8º erro, com a mesma frase");
-    assert((await db.select().from(historyEventsTable).where(eq(historyEventsTable.action, "user.access_locked"))).every((e) => e.orgId === org!.id), "pausa de usuário que não existe não vai para o Registro de ninguém");
+    // Só o que ESTE teste gerou (o banco de teste é compartilhado e pode ter pausas de outras execuções): todas são de gente que existe.
+    assert((await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.action, "user.access_locked"), gte(historyEventsTable.createdAt, inicio)))).every((e) => everyone.includes(e.entityId as string)), "pausa de usuário que não existe não vai para o Registro de ninguém");
 
     // ---------- 3) acertar a senha zera a contagem ----------
     await erradas(usuarioDe(bia), LIMITE_DE_ERROS - 1);
