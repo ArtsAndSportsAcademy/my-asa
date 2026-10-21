@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { exigirUuidNosParametros } from "../lib/uuid.js";
 import { eq, and, isNull, isNotNull, or, lte, gte, desc } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { delegationsTable, usersTable, operationsTable, noticesTable, noticeRecipientsTable, showBooksTable, userRolesTable } from "@workspace/db";
@@ -13,6 +14,7 @@ import { operationalDate } from "../lib/operational-date.js";
 // Sem tela desde 20/10/2026: nenhum arquivo vivo do site chama estas rotas (levantamento da revisão 4, docs/revisao-4-codigo-sem-uso-2026-10-20.md).
 // Ficam porque os testes, a ASA ou outros roteadores ainda usam; tirá-las mexe em permission-matrix e em testes, e vale uma etapa própria.
 const router: IRouter = Router();
+exigirUuidNosParametros(router, { id: "Delegação não encontrada." });
 const SUPERVISOR_ROLES = ["SUPERVISOR_A", "SUPERVISOR_B"];
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
 
@@ -415,11 +417,14 @@ router.patch("/delegations/:id/cancel", requireAuth, requireOrganization, async 
   }
 
   try {
-    const [existing] = await db
-      .select()
+    // A delegação tem de ser de uma operação da casa de quem pede (antes só se procurava pelo id: a Administração de uma casa cancelava a delegação de outra).
+    const [achada] = await db
+      .select({ delegation: delegationsTable })
       .from(delegationsTable)
-      .where(eq(delegationsTable.id, id))
+      .innerJoin(operationsTable, eq(delegationsTable.operationId, operationsTable.id))
+      .where(and(eq(delegationsTable.id, id), eq(operationsTable.organizationId, user.organizationId)))
       .limit(1);
+    const existing = achada?.delegation;
 
     if (!existing) {
       res.status(404).json({ error: "Delegação não encontrada" });
