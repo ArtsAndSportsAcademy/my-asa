@@ -7,7 +7,7 @@ import http from "node:http";
 import { and, eq, inArray } from "drizzle-orm";
 import {
   db, pool, organizationsTable, operationsTable, usersTable, userRolesTable, showBooksTable, showBookRolesTable, showBookPositionLibraryRefsTable,
-  messageThreadsTable, messageThreadParticipantsTable, messagesTable, libraryDocumentsTable, libraryDocumentVersionsTable, tasksTable, taskStepsTable, asaAuditLogTable, historyEventsTable,
+  formationsTable, messageThreadsTable, messageThreadParticipantsTable, messagesTable, libraryDocumentsTable, libraryDocumentVersionsTable, tasksTable, taskStepsTable, asaAuditLogTable, historyEventsTable,
 } from "@workspace/db";
 import app from "../src/application.js";
 import { signAccessToken } from "../src/lib/jwt.service.js";
@@ -42,6 +42,10 @@ async function run() {
   await db.insert(messageThreadParticipantsTable).values([{ threadId: conversaA!.id, userId: adminA!.id }, { threadId: conversaA!.id, userId: membroA!.id }] as never);
   await db.insert(messagesTable).values({ threadId: conversaA!.id, senderId: adminA!.id, senderName: `${tag}_adminA`, content: `MENSAGEM_PRIVADA_${tag}` } as never);
 
+  // Formação sem casa (sobra antiga) e uma formação da própria casa B, ambas do show da casa B
+  const [formacaoSemCasa] = await db.insert(formationsTable).values({ name: `${tag}_sem_casa`, positions: [{ role: "A", function: "A", coordinate: null }, { role: "B", function: "B", coordinate: null }], peopleCount: 2, showId: livroB!.id, organizationId: null } as never).returning();
+  const [formacaoDaB] = await db.insert(formationsTable).values({ name: `${tag}_da_B`, positions: [{ role: "A", function: "A", coordinate: null }, { role: "B", function: "B", coordinate: null }], peopleCount: 2, showId: livroB!.id, organizationId: casaB!.id } as never).returning();
+
   let servidor: http.Server | null = null;
   try {
     servidor = http.createServer(app);
@@ -68,6 +72,18 @@ async function run() {
     }
     const etapas = await db.select({ id: taskStepsTable.id }).from(taskStepsTable).where(eq(taskStepsTable.taskId, tarefaA!.id));
     marcar(etapas.length === 0, `a tarefa da casa A não ganhou etapas por chamadas da casa B (ganhou ${etapas.length})`);
+
+    // 2b. Formação sem casa: todas as casas leem, mas nenhuma edita nem desativa; a formação da própria casa segue editável.
+    const editarSemCasa = await fetch(`${base}/formations/${formacaoSemCasa!.id}`, { method: "PATCH", headers: cabB, body: JSON.stringify({ name: "invadida" }) });
+    const desativarSemCasa = await fetch(`${base}/formations/${formacaoSemCasa!.id}/deactivate`, { method: "POST", headers: cabB, body: "{}" });
+    marcar(editarSemCasa.status === 404 && desativarSemCasa.status === 404, `editar e desativar formação sem casa responderam ${editarSemCasa.status} e ${desativarSemCasa.status}; esperado 404 nos dois`);
+    const [semCasaDepois] = await db.select().from(formationsTable).where(eq(formationsTable.id, formacaoSemCasa!.id));
+    marcar(semCasaDepois?.active === true && semCasaDepois.name === `${tag}_sem_casa`, "a formação sem casa continua ativa e com o mesmo nome");
+    const lerFormacoes = await fetch(`${base}/formations/by-show/${livroB!.id}`, { headers: cabB });
+    const textoFormacoes = await lerFormacoes.text();
+    marcar(lerFormacoes.status === 200 && textoFormacoes.includes(formacaoSemCasa!.id) && textoFormacoes.includes(formacaoDaB!.id), "a lista do show mostra a formação sem casa e a da própria casa (leitura e uso continuam)");
+    const editarDaB = await fetch(`${base}/formations/${formacaoDaB!.id}`, { method: "PATCH", headers: cabB, body: JSON.stringify({ name: `${tag}_da_B_editada` }) });
+    marcar(editarDaB.status === 200, `a Administração edita a formação da própria casa (veio ${editarDaB.status})`);
 
     // 3. O registro da ASA não mostra o texto de conversas, nem para a Administração da própria casa.
     const registro = await fetch(`${base}/asa/audit?limit=200`, { headers: cabA });
@@ -96,6 +112,7 @@ async function run() {
     await tente(() => db.delete(messagesTable).where(eq(messagesTable.threadId, conversaA!.id)));
     await tente(() => db.delete(messageThreadParticipantsTable).where(eq(messageThreadParticipantsTable.threadId, conversaA!.id)));
     await tente(() => db.delete(messageThreadsTable).where(eq(messageThreadsTable.id, conversaA!.id)));
+    await tente(() => db.delete(formationsTable).where(inArray(formationsTable.id, [formacaoSemCasa!.id, formacaoDaB!.id])));
     await tente(() => db.delete(asaAuditLogTable).where(eq(asaAuditLogTable.id, linhaDoRegistro!.id)));
     await tente(() => db.delete(historyEventsTable).where(inArray(historyEventsTable.orgId, [casaA!.id, casaB!.id])));
     await tente(() => db.delete(taskStepsTable).where(eq(taskStepsTable.taskId, tarefaA!.id)));

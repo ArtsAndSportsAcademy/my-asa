@@ -130,7 +130,7 @@ faz sem ser gestão; **MÉDIO** = exige condição extra ou só aparece se algo 
 
 1. **ASA antiga (M2) — FEITA em 21/10 (ver "Decisão 1" no fim).** Original: apagar as mais de 100 ferramentas que o chat não alcança (recomendado) e **não guardar** o texto das mensagens em `asa_audit_log` (A5: o conserto atual esconde na leitura, mas o texto continua no banco).
 2. **Pausa de senha (M3) — FEITA em 21/10 (ver "Decisão 2" no fim).** Original: manter por usuário (hoje), ou somar um limite por origem (IP) para que uma pessoa de fora não pause a conta de outra. Recomendo somar o limite por origem, sem trocar o por usuário.
-3. **Formações da biblioteca comum (M4):** a Administração de qualquer casa pode editá-las: manter (biblioteca compartilhada) ou travar para só a Administração da "casa dona".
+3. **Formações da biblioteca comum (M4) — FEITA em 21/10 (ver "Decisão 3" no fim).** Original: a Administração de qualquer casa pode editá-las: manter (biblioteca compartilhada) ou travar para só a Administração da "casa dona".
 4. **Cabeçalhos e limites (M5):** CSP em modo "só relatar" no site; limite por origem no `esqueci-senha`; estender o `migration-runner` para também recusar privilégio de `authenticated`.
 
 ## Commits desta etapa
@@ -178,3 +178,10 @@ Fora o teste e os documentos, um commit por assunto (todos em `codex/myasa-novo`
 - **De onde vem a conexão:** do cabeçalho que a Vercel preenche (`x-vercel-forwarded-for`, senão o primeiro de `x-forwarded-for`). Sem esses cabeçalhos (teste, máquina local) não há limite por origem; o endereço do proxy nunca é usado, porque seria o mesmo para todo mundo. O registro de segurança também passou a guardar essa conexão, em vez do endereço do proxy.
 - **Arquivos:** `lib/tentativas-de-acesso.ts`, `lib/auth.service.ts`, `routes/auth.ts`. Testes: `tentativas-por-origem` (novo, na lista da bateria), e passaram `tentativas-de-acesso` e `fase-d-seguranca`. A lista do `run-tests.mjs` tinha perdido o `seguranca-revisao-etapa3` (um commit da Etapa 1 a sobrescreveu); voltou.
 - **Não conferido (produção):** se, no caminho site → API (a regravação de `/api` do site para a API na Vercel), o cabeçalho traz o IP **da pessoa** ou o do servidor do site. Se trouxesse o do servidor, todo mundo cairia na mesma conexão e 30 erros somados de qualquer pessoa pausariam o login de todos por 15 minutos. Por isso: depois de promover, confira no registro de segurança (`security_audit_log.ip_address`) que aparecem IPs diferentes para pessoas diferentes; se aparecer um IP só, ponha `MYASA_LIMITE_DE_SENHA_POR_ORIGEM=0` e me avise.
+
+## Decisão 3 — feita (21/10/2026)
+
+- **O que mudou:** editar e desativar uma formação passou a ser só da casa dona (`updateFormation` em `services/formation-library.ts`). Formação sem casa (sobra antiga; hoje toda formação nova nasce com a casa da cena e a migração 0024 já preencheu as ligadas a um show) **continua aparecendo e podendo ser aplicada por todas as casas**, mas nenhuma a altera: responde 404 como se não existisse para quem tenta mexer.
+- **Efeito no dia a dia:** nenhum para quem usa formação da própria casa. Se algum dia for preciso mexer numa formação sem casa, é por script, de quem constrói o app.
+- **Testes:** `seguranca-revisao-etapa3` ganhou 4 verificações (editar e desativar formação sem casa dão 404 e ela fica intacta; a lista do show a mostra junto com a da própria casa; a Administração edita a formação da própria casa). Passaram também `isolamento-entre-casas`, `block2-integrity`, `block4-integrity` e `daily-book-formation-today`.
+- **Não conferido (produção):** se existe alguma formação sem casa lá. Consulta só de leitura: `select count(*) from formations where organization_id is null;`.

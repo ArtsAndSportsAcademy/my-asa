@@ -322,7 +322,9 @@ export async function updateFormation(input: {
     const transactionDb = tx as unknown as typeof db;
     const [current] = await transactionDb.select().from(formationsTable).where(and(
       eq(formationsTable.id, input.formationId),
-      input.organizationId ? or(eq(formationsTable.organizationId, input.organizationId), isNull(formationsTable.organizationId)) : undefined,
+      // Editar e desativar é só da casa dona. Formação sem casa (sobra antiga) continua visível e utilizável por todas, mas nenhuma casa a altera:
+      // antes, a Administração de uma casa desativava a formação que as outras casas usavam.
+      input.organizationId ? eq(formationsTable.organizationId, input.organizationId) : undefined,
     )).limit(1);
     if (!current) throw new FormationNotFoundError();
     const nextPositions: unknown[] = input.positions === undefined
