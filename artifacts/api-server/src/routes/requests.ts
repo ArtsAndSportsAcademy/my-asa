@@ -259,6 +259,17 @@ router.post("/requests", requireAuth, requireOrganization, async (req, res) => {
     return;
   }
 
+  // A operação tem de ser da casa de quem pede: antes bastava mandar o código de uma operação de outra casa e a solicitação (com o texto do motivo) aparecia na fila dela.
+  if (!validarUuid(operationId)) { res.status(404).json({ error: "Not Found", message: "Operação não encontrada" }); return; }
+  if (!(await db.query.operationsTable.findFirst({ where: and(eq(operationsTable.id, operationId), eq(operationsTable.organizationId, user.organizationId)), columns: { id: true } }))) {
+    res.status(404).json({ error: "Not Found", message: "Operação não encontrada" });
+    return;
+  }
+  if (!["LEAVE", "ROLE_RESTRICTION", "PHYSICAL_RESTRICTION", "HEALTH_RESTRICTION", "SCHEDULE_CHANGE", "SWAP", "OTHER"].includes(type)) {
+    res.status(400).json({ error: "Bad Request", message: "type deve ser: LEAVE, ROLE_RESTRICTION, PHYSICAL_RESTRICTION, HEALTH_RESTRICTION, SCHEDULE_CHANGE, SWAP ou OTHER" });
+    return;
+  }
+
   try {
     const [newRequest] = await db
       .insert(requestsTable)
