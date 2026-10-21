@@ -7,11 +7,24 @@ import { requestLogger } from "../lib/logger.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { LOG_DOMAIN } from "@workspace/shared";
 import { operationalDate } from "../lib/operational-date.js";
+import { exigirUuidNosParametros } from "../lib/uuid.js";
+import { canSupervisorAccessPerson } from "../services/area-local-scope.js";
 
 // Sem tela desde 20/10/2026: nenhum arquivo vivo do site chama estas rotas (levantamento da revisão 4, docs/revisao-4-codigo-sem-uso-2026-10-20.md).
 // Ficam porque os testes, a ASA ou outros roteadores ainda usam; tirá-las mexe em permission-matrix e em testes, e vale uma etapa própria.
 const router: IRouter = Router();
+exigirUuidNosParametros(router, { id: "Restrição não encontrada." });
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
+
+/**
+ * Restrição guarda dado de saúde e de limite físico de pessoas. Antes de 21/10/2026 estas rotas não olhavam a casa de ninguém: a Administração
+ * (ou a Supervisão) de uma casa listava, criava, editava e encerrava restrição de pessoas de outra casa. Agora a pessoa dona da restrição tem de ser
+ * da casa de quem pede, e a Supervisão só mexe em pessoas da própria área (a Administração mexe em toda a casa).
+ */
+async function podeMexerNaPessoa(user: { sub: string; role: string; organizationId: string }, personId: string): Promise<boolean> {
+  if (user.role === "ADMIN") return true;
+  return canSupervisorAccessPerson({ supervisorId: user.sub, organizationId: user.organizationId, personId });
+}
 
 const RESTRICTION_TYPE_LABELS: Record<string, string> = {
   PHYSICAL: "Física",
@@ -48,7 +61,7 @@ router.get("/restrictions", requireAuth, requireOrganization, async (req, res): 
       memberIds = [...new Set(roles.map((r) => r.userId))];
     }
 
-    const conditions = [];
+    const conditions = [eq(usersTable.organizationId, user.organizationId)];
     if (memberIds.length > 0) conditions.push(inArray(restrictionsTable.userId, memberIds));
     if (status) conditions.push(eq(restrictionsTable.status, status as any));
     if (type) conditions.push(eq(restrictionsTable.type, type as any));
@@ -68,11 +81,15 @@ router.get("/restrictions", requireAuth, requireOrganization, async (req, res): 
       })
       .from(restrictionsTable)
       .innerJoin(usersTable, eq(restrictionsTable.userId, usersTable.id))
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .where(and(...conditions))
       .orderBy(desc(restrictionsTable.createdAt));
 
-    log.info({ count: rows.length }, "restrições listadas");
-    res.json({ restrictions: rows });
+    const pessoasVisiveis = new Map<string, boolean>();
+    for (const personId of new Set(rows.map((row) => row.userId))) pessoasVisiveis.set(personId, await podeMexerNaPessoa(user, personId));
+    const visiveis = rows.filter((row) => pessoasVisiveis.get(row.userId));
+
+    log.info({ count: visiveis.length }, "restrições listadas");
+    res.json({ restrictions: visiveis });
   } catch (err) {
     log.error({ err }, "erro ao listar restrições");
     res.status(500).json({ error: "Erro interno" });
@@ -118,11 +135,15 @@ router.post("/restrictions", requireAuth, requireOrganization, async (req, res):
     const [member] = await db
       .select({ name: usersTable.name })
       .from(usersTable)
-      .where(eq(usersTable.id, userId))
+      .where(and(eq(usersTable.id, userId), eq(usersTable.organizationId, user.organizationId)))
       .limit(1);
 
     if (!member) {
       res.status(404).json({ error: "Usuário não encontrado" });
+      return;
+    }
+    if (!(await podeMexerNaPessoa(user, userId))) {
+      res.status(403).json({ error: "Forbidden", message: "A Supervisão só cria restrição de pessoas da própria área." });
       return;
     }
 
@@ -167,14 +188,20 @@ router.patch("/restrictions/:id", requireAuth, requireOrganization, async (req, 
   const { periodStart, periodEnd, notes, type } = req.body;
 
   try {
-    const [existing] = await db
-      .select()
+    const [achada] = await db
+      .select({ restriction: restrictionsTable })
       .from(restrictionsTable)
-      .where(eq(restrictionsTable.id, id))
+      .innerJoin(usersTable, eq(restrictionsTable.userId, usersTable.id))
+      .where(and(eq(restrictionsTable.id, id), eq(usersTable.organizationId, user.organizationId)))
       .limit(1);
+    const existing = achada?.restriction;
 
     if (!existing) {
       res.status(404).json({ error: "Restrição não encontrada" });
+      return;
+    }
+    if (!(await podeMexerNaPessoa(user, existing.userId))) {
+      res.status(403).json({ error: "Forbidden", message: "A Supervisão só mexe em restrição de pessoas da própria área." });
       return;
     }
 
@@ -223,14 +250,20 @@ router.post("/restrictions/:id/encerrar", requireAuth, requireOrganization, asyn
   }
 
   try {
-    const [existing] = await db
-      .select()
+    const [achada] = await db
+      .select({ restriction: restrictionsTable })
       .from(restrictionsTable)
-      .where(eq(restrictionsTable.id, id))
+      .innerJoin(usersTable, eq(restrictionsTable.userId, usersTable.id))
+      .where(and(eq(restrictionsTable.id, id), eq(usersTable.organizationId, user.organizationId)))
       .limit(1);
+    const existing = achada?.restriction;
 
     if (!existing) {
       res.status(404).json({ error: "Restrição não encontrada" });
+      return;
+    }
+    if (!(await podeMexerNaPessoa(user, existing.userId))) {
+      res.status(403).json({ error: "Forbidden", message: "A Supervisão só mexe em restrição de pessoas da própria área." });
       return;
     }
 
