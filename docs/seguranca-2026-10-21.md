@@ -204,3 +204,7 @@ Fora o teste e os documentos, um commit por assunto (todos em `codex/myasa-novo`
 - *Risco de ter feito:* se em **produção** alguma tabela tiver acesso de `authenticated` ou política (a 0029 foi feita para tirar), o próximo `migrar-producao.ts` termina com erro **depois** de aplicar as migrações (o aviso é depois, não impede nem desfaz). Antes de usar, rode `lib/db/src/audit-rls.ts` com a URL de produção (só lê). Em conta de teste, nada muda.
 
 **Testes:** `seguranca-decisao-4` (novo, na lista da bateria: limite do esqueci-senha com resposta idêntica, relatório de CSP, política só-relatar e que ela libera o Drive), `permission-matrix` (a rota de relatório entrou como pública), `tentativas-por-origem` e `fase-d-seguranca` passaram. Tipos limpos. O build do site não foi rodado (só mudou o `vercel.json`).
+
+## Bateria completa (21/10/2026, depois das quatro decisões)
+
+Os **82 arquivos** da bateria (os 79 da lista de `tests/run-tests.mjs` mais `checkin-shift-schedule`, `shift-checkins` e `ciclo-paralelo`, que o executor soma sozinho) foram rodados **um por vez** no banco de teste: **82 de 82 passaram**, sem nenhuma repetição por banco ocupado. Tipos da API limpos. Fica só o que não é de teste: promoção, segredos e RLS de produção, e a leitura dos relatórios de CSP.
