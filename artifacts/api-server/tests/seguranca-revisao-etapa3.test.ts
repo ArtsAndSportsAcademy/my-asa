@@ -7,7 +7,7 @@ import http from "node:http";
 import { and, eq, inArray } from "drizzle-orm";
 import {
   db, pool, organizationsTable, operationsTable, usersTable, userRolesTable, showBooksTable, showBookRolesTable, showBookPositionLibraryRefsTable,
-  libraryDocumentsTable, libraryDocumentVersionsTable, tasksTable, taskStepsTable, asaAuditLogTable, historyEventsTable,
+  messageThreadsTable, messageThreadParticipantsTable, messagesTable, libraryDocumentsTable, libraryDocumentVersionsTable, tasksTable, taskStepsTable, asaAuditLogTable, historyEventsTable,
 } from "@workspace/db";
 import app from "../src/application.js";
 import { signAccessToken } from "../src/lib/jwt.service.js";
@@ -37,6 +37,10 @@ async function run() {
   const [posicaoB] = await db.insert(showBookRolesTable).values({ showBookId: livroB!.id, name: `${tag}_posicao` } as never).returning();
   const [tarefaA] = await db.insert(tasksTable).values({ organizationId: casaA!.id, operationId: opA!.id, title: `${tag}_tarefa`, creatorId: adminA!.id, assigneeId: membroA!.id }).returning();
   const [linhaDoRegistro] = await db.insert(asaAuditLogTable).values({ userId: membroA!.id, organizationId: casaA!.id, question: "minhas mensagens", response: `SEGREDO_${tag}`, toolsUsed: ["consultar_mensagens"], actionsExecuted: [] } as never).returning();
+
+  const [conversaA] = await db.insert(messageThreadsTable).values({ title: `${tag}_conversa`, orgId: casaA!.id } as never).returning();
+  await db.insert(messageThreadParticipantsTable).values([{ threadId: conversaA!.id, userId: adminA!.id }, { threadId: conversaA!.id, userId: membroA!.id }] as never);
+  await db.insert(messagesTable).values({ threadId: conversaA!.id, senderId: adminA!.id, senderName: `${tag}_adminA`, content: `MENSAGEM_PRIVADA_${tag}` } as never);
 
   let servidor: http.Server | null = null;
   try {
@@ -70,6 +74,18 @@ async function run() {
     const texto = await registro.text();
     marcar(registro.status === 200, `GET /asa/audit pela Administração respondeu ${registro.status}`);
     marcar(!texto.includes(`SEGREDO_${tag}`), "o registro da ASA não devolve o texto guardado de uma consulta de mensagens");
+    // 3b. Perguntar à ASA "minhas mensagens": a pessoa vê o texto no chat dela, mas o registro da casa não guarda.
+    const cabMembro = cab(membroA!.id, casaA!.id, "MEMBER", [opA!.id]);
+    const nova = await fetch(`${base}/asa/conversations`, { method: "POST", headers: cabMembro, body: "{}" });
+    const conversaAsa = ((await nova.json()) as { id?: number; conversation?: { id: number } });
+    const idConversa = conversaAsa.id ?? conversaAsa.conversation?.id;
+    const chat = await fetch(`${base}/asa/chat/${idConversa}/messages`, { method: "POST", headers: cabMembro, body: JSON.stringify({ content: "minhas mensagens não lidas" }) });
+    const fluxo = await chat.text();
+    marcar(fluxo.includes(`MENSAGEM_PRIVADA_${tag}`), `a pessoa vê o texto das próprias mensagens no chat da ASA (resposta: ${fluxo.slice(0, 400)})`);
+    const linhas = await db.select().from(asaAuditLogTable).where(eq(asaAuditLogTable.userId, membroA!.id));
+    const comMensagens = linhas.filter((linha) => (linha.toolsUsed ?? []).includes("consultar_mensagens"));
+    marcar(comMensagens.length > 0 && comMensagens.every((linha) => !linha.response.includes(`MENSAGEM_PRIVADA_${tag}`)), "o registro da ASA não guarda o texto das mensagens mostradas");
+    for (const linha of linhas) await db.delete(asaAuditLogTable).where(eq(asaAuditLogTable.id, linha.id)).catch(() => undefined);
     const mascarada = semConteudoDeMensagem({ question: "q", response: "texto de conversa", toolsUsed: ["asa.message_reply.preview"], actionsExecuted: [{ action: "ASA_ACTION_PROPOSAL", actionType: "MESSAGE_REPLY", content: "texto de conversa" }] });
     marcar(!JSON.stringify(mascarada).includes("texto de conversa"), "resposta de mensagem e conteúdo da proposta saem do registro da ASA");
     const preservada = semConteudoDeMensagem({ question: "q", response: "agenda de hoje", toolsUsed: ["consultar_agenda"], actionsExecuted: [] });
@@ -77,6 +93,9 @@ async function run() {
   } finally {
     if (servidor) { servidor.closeAllConnections?.(); await new Promise<void>((ok) => servidor!.close(() => ok())); }
     const tente = async (fn: () => Promise<unknown>) => { try { await fn(); } catch { /* sobra de teste */ } };
+    await tente(() => db.delete(messagesTable).where(eq(messagesTable.threadId, conversaA!.id)));
+    await tente(() => db.delete(messageThreadParticipantsTable).where(eq(messageThreadParticipantsTable.threadId, conversaA!.id)));
+    await tente(() => db.delete(messageThreadsTable).where(eq(messageThreadsTable.id, conversaA!.id)));
     await tente(() => db.delete(asaAuditLogTable).where(eq(asaAuditLogTable.id, linhaDoRegistro!.id)));
     await tente(() => db.delete(historyEventsTable).where(inArray(historyEventsTable.orgId, [casaA!.id, casaB!.id])));
     await tente(() => db.delete(taskStepsTable).where(eq(taskStepsTable.taskId, tarefaA!.id)));

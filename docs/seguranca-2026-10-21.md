@@ -128,7 +128,7 @@ faz sem ser gestão; **MÉDIO** = exige condição extra ou só aparece se algo 
 
 ## O que depende de você (decisões)
 
-1. **ASA antiga (M2):** apagar as mais de 100 ferramentas que o chat não alcança (recomendado) e **não guardar** o texto das mensagens em `asa_audit_log` (A5: o conserto atual esconde na leitura, mas o texto continua no banco).
+1. **ASA antiga (M2) — FEITA em 21/10 (ver "Decisão 1" no fim).** Original: apagar as mais de 100 ferramentas que o chat não alcança (recomendado) e **não guardar** o texto das mensagens em `asa_audit_log` (A5: o conserto atual esconde na leitura, mas o texto continua no banco).
 2. **Pausa de senha (M3):** manter por usuário (hoje), ou somar um limite por origem (IP) para que uma pessoa de fora não pause a conta de outra. Recomendo somar o limite por origem, sem trocar o por usuário.
 3. **Formações da biblioteca comum (M4):** a Administração de qualquer casa pode editá-las: manter (biblioteca compartilhada) ou travar para só a Administração da "casa dona".
 4. **Cabeçalhos e limites (M5):** CSP em modo "só relatar" no site; limite por origem no `esqueci-senha`; estender o `migration-runner` para também recusar privilégio de `authenticated`.
@@ -163,3 +163,10 @@ Fora o teste e os documentos, um commit por assunto (todos em `codex/myasa-novo`
 - **Rotas de IA e de envio real** (push de verdade, e-mail): fora do alcance do banco de teste.
 - **Rotas com id fora do teste** (lista acima) e o **mobile** (`artifacts/mobile`): não revisado.
 - **Concorrência**: dois pedidos simultâneos entre casas não foram simulados.
+
+## Decisão 1 — feita (21/10/2026)
+
+- **Ferramentas antigas da ASA apagadas:** 72 ferramentas que o chat não alcançava saíram de `executeTool` (`routes/asa.ts` foi de 9.950 para cerca de 6.600 linhas), junto com os auxiliares que só elas usavam. Ficaram as 30 consultas `consultar_*` que o motor de comandos monta, e todas as gravações (que passam por `/asa/actions/:id/confirm`, intactas). Isso fecha o M2: não existe mais consulta sem filtro de casa nem leitura de conversa alheia no código da ASA.
+- **Texto de mensagens fora do registro:** a resposta de "mensagens não lidas" deixou de ser gravada em `asa_audit_log`; o texto continua no chat da própria pessoa. A leitura em `GET /asa/audit` continua escondendo as linhas antigas. Para apagar o que já está gravado: `lib/db/scripts/limpar-texto-de-mensagens-no-registro-da-asa.sql` (rodado só no banco de teste: 2 linhas limpas; **em produção é de quem constrói o app**, primeiro o passo 1, que só conta).
+- **O que não mudou:** o rascunho de mensagem que a pessoa pede à ASA para enviar fica na linha da proposta enquanto espera o "sim" (é o texto dela, e é necessário para enviar); depois de enviado, o texto vive na própria conversa, como sempre.
+- **Testes:** `seguranca-revisao-etapa3` ganhou o caso do chat (a pessoa vê as mensagens, o registro não guarda); passaram também `asa-actions-http`, `asa-capabilities`, `asa-command-engine`, `asa-memory-http`, `asa-proposal-state`, `asa-suggestion-contract`, `asa-library-gaps`, `asa-library-citations`, `asa-datas`, `tarefas-asa-etapas` e `block7-integrity` (que perdeu só a linha que removia membro de grupo pela ferramenta apagada). Tipos limpos, sem import ou variável sem uso em `asa.ts`.

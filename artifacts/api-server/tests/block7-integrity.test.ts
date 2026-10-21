@@ -11,7 +11,6 @@ import { undoAction } from "../src/services/undo.js";
 import { autoPublishScales, enqueueShiftReminders, startOperationalScheduler, stopOperationalScheduler } from "../src/services/operational-jobs.js";
 import { deliverWebPush, validPushEndpoint, WEB_PUSH_TYPES } from "../src/services/web-push.js";
 import { asaSearchAtTop, searchDate } from "../src/services/global-search.js";
-import { executeTool } from "../src/routes/asa.js";
 
 let passed = 0;
 const failures: string[] = [];
@@ -103,8 +102,6 @@ async function run() {
     const groupUndo = JSON.parse(removed.headers.get("X-MyASA-Undo")!);
     const returned = await request(`/actions/${groupUndo.id}/undo`, auth, "POST");
     assert(removed.status === 204 && returned.status === 200 && (await db.select().from(teamMembershipsTable).where(eq(teamMembershipsTable.userId, member!.id)))[0]?.isPrimary, "Remover e desfazer pessoa de grupo recuperam vínculo e primário");
-    const asaRemoval = JSON.parse(await executeTool("remover_membro_grupo", { groupId: group!.id, userId: member!.id }, { userId: admin!.id, organizationId: org!.id, userRole: "ADMIN", operationId: op!.id }));
-    assert(asaRemoval.undo?.id && (await request(`/actions/${asaRemoval.undo.id}/undo`, auth, "POST")).status === 200, "Remoção executada pela ASA também devolve o mesmo desfazer central");
     const [notice] = await db.insert(noticesTable).values({ authorId: admin!.id, operationId: op!.id, title: "Aviso", content: "Publicado", status: "PUBLISHED", requiresConfirmation: true }).returning();
     const blankCancel = await request(`/notices/${notice!.id}/cancel`, auth, "POST", { reason: "   " });
     const cancel = await request(`/notices/${notice!.id}/cancel`, auth, "POST", { reason: "Mudança operacional" }), cancelled = await cancel.json() as any;
