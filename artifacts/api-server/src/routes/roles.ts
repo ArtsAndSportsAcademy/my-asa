@@ -134,6 +134,15 @@ router.delete("/users/:id/roles/:roleId", requireAuth, requireOrganization, requ
   const reason = req.body?.reason as string | undefined;
 
   try {
+    // A pessoa tem de ser da casa de quem pede: sem isso, a Administração de uma casa tirava o acesso de gente de outra casa só sabendo os ids.
+    const pessoaDaCasa = await db.query.usersTable.findFirst({
+      where: and(eq(usersTable.id, id), eq(usersTable.organizationId, req.user!.organizationId)),
+      columns: { id: true },
+    });
+    if (!pessoaDaCasa) {
+      res.status(404).json({ error: "NOT_FOUND", message: "Usuário não encontrado" });
+      return;
+    }
     const roleRecord = await db.query.userRolesTable.findFirst({
       where: and(
         eq(userRolesTable.id, roleId),
