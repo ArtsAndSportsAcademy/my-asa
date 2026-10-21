@@ -3,3 +3,4 @@ export * from "./events.js";
 export * from "./constants.js";
 export * from "./asa-suggestions.js";
 export * from "./asa-presence.js";
+export * from "./limpar-erro-para-envio.js";

@@ -1,5 +1,6 @@
 import pino from "pino";
 import { LOG_DOMAIN } from "@workspace/shared";
+import { capturarErro } from "./alerta-de-erros.js";
 
 const isProduction = process.env.NODE_ENV === "production";
 // O bundler de testes remove o diretório temporário ao encerrar cada entrada.
@@ -36,6 +37,18 @@ export const logger = pino({
     ...CAMPOS_SECRETOS.map((campo) => `*.*.${campo}`),
   ],
   serializers: { err: serializarErro, error: serializarErro },
+  // Todo `log.error({ err }, ...)` do servidor também vai para o alerta de erros (quando ligado). Só o objeto Error sai, nunca os
+  // outros campos do registro; o filtro de lib/shared limpa a frase antes do envio.
+  hooks: {
+    logMethod(args, method, level) {
+      if (level >= 50) {
+        const campos = args[0] as unknown;
+        const erro = campos && typeof campos === "object" ? (campos as { err?: unknown; error?: unknown }).err ?? (campos as { error?: unknown }).error : undefined;
+        if (erro instanceof Error) capturarErro(erro, "log");
+      }
+      return method.apply(this, args);
+    },
+  },
   ...(usePrettyTransport
     ? {
         transport: {

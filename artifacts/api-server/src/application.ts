@@ -5,10 +5,16 @@ import type { IncomingMessage, ServerResponse } from "http";
 import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
 import { correlationIdMiddleware } from "./middlewares/correlation-id.js";
+import { capturarErroNaoTratado, enviarErrosAntesDeResponder, iniciarAlertaDeErros } from "./lib/alerta-de-erros.js";
+
+// Só liga se existir SENTRY_DSN no ambiente; sem a chave, não faz nada e nada sai do servidor.
+iniciarAlertaDeErros();
 
 const app: Express = express();
 
 app.use(correlationIdMiddleware);
+// Na Vercel, segura a resposta até o erro capturado ser enviado (só quando houve erro nesta requisição).
+app.use(enviarErrosAntesDeResponder);
 
 app.use(
   pinoHttp({
@@ -41,6 +47,9 @@ app.use("/api", router);
 app.use("/api", (_req, res) => {
   res.status(404).json({ error: "NOT_FOUND", message: "Esse endereço da API não existe." });
 });
+
+// Erro que ninguém tratou (vira 500): vai para o alerta de erros e segue o caminho de sempre.
+app.use(capturarErroNaoTratado);
 
 // Corpo enviado com JSON quebrado: recusa em JSON, com frase, em vez de uma página HTML de erro.
 app.use((err: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
