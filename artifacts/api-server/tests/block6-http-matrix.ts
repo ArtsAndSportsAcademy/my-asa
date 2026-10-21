@@ -187,9 +187,14 @@ export async function verifyBlock6HttpRoutes(c: Input) {
     const extraOccurrence = await call("POST", "/occurrences", "SUPERVISOR_A", 201, { personId: c.personId, date: c.date, type: "atraso", description: "Análise própria", reason: "Registro da supervisão" });
     extraOccurrences.push(extraOccurrence.occurrence.id);
     for (const profile of ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]) await call("PATCH", `/occurrences/${extraOccurrence.occurrence.id}`, profile, 200, { description: "Conferida", reason: "Conferência" });
-    await call("PATCH", `/occurrences/${extraOccurrence.occurrence.id}/state`, "MEMBER", 200, { state: "em_analise", reason: "Análise própria" });
+    // Regra da rodada 3: o que a gerência registrou sobre a pessoa, ela lê mas não reescreve, não muda de estado e não apaga
+    // (a ocorrência acima foi registrada pela Supervisão). O que a própria pessoa registrou, ela segue podendo mexer (ver acima).
+    const recusaDaPessoa = await call("PATCH", `/occurrences/${extraOccurrence.occurrence.id}/state`, "MEMBER", 403, { state: "em_analise", reason: "Análise própria" });
+    c.assert(/você só lê/i.test(recusaDaPessoa.message ?? ""), "a recusa da pessoa sobre o que a gerência registrou explica que ela só lê");
+    await call("PATCH", `/occurrences/${extraOccurrence.occurrence.id}/state`, "SUPERVISOR_A", 200, { state: "em_analise", reason: "Início de análise" });
     await call("PATCH", `/occurrences/${extraOccurrence.occurrence.id}/state`, "SUPERVISOR_B", 200, { state: "resolvida", reason: "Tratativa da supervisão" });
-    for (const profile of ["SUPERVISOR_B", "SUPERVISOR_A", "MEMBER"]) await call("DELETE", `/occurrences/${extraOccurrence.occurrence.id}`, profile, 200, { reason: "Registro duplicado" });
+    await call("DELETE", `/occurrences/${extraOccurrence.occurrence.id}`, "MEMBER", 403, { reason: "Registro duplicado" });
+    for (const profile of ["SUPERVISOR_B", "SUPERVISOR_A"]) await call("DELETE", `/occurrences/${extraOccurrence.occurrence.id}`, profile, 200, { reason: "Registro duplicado" });
 
     await call("DELETE", `/characters/${characterId}/cast/${castId}`, "SUPERVISOR_A", 200);
     await call("DELETE", `/characters/${characterId}/cast/${extraCast.cast.id}`, "ADMIN", 200);
