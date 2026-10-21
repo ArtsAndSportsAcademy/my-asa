@@ -5,14 +5,13 @@ da revisão em si, `docs/handoff-2026-10-20-revisao-4.md`. Branch `codex/myasa-n
 
 ## Em uma frase
 
-A revisão 3, a revisão 4 e o fechamento estão feitos e a **bateria completa passou: 76 de 76 arquivos**. Falta enviar ao GitHub (22
-commits locais, desde `82c98a3`) e promover: **a migração 0075 já foi aplicada em produção** (pela pessoa que constrói o app, em 20/10),
-então a ordem que sobra é **API, depois o site**.
+A revisão 3, a revisão 4 e o fechamento estão feitos e a **bateria completa passou: 76 de 76 arquivos**. **Tudo foi enviado ao GitHub (até `565788d`) e promovido em
+produção em 20/10, por quem constrói o app:** migração 0075, depois a API, depois o site, e o teste nas 4 contas (Administração, Direção,
+Supervisão, Elenco) sem frase de erro. Falta só o que está em "O que não foi conferido" e conferir o backup do banco.
 
 ## Estado do git
 
-- Enviado ao GitHub: tudo até `82c98a3`.
-- **Local, sem envio (22 commits, `fefadbd` até `4b2dac3`):** a revisão 4 inteira (`d2bebf2`…`73d943d`) e o fechamento (abaixo).
+- Enviado ao GitHub: tudo, até `565788d` (24 commits em 20/10: a revisão 4 inteira, `d2bebf2`…`73d943d`, e o fechamento, abaixo).
 - Nenhuma alteração solta em arquivo versionado. Ficam sem commit de propósito: `artifacts/brand/`, `docs/apresentacao/` (só na entrega) e
   `artifacts/web-admin/playwright.config.ts` e `tests/` (testes de tela, sem decisão).
 
@@ -45,13 +44,16 @@ então a ordem que sobra é **API, depois o site**.
   ```
   Nunca cole o SQL à mão no editor do Supabase: o registro do Drizzle não é atualizado e a próxima migração tenta criar de novo.
 
-## Ordem para promover
+## Ordem de promoção (feita em 20/10)
 
-1. ~~Migração 0075~~ **feita**.
-2. Enviar ao GitHub (22 commits). Só com o "pode enviar" de quem constrói o app.
-3. Promover a **API** (`my-asa`).
-4. Promover o **site** (`my-asa-web`). Antes: `node scripts/verificar-nomes-build.mjs` (rodado em 20/10, limpo: nenhum dos 51 nomes do elenco no pacote).
-5. Teste de fumaça em produção (abaixo) e conferir o backup do banco.
+1. ~~Migração 0075~~ feita.
+2. ~~Enviar ao GitHub~~ feito.
+3. ~~Promover a API (`my-asa`)~~ feito.
+4. ~~Promover o site (`my-asa-web`)~~ feito (antes: `verificar-nomes-build`, limpo).
+5. ~~Teste nas 4 contas~~ feito, sem frase de erro. **Falta conferir o backup do banco no Supabase** e medir o tempo das telas em produção.
+
+Se uma promoção futura precisar desfazer: a API e o site voltam pelo deploy anterior na Vercel; a migração 0075 só se desfaz pelo
+`rollback/0075_tentativas_de_acesso.down.sql` e **antes** de voltar a API (a API nova lê a tabela).
 
 ## Resultado das verificações
 

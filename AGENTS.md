@@ -223,13 +223,12 @@ para todos os quatro perfis (ADM, DIR, SUP, MEM) a 375px e 1280px — Meu Dia, E
 Tarefas. `permission-matrix` rerodado: 463/463 rotas sem auth + 25 cases de autorização real = 0 falhas. Nenhum código
 alterado. O último handoff é `docs/handoff-2026-10-19.md`; leia antes de continuar.
 
-**Feito em 20/10/2026 (revisão 3, revisão 4 e fechamento; enviado ao GitHub até `82c98a3`, o resto ainda local):** a rodada 3
+**Feito em 20/10/2026 (revisão 3, revisão 4 e fechamento; tudo enviado ao GitHub até `565788d` e promovido em produção no mesmo dia: migração 0075, API e site, nessa ordem, e o teste nas 4 contas sem frase de erro, por quem constrói o app):** a rodada 3
 voltou ao branch; R3-B, R3-D e R3-E fechadas; Livro do dia de show misto não herda a hora da sessão separada; id inválido na URL
 dá 404 com frase (`exigirUuidNosParametros`); Registro, recusas em português, Busca, Mural, Cadastros, Folgas (revisão 4). Depois do
-"pode enviar" de 20/10, e ainda **só local**: **limite de tentativas de senha (migração 0075, já aplicada em produção; o limite só vale quando a API nova for promovida)**, restaurar
+"pode enviar" de 20/10: **limite de tentativas de senha (migração 0075, já aplicada em produção; o limite só vale quando a API nova for promovida)**, restaurar
 documento arquivado da Biblioteca, Direção lê as versões e Supervisão vê os temas sem documento, conferência de versão nos
-blocos da Programação, "(local encerrado)" no cartão da Área, 114 telas mortas tiradas do site. **A migração 0075 já foi aplicada em produção (20/10). Ordem para promover o que
-está local: a API, depois o site.** Tudo está em `docs/handoff-2026-10-20-fechamento.md`: leia antes de continuar.
+blocos da Programação, "(local encerrado)" no cartão da Área, 114 telas mortas tiradas do site. **Em produção desde 20/10: a migração 0075, a API e o site.** Tudo está em `docs/handoff-2026-10-20-fechamento.md`: leia antes de continuar.
 Decisões já tomadas (não reabrir): **Supervisão da área que só tem local encerrado vale como "área sem Supervisão"** (a Administração
 decide na hora); **Mural continua aberto**; **a "grade pessoa × dia" e a Etapa 4 (experimentar grupos) foram descartadas até o primeiro
 mês real mostrar desequilíbrio** (a Babi só confirma). Sem tela e sem pedido: desativar formação (só a API).
@@ -237,9 +236,9 @@ mês real mostrar desequilíbrio** (a Babi só confirma). Sem tela e sem pedido:
 Pendente:
 - **Bateria completa de testes:** rodada em 20/10 depois de tudo, **76 de 76 verdes** (ver `docs/handoff-2026-10-20-fechamento.md`). Rode-a de novo antes de cada promoção.
 - **A Babi confirma duas regras** (a decisão já está aplicada como recomendado): a Supervisão só com local encerrado; descartar "grade pessoa × dia" e grupos experimentais.
-- **Quem constrói o app** roda em produção `lib/db/scripts/limpar-texto-de-mensagens-no-registro.sql` (se ainda não rodou), a
-  promove (API primeiro, site depois; a migração 0075 já foi aplicada), e depois faz o teste de fumaça em produção com cada perfil e confere o backup do
-  banco no Supabase. **Issues e rótulos do GitHub não esperam por isso** (decisão de 16/10/2026).
+- **Quem constrói o app** roda em produção `lib/db/scripts/limpar-texto-de-mensagens-no-registro.sql` (se ainda não rodou) e confere o
+  backup do banco no Supabase (a promoção e o teste nas 4 contas já foram feitos em 20/10). **Issues e rótulos do GitHub não esperam por isso**
+  (decisão de 16/10/2026).
 - **Não conferido, por falta de meio:** o assistente ASA com IA (o banco de teste não tem chave de IA); o desempenho em produção
   (no banco de teste cada tela leva de 7 a 10 s; produção não foi medida).
 - **Acquamotion** não tem as vagas de personagem dos shows (a planilha ainda está "a definir"), por
