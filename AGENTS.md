@@ -188,7 +188,7 @@ só isso; não conclua que quebrou antes de esperar.
 
 ## Estado em 15/10/2026 (depois da revisão das telas)
 
-**Atualização de 17/10/2026 (revisão de ponta a ponta com empresa fictícia):** pronta só de área com gente ou supervisão no local; Supervisão vê e cobra as tarefas da própria área (sem a responsabilidade "Aprovação de tarefas"); Livro do Dia lê os horários da Programação; ajuste em lote conferido antes de gravar; cadastro de local pergunta a operação quando há mais de uma ativa; Painel com quatro números distintos; banco de produção na porta 6543 (migrações seguem na 5432; as migrações da 0000 à 0074 estão aplicadas em produção (a 0075, limite de tentativas de senha, só no banco de teste até 20/10); a 0074, do formato do palco no show, foi promovida depois, com a API e o site, e o mapa e as formações já aparecem para o elenco). Os commits foram enviados à `codex/myasa-novo` (nada na `main`). O que falta está em `docs/plano-etapas-pos-revisao-2026-10-17.md`, em oito etapas com prompt pronto (a 1, cadastro de operações, é a importante).
+**Atualização de 17/10/2026 (revisão de ponta a ponta com empresa fictícia):** pronta só de área com gente ou supervisão no local; Supervisão vê e cobra as tarefas da própria área (sem a responsabilidade "Aprovação de tarefas"); Livro do Dia lê os horários da Programação; ajuste em lote conferido antes de gravar; cadastro de local pergunta a operação quando há mais de uma ativa; Painel com quatro números distintos; banco de produção na porta 6543 (migrações seguem na 5432; as migrações da 0000 à 0074 estão aplicadas em produção (a 0075, limite de tentativas de senha, aplicada em produção em 20/10); a 0074, do formato do palco no show, foi promovida depois, com a API e o site, e o mapa e as formações já aparecem para o elenco). Os commits foram enviados à `codex/myasa-novo` (nada na `main`). O que falta está em `docs/plano-etapas-pos-revisao-2026-10-17.md`, em oito etapas com prompt pronto (a 1, cadastro de operações, é a importante).
 
 Pronto e em produção: Escala do dia, Programação (com rascunho e rodapé), Livro do Dia, check-in por turno,
 Meu Dia, Folgas em lote e grupos de folga, Gerar o mês, **Mural aberto** (o Elenco publica, edita, remove e
@@ -228,14 +228,14 @@ voltou ao branch; R3-B, R3-D e R3-E fechadas; Livro do dia de show misto não he
 dá 404 com frase (`exigirUuidNosParametros`); Registro, recusas em português, Busca, Mural, Cadastros, Folgas (revisão 4). Depois do
 "pode enviar" de 20/10, e ainda **só local**: **limite de tentativas de senha (migração 0075, só no banco de teste)**, restaurar
 documento arquivado da Biblioteca, Direção lê as versões e Supervisão vê os temas sem documento, conferência de versão nos
-blocos da Programação, "(local encerrado)" no cartão da Área, 114 telas mortas tiradas do site. **Ordem para promover o que
-está local: migração 0075, depois a API, depois o site.** Tudo está em `docs/handoff-2026-10-20-fechamento.md`: leia antes de continuar.
+blocos da Programação, "(local encerrado)" no cartão da Área, 114 telas mortas tiradas do site. **A migração 0075 já foi aplicada em produção (20/10). Ordem para promover o que
+está local: a API, depois o site.** Tudo está em `docs/handoff-2026-10-20-fechamento.md`: leia antes de continuar.
 Decisões já tomadas (não reabrir): **Supervisão da área que só tem local encerrado vale como "área sem Supervisão"** (a Administração
 decide na hora); **Mural continua aberto**; **a "grade pessoa × dia" e a Etapa 4 (experimentar grupos) foram descartadas até o primeiro
 mês real mostrar desequilíbrio** (a Babi só confirma). Sem tela e sem pedido: desativar formação (só a API).
 
 Pendente:
-- **Bateria completa de testes:** rodada em 20/10 depois de tudo (resultado no handoff de fechamento). Rode-a de novo antes de cada promoção.
+- **Bateria completa de testes:** rodada em 20/10 depois de tudo, **76 de 76 verdes** (ver `docs/handoff-2026-10-20-fechamento.md`). Rode-a de novo antes de cada promoção.
 - **A Babi confirma duas regras** (a decisão já está aplicada como recomendado): a Supervisão só com local encerrado; descartar "grade pessoa × dia" e grupos experimentais.
 - **Quem constrói o app** roda em produção `lib/db/scripts/limpar-texto-de-mensagens-no-registro.sql` (se ainda não rodou), a
   migração 0075 e promove (API primeiro, site depois), e depois faz o teste de fumaça em produção com cada perfil e confere o backup do
