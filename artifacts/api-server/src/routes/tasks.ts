@@ -618,7 +618,7 @@ router.post("/tasks/:id/start", requireAuth, requireOrganization, async (req, re
   const log = requestLogger(LOG_DOMAIN.TASKS, req.requestId, req.correlationId);
   const user = req.user!;
   try {
-    await garantirEtapas([String(req.params.id)]);
+    await garantirEtapas([String(req.params.id)], req.user!.organizationId);
     const resultado = await comAtor(req, String(req.params.id), async (tx, ator) => {
       const ativas = await tx.select().from(taskStepsTable).where(and(eq(taskStepsTable.taskId, String(req.params.id)), eq(taskStepsTable.active, true), eq(taskStepsTable.status, "ACTIVE"))).orderBy(taskStepsTable.position);
       const minha = ativas.find((step) => step.assigneeId === user.sub) ?? (ator.gestor ? ativas[0] : undefined);
@@ -634,7 +634,7 @@ router.post("/tasks/:id/ready-for-approval", requireAuth, requireOrganization, a
   const log = requestLogger(LOG_DOMAIN.TASKS, req.requestId, req.correlationId);
   const user = req.user!;
   try {
-    await garantirEtapas([String(req.params.id)]);
+    await garantirEtapas([String(req.params.id)], req.user!.organizationId);
     const resultado = await comAtor(req, String(req.params.id), async (tx, ator) => {
       const [task] = await tx.select().from(tasksTable).where(eq(tasksTable.id, String(req.params.id))).limit(1);
       const ativas = await tx.select().from(taskStepsTable).where(and(eq(taskStepsTable.taskId, String(req.params.id)), eq(taskStepsTable.active, true), eq(taskStepsTable.status, "ACTIVE"), eq(taskStepsTable.kind, "WORK"))).orderBy(taskStepsTable.position);
@@ -661,7 +661,7 @@ router.post("/tasks/:id/ready-for-approval", requireAuth, requireOrganization, a
 router.post("/tasks/:id/approve", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger(LOG_DOMAIN.TASKS, req.requestId, req.correlationId);
   try {
-    await garantirEtapas([String(req.params.id)]);
+    await garantirEtapas([String(req.params.id)], req.user!.organizationId);
     const resultado = await comAtor(req, String(req.params.id), async (tx, ator) => {
       const [aprovacao] = await tx.select().from(taskStepsTable).where(and(eq(taskStepsTable.taskId, String(req.params.id)), eq(taskStepsTable.active, true), eq(taskStepsTable.status, "ACTIVE"), eq(taskStepsTable.kind, "APPROVAL"))).limit(1);
       if (!aprovacao) throw new TarefaError(409, "Tarefa não está pronta para aprovação");

@@ -75,10 +75,11 @@ export async function preencherEtapasDe(tx: Transaction, task: Task): Promise<Ta
 }
 
 /** Para a lista e o detalhe: garante as etapas das tarefas abertas que ainda não têm (uma vez só, de forma idempotente). */
-export async function garantirEtapas(taskIds: string[]) {
+/** `organizationId`: quando a chamada vem de uma pessoa, só tarefas da casa dela ganham etapas (antes, uma tarefa de outra casa era alterada antes da checagem de acesso). */
+export async function garantirEtapas(taskIds: string[], organizationId?: string) {
   if (!taskIds.length) return;
   const semEtapa = await db.select({ id: tasksTable.id, organizationId: tasksTable.organizationId }).from(tasksTable)
-    .where(and(inArray(tasksTable.id, taskIds), notInArray(tasksTable.status, [...ENCERRADAS]), sql`not exists (select 1 from ${taskStepsTable} s where s.task_id = ${tasksTable.id} and s.active)`));
+    .where(and(inArray(tasksTable.id, taskIds), ...(organizationId ? [eq(tasksTable.organizationId, organizationId)] : []), notInArray(tasksTable.status, [...ENCERRADAS]), sql`not exists (select 1 from ${taskStepsTable} s where s.task_id = ${tasksTable.id} and s.active)`));
   for (const tarefa of semEtapa) await db.transaction((tx) => carregar(tx, tarefa.organizationId, tarefa.id)).catch(() => undefined);
 }
 const aberta = (task: Task) => { if ((ENCERRADAS as readonly string[]).includes(task.status)) throw new TarefaError(409, "Tarefa encerrada: não dá para mexer nas etapas."); };
