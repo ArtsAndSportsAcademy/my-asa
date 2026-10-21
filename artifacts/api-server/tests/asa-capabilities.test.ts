@@ -205,14 +205,11 @@ assert.match(webLibrary, /selectedDocument\.waitingMe\) && <button className="co
 assert.match(webLibrary, /selectedDocument\.id\}\/citations[\s\S]*canManageCitations && <section/, "gestão de citações deve estar disponível na Biblioteca ativa somente quando o servidor autoriza aquele documento");
 assert.match(webLibrary, /setCitations\(result\.citations\)[\s\S]*Página \{citation\.pageNumber\}[\s\S]*Trecho exato/, "Biblioteca ativa deve exibir página/trecho e permitir cadastrar as referências da ASA");
 assert.match(webLibrary, /onClick=\{\(\) => setLocation\(`\/biblioteca\?document=\$\{doc\.id\}`\)\}>Detalhes/, "pessoa gestora deve conseguir abrir o detalhe para gerir citações sem iniciar uma busca pela ASA");
-const adminLibrary = readFileSync(resolve(process.cwd(), "../web-admin/src/pages/admin/library.tsx"), "utf8");
-assert.match(adminLibrary, /customFetch<\{ signals:[\s\S]*?\}>\("\/api\/asa\/library-gaps"\)/, "Biblioteca administrativa deve carregar temas sem documento pela rota autenticada");
-assert.match(adminLibrary, /enabled: isAdmin/, "somente Administração deve buscar os temas sem documento");
-assert.match(adminLibrary, /onClick=\{\(\) => setSearch\(signal\.topic\)\}/, "tema sem documento deve permitir iniciar sua busca no acervo");
+// A tela antiga pages/admin/library.tsx (que carregava os temas sem documento) saiu do site em 20/10/2026, junto com as outras telas
+// mortas: nenhuma tela viva chama GET /asa/library-gaps hoje. O contrato da rota (quem lê, isolamento por organização, só dado
+// agregado) continua conferido logo abaixo, no próprio servidor.
 const globalAsa = readFileSync(resolve(process.cwd(), "../web-admin/src/components/global-asa-assistant.tsx"), "utf8");
 assert.match(globalAsa, /setLocation\(`\/biblioteca\?document=\$\{documentId\}`\)/, "link da ASA web deve abrir o documento no shell atual, não em uma rota ausente");
-const legacyAsa = readFileSync(resolve(process.cwd(), "../web-admin/src/pages/admin/asa.tsx"), "utf8");
-assert.match(legacyAsa, /href=\{`\/biblioteca\?document=\$\{documentId\}`\}/, "links de mensagens ASA antigas também devem abrir no shell atual");
 const mobileLayout = readFileSync(resolve(process.cwd(), "../mobile/app/_layout.tsx"), "utf8");
 assert.match(mobileLayout, /segments\[0\] === "\(tabs\)" \|\| segments\[0\] === "\(stack\)"/, "ASA deve cobrir as rotas autenticadas mobile de abas e pilha");
 assert.match(mobileLayout, /const showAsaLauncher = isAuthenticated && !mustChangePassword[\s\S]*segments\.join\("\/"\) !== "\(stack\)\/asa"/, "launcher mobile fica nas telas autenticadas, exceto na própria conversa ASA");
@@ -254,8 +251,8 @@ assert.match(libraryCitationsMigration, /version integer NOT NULL CHECK \(versio
 assert.match(libraryCitationsMigration, /length\(btrim\(excerpt\)\) BETWEEN 8 AND 1000/, "migração deve limitar o conteúdo de cada citação");
 assert.match(libraryCitationsMigration, /ENABLE ROW LEVEL SECURITY[\s\S]*REVOKE ALL[\s\S]*anon, authenticated, PUBLIC/, "citações devem manter RLS e sem acesso direto pelos papéis da aplicação");
 const libraryGapsRoute = asaRoutes.match(/router\.get\("\/asa\/library-gaps"([\s\S]*?)\n\}\);/);
-assert.ok(libraryGapsRoute, "Administração deve ter uma rota para sinais agregados de temas sem documento");
-assert.match(libraryGapsRoute[1]!, /user\.role !== "ADMIN"/, "sinais de lacuna da Biblioteca devem ser exclusivos de Administração");
+assert.ok(libraryGapsRoute, "Administração e Supervisão devem ter uma rota para sinais agregados de temas sem documento");
+assert.match(libraryGapsRoute[1]!, /\["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"\]\.includes\(user\.role\)/, "sinais de lacuna da Biblioteca são da Administração e da Supervisão (20/10/2026); Direção e Elenco não leem");
 assert.match(libraryGapsRoute[1]!, /organizationId, user\.organizationId![\s\S]*gte\(asaAuditLogTable\.createdAt, since\)/, "sinais devem ficar isolados por organização e limitados ao período recente");
 assert.match(libraryGapsRoute[1]!, /select\(\{ actionsExecuted: asaAuditLogTable\.actionsExecuted, createdAt: asaAuditLogTable\.createdAt \}\)/, "rota de lacunas não deve ler identidade, conversa ou pergunta original");
 assert.match(libraryGapsRoute[1]!, /aggregateAsaLibraryGaps\(rows, 50\)/, "rota deve devolver temas agregados e limitados");
