@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { exigirUuidNosParametros } from "../lib/uuid.js";
+import { exigirUuidNosParametros, validarUuid } from "../lib/uuid.js";
 import { eq, and, isNull, isNotNull, or, lte, gte, desc } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { delegationsTable, usersTable, operationsTable, noticesTable, noticeRecipientsTable, showBooksTable, userRolesTable } from "@workspace/db";
@@ -252,6 +252,22 @@ router.post("/delegations", requireAuth, requireOrganization, async (req, res): 
   const showBookId = (req.body as { showBookId?: string | null }).showBookId ?? null;
 
   try {
+    // Operação e pessoa delegada têm de ser da casa de quem pede. Antes a Administração passava sem olhar a operação ("[{ id: admin }]" abaixo) e a pessoa não era conferida:
+    // a Administração de uma casa criava delegação numa operação de outra casa, para gente de lá, e a pessoa recebia o aviso.
+    if (!validarUuid(operationId) || !validarUuid(delegateId)) {
+      res.status(404).json({ error: "Not Found", message: "Operação ou pessoa não encontrada" });
+      return;
+    }
+    const [operacaoDaCasa, delegadoDaCasa] = await Promise.all([
+      db.query.operationsTable.findFirst({ where: and(eq(operationsTable.id, operationId), eq(operationsTable.organizationId, user.organizationId)), columns: { id: true } }),
+      db.query.usersTable.findFirst({ where: and(eq(usersTable.id, delegateId), eq(usersTable.organizationId, user.organizationId), eq(usersTable.status, "ACTIVE")), columns: { id: true } }),
+    ]);
+    if (!operacaoDaCasa || !delegadoDaCasa) {
+      res.status(404).json({ error: "Not Found", message: "Operação ou pessoa não encontrada" });
+      return;
+    }
+
+
     // Autoridade de supervisor na operação: ter `operationId` no token só prova
     // PERTENÇA (pode ser mero membro). É preciso confirmar na BD um papel
     // SUPERVISOR_A/B ATIVO nesta operação exata, senão um supervisor de outra
