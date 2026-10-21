@@ -909,6 +909,13 @@ router.post("/scales/:id/archive", requireAuth, requireOrganization, async (req,
   try {
     const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
+    // Arquivar é gestão como publicar e apagar: antes não havia checagem de perfil, e qualquer pessoa logada da casa (até o Elenco) arquivava uma Escala só sabendo o id.
+    if (!MANAGER_ROLES.includes(req.user!.role)) {
+      if (!(await hasScaleAuthority(userId, scale.operationId, scale.groupId, scale.areaId, scale.locationId))) {
+        res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Escalas podem arquivar escalas" });
+        return;
+      }
+    }
     expectedVersion = requireExpectedVersion(req, res, "a Escala");
     if (expectedVersion === null) return;
     const beforeSnapshot = await buildScaleVersionSnapshot(id);
