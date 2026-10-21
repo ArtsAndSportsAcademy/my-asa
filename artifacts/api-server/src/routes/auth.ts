@@ -7,6 +7,7 @@ import {
   AuthError,
 } from "../lib/auth.service.js";
 import { requireAuth } from "../middlewares/auth.js";
+import { origemDaRequisicao } from "../lib/tentativas-de-acesso.js";
 import { hashToken } from "../lib/jwt.service.js";
 import { requestLogger } from "../lib/logger.js";
 import { and, eq, gt } from "drizzle-orm";
@@ -68,7 +69,8 @@ router.post("/login", async (req, res) => {
     const result = await loginUser(username, password, {
       requestId: req.requestId,
       correlationId: req.correlationId,
-      ipAddress: req.ip,
+      ipAddress: origemDaRequisicao(req.headers) ?? req.ip,
+      origem: origemDaRequisicao(req.headers),
       userAgent: req.headers["user-agent"],
     });
     res.json(result);
@@ -96,7 +98,8 @@ router.post("/refresh", async (req, res) => {
     const result = await refreshSession(refreshToken, {
       requestId: req.requestId,
       correlationId: req.correlationId,
-      ipAddress: req.ip,
+      ipAddress: origemDaRequisicao(req.headers) ?? req.ip,
+      origem: origemDaRequisicao(req.headers),
       userAgent: req.headers["user-agent"],
     });
     res.json(result);

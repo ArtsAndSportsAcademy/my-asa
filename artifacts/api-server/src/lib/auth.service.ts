@@ -19,12 +19,14 @@ import { requestLogger } from "./logger.js";
 import { loadAuthorizationContext } from "./authorization.service.js";
 import { selfProfile } from "./person-projection.js";
 import { operationalDate } from "./operational-date.js";
-import { chaveDeLogin, consultarBloqueio, fraseDoBloqueio, limparErrosDeSenha, registrarErroDeSenha } from "./tentativas-de-acesso.js";
+import { chaveDeLogin, chaveDeOrigem, consultarBloqueio, fraseDoBloqueio, fraseDoBloqueioPorOrigem, limiteDeErrosPorOrigem, limparErrosDeSenha, registrarErroDeSenha } from "./tentativas-de-acesso.js";
 
 export interface AuthContext {
   requestId: string;
   correlationId: string;
   ipAddress?: string;
+  /** Conexão de quem chama, vinda dos cabeçalhos da Vercel (null quando não há): base do limite de senha por origem. */
+  origem?: string | null;
   userAgent?: string;
 }
 
@@ -71,6 +73,19 @@ export async function loginUser(
   const chave = chaveDeLogin(normalizedUsername);
   const pausadaAte = await consultarBloqueio(chave);
   if (pausadaAte) throw new AuthError("TENTATIVAS_DEMAIS", fraseDoBloqueio(pausadaAte));
+  // Além do limite por usuário, o limite por origem: erros de senha de qualquer usuário a partir da mesma conexão.
+  const limiteOrigem = limiteDeErrosPorOrigem();
+  const chaveOrigem = ctx.origem && limiteOrigem > 0 ? chaveDeOrigem(ctx.origem) : null;
+  if (chaveOrigem) {
+    const origemPausadaAte = await consultarBloqueio(chaveOrigem);
+    if (origemPausadaAte) throw new AuthError("TENTATIVAS_DEMAIS", fraseDoBloqueioPorOrigem(origemPausadaAte));
+  }
+  /** Conta o erro também na origem; devolve a frase se este erro foi o que pausou a conexão. */
+  const contarNaOrigem = async () => {
+    if (!chaveOrigem) return null;
+    const ate = await registrarErroDeSenha(chaveOrigem, "origem", null, limiteOrigem);
+    return ate ? fraseDoBloqueioPorOrigem(ate) : null;
+  };
   const user = await db.query.usersTable.findFirst({
     where: eq(usersTable.username, normalizedUsername),
   });
@@ -85,7 +100,9 @@ export async function loginUser(
     });
     log.warn({ username: normalizedUsername }, "Login failed: user not found or no password");
     const pausou = await registrarErroDeSenha(chave, "login", null);
+    const fraseOrigem = await contarNaOrigem();
     if (pausou) throw new AuthError("TENTATIVAS_DEMAIS", fraseDoBloqueio(pausou));
+    if (fraseOrigem) throw new AuthError("TENTATIVAS_DEMAIS", fraseOrigem);
     throw new AuthError("INVALID_CREDENTIALS", "Nome de usuário ou senha inválidos");
   }
 
@@ -103,7 +120,9 @@ export async function loginUser(
     });
     log.warn({ userId: user.id }, "Login failed: wrong password");
     const pausou = await registrarErroDeSenha(chave, "login", { id: user.id, organizationId: user.organizationId, nome: user.preferredName ?? user.name, username: user.username });
+    const fraseOrigem = await contarNaOrigem();
     if (pausou) throw new AuthError("TENTATIVAS_DEMAIS", fraseDoBloqueio(pausou));
+    if (fraseOrigem) throw new AuthError("TENTATIVAS_DEMAIS", fraseOrigem);
     throw new AuthError("INVALID_CREDENTIALS", "Nome de usuário ou senha inválidos");
   }
   await limparErrosDeSenha(chave);
