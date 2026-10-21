@@ -1704,7 +1704,9 @@ router.post("/show-books/:id/positions/:positionId/refs", requireAuth, requireOr
     if (!(await positionInShowBook(positionId, showBookId))) {
       res.status(404).json({ error: "Posição não encontrada" }); return;
     }
-    const [doc] = await db.select().from(libraryDocumentsTable).where(eq(libraryDocumentsTable.id, documentId)).limit(1);
+    // O documento tem de ser da casa de quem pede (antes só se procurava pelo id: dava para ligar à posição, e ler, um documento de outra casa).
+    if (typeof documentId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(documentId)) { res.status(404).json({ error: "Documento não encontrado" }); return; }
+    const [doc] = await db.select().from(libraryDocumentsTable).where(and(eq(libraryDocumentsTable.id, documentId),eq(libraryDocumentsTable.orgId, req.user!.organizationId))).limit(1);
     if (!doc) { res.status(404).json({ error: "Documento não encontrado" }); return; }
     if (doc.status === "ARCHIVED") { res.status(400).json({ error: "Documento arquivado não pode ser referenciado" }); return; }
     const [ref] = await db
