@@ -25,6 +25,14 @@ const soAlvo = argumentos.find((a) => a.startsWith("--so="))?.slice(5) ?? null;
 
 type EntradaDoDiario = { idx: number; when: number; tag: string };
 
+/** As tabelas que uma migração cria (lidas do próprio arquivo SQL), para conferir depois de aplicar que elas existem e estão protegidas. */
+function tabelasQueAMigracaoCria(tag: string): string[] {
+  const arquivo = path.resolve(aqui, "../drizzle", `${tag}.sql`);
+  if (!fs.existsSync(arquivo)) return [];
+  const sql = fs.readFileSync(arquivo, "utf8");
+  return [...sql.matchAll(/CREATE TABLE\s+(?:IF NOT EXISTS\s+)?(?:public\.)?"?([a-z_0-9]+)"?/gi)].map((m) => m[1]!.toLowerCase());
+}
+
 function conexaoNaPorta5432(urlBruta: string) {
   const url = new URL(normalizeDatabaseUrl(urlBruta));
   const portaOriginal = url.port || "5432";
@@ -62,8 +70,16 @@ async function main() {
     }
     console.log(`\nAplicando ${soAlvo} ...`);
     await applyMigrations(pool as unknown as Parameters<typeof applyMigrations>[0]);
-    const depois = (await pool.query<{ rls: boolean }>(`select relrowsecurity as rls from pg_class where oid = to_regclass('public.tentativas_de_acesso')`)).rows[0];
-    console.log(depois ? `Pronto. A tabela tentativas_de_acesso existe${depois.rls ? " e está protegida (RLS ligado)" : " MAS SEM RLS: avise"}.` : "Migração aplicada, mas não achei a tabela esperada: avise antes de continuar.");
+    const tabelas = tabelasQueAMigracaoCria(soAlvo!);
+    if (!tabelas.length) { console.log("Pronto. Esta migração não cria tabela nova (o registro de migrações já a marca como aplicada)."); return; }
+    let tudoCerto = true;
+    for (const tabela of tabelas) {
+      const depois = (await pool.query<{ rls: boolean }>(`select relrowsecurity as rls from pg_class where oid = to_regclass($1)`, [`public.${tabela}`])).rows[0];
+      if (!depois) { tudoCerto = false; console.log(`ATENÇÃO: não achei a tabela ${tabela}. Avise antes de continuar.`); }
+      else if (!depois.rls) { tudoCerto = false; console.log(`ATENÇÃO: a tabela ${tabela} existe MAS SEM RLS. Avise antes de continuar.`); }
+      else console.log(`A tabela ${tabela} existe e está protegida (RLS ligado).`);
+    }
+    console.log(tudoCerto ? "Pronto." : "Terminou com atenção: leia os avisos acima.");
   } finally {
     await pool.end();
   }
