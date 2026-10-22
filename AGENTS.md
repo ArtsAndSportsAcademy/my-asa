@@ -235,6 +235,7 @@ mês real mostrar desequilíbrio** (a Babi só confirma). Sem tela e sem pedido:
 
 Pendente:
 - **Bateria completa de testes:** rodada em 20/10 depois de tudo, **76 de 76 verdes** (ver `docs/handoff-2026-10-20-fechamento.md`). Rode-a de novo antes de cada promoção.
+- **Verificador de fora (Better Stack) criado em 22/10/2026** pela pessoa que constrói o app, olhando `https://my-asa.vercel.app/api/saude` a cada 3 minutos e avisando por e-mail; o e-mail de teste chegou. Falta a conta do alerta de erros (Sentry, `docs/alerta-de-erros-sentry.md`) e conferir o backup do banco.
 - **A Babi confirma duas regras** (a decisão já está aplicada como recomendado): a Supervisão só com local encerrado; descartar "grade pessoa × dia" e grupos experimentais.
 - **Quem constrói o app** roda em produção `lib/db/scripts/limpar-texto-de-mensagens-no-registro.sql` (se ainda não rodou) e confere o
   backup do banco no Supabase (a promoção e o teste nas 4 contas já foram feitos em 20/10). **Issues e rótulos do GitHub não esperam por isso**
