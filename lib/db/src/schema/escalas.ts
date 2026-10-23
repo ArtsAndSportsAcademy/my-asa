@@ -87,7 +87,10 @@ export const escalaBlocoAjustesTable = pgTable("escala_bloco_ajustes", {
   scaleId: uuid("scale_id").notNull().references(() => scalesTable.id, { onDelete: "cascade" }),
   sourceKey: text("source_key").notNull(),
   userId: uuid("user_id").notNull().references(() => usersTable.id),
-  action: text("action").$type<"ADICIONAR" | "REMOVER">().notNull(),
+  action: text("action").$type<"ADICIONAR" | "REMOVER" | "HORARIO">().notNull(),
+  /** 0080: só para HORARIO — o horário só desta pessoa naquela atividade (HH:MM). A chave do bloco vem como "h:<chave do bloco>". */
+  newStart: text("novo_inicio"),
+  newEnd: text("novo_fim"),
   /** Por que a exceção foi feita. Obrigatório quando a pessoa está de folga naquele dia. */
   motivo: text("motivo"),
   /** Chamada mesmo de folga: sem isto, folga continua vencendo e a pessoa não entra na grade. */
@@ -100,7 +103,7 @@ export const escalaBlocoAjustesTable = pgTable("escala_bloco_ajustes", {
   endedBy: uuid("ended_by").references(() => usersTable.id),
   endedAt: timestamp("ended_at", { withTimezone: true }),
 }, (table) => [
-  check("escala_bloco_ajustes_action_ck", sql`${table.action} IN ('ADICIONAR','REMOVER')`),
+  check("escala_bloco_ajustes_action_ck", sql`${table.action} IN ('ADICIONAR','REMOVER','HORARIO')`),
   uniqueIndex("escala_bloco_ajustes_active_uq").on(table.scaleId, table.sourceKey, table.userId).where(sql`${table.active}`),
   index("escala_bloco_ajustes_scale_source_idx").on(table.scaleId, table.sourceKey),
 ]);

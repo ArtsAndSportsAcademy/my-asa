@@ -315,6 +315,7 @@
     {"idx":76,"version":"7","when":1792807200000,"tag":"0076_relogio_do_sistema","breakpoints":true},
     {"idx":77,"version":"7","when":1792893600000,"tag":"0077_supervisao_participa_dos_shows","breakpoints":true},
     {"idx":78,"version":"7","when":1792980000000,"tag":"0078_reservas_da_cena","breakpoints":true},
-    {"idx":79,"version":"7","when":1793066400000,"tag":"0079_reservas_do_grupo","breakpoints":true}
+    {"idx":79,"version":"7","when":1793066400000,"tag":"0079_reservas_do_grupo","breakpoints":true},
+    {"idx":80,"version":"7","when":1793152800000,"tag":"0080_horario_so_da_pessoa","breakpoints":true}
   ]
 }

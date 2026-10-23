@@ -16,7 +16,7 @@ import "./escalas.css";
 
 type Role = "adm" | "dir" | "sup" | "mem";
 type Regra = "todos" | "ninguem" | "area" | "grupo" | "pessoas" | "livro";
-type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; origem: "programacao" | "livro" | "manual" | "solicitacao"; regra: Regra | null; pessoaIds: string[]; vazio: boolean; sinal: string | null; showBookId: string | null; dailyBookId: string | null; dailyBookStatus: string | null; blocoId: string | null; allocationId?: string | null; allocationIds?: string[] };
+type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; origem: "programacao" | "livro" | "manual" | "solicitacao"; regra: Regra | null; pessoaIds: string[]; vazio: boolean; sinal: string | null; showBookId: string | null; dailyBookId: string | null; dailyBookStatus: string | null; blocoId: string | null; allocationId?: string | null; allocationIds?: string[]; horarioDela?: { chaveOriginal: string; inicio: string; fim: string | null } };
 type Pessoa = { id: string; name: string; areaId: string | null; areaName: string | null; folga: string | null; chamadaNaFolga?: { motivo: string | null; decidida: boolean } };
 type Area = { id: string; name: string; supervisores: { id: string; name: string }[]; pronta: { por: string | null; em: string } | null };
 type Dia = { date: string; location: { id: string; name: string }; escala: { id: string; status: string; version: number; publishedAt: string | null; alteradaDesde: string | null } | null; programacao: { id: string; nome: string; vigenciaInicio: string; vigenciaFim: string } | null; areas: Area[]; pessoas: Pessoa[]; blocos: Bloco[] };
@@ -281,6 +281,28 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       setRefresh((n) => n + 1); // se parte do lote chegou a gravar, a grade volta como ficou
     } finally { setSaving(false); setBusy(""); }
   };
+  // Horário só de uma pessoa (0080). Devolve a frase do erro (ou null) para a janela mostrar o motivo de verdade.
+  const mudarHorario = async (bloco: Bloco, pessoaId: string, horario: { inicio: string; fim: string | null; motivo?: string } | null): Promise<string | null> => {
+    if (!dia || !localId) return null;
+    setSaving(true); setBusy("ajuste"); setError("");
+    try {
+      if (review) {
+        const cur: SampleEscalaState = loadSampleEscala(localId, date) ?? { status: "DRAFT", version: 1, prontas: {}, publishedAt: null, alteradaDesde: null };
+        const horarios = { ...(cur.horarios ?? {}) };
+        if (horario) horarios[`${bloco.key}|${pessoaId}`] = { inicio: horario.inicio, fim: horario.fim }; else delete horarios[`${bloco.key}|${pessoaId}`];
+        saveSampleEscala(localId, date, { ...cur, horarios, alteradaDesde: cur.status === "DRAFT" ? cur.alteradaDesde : (cur.alteradaDesde ?? new Date().toISOString()), version: cur.status === "DRAFT" ? cur.version : cur.version + 1 });
+      } else {
+        await customFetch("/api/escalas/dia/horario", { method: "POST", body: JSON.stringify({ locationId: localId, date, sourceKey: bloco.key, userId: pessoaId, ...(horario ? { inicio: horario.inicio, fim: horario.fim, motivo: horario.motivo } : { voltar: true }) }) });
+      }
+      setRefresh((n) => n + 1);
+      return null;
+    } catch (err) {
+      const frase = errMsg(err, "Não consegui mudar o horário agora. Nada foi alterado; tente de novo.");
+      setError(frase);
+      setRefresh((n) => n + 1);
+      return frase;
+    } finally { setSaving(false); setBusy(""); }
+  };
   const ajustarCelula = async (bloco: Bloco, pessoaId: string, action: "ADICIONAR" | "REMOVER") => {
     if (!dia || !localId) return;
     setSaving(true); setError("");
@@ -400,7 +422,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       </div>}
       {carregandoTela && !error && !dia && !minha && <div aria-busy="true" style={css("padding:16px;text-align:center;font-size:12.5px;color:var(--asa-label);background:#fff;border:1px dashed var(--asa-line-soft);border-radius:12px")}>Montando a escala…</div>}
       {showMinha && minha && <MinhaEscala minha={minha} date={date} onHoje={() => setDate(todayISO())} onConfirm={confirmarEscala} saving={saving}/>}
-      {!isMem && tab === "escala" && dia && <EscalaGrid dia={dia} canEdit={isAdm || areasMinhas.length > 0} editableAreaIds={isAdm ? null : areasMinhas} onAdjust={ajustarCelulaEmLote} onRemoveManual={isAdm ? removerEntradaManual : undefined} onEditManual={isAdm ? ((b) => setManual({ bloco: b })) : undefined} onFolgaResolvida={folgaResolvida}/>} 
+      {!isMem && tab === "escala" && dia && <EscalaGrid dia={dia} canEdit={isAdm || areasMinhas.length > 0} editableAreaIds={isAdm ? null : areasMinhas} onAdjust={ajustarCelulaEmLote} onHorario={mudarHorario} onRemoveManual={isAdm ? removerEntradaManual : undefined} onEditManual={isAdm ? ((b) => setManual({ bloco: b })) : undefined} onFolgaResolvida={folgaResolvida}/>} 
       {!isMem && tab === "prog" && localId && <ProgramacaoTab review={review} localId={localId} localName={operationLabel} date={date} dia={dia} canEdit={Boolean(local?.podeEditar)} onChanged={() => setRefresh((n) => n + 1)}/>}
     </div>
 
@@ -458,11 +480,12 @@ function useTelefone() {
 }
 
 /* ---------- aba Escala: grade pessoas × horários ---------- */
-function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onRemoveManual, onEditManual, onFolgaResolvida }: { dia: Dia; canEdit: boolean; editableAreaIds: string[] | null; onAdjust: (bloco: Bloco, mudancas: { userId: string; action: "ADICIONAR" | "REMOVER" }[], motivo?: string) => Promise<void>; onRemoveManual?: (allocationIds: string[]) => Promise<void>; onEditManual?: (bloco: Bloco) => void; onFolgaResolvida?: (userId: string) => Promise<void> }) {
+function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemoveManual, onEditManual, onFolgaResolvida }: { dia: Dia; canEdit: boolean; editableAreaIds: string[] | null; onHorario: (bloco: Bloco, pessoaId: string, horario: { inicio: string; fim: string | null; motivo?: string } | null) => Promise<string | null>; onAdjust: (bloco: Bloco, mudancas: { userId: string; action: "ADICIONAR" | "REMOVER" }[], motivo?: string) => Promise<void>; onRemoveManual?: (allocationIds: string[]) => Promise<void>; onEditManual?: (bloco: Bloco) => void; onFolgaResolvida?: (userId: string) => Promise<void> }) {
   const [view, setView] = useState<"pessoa" | "atividade">(() => typeof window !== "undefined" && window.matchMedia?.("(max-width: 640px)").matches ? "atividade" : "pessoa");
   const [team, setTeam] = useState("todos");
   const [zoom, setZoom] = useState(100);
   const [ajustando, setAjustando] = useState<Bloco | null>(null);
+  const [mudandoHorario, setMudandoHorario] = useState<{ pessoaId: string; nome: string; bloco: Bloco; outro: Bloco } | null>(null);
   const [confirmarGrade, setConfirmarGrade] = useState<{ titulo: string; texto: string; acao: string; onSim: () => void } | null>(null);
   const [tirando, setTirando] = useState("");
   const telefone = useTelefone();
@@ -554,7 +577,8 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onRemoveManual, o
       {gruposDeConflito.map((g) => {
         const ini = g.a.inicio > g.b.inicio ? g.a.inicio : g.b.inicio;
         const fim = [g.a.fim ?? g.a.inicio, g.b.fim ?? g.b.inicio].sort()[0];
-        const tiraveis = [g.a, g.b].filter((bloco) => bloco.regra !== "livro");
+        const tiraveis = [g.a, g.b].filter((bloco) => bloco.regra !== "livro" && !bloco.horarioDela);
+        const mudaveis = [g.a, g.b].filter((bloco) => bloco.regra !== "livro" && bloco.origem !== "livro" && bloco.origem !== "solicitacao");
         return <div key={`${g.a.key}-${g.b.key}`} style={css("display:flex;flex-direction:column;gap:8px;border:1px solid var(--asa-rose-faint);background:var(--asa-rose-paper);border-radius:12px;padding:11px 13px")}>
           <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:9px")}>
             <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--asa-rose-fg)")}>{fim > ini ? `${ini}–${fim}` : ini}</span>
@@ -565,11 +589,13 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onRemoveManual, o
           <div style={css("display:flex;flex-wrap:wrap;gap:6px")}>
             {g.pessoas.map((c) => {
               const pode = canEdit && (editableAreaIds === null || (c.areaId !== null && editableAreaIds.includes(c.areaId)));
-              return <span key={c.pessoaId} style={css("display:inline-flex;align-items:center;gap:6px;border:1px solid var(--asa-rose-muted);background:#fff;border-radius:999px;padding:3px 4px 3px 10px;font-size:12px;font-weight:700;color:var(--asa-ink-dark)")}>
+              return <span key={c.pessoaId} style={css("display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;border:1px solid var(--asa-rose-muted);background:#fff;border-radius:16px;padding:3px 4px 3px 10px;font-size:12px;font-weight:700;color:var(--asa-ink-dark)")}>
                 {c.pessoa}
                 {pode && tiraveis.map((bloco) => <button key={bloco.key} type="button" className="esc-cell-adjust esc-hit" aria-label={`Tirar ${c.pessoa} de ${textoDoBloco(bloco)}`} disabled={tirando === `${c.pessoaId}|${bloco.key}`} onClick={async () => { setTirando(`${c.pessoaId}|${bloco.key}`); try { await onAdjust(bloco, [{ userId: c.pessoaId, action: "REMOVER" }]); } finally { setTirando(""); } }}>
                   {tirando === `${c.pessoaId}|${bloco.key}` ? "Tirando…" : `Tirar de ${textoDoBloco(bloco)}`}
                 </button>)}
+                {pode && mudaveis.map((bloco) => <button key={`h-${bloco.key}`} type="button" className="esc-cell-adjust esc-hit" aria-label={`Mudar o horário de ${textoDoBloco(bloco)} só para ${c.pessoa}`} onClick={() => setMudandoHorario({ pessoaId: c.pessoaId, nome: c.pessoa, bloco, outro: bloco === g.a ? g.b : g.a })}>{`Mudar horário de ${textoDoBloco(bloco)}`}</button>)}
+                {pode && [g.a, g.b].filter((bloco) => bloco.horarioDela).map((bloco) => <button key={`v-${bloco.key}`} type="button" className="esc-cell-adjust esc-hit" aria-label={`Voltar ${c.pessoa} ao horário normal de ${textoDoBloco(bloco)}`} onClick={() => void onHorario({ ...bloco, key: bloco.horarioDela!.chaveOriginal }, c.pessoaId, null)}>{`Voltar ao horário normal de ${textoDoBloco(bloco)}`}</button>)}
               </span>;
             })}
           </div>
@@ -611,7 +637,9 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onRemoveManual, o
                 <div style={css("flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px")}>
                   {blockEl(b, "white-space:normal;max-width:100%;" + (emConflito.has(`${p.name}|${b.key}`) ? "box-shadow:0 0 0 1.5px var(--asa-ausente-fg) inset;" : ""), true)}
                   {emConflito.has(`${p.name}|${b.key}`) && <span style={css("font-size:11.5px;font-weight:700;color:var(--asa-ausente-fg)")}>Cruza com outro bloco dela</span>}
-                  {pode && b.regra !== "ninguem" && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setAjustando(b)} aria-label={`Ajustar ${textoDoBloco(b)}`}>Ajustar</button>}
+                  {b.horarioDela && <span style={css("font-size:11.5px;color:var(--asa-label)")}>{`Horário só desta pessoa · era ${faixa(b.horarioDela)}`}</span>}
+                  {pode && b.horarioDela && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => void onHorario({ ...b, key: b.horarioDela!.chaveOriginal }, p.id, null)} aria-label={`Voltar ${p.name} ao horário normal de ${textoDoBloco(b)}`}>Voltar ao normal</button>}
+                  {pode && !b.horarioDela && b.regra !== "ninguem" && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setAjustando(b)} aria-label={`Ajustar ${textoDoBloco(b)}`}>Ajustar</button>}
                 </div>
               </li>)}
             </ul> : <p className="esc-cartao-vazio">Sem blocos neste dia.</p>)}
@@ -682,7 +710,9 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onRemoveManual, o
                     </span>)}
                     {b.regra !== "ninguem" && (b.vazio ? <span style={css("display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:700;background:var(--asa-vaga-bg);color:var(--asa-vaga-fg);border:1px dashed var(--asa-vaga-bd);")}>sem ninguém · defina quem entra</span>
                       : <span style={css("font-size:10.5px;color:var(--asa-label);margin-left:2px")}>{plural(who.length, "pessoa", "pessoas")}</span>)}
-                    {canEdit && b.regra !== "ninguem" && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setAjustando(b)}>Ajustar</button>}
+                    {b.horarioDela && <span style={css("font-size:11.5px;color:var(--asa-label)")}>{`Horário só desta pessoa · era ${faixa(b.horarioDela)}`}</span>}
+                    {canEdit && b.horarioDela && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => void onHorario({ ...b, key: b.horarioDela!.chaveOriginal }, b.pessoaIds[0]!, null)}>Voltar ao normal</button>}
+                    {canEdit && !b.horarioDela && b.regra !== "ninguem" && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setAjustando(b)}>Ajustar</button>}
                     {onEditManual && b.origem === "manual" && b.allocationId && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => onEditManual(b)}>Mudar horário</button>}
                     {onRemoveManual && b.origem === "manual" && b.allocationId && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setConfirmarGrade({ titulo: "Tirar do dia", texto: `"${b.rotulo}" das ${b.inicio} sai do dia para ${b.pessoaIds.length === 1 ? "1 pessoa" : `${b.pessoaIds.length} pessoas`}. A Programação não muda.`, acao: "Tirar do dia", onSim: () => void onRemoveManual(b.allocationIds?.length ? b.allocationIds : [b.allocationId!]) })}>Tirar do dia</button>}
                   </div>
@@ -695,6 +725,11 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onRemoveManual, o
     </div>
     <div style={css("height:16px")}/>
     {confirmarGrade && <ConfirmDialog {...confirmarGrade} onClose={() => setConfirmarGrade(null)}/>}
+    {mudandoHorario && <HorarioDialog nome={mudandoHorario.nome} bloco={mudandoHorario.bloco} outro={mudandoHorario.outro} onClose={() => setMudandoHorario(null)} onSalvar={async (horario) => {
+      const erro = await onHorario(mudandoHorario.bloco.horarioDela ? { ...mudandoHorario.bloco, key: mudandoHorario.bloco.horarioDela.chaveOriginal } : mudandoHorario.bloco, mudandoHorario.pessoaId, horario);
+      if (!erro) setMudandoHorario(null);
+      return erro;
+    }}/>}
     {ajustando && <AjusteCelulaDialog bloco={ajustando} pessoas={dia.pessoas} editableAreaIds={editableAreaIds} onClose={() => setAjustando(null)} onAdjust={async (mudancas, motivo) => {
       await onAdjust(ajustando, mudancas, motivo);
       // Aplicado: fecha o diálogo e a grade mostra o resultado, sem versão intermediária na tela.
@@ -749,6 +784,62 @@ function RegrasDoLocalDialog({ localId, localNome, onClose }: { localId: string;
       <button type="submit" className="shows-primary" disabled={carregando || salvando}>{salvando ? "Salvando…" : "Salvar regras"}</button>
     </footer>
   </form></div>;
+}
+
+const emMinutos = (hora: string) => Number(hora.slice(0, 2)) * 60 + Number(hora.slice(3, 5));
+const deMinutos = (minutos: number) => `${String(Math.floor(minutos / 60)).padStart(2, "0")}:${String(minutos % 60).padStart(2, "0")}`;
+/**
+ * Sugestão de horário só para uma pessoa em choque: a atividade comece 5 minutos depois que a outra termina. Mantém o mesmo fim se
+ * sobrar pelo menos metade do tempo; se sobrar menos, mantém a mesma duração. Show sem hora de fim cadastrada vale 30 minutos (a janela avisa).
+ */
+export function sugerirHorario(mover: { inicio: string; fim: string | null }, outro: { inicio: string; fim: string | null }): { inicio: string; fim: string | null; aviso: string | null } {
+  const outroSemFim = !outro.fim;
+  const fimDoOutro = outro.fim ? emMinutos(outro.fim) : emMinutos(outro.inicio) + 30;
+  const inicio = Math.min(fimDoOutro + 5, 23 * 60 + 29);
+  if (!mover.fim) return { inicio: deMinutos(inicio), fim: null, aviso: outroSemFim ? "A outra atividade não tem hora de fim cadastrada: contei 30 minutos. Confira." : null };
+  const duracao = emMinutos(mover.fim) - emMinutos(mover.inicio);
+  const sobra = emMinutos(mover.fim) - inicio;
+  const fim = Math.min(sobra >= duracao / 2 ? emMinutos(mover.fim) : inicio + duracao, 23 * 60 + 59);
+  return { inicio: deMinutos(inicio), fim: deMinutos(fim), aviso: outroSemFim ? "A outra atividade não tem hora de fim cadastrada: contei 30 minutos. Confira." : null };
+}
+
+function HorarioDialog({ nome, bloco, outro, onClose, onSalvar }: { nome: string; bloco: Bloco; outro: Bloco; onClose: () => void; onSalvar: (horario: { inicio: string; fim: string | null; motivo?: string }) => Promise<string | null> }) {
+  useFecharComEsc(onClose);
+  const normal = bloco.horarioDela ? { inicio: bloco.horarioDela.inicio, fim: bloco.horarioDela.fim } : { inicio: bloco.inicio, fim: bloco.fim };
+  const sugestao = sugerirHorario(normal, outro);
+  const [inicio, setInicio] = useState(sugestao.inicio);
+  const [fim, setFim] = useState(sugestao.fim ?? "");
+  const [motivo, setMotivo] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [erro, setErro] = useState("");
+  const invalido = !inicio || (fim !== "" && fim <= inicio);
+  const salvar = async () => {
+    setSaving(true); setErro("");
+    try { const frase = await onSalvar({ inicio, fim: fim || null, motivo: motivo.trim() || undefined }); if (frase) setErro(frase); } finally { setSaving(false); }
+  };
+  const campo = "width:100%;box-sizing:border-box;border:1px solid var(--asa-line-soft);border-radius:10px;padding:10px 12px;font:600 13px Manrope,sans-serif;color:var(--asa-ink-dark)";
+  return <div className="shows-dialog-backdrop" role="presentation"><div className="shows-dialog" role="dialog" aria-modal="true" aria-label={`Mudar o horário de ${textoDoBloco(bloco)} só para ${nome}`}>
+    <header className="shows-dialog-header"><div><h2>Mudar o horário só desta pessoa</h2><p>{`${nome} · ${textoDoBloco(bloco)}`}</p></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
+    <div className="shows-dialog-content" style={css("display:flex;flex-direction:column;gap:12px")}>
+      <p style={css("margin:0;font-size:12.5px;line-height:1.5;color:var(--asa-ink-muted)")}>{`${nome} está em ${textoDoBloco(bloco)} (${faixa(normal)}) e em ${textoDoBloco(outro)} (${faixa(outro)}) ao mesmo tempo. Dá para mudar só o horário de ${textoDoBloco(bloco)} para essa pessoa, sem tirar ninguém e sem mexer nos outros. Vale só para este dia; a Programação não muda.`}</p>
+      <div style={css("border:1px solid var(--asa-lavender);background:var(--asa-purple-dawn);border-radius:11px;padding:10px 12px;font-size:12px;line-height:1.5;color:var(--asa-ink-dark)")}>
+        <strong>{`Sugestão: ${faixa(sugestao)}`}</strong> — logo depois de {textoDoBloco(outro)}.{sugestao.aviso ? ` ${sugestao.aviso}` : ""}
+      </div>
+      <div style={css("display:grid;grid-template-columns:1fr 1fr;gap:10px")}>
+        <label style={css("display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--asa-label)")}>Começa às<input type="time" value={inicio} onChange={(e) => setInicio(e.target.value)} style={css(campo)}/></label>
+        <label style={css("display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--asa-label)")}>Termina às<input type="time" value={fim} onChange={(e) => setFim(e.target.value)} style={css(campo)}/></label>
+      </div>
+      {fim !== "" && fim <= inicio && <span role="alert" style={css("font-size:12px;color:var(--asa-ausente-fg)")}>O fim precisa ser depois do início.</span>}
+      <label style={css("display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--asa-label)")}>Por quê? (opcional, fica no Registro)
+        <textarea rows={2} value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Tem boas-vindas às 10:00" style={css(campo + ";resize:vertical")}/>
+      </label>
+      {erro && <p role="alert" style={css("margin:0;font-size:12.5px;line-height:1.5;color:var(--asa-ausente-fg)")}>{erro}</p>}
+    </div>
+    <footer className="shows-dialog-footer">
+      <button type="button" onClick={onClose} className="shows-secondary" disabled={saving}>Cancelar</button>
+      <button type="button" className="shows-primary" disabled={invalido || saving} onClick={() => void salvar()}>{saving ? "Salvando…" : "Salvar horário"}</button>
+    </footer>
+  </div></div>;
 }
 
 function AjusteCelulaDialog({ bloco, pessoas, editableAreaIds, onClose, onAdjust }: { bloco: Bloco; pessoas: Pessoa[]; editableAreaIds: string[] | null; onClose: () => void; onAdjust: (mudancas: { userId: string; action: "ADICIONAR" | "REMOVER" }[], motivo?: string) => Promise<void> }) {

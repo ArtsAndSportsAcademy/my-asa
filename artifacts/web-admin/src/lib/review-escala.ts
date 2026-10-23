@@ -14,11 +14,14 @@ export type SampleBloco = {
   key: string; rotulo: string; inicio: string; fim: string | null; origem: "programacao" | "livro" | "manual";
   regra: "todos" | "ninguem" | "area" | "grupo" | "pessoas" | "livro" | null; pessoaIds: string[]; vazio: boolean; sinal: string | null;
   showBookId: string | null; dailyBookId: string | null; dailyBookStatus: string | null; blocoId: string | null; allocationId: string | null;
+  horarioDela?: { chaveOriginal: string; inicio: string; fim: string | null };
 };
 export type SampleEscalaState = {
   status: "DRAFT" | "PUBLISHED" | "REPUBLISHED"; version: number; prontas: Record<string, { por: string; em: string }>;
   publishedAt: string | null; alteradaDesde: string | null;
   ajustes?: Record<string, Record<string, "ADICIONAR" | "REMOVER">>;
+  /** Horário só de uma pessoa (0080): chave "<bloco>|<pessoa>". */
+  horarios?: Record<string, { inicio: string; fim: string | null }>;
   confirmacoes?: Record<string, { version: number; em: string }>;
 };
 
@@ -190,6 +193,16 @@ export function sampleDia(localId: string, date: string) {
     bloco.vazio = bloco.regra !== "ninguem" && bloco.pessoaIds.length === 0;
     bloco.sinal = bloco.vazio ? (bloco.sinal ?? "Ajuste do dia deixou este bloco sem ninguém") : null;
   }
+  for (const [chave, h] of Object.entries(state?.horarios ?? {})) {
+    const [chaveBloco, pessoaId] = chave.split("|") as [string, string];
+    const original = blocos.find((b) => b.key === chaveBloco);
+    if (!original || !present.has(pessoaId) || !original.pessoaIds.includes(pessoaId)) continue;
+    original.pessoaIds = original.pessoaIds.filter((id) => id !== pessoaId);
+    blocos.push({ ...original, key: `h:${original.key}:${pessoaId}`, inicio: h.inicio, fim: h.fim, regra: "pessoas", pessoaIds: [pessoaId], vazio: false,
+      sinal: `Horário só desta pessoa: era ${original.inicio}${original.fim ? `–${original.fim}` : ""}`, horarioDela: { chaveOriginal: original.key, inicio: original.inicio, fim: original.fim } });
+    if (!original.pessoaIds.length) { original.vazio = false; original.sinal = null; }
+  }
+  blocos.sort((a, b) => a.inicio.localeCompare(b.inicio) || (a.fim ?? "").localeCompare(b.fim ?? ""));
   return {
     date, location,
     escala: state ? { id: `sample-escala-${localId}-${date}`, status: state.status, version: state.version, publishedAt: state.publishedAt, alteradaDesde: state.alteradaDesde } : null,

@@ -65,6 +65,8 @@ export type BlocoDia = {
   allocationId: string | null;
   /** Quando a mesma atividade manual vale para várias pessoas, todas as entradas do bloco. */
   allocationIds?: string[];
+  /** Bloco "só da pessoa": a mesma atividade com horário mudado para uma pessoa (0080). Guarda de onde veio. */
+  horarioDela?: { chaveOriginal: string; inicio: string; fim: string | null };
 };
 
 export type EscalaDia = {
@@ -385,6 +387,31 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
       bloco.pessoaIds = [...pessoas];
       bloco.vazio = bloco.regra !== "ninguem" && bloco.pessoaIds.length === 0;
       bloco.sinal = bloco.vazio ? (bloco.sinal ?? "Ajuste do dia deixou este bloco sem ninguém") : null;
+    }
+  }
+  // Horário só da pessoa (0080): a pessoa sai da atividade no horário de todos e entra num bloco só da pessoa, com o mesmo nome e o
+  // horário novo. Assim a grade, o choque, o Meu Dia e a convocação enxergam um bloco comum. Sem efeito se ela já não estava na atividade
+  // (saiu por outro ajuste, entrou em folga): o horário volta a valer sozinho se ela voltar.
+  if (scale) {
+    const horarios = await db.select().from(escalaBlocoAjustesTable).where(and(
+      eq(escalaBlocoAjustesTable.scaleId, scale.id), eq(escalaBlocoAjustesTable.active, true), eq(escalaBlocoAjustesTable.action, "HORARIO"),
+    ));
+    const movidosDe = new Set<string>();
+    for (const h of horarios) {
+      const chave = h.sourceKey.replace(/^h:/, "");
+      const original = blocos.find((b) => b.key === chave);
+      if (!original || !h.newStart || !original.pessoaIds.includes(h.userId)) continue;
+      original.pessoaIds = original.pessoaIds.filter((id) => id !== h.userId);
+      movidosDe.add(original.key);
+      blocos.push({
+        ...base, key: `h:${original.key}:${h.userId}`, rotulo: original.rotulo, inicio: h.newStart, fim: h.newEnd ?? null, origem: original.origem, regra: "pessoas",
+        pessoaIds: [h.userId], vazio: false, sinal: `Horário só desta pessoa: era ${original.inicio}${original.fim ? `–${original.fim}` : ""}`,
+        horarioDela: { chaveOriginal: original.key, inicio: original.inicio, fim: original.fim },
+      });
+    }
+    for (const bloco of blocos) {
+      if (!movidosDe.has(bloco.key) || bloco.pessoaIds.length > 0) continue;
+      bloco.vazio = false; bloco.sinal = null;
     }
   }
   blocos.sort((a, b) => a.inicio.localeCompare(b.inicio) || (a.fim ?? "").localeCompare(b.fim ?? ""));

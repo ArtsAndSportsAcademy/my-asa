@@ -278,6 +278,105 @@ router.post("/escalas/mes/restaurar", requireAuth, requireOrganization, async (r
  * Ajusta uma célula só neste dia; não muda a Programação. Aceita uma pessoa (`userId` + `action`)
  * ou várias de uma vez (`mudancas: [{ userId, action }]`), para a tela aplicar tudo num pedido só.
  */
+const HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/**
+ * Horário só da pessoa (0080). Quando alguém cai em duas atividades ao mesmo tempo, além de tirar dá para mudar o horário de UMA
+ * delas só para essa pessoa (treino de gelo às 10:20 para quem tem boas-vindas às 10:00). Show não muda de horário aqui: horário de show
+ * é exceção, resolvida no Livro do Dia. Quem pode é quem pode ajustar a pessoa (Administração, ou a Supervisão da área dela).
+ * Com "voltar" o horário normal da atividade volta para ela. Entra no Registro; escala já publicada pede republicação e avisa.
+ */
+router.post("/escalas/dia/horario", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  const { locationId, date, sourceKey, userId, inicio, fim, voltar, motivo } = req.body ?? {};
+  if (typeof locationId !== "string" || typeof date !== "string" || !DATE.test(date) || typeof sourceKey !== "string" || !sourceKey || typeof userId !== "string") {
+    res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "locationId, date, sourceKey e userId são obrigatórios." }); return;
+  }
+  const desfazer = voltar === true;
+  if (!desfazer) {
+    if (typeof inicio !== "string" || !HORA.test(inicio)) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "Escolha a hora de início (formato 08:30)." }); return; }
+    if (fim !== undefined && fim !== null && (typeof fim !== "string" || !HORA.test(fim))) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "A hora de fim não é válida (formato 08:30)." }); return; }
+    if (typeof fim === "string" && fim <= inicio) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "O fim precisa ser depois do início." }); return; }
+  }
+  const porque = typeof motivo === "string" && motivo.trim() ? motivo.trim() : null;
+  try {
+    const location = await locationInOrg(locationId, actor.organizationId);
+    if (!location) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
+    if (!(await canManageLocal(actor, locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Você não ajusta a Escala deste local." }); return; }
+    const dia = await montarEscalaDoDia(actor.organizationId, locationId, date);
+    const original = dia?.blocos.find((b) => b.key === sourceKey);
+    const bloco = original ?? dia?.blocos.find((b) => b.horarioDela?.chaveOriginal === sourceKey && b.pessoaIds.includes(userId));
+    if (!original && !(desfazer && bloco)) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Esta atividade não está mais na Escala do dia. Atualize a tela." }); return; }
+    const alvo = original ?? bloco!;
+    if (!desfazer && (alvo.origem === "livro" || alvo.regra === "livro")) {
+      res.status(409).json({ error: "HORARIO_DE_SHOW", message: "Horário de show não muda aqui: o show tem hora marcada. Se for exceção, a pessoa sai do show pelo Livro do Dia." }); return;
+    }
+    if (!desfazer && alvo.origem === "solicitacao") {
+      res.status(409).json({ error: "HORARIO_PEDIDO", message: "Este horário foi pedido pela própria pessoa e aprovado em Solicitações. Para mudar, resolva por lá." }); return;
+    }
+    const jaComHorario = Boolean(dia?.blocos.some((b) => b.horarioDela?.chaveOriginal === sourceKey && b.pessoaIds.includes(userId)));
+    if (!desfazer && !alvo.pessoaIds.includes(userId) && !jaComHorario) {
+      res.status(409).json({ error: "PESSOA_FORA_DA_ATIVIDADE", message: "Esta pessoa não está nesta atividade. Atualize a tela." }); return;
+    }
+    const [pessoa] = await db.select({ id: usersTable.id, areaId: usersTable.areaId, name: usersTable.name }).from(usersTable)
+      .where(and(eq(usersTable.id, userId), eq(usersTable.organizationId, actor.organizationId))).limit(1);
+    if (!pessoa) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Pessoa não encontrada." }); return; }
+    const minhasAreas = await supervisedAreas(actor, locationId);
+    if (actor.role !== "ADMIN" && (!pessoa.areaId || !minhasAreas.includes(pessoa.areaId))) {
+      res.status(403).json({ error: "ACESSO_NEGADO", message: "Supervisão ajusta somente pessoas da própria área." }); return;
+    }
+    const scaleAntes = await findEscalaDoDia(locationId, date);
+    const operationId = scaleAntes?.operationId ?? await operationForLocation(locationId);
+    if (!operationId) { res.status(409).json({ error: "LOCAL_SEM_OPERACAO", message: "Este local ainda não está ligado a uma operação." }); return; }
+    const chave = `h:${sourceKey}`;
+    const rotulo = alvo.rotulo;
+    const resultado = await db.transaction(async (tx) => {
+      let scale = scaleAntes ?? null;
+      if (!scale) {
+        const [created] = await tx.insert(scalesTable).values({
+          operationId, locationId, title: `Escala do dia · ${location.name} · ${date}`, periodStart: date, periodEnd: date,
+          status: "DRAFT", generatedAt: new Date(), generatedBy: actor.sub, createdBy: actor.sub,
+        }).returning();
+        scale = created!;
+        await writeHistoryEvent({ category: "SCALE", action: "escala.criada", title: "Escala do dia criada", narrative: `Escala de ${location.name} para ${date} criada.`, entityType: "scale", entityId: scale.id, actorId: actor.sub, operationId, orgId: actor.organizationId, afterState: { scale } }, tx as unknown as HistoryExecutor);
+      }
+      const [anterior] = await tx.select().from(escalaBlocoAjustesTable).where(and(
+        eq(escalaBlocoAjustesTable.scaleId, scale.id), eq(escalaBlocoAjustesTable.sourceKey, chave), eq(escalaBlocoAjustesTable.userId, userId), eq(escalaBlocoAjustesTable.active, true),
+      )).limit(1);
+      if (desfazer && !anterior) return { mudou: false as const, scale };
+      if (!desfazer && anterior && anterior.newStart === inicio && (anterior.newEnd ?? null) === (typeof fim === "string" ? fim : null)) return { mudou: false as const, scale };
+      if (anterior) await tx.update(escalaBlocoAjustesTable).set({ active: false, endedBy: actor.sub, endedAt: new Date() }).where(eq(escalaBlocoAjustesTable.id, anterior.id));
+      if (!desfazer) {
+        await tx.insert(escalaBlocoAjustesTable).values({
+          scaleId: scale.id, sourceKey: chave, userId, action: "HORARIO", newStart: inicio, newEnd: typeof fim === "string" ? fim : null, createdBy: actor.sub, motivo: porque,
+        });
+      }
+      const faixa = (a: string, b: string | null | undefined) => (b ? `${a}–${b}` : a);
+      const doOriginal = original ? faixa(original.inicio, original.fim) : bloco?.horarioDela ? faixa(bloco.horarioDela.inicio, bloco.horarioDela.fim) : "";
+      await writeHistoryEvent({
+        category: "SCALE", action: desfazer ? "escala.horario_restaurado" : "escala.horario_ajustado", title: desfazer ? "Horário da pessoa voltou ao normal" : "Horário só de uma pessoa mudado",
+        narrative: desfazer
+          ? `${pessoa.name} voltou ao horário normal de ${rotulo} (${doOriginal}) em ${date}.`
+          : `${pessoa.name}: ${rotulo} de ${doOriginal} passou a ${faixa(inicio, typeof fim === "string" ? fim : null)} em ${date}, só para essa pessoa.${porque ? ` Motivo: ${porque}` : ""}`,
+        entityType: "scale", entityId: scale.id, actorId: actor.sub, operationId, orgId: actor.organizationId,
+        beforeState: { sourceKey, pessoaId: userId, horario: anterior ? { inicio: anterior.newStart, fim: anterior.newEnd } : null },
+        afterState: { sourceKey, pessoaId: userId, horario: desfazer ? null : { inicio, fim: typeof fim === "string" ? fim : null } },
+        ...(porque ? { metadata: { reason: porque } } : {}),
+      }, tx as unknown as HistoryExecutor);
+      if (escalaPublicada(scale.status)) {
+        scale = (await tx.update(scalesTable).set({ alteradaDesde: scale.alteradaDesde ?? new Date(), updatedAt: new Date(), version: scale.version + 1 }).where(eq(scalesTable.id, scale.id)).returning())[0]!;
+        await avisarRepublicacaoPendente(tx as unknown as Parameters<typeof avisarRepublicacaoPendente>[0], scale,
+          desfazer ? `${pessoa.name} voltou ao horário normal de ${rotulo}` : `${pessoa.name} mudou o horário de ${rotulo} para ${faixa(inicio, typeof fim === "string" ? fim : null)}`, { areaIds: [pessoa.areaId] });
+      }
+      return { mudou: true as const, scale };
+    });
+    res.json({ mudou: resultado.mudou, dia: await montarEscalaDoDia(actor.organizationId, locationId, date) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não consegui mudar o horário agora. Nada foi alterado; tente de novo." });
+  }
+});
+
 router.post("/escalas/dia/ajustes", requireAuth, requireOrganization, async (req, res) => {
   const actor = req.user! as Actor;
   const { locationId, date, sourceKey, userId, action, mudancas, motivo } = req.body ?? {};
