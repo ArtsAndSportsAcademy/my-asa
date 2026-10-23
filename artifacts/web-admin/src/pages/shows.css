@@ -40,7 +40,7 @@
 
 /* O painel da ASA é convocado, não reserva espaço da montagem. */
 .official-book-grid.asa-closed{grid-template-columns:286px minmax(0,1fr) 44px}.official-book-grid.asa-open{grid-template-columns:286px minmax(0,1fr) 314px}.official-asa-launcher{min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;gap:7px;border:0;border-left:1px solid #ece6f5;background:#fcfbfe;color:#5f527e;cursor:pointer;writing-mode:vertical-rl;font:700 12px Outfit}.official-asa-launcher .asa-mini{writing-mode:horizontal-tb}.official-book-grid{height:min(780px,calc(100dvh - 154px));min-height:680px}.official-stage{padding:16px 22px}.official-main-map{min-height:300px}.official-keyframe-strip{flex-basis:174px;min-height:174px}.official-keyframe-scroll{min-height:140px}.official-keyframe{flex-basis:174px;grid-template-rows:104px auto;min-height:136px}.official-add-keyframe{flex-basis:174px;min-height:136px}.official-slot-card{top:12px;bottom:auto;max-height:calc(100% - 24px);overflow:auto}.official-slot-card.opens-left{left:12px;right:auto}.official-slot-card.opens-right{right:12px;left:auto}
-@media(max-width:1100px){.official-book-grid.asa-closed,.official-book-grid.asa-open{grid-template-columns:250px minmax(0,1fr)}.official-asa-launcher{display:none}.official-book-grid{height:auto;min-height:0}.official-main-map{min-height:320px}.official-keyframe-strip{flex-basis:174px}}
+@media(max-width:1100px){.official-book-grid.asa-closed,.official-book-grid.asa-open{grid-template-columns:316px minmax(0,1fr)}.official-asa-launcher{display:none}.official-book-grid{height:auto;min-height:0}.official-main-map{min-height:320px}.official-keyframe-strip{flex-basis:174px}}
 
 /* Em tela baixa, o Livro cresce e a página rola; o palco nunca é comprimido para caber à força. */
 @media(min-width:1101px){.official-book-grid{height:min(800px,calc(100dvh - 154px));min-height:760px}.official-main-map{min-height:360px}.official-slot-card{overflow:visible;max-height:none}}
@@ -198,7 +198,7 @@
    e pode ser escondida. Vale só no computador; no celular a grade já é de uma coluna. */
 .official-no-groups{margin:8px 2px;font-size:12px;line-height:1.5;color:#6b6482}
 @media(min-width:1101px){
-  .official-book-grid.asa-closed.asa-gone{grid-template-columns:clamp(220px,19vw,264px) minmax(0,1fr)!important}
+  .official-book-grid.asa-closed.asa-gone{grid-template-columns:clamp(316px,18vw,340px) minmax(0,1fr)!important}
   .official-book-grid.asa-closed.asa-gone.structure-hidden{grid-template-columns:minmax(0,1fr)!important}
   .official-book-grid.structure-hidden>.official-structure{display:none}
   .official-book-grid.structure-hidden>.official-stage{grid-column:1!important}
