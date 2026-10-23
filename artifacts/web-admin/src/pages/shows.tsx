@@ -518,9 +518,12 @@ function OfficialBookSkeleton({ show, sessions, onBack, canManage, characters, p
     setZoneOverrides(zonasAtuais.current);
     persistZonePositions(format, atuais);
   };
-  const castFor = (slot: OfficialSlot) => slotCastOverrides[slot.label] ?? slot.cast ?? { titularId: null, substituteIds: [] };
+
+  // Titular e substitutos são por cena: o mesmo rótulo (BR 01) existe em todas as cenas, então a chave inclui a posição (ou a cena).
+  const castKey = (slot: OfficialSlot) => slot.id ?? slotKey(slot);
+  const castFor = (slot: OfficialSlot) => slotCastOverrides[castKey(slot)] ?? slot.cast ?? { titularId: null, substituteIds: [] };
   const persistSlotCast = async (slot: OfficialSlot, next: SlotCast, reason: string) => {
-    const nextCasts = { ...slotCastOverrides, [slot.label]: next };
+    const nextCasts = { ...slotCastOverrides, [castKey(slot)]: next };
     setSlotCastOverrides(nextCasts);
     if (isSample) updateReviewPatch(show.id, { slotCasts: nextCasts });
     if (!isSample && slot.id) await customFetch(`/api/show-books/${show.id}/positions/${slot.id}/cast`, { method: "PUT", body: JSON.stringify({ ...next, reason }) });
@@ -590,7 +593,7 @@ function OfficialBookSkeleton({ show, sessions, onBack, canManage, characters, p
       ...scene,
       groups: groupsForScene(scene).map((group) => ({ ...group, slots: group.slots.filter((candidate) => candidate.id ? candidate.id !== slot.id : candidate.label !== slot.label) })),
     }));
-    setSlotCastOverrides((current) => { const { [slot.label]: _removed, ...rest } = current; if (isSample) updateReviewPatch(show.id, { slotCasts: rest }); return rest; });
+    setSlotCastOverrides((current) => { const { [castKey(slot)]: _removed, ...rest } = current; if (isSample) updateReviewPatch(show.id, { slotCasts: rest }); return rest; });
     setSelectedSlotLabel(null);
     setSavedAt(new Date());
   };
