@@ -32,7 +32,7 @@ import { requireAuth, requireOrganization, requireRole } from "../middlewares/au
 import { requestLogger } from "../lib/logger.js";
 import { eventBus } from "../lib/event-bus.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
-import { buildShowBookTree, collectUserIdsFromConfig, reservasDaCena, resolveShowBookCast } from "../services/line-resolver.js";
+import { buildShowBookTree, collectUserIdsFromConfig, reservasDoGrupo, resolveShowBookCast } from "../services/line-resolver.js";
 import { detectShowBookResolveConflicts } from "../services/schedule-conflicts.js";
 import { canManageShowBook, canOperateDailyBook, canViewShowBook, isOperationManager } from "../lib/show-responsibility.js";
 import { notifyMany, sendNotification } from "../services/notificationService.js";
@@ -128,8 +128,8 @@ async function buildMemberDirectory(
 ): Promise<{ id: string; name: string }[]> {
   const userIds = new Set<string>();
   for (const scene of scenes) {
-    reservasDaCena(scene).forEach((id) => userIds.add(id));
     for (const block of scene.blocks) {
+      reservasDoGrupo(block).forEach((id) => userIds.add(id));
       for (const pos of block.positions) {
         for (const line of pos.lines) {
           collectUserIdsFromConfig(line.config).forEach((id) => userIds.add(id));
@@ -896,23 +896,12 @@ router.post("/show-books/:id/scenes", requireAuth, requireOrganization, async (r
 router.patch("/show-books/:id/scenes/:sceneId", requireAuth, requireOrganization, async (req, res) => {
   const showBookId = req.params.id as string;
   const sceneId = req.params.sceneId as string;
-  const { name, order, isOptional, changeType, reserveIds } = req.body;
+  const { name, order, isOptional, changeType } = req.body;
   const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
     const guard = await requireShowManage(req, res);
     if (!guard) return;
     const updates: Record<string, unknown> = { updatedAt: new Date() };
-    let reservasNovas: string[] | null = null;
-    if (reserveIds !== undefined) {
-      if (!Array.isArray(reserveIds) || reserveIds.some((id) => typeof id !== "string")) { res.status(400).json({ error: "BAD_REQUEST", message: "A lista de reservas precisa ser uma lista de pessoas." }); return; }
-      reservasNovas = [...new Set(reserveIds as string[])];
-      if (reservasNovas.length > 60) { res.status(400).json({ error: "BAD_REQUEST", message: "A lista de reservas aceita até 60 pessoas." }); return; }
-      if (reservasNovas.length) {
-        const validas = await db.select({ id: usersTable.id }).from(usersTable).where(and(inArray(usersTable.id, reservasNovas), eq(usersTable.organizationId, req.user!.organizationId), eq(usersTable.status, "ACTIVE"), eq(usersTable.personStatus, "ACTIVE")));
-        if (validas.length !== reservasNovas.length) { res.status(400).json({ error: "BAD_REQUEST", message: "Alguma pessoa da lista de reservas não existe ou não está ativa. Atualize a tela e escolha de novo." }); return; }
-      }
-      updates.reserveIds = reservasNovas;
-    }
     if (name !== undefined) updates.name = name;
     if (order !== undefined) updates.order = order;
     if (isOptional !== undefined) updates.isOptional = isOptional;
@@ -922,8 +911,7 @@ router.patch("/show-books/:id/scenes/:sceneId", requireAuth, requireOrganization
         .where(and(eq(showBookScenesTable.id, sceneId), eq(showBookScenesTable.showBookId, showBookId))).limit(1);
       if (!before) return null;
       const [after] = await tx.update(showBookScenesTable).set(updates as any).where(eq(showBookScenesTable.id, sceneId)).returning();
-      const mudouReservas = reservasNovas !== null && JSON.stringify(reservasDaCena(before)) !== JSON.stringify(reservasNovas);
-      await registrarEdicaoDoLivro(tx, req, guard, { action: mudouReservas ? "show_book.scene.reserves_updated" : "show_book.scene.updated", title: mudouReservas ? "Reservas da cena alteradas" : "Cena do Livro do Show alterada", narrative: mudouReservas ? `Cena "${before.name}": lista de reservas passou a ter ${reservasNovas!.length} pessoa${reservasNovas!.length === 1 ? "" : "s"}.` : `Cena "${before.name}" alterada.`, entityType: "show_book_scene", entityId: sceneId, before, after, reason });
+      await registrarEdicaoDoLivro(tx, req, guard, { action: "show_book.scene.updated", title: "Cena do Livro do Show alterada", narrative: `Cena "${before.name}" alterada.`, entityType: "show_book_scene", entityId: sceneId, before, after, reason });
       await bumpVersion(showBookId, ct, reason, req.user!.sub, req.requestId, req.correlationId, tx);
       return after;
     });
@@ -1003,7 +991,7 @@ router.post("/show-books/:id/blocks", requireAuth, requireOrganization, async (r
 router.patch("/show-books/:id/blocks/:blockId", requireAuth, requireOrganization, async (req, res) => {
   const showBookId = req.params.id as string;
   const blockId = req.params.blockId as string;
-  const { name, order, changeType, startTime, endTime, zone, prefix, color } = req.body;
+  const { name, order, changeType, startTime, endTime, zone, prefix, color, reserveIds } = req.body;
   if (!isValidBlockTime(startTime) || !isValidBlockTime(endTime)) { res.status(400).json({ error: "Horário inválido (use HH:MM)" }); return; }
   const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
@@ -1017,13 +1005,25 @@ router.patch("/show-books/:id/blocks/:blockId", requireAuth, requireOrganization
     if (zone !== undefined) updates.zone = zone;
     if (prefix !== undefined) updates.prefix = String(prefix).trim().toUpperCase();
     if (color !== undefined) updates.color = color;
+    let reservasNovas: string[] | null = null;
+    if (reserveIds !== undefined) {
+      if (!Array.isArray(reserveIds) || reserveIds.some((id) => typeof id !== "string")) { res.status(400).json({ error: "BAD_REQUEST", message: "A lista de reservas precisa ser uma lista de pessoas." }); return; }
+      reservasNovas = [...new Set(reserveIds as string[])];
+      if (reservasNovas.length > 60) { res.status(400).json({ error: "BAD_REQUEST", message: "A lista de reservas aceita até 60 pessoas." }); return; }
+      if (reservasNovas.length) {
+        const validas = await db.select({ id: usersTable.id }).from(usersTable).where(and(inArray(usersTable.id, reservasNovas), eq(usersTable.organizationId, req.user!.organizationId), eq(usersTable.status, "ACTIVE"), eq(usersTable.personStatus, "ACTIVE")));
+        if (validas.length !== reservasNovas.length) { res.status(400).json({ error: "BAD_REQUEST", message: "Alguma pessoa da lista de reservas não existe ou não está ativa. Atualize a tela e escolha de novo." }); return; }
+      }
+      updates.reserveIds = reservasNovas;
+    }
     const ct = changeType === "STRUCTURAL" ? "STRUCTURAL" : "CONFIG";
     const updated = await db.transaction(async (tx) => {
       const [before] = await tx.select().from(showBookBlocksTable)
         .where(and(eq(showBookBlocksTable.id, blockId), eq(showBookBlocksTable.showBookId, showBookId))).limit(1);
       if (!before) return null;
       const [after] = await tx.update(showBookBlocksTable).set(updates as any).where(eq(showBookBlocksTable.id, blockId)).returning();
-      await registrarEdicaoDoLivro(tx, req, guard, { action: "show_book.block.updated", title: "Grupo do Livro do Show alterado", narrative: `Grupo "${before.name}" alterado.`, entityType: "show_book_block", entityId: blockId, before, after, reason });
+      const mudouReservas = reservasNovas !== null && JSON.stringify(reservasDoGrupo(before)) !== JSON.stringify(reservasNovas);
+      await registrarEdicaoDoLivro(tx, req, guard, { action: mudouReservas ? "show_book.block.reserves_updated" : "show_book.block.updated", title: mudouReservas ? "Reservas do grupo alteradas" : "Grupo do Livro do Show alterado", narrative: mudouReservas ? `Grupo "${before.name}": lista de reservas passou a ter ${reservasNovas!.length} pessoa${reservasNovas!.length === 1 ? "" : "s"}.` : `Grupo "${before.name}" alterado.`, entityType: "show_book_block", entityId: blockId, before, after, reason });
       await bumpVersion(showBookId, ct, reason, req.user!.sub, req.requestId, req.correlationId, tx);
       return after;
     });

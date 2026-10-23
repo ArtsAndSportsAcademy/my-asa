@@ -86,9 +86,9 @@ export async function buildShowBookTree(showBookId: string, executor: TreeExecut
   return scenes.map((s) => ({ ...s, blocks: blocksByScene[s.id] ?? [], keyframes: keyframesByScene[s.id] ?? [] }));
 }
 
-/** Reservas da cena (0078): quem cobre qualquer posição da cena quando o titular não pode, na ordem cadastrada. */
-export function reservasDaCena(scene: { reserveIds?: unknown }): string[] {
-  return Array.isArray(scene.reserveIds) ? [...new Set(scene.reserveIds.filter((x): x is string => typeof x === "string" && x.length > 0))] : [];
+/** Reservas do grupo (0079): quem cobre qualquer posição DO GRUPO quando o titular não pode, na ordem cadastrada. Patinadores e bailarinos da mesma cena têm listas separadas. */
+export function reservasDoGrupo(block: { reserveIds?: unknown }): string[] {
+  return Array.isArray(block.reserveIds) ? [...new Set(block.reserveIds.filter((x): x is string => typeof x === "string" && x.length > 0))] : [];
 }
 
 // Coleta todos os userIds referenciados nas configs das linhas.
@@ -508,7 +508,7 @@ export async function resolveShowBookCastComNomes(
     const userIds = new Set<string>();
     const characterIds = new Set<string>();
     for (const scene of tree) {
-      reservasDaCena(scene).forEach((id) => userIds.add(id));
+      for (const block of scene.blocks) reservasDoGrupo(block).forEach((id) => userIds.add(id));
       for (const block of scene.blocks) {
         for (const pos of block.positions) {
           for (const line of pos.lines) {
@@ -645,11 +645,15 @@ export async function resolveShowBookCastComNomes(
       Boolean(line.characterId && characterModes.get(line.characterId) === "titular");
     const entries = scene.blocks.flatMap((block) => block.positions.flatMap((pos) => pos.lines.map((line) => ({ line }))));
     const resolvedByLine = new Map<string, ResolvedLine>();
-    // Reservas da cena: o titular de cada posição é resolvido primeiro, para que uma reserva nunca tome o lugar de quem é titular
-    // de outra posição da mesma cena. Só depois, as posições cujo titular não pôde entram com substitutos próprios e reservas.
-    const reservas = reservasDaCena(scene);
-    const usaReservas = (line: { type: string; config: unknown }) => {
-      if (reservas.length === 0 || line.type !== "TITULAR_SUBSTITUTE") return false;
+    // Reservas do grupo: o titular de cada posição é resolvido primeiro, para que uma reserva nunca tome o lugar de quem é titular
+    // de outra posição da mesma cena. Só depois, as posições cujo titular não pôde entram com substitutos próprios e reservas DO SEU GRUPO.
+    const reservasDaLinha = new Map<string, string[]>();
+    for (const block of scene.blocks) {
+      const doGrupo = reservasDoGrupo(block);
+      if (doGrupo.length) for (const pos of block.positions) for (const line of pos.lines) reservasDaLinha.set(line.id, doGrupo);
+    }
+    const usaReservas = (line: { id: string; type: string; config: unknown }) => {
+      if (!reservasDaLinha.has(line.id) || line.type !== "TITULAR_SUBSTITUTE") return false;
       const cfg = (line.config && typeof line.config === "object" ? line.config : {}) as Record<string, unknown>;
       return typeof cfg.titularId === "string" && cfg.titularId !== "";
     };
@@ -679,7 +683,7 @@ export async function resolveShowBookCastComNomes(
     for (const line of pendentes) {
       const cfg = line.config as Record<string, unknown>;
       const proprios = Array.isArray(cfg.substituteIds) ? cfg.substituteIds.filter((x): x is string => typeof x === "string") : [];
-      registrar(line, resolverLinha(line, { ...cfg, substituteIds: [...new Set([...proprios, ...reservas])] }));
+      registrar(line, resolverLinha(line, { ...cfg, substituteIds: [...new Set([...proprios, ...(reservasDaLinha.get(line.id) ?? [])])] }));
     }
     return {
       sceneId: scene.id,

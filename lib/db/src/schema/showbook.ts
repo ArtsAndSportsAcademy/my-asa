@@ -56,7 +56,7 @@ export const showBookScenesTable = pgTable("show_book_scenes", {
   isOptional: boolean("is_optional").notNull().default(false),
   // 0059: cena reservada com as vagas de personagem do show inteiro (no máximo uma ativa por show).
   isCastRoster: boolean("is_cast_roster").notNull().default(false),
-  // 0078: reservas da cena — pessoas (na ordem) que cobrem qualquer vaga da cena quando o titular não pode. Lista de ids de usuário.
+  // 0078 (sem uso desde a 0079): a primeira versão das reservas era por cena. Passou a ser por grupo; a coluna fica para não apagar dado.
   reserveIds: jsonb("reserve_ids").$type<string[]>().notNull().default([]),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -118,6 +118,8 @@ export const showBookBlocksTable = pgTable("show_book_blocks", {
   prefix: text("prefix"),
   // Cor padrão do grupo; uma posição pode definir um ajuste individual em positionJson.
   color: text("color"),
+  // 0079: reservas do grupo — pessoas (na ordem) que cobrem qualquer vaga DESTE grupo quando o titular não pode. Lista de ids de usuário.
+  reserveIds: jsonb("reserve_ids").$type<string[]>().notNull().default([]),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
