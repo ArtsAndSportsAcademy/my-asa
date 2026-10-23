@@ -1,6 +1,6 @@
 import { type ReactNode, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link, Redirect, useLocation } from "wouter";
-import { Bell, BookOpen, Building2, CalendarDays, CheckCircle2, CircleAlert, ClipboardCheck, Clock3, Inbox, LayoutDashboard, LogOut, MapPin, Menu, MessageCircle, MoreHorizontal, Search, Users } from "lucide-react";
+import { Bell, BookOpen, Building2, CalendarDays, CheckCircle2, CircleAlert, ClipboardCheck, Clock3, Inbox, LayoutDashboard, LogOut, MapPin, Menu, MessageCircle, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Search, Users } from "lucide-react";
 import { customFetch } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/useAuth";
 import { PwaSetup, installedMode, usePushSubscribed } from "@/components/pwa-setup";
@@ -153,6 +153,10 @@ export default function ShellFoundation() {
   const signOut = useSignOut();
   const mobile = useIsMobile();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Menu escondido no computador, para dar mais espaço ao trabalho (ex.: o mapa do Livro do Show).
+  // É só conveniência de quem usa: fica guardado neste navegador, e o menu volta com um clique.
+  const [menuHidden, setMenuHidden] = useState(() => { try { return window.localStorage.getItem("myasa-menu-escondido") === "1"; } catch { return false; } });
+  const toggleMenu = () => setMenuHidden((value) => { const next = !value; try { window.localStorage.setItem("myasa-menu-escondido", next ? "1" : "0"); } catch { /* sem armazenamento: vale só nesta visita */ } return next; });
   const [headerExtra, setHeaderExtra] = useState<ReactNode>(null);
   // Altura ocupada pelo cabeçalho do shell (e, no celular, pela barra de cima e pela de baixo).
   // O mapa de palco usa isso para caber na área visível sem rolar (--asa-chrome-h).
@@ -197,7 +201,7 @@ export default function ShellFoundation() {
   if (!known) return <Redirect to="/meu-dia"/>;
   if (!active) return null;
   const renderNavigation = () => <nav>{visible.map(group => <section key={group.label}><h2>{group.label}</h2>{group.items.map(item => { const Icon = item.icon; return <Link className={isAt(item, location) ? "active" : ""} key={item.href} href={item.href} onClick={() => setDrawerOpen(false)}><Icon size={16}/>{itemLabel(item, role)}</Link>; })}</section>)}</nav>;
-  return <div className="asa-shell" ref={shellRef}>
+  return <div className={`asa-shell${menuHidden ? " menu-hidden" : ""}`} ref={shellRef}>
     {drawerOpen && <button className="asa-shell-drawer-backdrop" aria-label="Fechar menu" onClick={() => setDrawerOpen(false)} />}
     <aside className={`asa-sidebar ${drawerOpen ? "open" : ""}`}>
       <Link href="/meu-dia" className="asa-brand" onClick={() => setDrawerOpen(false)}><img src="/asa-wing.png" alt=""/> <b>My ASA</b></Link>
@@ -213,7 +217,7 @@ export default function ShellFoundation() {
     <main>
       <AvisoSemConexao/>
       <header className={`asa-header${active.href === "/livro-do-dia" || active.href === "/escalas" ? " ldd-shell-header" : ""}`}>
-        <div><h1>{location === "/solicitacoes" ? "Solicitações" : itemLabel(active, role)}</h1><p className="asa-header-date">{todayLabel()}{active.href === "/shows" && " · Livro do Show, origem do Livro do Dia"}</p></div>
+        <div className="asa-header-title">{!mobile && <button type="button" className="asa-menu-toggle" onClick={toggleMenu} aria-pressed={menuHidden} aria-label={menuHidden ? "Mostrar o menu" : "Esconder o menu"} title={menuHidden ? "Mostrar o menu" : "Esconder o menu para trabalhar com mais espaço"}>{menuHidden ? <PanelLeftOpen size={18}/> : <PanelLeftClose size={18}/>}</button>}<div><h1>{location === "/solicitacoes" ? "Solicitações" : itemLabel(active, role)}</h1><p className="asa-header-date">{todayLabel()}{active.href === "/shows" && " · Livro do Show, origem do Livro do Dia"}</p></div></div>
         {active.href === "/livro-do-dia" || active.href === "/escalas" ? headerExtra : null}
         {!mobile && <NotificationBell enabled={isAuthenticated}/>}
       </header>

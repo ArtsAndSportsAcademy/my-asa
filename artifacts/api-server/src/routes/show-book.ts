@@ -886,19 +886,11 @@ router.post("/show-books/:id/scenes", requireAuth, requireOrganization, async (r
         .insert(showBookScenesTable)
         .values({ showBookId, name, order, isOptional: isOptional ?? false })
         .returning();
-      // O trio nasce pronto para o caso comum de Snowland, mas continua sendo
-      // apenas o ponto de partida: cada cena pode criar, editar ou retirar seus grupos.
-      const groups = [
-        { name: "Backstage left", prefix: "BL", zone: "BACKSTAGE LEFT" },
-        { name: "Backstage right", prefix: "BR", zone: "BACKSTAGE RIGHT" },
-        { name: "Papéis nomeados", prefix: "PER", zone: "CENTRO" },
-      ];
-      await tx.insert(showBookBlocksTable).values(groups.map((group, groupOrder) => ({
-        showBookId, sceneId: created!.id, order: groupOrder, ...group,
-      })));
+      // A cena nasce sem grupos: quem monta escolhe e dá o nome (Backstage left, Backstage right, Bailarinos…)
+      // pelo botão "Grupo" do Livro, em vez de receber três grupos que talvez não queira.
       await writeHistoryEvent({
         category: "OPERATIONAL_CHANGE", action: "show_book.scene.created",
-        title: "Cena criada", narrative: `Cena ${created!.name} criada com grupos-base.`,
+        title: "Cena criada", narrative: `Cena ${created!.name} criada, sem grupos.`,
         entityType: "show_book_scene", entityId: created!.id, actorId: req.user!.sub,
         operationId: guard.operationId, orgId: req.user!.organizationId,
         beforeState: null, afterState: created, metadata: { reason },

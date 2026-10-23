@@ -193,3 +193,14 @@
 .official-reservas{margin:10px 0 4px;padding:10px 12px;border:1px dashed #d8d0e9;border-radius:12px;background:#faf9fe;display:grid;gap:6px}.official-reservas header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0}.official-reservas header strong{font:700 11px 'JetBrains Mono',monospace;text-transform:uppercase;color:#5e5680}.official-reservas header button{min-height:44px;border:0;background:transparent;color:#5b23c9;font:700 12px Manrope;cursor:pointer}.official-reservas ol{margin:0;padding:0;list-style:none;display:grid;gap:3px;font-size:12px}.official-reservas li{display:flex;gap:7px}.official-reservas li b{color:#8b82a8;font:700 10px 'JetBrains Mono',monospace;min-width:16px}.official-reservas p{margin:0;font-size:12px;line-height:1.5;color:var(--asa-muted)}.reserva-escolhidas{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}.reserva-escolhidas span{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:4px 4px 4px 10px;border:1px solid #e2d9f2;border-radius:999px;background:#f6f1fe;font-size:12px}.reserva-escolhidas span b{color:#7a5fc0;font:700 10px 'JetBrains Mono',monospace}.reserva-escolhidas span button{width:28px;height:28px;border:0;border-radius:50%;background:transparent;display:grid;place-items:center;cursor:pointer;color:#5b5473}
 @media(min-width:1101px){.official-book-grid.asa-closed.asa-gone{grid-template-columns:286px minmax(0,1fr)}}
 .official-group-wrap{display:grid;gap:0}
+
+/* Mapa com mais espaço: a estrutura escrita deixa de crescer com a tela (antes era 1fr e o mapa ficava espremido)
+   e pode ser escondida. Vale só no computador; no celular a grade já é de uma coluna. */
+.official-no-groups{margin:8px 2px;font-size:12px;line-height:1.5;color:#6b6482}
+@media(min-width:1101px){
+  .official-book-grid.asa-closed.asa-gone{grid-template-columns:clamp(220px,19vw,264px) minmax(0,1fr)!important}
+  .official-book-grid.asa-closed.asa-gone.structure-hidden{grid-template-columns:minmax(0,1fr)!important}
+  .official-book-grid.structure-hidden>.official-structure{display:none}
+  .official-book-grid.structure-hidden>.official-stage{grid-column:1!important}
+}
+@media(max-width:1100px){.official-structure-toggle{display:none}}

@@ -40,9 +40,11 @@ async function run() {
     const sceneResponse = await request(`/show-books/${book!.id}/scenes`, "POST", { name: "Bandeiras", order: 0, reason: "Estrutura inicial" });
     const sceneBody = await sceneResponse.json() as any;
     const defaultGroups = await db.select().from(showBookBlocksTable).where(and(eq(showBookBlocksTable.sceneId, sceneBody.scene.id), eq(showBookBlocksTable.active, true))).orderBy(showBookBlocksTable.order);
-    assert(sceneResponse.status === 201 && defaultGroups.map((group) => `${group.prefix}:${group.zone}`).join("|") === "BL:BACKSTAGE LEFT|BR:BACKSTAGE RIGHT|PER:CENTRO", "Cena nova cria Backstage left, right e Papéis nomeados com prefixos estáveis");
+    assert(sceneResponse.status === 201 && defaultGroups.length === 0, "Cena nova nasce sem grupos: quem monta escolhe e dá o nome de cada um");
 
-    const left = defaultGroups[0]!;
+    const leftResponse = await request(`/show-books/${book!.id}/blocks`, "POST", { sceneId: sceneBody.scene.id, name: "Backstage left", prefix: "BL", zone: "BACKSTAGE LEFT", order: 0, reason: "Grupo escolhido pela pessoa" });
+    const left = (await leftResponse.json() as any).block;
+    assert(leftResponse.status === 201 && left.prefix === "BL" && left.zone === "BACKSTAGE LEFT", "Grupo criado pelo botão tem o nome, a zona e o prefixo escolhidos");
     const positionResponse = await request(`/show-books/${book!.id}/positions`, "POST", { name: "BL 01", order: 0, blockId: left.id, reason: "Slot-base" });
     const position = (await positionResponse.json() as any).position;
     const castResponse = await request(`/show-books/${book!.id}/positions/${position.id}/cast`, "PUT", { titularId: titular!.id, substituteIds: [substituteOne!.id, substituteTwo!.id], reason: "Elenco do slot" });

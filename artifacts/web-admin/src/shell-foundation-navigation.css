@@ -6,3 +6,12 @@
 
 /* iPhone: o rodapé do menu (perfil e Sair) não pode ficar atrás da barra do navegador. */
 .asa-sidebar{padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+
+/* Menu escondido (computador): a coluna do menu some e o conteúdo ocupa a largura toda. */
+.asa-header-title{display:flex;align-items:center;gap:12px;min-width:0}
+.asa-menu-toggle{flex:none;width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--asa-border);border-radius:10px;background:#fff;color:var(--asa-muted);cursor:pointer}
+.asa-menu-toggle:hover{color:var(--asa-purple);border-color:#cfc3ee}
+@media(min-width:1101px){
+  .asa-shell.menu-hidden{grid-template-columns:0 minmax(0,1fr)}
+  .asa-shell.menu-hidden .asa-sidebar{transform:translateX(-100%);visibility:hidden}
+}
