@@ -35,6 +35,7 @@ import { writeHistoryEvent } from "../lib/history-helper.js";
 import { buildShowBookTree, collectUserIdsFromConfig, resolveShowBookCast } from "../services/line-resolver.js";
 import { detectShowBookResolveConflicts } from "../services/schedule-conflicts.js";
 import { canManageShowBook, canOperateDailyBook, canViewShowBook, isOperationManager } from "../lib/show-responsibility.js";
+import { notifyMany, sendNotification } from "../services/notificationService.js";
 
 import { exigirUuidNosParametros } from "../lib/uuid.js";
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"] as const;
@@ -53,6 +54,20 @@ function deriveSlotPrefix(name: string): string {
 function isValidBlockTime(v: unknown): boolean {
   if (v === undefined || v === null || v === "") return true;
   return typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
+}
+
+/**
+ * Quem lê a estante de shows publicados é o Elenco da operação do show. Um aviso por pessoa quando o show passa
+ * a PUBLICADO (não quando já estava publicado), para ele saber que há material novo para estudar.
+ */
+async function avisarShowPublicado(book: { id: string; title: string; operationId: string }, atorId: string, orgId: string) {
+  const elenco = await db.select({ id: usersTable.id }).from(userRolesTable)
+    .innerJoin(usersTable, eq(usersTable.id, userRolesTable.userId))
+    .where(and(eq(userRolesTable.operationId, book.operationId), eq(userRolesTable.active, true), eq(userRolesTable.role, "MEMBER"), eq(usersTable.organizationId, orgId), eq(usersTable.status, "ACTIVE"), eq(usersTable.personStatus, "ACTIVE")));
+  await notifyMany(elenco.map((person) => person.id).filter((id) => id !== atorId), {
+    type: "show.published", title: "Novo show para estudar", message: `${book.title} foi publicado: veja os links do Drive, as sessões e as observações.`,
+    priority: "NORMAL", category: "book", entityType: "show_book", entityId: book.id, actionUrl: "/shows",
+  });
 }
 
 const router: IRouter = Router();
@@ -516,6 +531,9 @@ router.patch("/show-books/:id/status", requireAuth, requireOrganization, async (
     if (!updated) { res.status(404).json({ error: "Livro não encontrado" }); return; }
     if (status === "PUBLISHED") {
       eventBus.emit("showbook.published", { showBookId: id, version: updated.version });
+      // Só quando passou de rascunho/arquivado para publicado; falha no aviso não desfaz a publicação.
+      if (guard.status !== "PUBLISHED") await avisarShowPublicado({ id, title: guard.title, operationId: guard.operationId }, req.user!.sub, req.user!.organizationId)
+        .catch((err) => requestLogger("show_book", req.requestId ?? "", req.correlationId ?? "").warn({ err }, "Falha ao avisar o Elenco da publicação do show"));
     }
     res.json({ showBook: updated });
   } catch (err) {
@@ -576,6 +594,14 @@ router.patch("/show-books/:id/responsible", requireAuth, requireOrganization, re
     });
     const log = requestLogger("show_book", req.requestId ?? "", req.correlationId ?? "");
     log.info({ showBookId: id, responsibleId: responsibleId ?? null }, "Responsável do show atualizado");
+    // Quem passa a ser responsável precisa saber: ele ganha a chave de editar e publicar o show e o Livro do Dia dele.
+    if (responsibleId && responsibleId !== book.responsibleId && responsibleId !== req.user!.sub) {
+      await sendNotification({
+        userId: responsibleId, type: "show.responsible_assigned", title: "Você é a pessoa responsável por um show",
+        message: `${book.title}: você agora edita e publica este show e o Livro do Dia dele.`,
+        priority: "IMPORTANT", category: "responsibility", entityType: "show_book", entityId: id, actionUrl: "/shows",
+      }).catch((err) => log.warn({ err }, "Falha ao avisar o novo responsável do show"));
+    }
     res.json({ showBook: updated });
   } catch (err) {
     res.status(500).json({ error: "Erro ao definir responsável" });

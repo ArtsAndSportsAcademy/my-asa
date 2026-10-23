@@ -148,6 +148,22 @@ async function run() {
     const depoisDaRecusa = novoShowId ? await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, novoShowId), eq(historyEventsTable.action, "show_book.responsible_changed"))) : [];
     assert(responsavelElenco.status === 400 && depoisDaRecusa.length === 1, "responsável do Elenco é recusado e a recusa não entra no Registro");
 
+    // Avisos do show (23/10): o novo responsável é avisado, e o Elenco da operação sabe quando o show é publicado, uma vez só.
+    const [supervisor] = await db.insert(usersTable).values({ organizationId: org!.id, name: `${tag}_supervisor`, username: `${tag}_supervisor` }).returning();
+    await db.insert(userRolesTable).values({ userId: supervisor!.id, operationId: operation!.id, role: "SUPERVISOR_A", active: true });
+    const avisosDe = (userId: string, type: string) => db.select().from(userNotificationsTable).where(and(eq(userNotificationsTable.userId, userId), eq(userNotificationsTable.type, type)));
+    const definiu = await request(`/show-books/${novoShowId}/responsible`, { method: "PATCH", body: JSON.stringify({ responsibleId: supervisor!.id }) });
+    const avisoResponsavel = await avisosDe(supervisor!.id, "show.responsible_assigned");
+    assert(definiu.status === 200 && avisoResponsavel.length === 1 && avisoResponsavel[0]!.actionUrl === "/shows", "quem passa a ser responsável do show recebe aviso com o caminho para Shows");
+    await request(`/show-books/${novoShowId}/responsible`, { method: "PATCH", body: JSON.stringify({ responsibleId: supervisor!.id }) });
+    assert((await avisosDe(supervisor!.id, "show.responsible_assigned")).length === 1, "repetir o mesmo responsável não manda aviso de novo");
+    const publicou = await request(`/show-books/${novoShowId}/status`, { method: "PATCH", body: JSON.stringify({ status: "PUBLISHED", reason: "Show publicado para o Elenco" }) });
+    const avisoElenco = await avisosDe(person!.id, "show.published");
+    assert(publicou.status === 200 && avisoElenco.length === 1 && avisoElenco[0]!.actionUrl === "/shows", "publicar o show avisa o Elenco da operação");
+    assert((await avisosDe(admin!.id, "show.published")).length === 0, "quem publicou o show não recebe o próprio aviso");
+    await request(`/show-books/${novoShowId}/status`, { method: "PATCH", body: JSON.stringify({ status: "PUBLISHED", reason: "Show publicado para o Elenco" }) });
+    assert((await avisosDe(person!.id, "show.published")).length === 1, "publicar de novo um show já publicado não avisa outra vez");
+
     const deactivateUser = await request(`/users/${person!.id}`, { method: "DELETE", body: JSON.stringify({ reason: "encerramento de vínculo" }) });
     const [userAfter] = await db.select().from(usersTable).where(eq(usersTable.id, person!.id));
     assert(deactivateUser.status === 200 && Boolean(userAfter) && userAfter!.status === "INACTIVE" && userAfter!.personStatus === "ARCHIVED", "DELETE de pessoa vira desativação e preserva a linha");
