@@ -2318,7 +2318,7 @@ router.patch("/daily-book/:id/assignments/:assignmentId", requireAuth, requireOr
  * vaga aberta, ou tirar quem só estava na Escala) — aí o ajuste fica só na Escala, como antes.
  */
 export async function ajustarPessoaNoLivro(
-  input: { dailyBookId: string; userId: string; action: "ADICIONAR" | "REMOVER"; actorId: string },
+  input: { dailyBookId: string; userId: string; action: "ADICIONAR" | "REMOVER"; actorId: string; assignmentId?: string | null },
   /**
    * Quando o ajuste faz parte de um lote, a transação do lote vem aqui: tudo é lido e gravado nela,
    * e os eventos (`eventBus`) não saem na hora — vão para `depoisDoCommit`, para quem chamou
@@ -2337,7 +2337,14 @@ export async function ajustarPessoaNoLivro(
     .innerJoin(dailyBookPositionsTable, eq(dailyBookAssignmentsTable.positionId, dailyBookPositionsTable.id))
     .where(and(vivas, eq(dailyBookAssignmentsTable.userId, input.userId)));
   let alvo: { id: string }[];
-  if (input.action === "REMOVER") alvo = daPessoa;
+  if (input.assignmentId) {
+    // Vaga escolhida (Ajustar por personagem): troca exatamente esse personagem, não "a primeira vaga aberta".
+    // Tirar só vale se a vaga é mesmo da pessoa; colocar vale em qualquer vaga viva do Livro (inclusive já ocupada: é a troca).
+    const daVaga = await exec.select({ id: dailyBookAssignmentsTable.id, userId: dailyBookAssignmentsTable.userId }).from(dailyBookAssignmentsTable)
+      .innerJoin(dailyBookPositionsTable, eq(dailyBookAssignmentsTable.positionId, dailyBookPositionsTable.id))
+      .where(and(vivas, eq(dailyBookAssignmentsTable.id, input.assignmentId)));
+    alvo = input.action === "REMOVER" ? daVaga.filter((a) => a.userId === input.userId) : daVaga;
+  } else if (input.action === "REMOVER") alvo = daPessoa;
   else {
     if (daPessoa.length) return true; // já está no Livro: nada a mudar
     alvo = await exec.select({ id: dailyBookAssignmentsTable.id }).from(dailyBookAssignmentsTable)

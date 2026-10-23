@@ -6,6 +6,8 @@ import { useFecharComEsc } from "@/lib/fechar-com-esc";
 import { StageMap, layoutFrame, stageMapApi, type StageDefinition, type StageFormat, type StageSide } from "@/components/stage-map";
 import exampleData from "../../../../design_handoff_my_asa/dados-de-exemplo.json";
 import { css } from "@/lib/dc-style";
+import { AjusteCelulaDialog, type Bloco as BlocoDaEscala, type Dia as DiaDaEscala } from "./escalas";
+import { mensagemDoErro } from "@/lib/mensagem-do-erro";
 import { markSampleEscalaAlterada, sampleEscalaPublicada } from "@/lib/review-escala";
 import "./livro-do-dia.css";
 
@@ -20,12 +22,13 @@ type DPosition = { id: string; name: string; minimumCoverage: number; sourceRole
 type DBlock = { id: string; name: string; order: number; sceneId: string | null; sourceBlockId: string | null; isRemoved: boolean; positions: DPosition[] };
 type DScene = { id: string; name: string; order: number; sourceSceneId: string | null; isRemoved: boolean; blocks: DBlock[] };
 type SessionBlockView = { id: string; name: string; startTime: string; endTime: string; order: number; isRemoved: boolean; stale: boolean; staleReason: string | null };
-type DailyBook = { id: string; agendaEventId: string; scaleId: string | null; showBookId: string | null; status: DailyBookStatus; version: number; operationId?: string; operationName?: string; eventTitle?: string; eventDate?: string; eventStartTime?: string | null; locationName?: string | null; showTitle?: string | null; sessionLabel?: string | null; scenes?: DScene[]; sessionBlocks?: SessionBlockView[]; programacaoHoje?: { inicio: string; fim: string | null; rotulo: string }[]; horarios?: string[] };
+type DailyBook = { id: string; agendaEventId: string; scaleId: string | null; showBookId: string | null; status: DailyBookStatus; version: number; operationId?: string; operationName?: string; eventTitle?: string; eventDate?: string; eventStartTime?: string | null; locationName?: string | null; locationId?: string | null; showTitle?: string | null; sessionLabel?: string | null; scenes?: DScene[]; sessionBlocks?: SessionBlockView[]; programacaoHoje?: { inicio: string; fim: string | null; rotulo: string }[]; horarios?: string[] };
 /** Livro de sessão separada leva a hora no nome ("Teatro de Natal · 11:30"); sem isso, duas linhas do mesmo show ficam iguais. */
 const tituloDoLivro = (b: { showTitle?: string | null; eventTitle?: string; sessionLabel?: string | null }) => `${b.showTitle ?? b.eventTitle ?? ""}${b.sessionLabel ? ` · ${b.sessionLabel}` : ""}`;
 type PatternDiffRow = { where: string; padrao: string; hoje: string; why: string };
 type Formation = { id: string; name: string; peopleCount: number; positions: Record<string, unknown>[]; showId: string | null; sceneId: string | null; sceneName?: string | null; active: boolean; timesUsed: number; lastUsedAt?: string | null; approximate?: boolean };
-type CharacterToday = { characterId: string; name: string; selectedName: string | null; why: string };
+/** `assignmentId` é a vaga do Livro de hoje que faz este personagem; sem ela (exemplo, vaga removida) não dá para trocar daqui. */
+type CharacterToday = { characterId: string; name: string; selectedName: string | null; why: string; assignmentId?: string };
 type ConflictInfo = { expectedVersion: number; currentVersion: number; changes: { message?: string }[] };
 type ShowKind = "form" | "mix" | "pers";
 type Frame = { name: string; type: string };
@@ -51,7 +54,7 @@ const estOf = (status: DailyBookStatus): Est => status === "DRAFT" ? "rasc" : st
 const TIPO_META: Record<ShowKind, [string, string, string, string]> = {
   form: ["só formação", "var(--asa-ok-fg)", "Cenas com mapa de posições, sem personagem nomeado.", "O elenco entra por posição."],
   mix: ["formação + personagens", "var(--asa-purple)", "Cenas com mapa, e dentro delas os personagens do show.", "A cena tem posições, e alguns lugares são de personagem."],
-  pers: ["só personagens", "var(--asa-chars-fg)", "Sem cena e sem mapa — o livro é a lista de quem faz cada personagem.", "Para trocar quem faz, use Ajustar na Escala do dia."],
+  pers: ["só personagens", "var(--asa-chars-fg)", "Sem cena e sem mapa — o livro é a lista de quem faz cada personagem.", "Para trocar quem faz, use Trocar ao lado do personagem (ou Ajustar na Escala do dia)."],
 };
 const MONO_LABEL = "font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--asa-label)";
 const CARD = "flex:none;border:1px solid var(--asa-line);border-radius:16px;background:#fff;overflow:hidden";
@@ -384,8 +387,13 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
       // 09/10: quem faz hoje é quem está escalado neste Livro do Dia (vaga a vaga, já com equilíbrio,
       // folgas e ajustes da Escala) — não um novo cálculo por personagem, que repetia a mesma pessoa.
       const escaladosPorVaga = new Map<string, string[]>();
+      const assignmentPorVaga = new Map<string, string>();
       for (const scene of opened.scenes ?? []) for (const block of scene.blocks) for (const p of block.positions) {
-        if (p.sourceRoleId && !p.isRemoved) escaladosPorVaga.set(p.sourceRoleId, [...(escaladosPorVaga.get(p.sourceRoleId) ?? []), ...namesOf(p)]);
+        if (p.sourceRoleId && !p.isRemoved) {
+          escaladosPorVaga.set(p.sourceRoleId, [...(escaladosPorVaga.get(p.sourceRoleId) ?? []), ...namesOf(p)]);
+          const primeira = liveAssignments(p)[0];
+          if (primeira && !assignmentPorVaga.has(p.sourceRoleId)) assignmentPorVaga.set(p.sourceRoleId, primeira.id);
+        }
       }
       const vagas = (showResult?.showBook.scenes ?? []).flatMap((s) => s.blocks.flatMap((b) => b.positions.flatMap((p) => (p.lines ?? []).filter((l) => l.type === "CHARACTER" && l.characterId).map((l) => ({ positionId: p.id, characterId: l.characterId! })))));
       const modos = new Map<string, { name: string; mode: string }>();
@@ -395,7 +403,7 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
       setCharactersToday(vagas.filter((v) => modos.has(v.characterId)).map((v) => {
         const quem = escaladosPorVaga.get(v.positionId) ?? [];
         const modo = modos.get(v.characterId)!;
-        return { characterId: `${v.positionId}`, name: modo.name, selectedName: quem.join(", ") || null, why: !quem.length ? "sem ninguém escalado hoje" : modo.mode === "titular" ? "titular" : "rodízio" };
+        return { characterId: `${v.positionId}`, name: modo.name, selectedName: quem.join(", ") || null, why: !quem.length ? "sem ninguém escalado hoje" : modo.mode === "titular" ? "titular" : "rodízio", assignmentId: assignmentPorVaga.get(v.positionId) };
       }));
       await customFetch<{ formations: Formation[] }>(`/api/formations/by-show/${opened.showBookId}`).then((r) => setFormations(r.formations)).catch(() => setFormations([]));
     } catch { setError("Não consegui abrir este Livro do Dia."); }
@@ -550,7 +558,7 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
         diffs={diffs} hasLiveChanges={hasLiveChanges} charactersToday={charactersToday} characterNames={characterNames} formations={formations}
         canManage={canManage} saving={saving} openSceneId={openSceneId} setOpenSceneId={setOpenSceneId}
         formSel={formSel} setFormSel={setFormSel} framesOn={framesOn} setFramesOn={setFramesOn} sceneNote={sceneNote} supLocal={supLocal}
-        onPick={(id) => void open(id)} onPublish={publish} onRepublish={republish} onExecute={execute} onCancel={cancel} onReopen={reopen}
+        onPick={(id) => void open(id)} onAjustado={() => void refreshOpen()} onPublish={publish} onRepublish={republish} onExecute={execute} onCancel={cancel} onReopen={reopen}
         onToggleScene={toggleScene} onTogglePosition={togglePosition} onSaveFormation={saveFormationFromScene} onApplyToday={applyFormationToday}
       />}
       {tab === "diff" && !isMem && <DiffTab diffs={diffs} hasBook={Boolean(book)}/>}
@@ -605,12 +613,26 @@ function HojeTab(props: {
   formSel: Record<string, string>; setFormSel: (fn: (prev: Record<string, string>) => Record<string, string>) => void;
   framesOn: Record<string, string[]>; setFramesOn: (fn: (prev: Record<string, string[]>) => Record<string, string[]>) => void;
   sceneNote: { sceneId: string; text: string } | null; supLocal: string | null; onDate: (iso: string) => void;
-  onPick: (id: string) => void; onPublish: () => void; onRepublish: () => void; onExecute: () => void; onCancel: () => void; onReopen: () => void;
+  onPick: (id: string) => void; onAjustado: () => void; onPublish: () => void; onRepublish: () => void; onExecute: () => void; onCancel: () => void; onReopen: () => void;
   onToggleScene: (scene: DScene) => void; onTogglePosition: (position: DPosition) => void; onSaveFormation: (scene: DScene, slots: SlotView[]) => void; onApplyToday: (formation: Formation) => void;
 }) {
   const { role, review, me, date, loading, opening, todayBooks, book, source, diffs, hasLiveChanges, charactersToday, characterNames, formations, canManage, saving } = props;
   const isMem = role === "mem", isDir = role === "dir", isAdm = role === "adm";
   const [calAberto, setCalAberto] = useState(false);
+  // Trocar quem faz um personagem: abre o mesmo Ajustar da Escala, já no personagem clicado (mesmas regras de folga, área e limite).
+  const [troca, setTroca] = useState<{ dia: DiaDaEscala; bloco: BlocoDaEscala; foco: string; areas: string[] | null } | null>(null);
+  const [abrindoTroca, setAbrindoTroca] = useState<string | null>(null);
+  const [erroTroca, setErroTroca] = useState("");
+  const abrirTroca = async (assignmentId: string) => {
+    if (!book?.locationId) { setErroTroca("Este show não tem local definido, então não dá para trocar daqui. Defina o local no Livro do Show."); return; }
+    setAbrindoTroca(assignmentId); setErroTroca("");
+    try {
+      const r = await customFetch<{ dia: DiaDaEscala; areasSupervisionadas: string[] }>(`/api/escalas/dia?locationId=${book.locationId}&date=${String(book.eventDate ?? date).slice(0, 10)}`);
+      const bloco = r.dia.blocos.find((b) => b.dailyBookId === book.id && b.vagas?.some((v) => v.assignmentId === assignmentId));
+      if (!bloco) { setErroTroca("Este show ainda não aparece na Escala deste dia. Gere a Escala do dia e tente de novo."); return; }
+      setTroca({ dia: r.dia, bloco, foco: assignmentId, areas: isAdm ? null : r.areasSupervisionadas });
+    } catch (err) { setErroTroca(mensagemDoErro(err, "Não consegui abrir a troca. Nada mudou; tente de novo.")); } finally { setAbrindoTroca(null); }
+  };
   const subs = useMemo(() => new Map(diffs.filter((d) => d.hoje !== "fora do dia" && d.hoje !== "em aberto" && d.padrao !== "posição do padrão").map((d) => [d.where, d.padrao])), [diffs]);
   const whyByWhere = useMemo(() => new Map(diffs.map((d) => [d.where, d.why])), [diffs]);
 
@@ -675,6 +697,8 @@ function HojeTab(props: {
   const e = estOf(book.status);
   const locked = e === "exec" || e === "canc";
   const canEdit = canManage && editableStatus(book.status);
+  // Troca por personagem: só quem gerencia, com dados reais (o exemplo não tem Escala no servidor) e Livro ainda aberto.
+  const podeTrocar = canEdit && !review && !isMem;
   const scenes = (book.scenes ?? []).slice().sort((a, b) => a.order - b.order);
   const slotsByScene = new Map(scenes.map((s) => [s.id, slotsOf(s, source, subs, characterNames)]));
   const liveScenes = scenes.filter((s) => !s.isRemoved);
@@ -813,9 +837,17 @@ function HojeTab(props: {
                 <span style={css(`font-size:13px;font-weight:600;line-height:1.25${!p.selectedName ? ";color:var(--asa-vaga-fg)" : mine ? ";color:var(--asa-mine-fg);font-weight:700" : ""}`)}>{p.selectedName ?? "sem ninguém definido"}</span>
                 <span style={css("font-size:11px;color:var(--asa-label);line-height:1.35;text-wrap:pretty")}>{mine ? `você · ${p.why}` : p.why}</span>
               </span>
+              {podeTrocar && p.assignmentId && <button type="button" className="ldd-hit" disabled={abrindoTroca !== null} aria-label={`Trocar quem faz ${p.name}`} onClick={() => void abrirTroca(p.assignmentId!)}
+                style={css("flex:none;border:1px solid var(--asa-purple-border);background:#fff;color:var(--asa-purple);border-radius:999px;padding:7px 14px;font:700 12px Manrope,sans-serif;cursor:pointer;min-height:36px")}>{abrindoTroca === p.assignmentId ? "Abrindo…" : p.selectedName ? "Trocar" : "Escolher"}</button>}
             </div>;
           })}
-          {charactersToday.length > 0 && <span style={css("font-size:11px;line-height:1.5;color:var(--asa-label);text-wrap:pretty")}>É quem está escalado neste Livro do Dia e cobre todas as sessões deste show hoje. Para trocar, use Ajustar na Escala.</span>}
+          {charactersToday.length > 0 && <span style={css("font-size:11px;line-height:1.5;color:var(--asa-label);text-wrap:pretty")}>É quem está escalado neste Livro do Dia e cobre todas as sessões deste show hoje. {podeTrocar ? "Para trocar quem faz um personagem, use o botão ao lado dele." : "Para trocar, use Ajustar na Escala."}</span>}
+          {erroTroca && <span role="alert" style={css("font-size:12px;line-height:1.5;color:var(--asa-red-dark);border-left:3px solid var(--asa-red);background:var(--asa-red-airy);border-radius:8px;padding:8px 11px")}>{erroTroca}</span>}
+          {troca && <AjusteCelulaDialog bloco={troca.bloco} pessoas={troca.dia.pessoas} editableAreaIds={troca.areas} focoVaga={troca.foco} onClose={() => setTroca(null)}
+            onAdjust={async (mudancas, motivo) => {
+              await customFetch("/api/escalas/dia/ajustes", { method: "POST", body: JSON.stringify({ locationId: troca.dia.location.id, date: troca.dia.date, sourceKey: troca.bloco.key, mudancas, motivo }) });
+              setTroca(null); props.onAjustado();
+            }}/>}
         </div>
       </div>
     </div>

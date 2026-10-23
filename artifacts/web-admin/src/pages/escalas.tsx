@@ -8,6 +8,7 @@ import {
   addDays, loadSampleEscala, loadSampleProgramacoes, sampleAreasSupervisionadas, sampleDia, sampleLocais, samplePessoas,
   sampleShowsDoLocal, saveSampleEscala, saveSampleProgramacoes, todayISO, vocabularioDoLocal, type SampleEscalaState, type SampleProgramacao,
 } from "@/lib/review-escala";
+import "./shows.css"; // a janela do Ajustar usa .shows-dialog: sem isto ela não rola e o rodapé some quando a Escala abre direto
 import "./escalas.css";
 
 /* A camada visual é cópia de design_handoff_my_asa/telas/15 Escalas.dc.html (quadro web, sem a
@@ -16,10 +17,14 @@ import "./escalas.css";
 
 type Role = "adm" | "dir" | "sup" | "mem";
 type Regra = "todos" | "ninguem" | "area" | "grupo" | "pessoas" | "livro";
-type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; origem: "programacao" | "livro" | "manual" | "solicitacao"; regra: Regra | null; pessoaIds: string[]; vazio: boolean; sinal: string | null; showBookId: string | null; dailyBookId: string | null; dailyBookStatus: string | null; blocoId: string | null; allocationId?: string | null; allocationIds?: string[]; horarioDela?: { chaveOriginal: string; inicio: string; fim: string | null } };
-type Pessoa = { id: string; name: string; areaId: string | null; areaName: string | null; folga: string | null; chamadaNaFolga?: { motivo: string | null; decidida: boolean } };
+export type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; origem: "programacao" | "livro" | "manual" | "solicitacao"; regra: Regra | null; pessoaIds: string[]; vazio: boolean; sinal: string | null; showBookId: string | null; dailyBookId: string | null; dailyBookStatus: string | null; blocoId: string | null; allocationId?: string | null; allocationIds?: string[]; vagas?: VagaDoLivro[]; horarioDela?: { chaveOriginal: string; inicio: string; fim: string | null } };
+/** Personagem de um bloco que vem de Livro do Dia: quem o faz hoje (ou ninguém, se a vaga está aberta). */
+type VagaDoLivro = { assignmentId: string; personagem: string; userId: string | null };
+/** Uma mexida no bloco; com `assignmentId`, vale para aquele personagem e não para "a primeira vaga aberta". */
+type Mudanca = { userId: string; action: "ADICIONAR" | "REMOVER"; assignmentId?: string };
+export type Pessoa = { id: string; name: string; areaId: string | null; areaName: string | null; folga: string | null; chamadaNaFolga?: { motivo: string | null; decidida: boolean } };
 type Area = { id: string; name: string; supervisores: { id: string; name: string }[]; pronta: { por: string | null; em: string } | null };
-type Dia = { date: string; location: { id: string; name: string }; escala: { id: string; status: string; version: number; publishedAt: string | null; alteradaDesde: string | null } | null; programacao: { id: string; nome: string; vigenciaInicio: string; vigenciaFim: string } | null; areas: Area[]; pessoas: Pessoa[]; blocos: Bloco[] };
+export type Dia = { date: string; location: { id: string; name: string }; escala: { id: string; status: string; version: number; publishedAt: string | null; alteradaDesde: string | null } | null; programacao: { id: string; nome: string; vigenciaInicio: string; vigenciaFim: string } | null; areas: Area[]; pessoas: Pessoa[]; blocos: Bloco[] };
 type Local = { id: string; name: string; podeEditar: boolean; areasSupervisionadas: string[] };
 type ProgBloco = SampleProgramacao["blocos"][number];
 type Programacao = { id: string; locationId: string; nome: string; vigenciaInicio: string; vigenciaFim: string; active?: boolean; blocos: ProgBloco[] };
@@ -263,7 +268,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       setRefresh((n) => n + 1);
     } catch (err) { setError(errMsg(err, "Não consegui publicar a escala.")); } finally { setSaving(false); setBusy(""); }
   };
-  const ajustarCelulaEmLote = async (bloco: Bloco, mudancas: { userId: string; action: "ADICIONAR" | "REMOVER" }[], motivo?: string) => {
+  const ajustarCelulaEmLote = async (bloco: Bloco, mudancas: Mudanca[], motivo?: string) => {
     if (!dia || !localId || !mudancas.length) return;
     setSaving(true); setBusy("ajuste"); setError("");
     try {
@@ -480,7 +485,7 @@ function useTelefone() {
 }
 
 /* ---------- aba Escala: grade pessoas × horários ---------- */
-function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemoveManual, onEditManual, onFolgaResolvida }: { dia: Dia; canEdit: boolean; editableAreaIds: string[] | null; onHorario: (bloco: Bloco, pessoaId: string, horario: { inicio: string; fim: string | null; motivo?: string } | null) => Promise<string | null>; onAdjust: (bloco: Bloco, mudancas: { userId: string; action: "ADICIONAR" | "REMOVER" }[], motivo?: string) => Promise<void>; onRemoveManual?: (allocationIds: string[]) => Promise<void>; onEditManual?: (bloco: Bloco) => void; onFolgaResolvida?: (userId: string) => Promise<void> }) {
+function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemoveManual, onEditManual, onFolgaResolvida }: { dia: Dia; canEdit: boolean; editableAreaIds: string[] | null; onHorario: (bloco: Bloco, pessoaId: string, horario: { inicio: string; fim: string | null; motivo?: string } | null) => Promise<string | null>; onAdjust: (bloco: Bloco, mudancas: Mudanca[], motivo?: string) => Promise<void>; onRemoveManual?: (allocationIds: string[]) => Promise<void>; onEditManual?: (bloco: Bloco) => void; onFolgaResolvida?: (userId: string) => Promise<void> }) {
   const [view, setView] = useState<"pessoa" | "atividade">(() => typeof window !== "undefined" && window.matchMedia?.("(max-width: 640px)").matches ? "atividade" : "pessoa");
   const [team, setTeam] = useState("todos");
   const [zoom, setZoom] = useState(100);
@@ -842,15 +847,40 @@ function HorarioDialog({ nome, bloco, outro, onClose, onSalvar }: { nome: string
   </div></div>;
 }
 
-function AjusteCelulaDialog({ bloco, pessoas, editableAreaIds, onClose, onAdjust }: { bloco: Bloco; pessoas: Pessoa[]; editableAreaIds: string[] | null; onClose: () => void; onAdjust: (mudancas: { userId: string; action: "ADICIONAR" | "REMOVER" }[], motivo?: string) => Promise<void> }) {
+export function AjusteCelulaDialog({ bloco, pessoas, editableAreaIds, focoVaga, onClose, onAdjust }: { bloco: Bloco; pessoas: Pessoa[]; editableAreaIds: string[] | null; /** Abre já escolhendo quem faz este personagem (vem do botão Trocar do Livro do Dia). */ focoVaga?: string | null; onClose: () => void; onAdjust: (mudancas: Mudanca[], motivo?: string) => Promise<void> }) {
   useFecharComEsc(onClose);
   const [busca, setBusca] = useState("");
   const [saving, setSaving] = useState(false);
   // Marca quem entra e quem sai; vai tudo num pedido só, em vez de esperar uma pessoa de cada vez.
   const [mexidas, setMexidas] = useState<Record<string, boolean>>({});
+  // Bloco de Livro do Dia: o ajuste é por personagem. `trocas` guarda, por vaga, quem passa a fazer (null = deixar em aberto).
+  const vagas = bloco.vagas ?? [];
+  const emVagas = vagas.length > 0;
   const entraAgora = (id: string) => mexidas[id] ?? bloco.pessoaIds.includes(id);
-  const mudancas = Object.entries(mexidas).filter(([id, entra]) => entra !== bloco.pessoaIds.includes(id)).map(([userId, entra]) => ({ userId, action: entra ? "ADICIONAR" as const : "REMOVER" as const }));
-  const [excecao, setExcecao] = useState<{ mensagem: string; mudancas: { userId: string; action: "ADICIONAR" | "REMOVER" }[]; motivo: string } | null>(null);
+  const [trocas, setTrocas] = useState<Record<string, string | null>>({});
+  const [escolhendo, setEscolhendo] = useState<string | null>(focoVaga && vagas.some((v) => v.assignmentId === focoVaga) ? focoVaga : null);
+  const quemFaz = (v: VagaDoLivro, t: Record<string, string | null> = trocas) => (v.assignmentId in t ? t[v.assignmentId] : v.userId) ?? null;
+  const nomeDe = (id: string | null) => (id ? pessoas.find((p) => p.id === id)?.name ?? "—" : "ninguém");
+  /** Tira quem fazia e põe quem vai fazer, vaga a vaga; quem sai vem antes de quem entra para a ordem do pedido não atrapalhar. */
+  const mudancasDeTrocas = (t: Record<string, string | null>): Mudanca[] => {
+    const sai: Mudanca[] = [], entra: Mudanca[] = [];
+    for (const v of vagas) {
+      if (!(v.assignmentId in t) || t[v.assignmentId] === v.userId) continue;
+      if (v.userId) sai.push({ userId: v.userId, action: "REMOVER", assignmentId: v.assignmentId });
+      if (t[v.assignmentId]) entra.push({ userId: t[v.assignmentId]!, action: "ADICIONAR", assignmentId: v.assignmentId });
+    }
+    return [...sai, ...entra];
+  };
+  // Escolher alguém que já faz outro personagem move a pessoa: o outro personagem fica em aberto até escolherem quem faz.
+  const escolher = (vaga: VagaDoLivro, pessoaId: string | null, t: Record<string, string | null> = trocas) => {
+    const novo = { ...t, [vaga.assignmentId]: pessoaId };
+    if (pessoaId) for (const outra of vagas) if (outra.assignmentId !== vaga.assignmentId && quemFaz(outra, novo) === pessoaId) novo[outra.assignmentId] = null;
+    return novo;
+  };
+  const porPersonagem = emVagas ? mudancasDeTrocas(trocas) : [];
+  const mudancas: Mudanca[] = emVagas ? porPersonagem : Object.entries(mexidas).filter(([id, entra]) => entra !== bloco.pessoaIds.includes(id)).map(([userId, entra]) => ({ userId, action: entra ? "ADICIONAR" as const : "REMOVER" as const }));
+  const nTrocas = emVagas ? vagas.filter((v) => v.assignmentId in trocas && trocas[v.assignmentId] !== v.userId).length : mudancas.length;
+  const [excecao, setExcecao] = useState<{ mensagem: string; mudancas: Mudanca[]; motivo: string } | null>(null);
   const aplicar = async () => {
     setSaving(true);
     try { await onAdjust(mudancas); } catch (err) {
@@ -867,7 +897,10 @@ function AjusteCelulaDialog({ bloco, pessoas, editableAreaIds, onClose, onAdjust
   const confirmarChamada = async () => {
     if (!chamar || motivo.trim().length < 3) return;
     setSaving(true);
-    try { await onAdjust([{ userId: chamar.id, action: "ADICIONAR" }], motivo.trim()); setChamar(null); setMotivo(""); } finally { setSaving(false); }
+    const vaga = emVagas ? vagas.find((v) => v.assignmentId === escolhendo) : undefined;
+    try { await onAdjust(vaga ? mudancasDeTrocas(escolher(vaga, chamar.id)) : [{ userId: chamar.id, action: "ADICIONAR" }], motivo.trim()); setChamar(null); setMotivo(""); } catch (err) {
+      if (recusaPorRegra(err)) setExcecao({ mensagem: err.data?.message ?? "Esta pessoa passa de uma regra da escala. Para escalar mesmo assim, escreva o motivo.", mudancas: vaga ? mudancasDeTrocas(escolher(vaga, chamar.id)) : [{ userId: chamar.id, action: "ADICIONAR" }], motivo: motivo.trim() }); else throw err;
+    } finally { setSaving(false); }
   };
   const daMinhaArea = (p: Pessoa) => editableAreaIds === null || (p.areaId !== null && editableAreaIds.includes(p.areaId));
   const naBusca = (p: Pessoa) => `${p.name} ${p.areaName ?? ""}`.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR"));
@@ -879,9 +912,42 @@ function AjusteCelulaDialog({ bloco, pessoas, editableAreaIds, onClose, onAdjust
   return <div className="shows-dialog-backdrop" role="presentation"><div className="shows-dialog" role="dialog" aria-modal="true" aria-label={`Ajustar ${textoDoBloco(bloco)}`}>
     <header className="shows-dialog-header"><div><h2>Ajustar bloco</h2><p>{`${textoDoBloco(bloco)} · ${faixa(bloco)}`}</p></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
     <div className="shows-dialog-content" style={css("display:flex;flex-direction:column;gap:12px")}>
-      <p style={css("margin:0;font-size:12.5px;line-height:1.5;color:var(--asa-ink-muted)")}>Este ajuste vale só para este dia; a Programação não muda. Em show com Livro do Dia, a vaga muda no Livro também.</p>
-      <input autoFocus value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar pessoa ou área" aria-label="Buscar pessoa para ajustar" style={css("width:100%;box-sizing:border-box;border:1px solid var(--asa-line-soft);border-radius:10px;padding:10px 12px;font:600 12.5px Manrope,sans-serif;color:var(--asa-ink-dark);background:#fff;")}/>
-      <div style={css("display:flex;flex-direction:column;gap:7px")}>{elegiveis.map((p) => {
+      <p style={css("margin:0;font-size:12.5px;line-height:1.5;color:var(--asa-ink-muted)")}>{emVagas ? "Escolha o personagem e quem passa a fazê-lo. Vale só para este dia: a Programação não muda e o Livro do Dia muda junto." : "Este ajuste vale só para este dia; a Programação não muda. Em show com Livro do Dia, a vaga muda no Livro também."}</p>
+      {emVagas && <div style={css("display:flex;flex-direction:column;gap:7px")}>{vagas.map((v) => {
+        const quem = quemFaz(v);
+        const mudou = quem !== v.userId;
+        const aberta = escolhendo === v.assignmentId;
+        const candidatas = elegiveis.filter((p) => p.id !== quem);
+        return <div key={v.assignmentId} style={css("display:flex;flex-direction:column;gap:8px;border:1px solid " + (aberta || mudou ? "var(--asa-lavender)" : "var(--asa-border-soft)") + ";background:" + (mudou ? "var(--asa-purple-dawn)" : "#fff") + ";border-radius:11px;padding:10px 12px")}>
+          <div style={css("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
+            <span style={css("display:flex;flex-direction:column;gap:1px;min-width:0;flex:1 1 140px")}>
+              <strong style={css("font-size:13px;color:var(--asa-ink-dark)")}>{v.personagem}</strong>
+              <span style={css("font-size:12px;color:" + (quem ? "var(--asa-ink-muted)" : "var(--asa-vaga-fg)"))}>{quem ? `${nomeDe(quem)}${mudou ? ` · era ${nomeDe(v.userId)}` : ""}` : `sem ninguém${mudou ? ` · era ${nomeDe(v.userId)}` : ""}`}</span>
+            </span>
+            {mudou && <button type="button" className="esc-hit" disabled={saving} onClick={() => setTrocas((t) => { const { [v.assignmentId]: _fora, ...resto } = t; return resto; })} style={css(btn("ghost") + "padding:7px 12px")}>Desfazer</button>}
+            <button type="button" className="esc-hit" disabled={saving} aria-expanded={aberta} onClick={() => { setEscolhendo(aberta ? null : v.assignmentId); setBusca(""); }} style={css((aberta ? btn("ghost") : btn("primary")) + "padding:7px 12px")}>{aberta ? "Fechar" : quem ? "Trocar" : "Escolher"}</button>
+          </div>
+          {aberta && <div style={css("display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--asa-book-fade);padding-top:8px")}>
+            <input autoFocus value={busca} onChange={(e) => setBusca(e.target.value)} placeholder={`Quem faz ${v.personagem}? Buscar pessoa ou área`} aria-label={`Buscar quem faz ${v.personagem}`} style={css("width:100%;box-sizing:border-box;border:1px solid var(--asa-line-soft);border-radius:10px;padding:9px 12px;font:600 12.5px Manrope,sans-serif;color:var(--asa-ink-dark);background:#fff;")}/>
+            <div style={css("display:flex;flex-direction:column;gap:5px;max-height:240px;overflow:auto")}>
+              {candidatas.map((p) => {
+                const jaFaz = vagas.find((o) => o.assignmentId !== v.assignmentId && quemFaz(o) === p.id);
+                return <button key={p.id} type="button" className="esc-hit" disabled={saving} onClick={() => { setTrocas(escolher(v, p.id)); setEscolhendo(null); setBusca(""); }} style={css("display:flex;align-items:center;gap:10px;text-align:left;border:1px solid var(--asa-border-soft);background:#fff;border-radius:10px;padding:8px 11px;cursor:pointer;font-family:Manrope,sans-serif")}>
+                  <span style={css("width:26px;height:26px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--asa-violet),var(--asa-indigo));color:#fff;font:700 10px 'JetBrains Mono',monospace")}>{initials(p.name)}</span>
+                  <span style={css("display:flex;flex-direction:column;gap:1px;min-width:0;flex:1")}>
+                    <strong style={css("font-size:12.5px;color:var(--asa-ink-dark)")}>{p.name}</strong>
+                    <span style={css("font-size:11.5px;color:" + (jaFaz ? "var(--asa-badge-fg)" : "var(--asa-label)"))}>{jaFaz ? `já faz ${jaFaz.personagem} · ${jaFaz.personagem} fica sem ninguém` : p.areaName ?? "Sem área"}</span>
+                  </span>
+                </button>;
+              })}
+              {!candidatas.length && <span style={css("font-size:12px;color:var(--asa-label);padding:6px 0")}>Nenhuma pessoa disponível neste filtro.</span>}
+            </div>
+            {quem && <button type="button" className="esc-hit" disabled={saving} onClick={() => { setTrocas(escolher(v, null)); setEscolhendo(null); setBusca(""); }} style={css(btn("ghost") + "padding:7px 12px;align-self:flex-start")}>Deixar sem ninguém</button>}
+          </div>}
+        </div>;
+      })}</div>}
+      {!emVagas && <input autoFocus value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar pessoa ou área" aria-label="Buscar pessoa para ajustar" style={css("width:100%;box-sizing:border-box;border:1px solid var(--asa-line-soft);border-radius:10px;padding:10px 12px;font:600 12.5px Manrope,sans-serif;color:var(--asa-ink-dark);background:#fff;")}/>}
+      {!emVagas && <div style={css("display:flex;flex-direction:column;gap:7px")}>{elegiveis.map((p) => {
         const entra = entraAgora(p.id);
         const mudou = entra !== bloco.pessoaIds.includes(p.id);
         return <div key={p.id} style={css("display:flex;align-items:center;gap:10px;border:1px solid " + (mudou ? "var(--asa-lavender)" : "var(--asa-border-soft)") + ";background:" + (mudou ? "var(--asa-purple-dawn)" : "#fff") + ";border-radius:11px;padding:10px 12px")}>
@@ -889,9 +955,9 @@ function AjusteCelulaDialog({ bloco, pessoas, editableAreaIds, onClose, onAdjust
           <span style={css("display:flex;flex-direction:column;gap:1px;min-width:0;flex:1")}><strong style={css("font-size:12.5px;color:var(--asa-ink-dark)")}>{p.name}</strong><span style={css("font-size:11.5px;color:" + (mudou ? "var(--asa-purple)" : "var(--asa-label)"))}>{mudou ? (entra ? "vai entrar" : "vai sair") : p.areaName ?? "Sem área"}</span></span>
           <button type="button" className="esc-hit" disabled={saving} onClick={() => setMexidas((m) => ({ ...m, [p.id]: !entra }))} style={css(entra ? btn("ghost") + "padding:7px 12px" : btn("primary") + "padding:7px 12px")}>{entra ? "Tirar" : "Colocar"}</button>
         </div>;
-      })}</div>
-      {!elegiveis.length && <span style={css("font-size:12px;color:var(--asa-label);padding:8px 0")}>Nenhuma pessoa disponível neste filtro.</span>}
-      {deFolga.length > 0 && <details style={css("border-top:1px solid var(--asa-book-fade);padding-top:10px")}>
+      })}</div>}
+      {!emVagas && !elegiveis.length && <span style={css("font-size:12px;color:var(--asa-label);padding:8px 0")}>Nenhuma pessoa disponível neste filtro.</span>}
+      {deFolga.length > 0 && (!emVagas || escolhendo) && <details style={css("border-top:1px solid var(--asa-book-fade);padding-top:10px")}>
         <summary style={css("cursor:pointer;list-style:none;font-size:11.5px;font-weight:700;color:var(--asa-badge-fg)")}>{`${plural(deFolga.length, "pessoa de folga hoje", "pessoas de folga hoje")} · chamar em emergência`}</summary>
         <p style={css("margin:8px 0 6px;font-size:11.5px;line-height:1.5;color:var(--asa-label)")}>Folga vence a escala. Chamar alguém na folga pede o motivo, avisa a pessoa na hora e deixa a folga para a Administração remarcar.</p>
         <div style={css("display:flex;flex-direction:column;gap:6px")}>
@@ -925,7 +991,7 @@ function AjusteCelulaDialog({ bloco, pessoas, editableAreaIds, onClose, onAdjust
     </div>
     <footer className="shows-dialog-footer">
       <button type="button" onClick={onClose} className="shows-secondary">{mudancas.length ? "Cancelar" : "Fechar"}</button>
-      <button type="button" className="shows-primary" disabled={!mudancas.length || saving} onClick={() => void aplicar()}>{saving ? "Salvando…" : mudancas.length > 1 ? `Aplicar ${mudancas.length} mudanças` : "Aplicar"}</button>
+      <button type="button" className="shows-primary" disabled={!mudancas.length || saving} onClick={() => void aplicar()}>{saving ? "Salvando…" : nTrocas > 1 ? `Aplicar ${nTrocas} mudanças` : "Aplicar"}</button>
     </footer>
   </div></div>;
 }

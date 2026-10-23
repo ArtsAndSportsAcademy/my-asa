@@ -361,6 +361,20 @@ async function run() {
     await post(asAdmin, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: showKey, mudancas: [{ userId: supPat.id, action: "REMOVER" }, { userId: pat1.id, action: "ADICIONAR" }] });
     assert(JSON.stringify(bloco(await dia(), "SHOW PATINAÇÃO")?.pessoaIds) === JSON.stringify([pat1.id]), "o lote contrário devolve Julia ao show");
 
+    // 23/10: Ajustar por personagem — o bloco do Livro diz quem faz cada personagem, e a troca vai para a vaga escolhida.
+    const vagaDoShow = (await vivas())[0]!;
+    const vagasDoBloco = (bloco(await dia(), "SHOW PATINAÇÃO") as unknown as { vagas?: { assignmentId: string; personagem: string; userId: string | null }[] }).vagas ?? [];
+    const [posicaoDoShow] = await db.select().from(dailyBookPositionsTable).where(eq(dailyBookPositionsTable.id, vagaDoShow.positionId));
+    assert(vagasDoBloco.length === 1 && vagasDoBloco[0]!.assignmentId === vagaDoShow.id && vagasDoBloco[0]!.userId === pat1.id && vagasDoBloco[0]!.personagem === posicaoDoShow!.name, "o bloco de Livro do Dia traz cada personagem e quem o faz hoje");
+    const trocaPorVaga = await post(asAdmin, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: showKey, mudancas: [
+      { userId: pat1.id, action: "REMOVER", assignmentId: vagaDoShow.id }, { userId: supPat.id, action: "ADICIONAR", assignmentId: vagaDoShow.id },
+    ] });
+    assert(trocaPorVaga.status === 200 && JSON.stringify((await vivas()).map((a) => [a.id, a.userId])) === JSON.stringify([[vagaDoShow.id, supPat.id]]), "trocar por personagem põe Deborah exatamente na vaga de Julia");
+    const poeSemTirar = await post(asAdmin, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: showKey, mudancas: [{ userId: pat1.id, action: "ADICIONAR", assignmentId: vagaDoShow.id }] });
+    assert(poeSemTirar.status === 200 && JSON.stringify((await vivas()).map((a) => [a.id, a.userId])) === JSON.stringify([[vagaDoShow.id, pat1.id]]), "pôr alguém num personagem já ocupado troca a pessoa dele, sem inventar vaga");
+    const tiraDeOutraVaga = await post(asAdmin, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: showKey, mudancas: [{ userId: supPat.id, action: "REMOVER", assignmentId: vagaDoShow.id }] });
+    assert(tiraDeOutraVaga.status === 200 && (await vivas())[0]!.userId === pat1.id, "tirar com a vaga de outra pessoa não mexe em quem faz o personagem");
+
     // Republicar limpa a marca.
     const v = (await db.select().from(scalesTable).where(eq(scalesTable.id, scaleId)))[0]!.version;
     assert((await post(asPat, `/escalas/${scaleId}/republicar`, { expectedVersion: v })).status === 403, "Supervisão não republica o dia");

@@ -67,7 +67,11 @@ export type BlocoDia = {
   allocationIds?: string[];
   /** Bloco "só da pessoa": a mesma atividade com horário mudado para uma pessoa (0080). Guarda de onde veio. */
   horarioDela?: { chaveOriginal: string; inicio: string; fim: string | null };
+  /** Bloco de Livro do Dia: cada personagem (vaga) e quem o faz hoje, para o Ajustar trocar por personagem. */
+  vagas?: VagaDoLivro[];
 };
+
+export type VagaDoLivro = { assignmentId: string; personagem: string; userId: string | null };
 
 export type EscalaDia = {
   date: string;
@@ -219,6 +223,25 @@ async function elencoDoLivro(dailyBookId: string, executor: Exec = db) {
   return [...new Set(rows.map((r) => r.userId).filter((id): id is string => Boolean(id)))];
 }
 
+/** Vagas vivas de um Livro do Dia, na ordem em que foram criadas: o personagem (nome da posição) e quem o faz hoje. */
+async function vagasDoLivro(dailyBookId: string, executor: Exec = db): Promise<VagaDoLivro[]> {
+  const rows = await executor.select({ assignmentId: dailyBookAssignmentsTable.id, personagem: dailyBookPositionsTable.name, userId: dailyBookAssignmentsTable.userId }).from(dailyBookAssignmentsTable)
+    .innerJoin(dailyBookPositionsTable, eq(dailyBookAssignmentsTable.positionId, dailyBookPositionsTable.id))
+    .leftJoin(dailyBookBlocksTable, eq(dailyBookPositionsTable.blockId, dailyBookBlocksTable.id))
+    .leftJoin(dailyBookScenesTable, eq(dailyBookBlocksTable.sceneId, dailyBookScenesTable.id))
+    .where(and(
+      eq(dailyBookAssignmentsTable.dailyBookId, dailyBookId),
+      ne(dailyBookAssignmentsTable.status, "REMOVED"),
+      isNull(dailyBookAssignmentsTable.supersededAt),
+      eq(dailyBookPositionsTable.isRemoved, false),
+      isNull(dailyBookPositionsTable.supersededAt),
+      or(isNull(dailyBookBlocksTable.id), eq(dailyBookBlocksTable.isRemoved, false)),
+      or(isNull(dailyBookScenesTable.id), eq(dailyBookScenesTable.isRemoved, false)),
+    ))
+    .orderBy(asc(dailyBookPositionsTable.createdAt), asc(dailyBookAssignmentsTable.createdAt), asc(dailyBookAssignmentsTable.id));
+  return rows;
+}
+
 export async function montarEscalaDoDia(organizationId: string, locationId: string, date: string, options: { publishedOnly?: boolean } = {}): Promise<EscalaDia | null> {
   const [location] = await db.select({ id: locationsTable.id, name: locationsTable.name }).from(locationsTable)
     .where(and(eq(locationsTable.id, locationId), eq(locationsTable.organizationId, organizationId))).limit(1);
@@ -274,7 +297,8 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     .innerJoin(showBooksTable, eq(dailyBooksTable.showBookId, showBooksTable.id))
     .where(and(eq(agendaEventsTable.date, date), eq(showBooksTable.locationId, locationId), ne(dailyBooksTable.status, "CANCELLED")));
   const elenco = new Map<string, string[]>();
-  for (const livro of livros) elenco.set(livro.id, await elencoDoLivro(livro.id));
+  const vagas = new Map<string, VagaDoLivro[]>();
+  for (const livro of livros) { elenco.set(livro.id, await elencoDoLivro(livro.id)); vagas.set(livro.id, await vagasDoLivro(livro.id)); }
 
   const blocos: BlocoDia[] = [];
   const cobertos = new Set<string>();
@@ -304,6 +328,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
       ...base, key: `p:${bloco.id}`, rotulo: bloco.rotulo, inicio, fim: hhmm(bloco.fim), origem: "programacao", regra: bloco.regra,
       pessoaIds, vazio, sinal, blocoId: bloco.id, showBookId: bloco.showBookId,
       dailyBookId: livro?.id ?? null, dailyBookStatus: livro?.status ?? null,
+      ...(livro ? { vagas: vagas.get(livro.id) ?? [] } : {}),
     });
   }
 
@@ -317,7 +342,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
       blocos.push({
         ...base, key: `l:${livro.id}:${h.inicio}`, rotulo: `${livro.showTitle ?? "SHOW"}${livro.sessionId ? ` · ${h.inicio}` : ""}`.toLocaleUpperCase("pt-BR"), inicio: h.inicio, fim: h.fim,
         origem: "livro", regra: "livro", pessoaIds, vazio: pessoaIds.length === 0, sinal: pessoaIds.length ? null : "Livro do Dia sem ninguém escalado",
-        showBookId: livro.showBookId, dailyBookId: livro.id, dailyBookStatus: livro.status,
+        showBookId: livro.showBookId, dailyBookId: livro.id, dailyBookStatus: livro.status, vagas: vagas.get(livro.id) ?? [],
       });
     }
   }

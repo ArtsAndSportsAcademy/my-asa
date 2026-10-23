@@ -380,8 +380,8 @@ router.post("/escalas/dia/horario", requireAuth, requireOrganization, async (req
 router.post("/escalas/dia/ajustes", requireAuth, requireOrganization, async (req, res) => {
   const actor = req.user! as Actor;
   const { locationId, date, sourceKey, userId, action, mudancas, motivo } = req.body ?? {};
-  const lote: { userId: string; action: "ADICIONAR" | "REMOVER" }[] = Array.isArray(mudancas)
-    ? mudancas.filter((m): m is { userId: string; action: "ADICIONAR" | "REMOVER" } =>
+  const lote: { userId: string; action: "ADICIONAR" | "REMOVER"; assignmentId?: string | null }[] = Array.isArray(mudancas)
+    ? mudancas.filter((m): m is { userId: string; action: "ADICIONAR" | "REMOVER"; assignmentId?: string | null } =>
       Boolean(m) && typeof (m as { userId?: unknown }).userId === "string" && ["ADICIONAR", "REMOVER"].includes((m as { action?: string }).action ?? ""))
     : [];
   if (typeof locationId !== "string" || typeof date !== "string" || !DATE.test(date) || typeof sourceKey !== "string" || !sourceKey
@@ -394,7 +394,7 @@ router.post("/escalas/dia/ajustes", requireAuth, requireOrganization, async (req
     // Primeiro confere TODAS as pessoas sem gravar nada (folga sem motivo, regra de horário, área alheia…).
     const conferidos: AjusteConferido[] = [];
     for (const m of pedidos) {
-      const r = await conferirAjuste(actor, { locationId, date, sourceKey, userId: m.userId, action: m.action, motivo: porque });
+      const r = await conferirAjuste(actor, { locationId, date, sourceKey, userId: m.userId, action: m.action, motivo: porque, assignmentId: typeof m.assignmentId === "string" ? m.assignmentId : null });
       if (!r.ok) { res.status(r.status).json({ ...r.body, ...(pedidos.length > 1 ? { nadaFoiGravado: true } : {}) }); return; }
       conferidos.push(r);
     }
@@ -423,7 +423,7 @@ router.post("/escalas/dia/ajustes", requireAuth, requireOrganization, async (req
 
 type AjusteErro = { ok: false; status: number; body: Record<string, unknown> };
 type AjusteConferido = {
-  ok: true; locationId: string; date: string; sourceKey: string; userId: string; action: "ADICIONAR" | "REMOVER"; motivo?: string | null;
+  ok: true; locationId: string; date: string; sourceKey: string; userId: string; action: "ADICIONAR" | "REMOVER"; motivo?: string | null; assignmentId?: string | null;
   locationName: string; bloco: NonNullable<Awaited<ReturnType<typeof montarEscalaDoDia>>>["blocos"][number];
   pessoa: { id: string; areaId: string | null; name: string }; deFolga: boolean; operationId: string;
   regrasPassadas: Awaited<ReturnType<typeof verificarRegrasDeEscala>>;
@@ -432,7 +432,7 @@ type AjusteConferido = {
 /** Confere se uma pessoa pode entrar ou sair de um bloco neste dia, sem gravar nada; devolve o erro em vez de responder, para o lote reaproveitar. */
 async function conferirAjuste(
   actor: Actor,
-  { locationId, date, sourceKey, userId, action, motivo }: { locationId: string; date: string; sourceKey: string; userId: string; action: "ADICIONAR" | "REMOVER"; motivo?: string | null },
+  { locationId, date, sourceKey, userId, action, motivo, assignmentId }: { locationId: string; date: string; sourceKey: string; userId: string; action: "ADICIONAR" | "REMOVER"; motivo?: string | null; assignmentId?: string | null },
 ): Promise<AjusteConferido | AjusteErro> {
   const location = await locationInOrg(locationId, actor.organizationId);
   if (!location) return { ok: false, status: 404, body: { error: "Local não encontrado" } };
@@ -466,7 +466,7 @@ async function conferirAjuste(
       return { ok: false, status: 409, body: { error: codigoDaExcecao(regrasPassadas), message: `${pessoa.name} ${frasesDasRegras(regrasPassadas)}. Para escalar mesmo assim, escreva o motivo.`, pessoa: pessoa.name } };
     }
   }
-  return { ok: true, locationId, date, sourceKey, userId, action, motivo, locationName: location.name, bloco, pessoa, deFolga, operationId, regrasPassadas };
+  return { ok: true, locationId, date, sourceKey, userId, action, motivo, assignmentId, locationName: location.name, bloco, pessoa, deFolga, operationId, regrasPassadas };
 }
 
 /**
@@ -477,10 +477,10 @@ async function conferirAjuste(
 async function gravarAjuste(
   actor: Actor, tx: typeof db, estado: { scale: Awaited<ReturnType<typeof findEscalaDoDia>> }, c: AjusteConferido, depoisDoCommit: (() => void)[],
 ): Promise<void> {
-  const { locationId, date, sourceKey, userId, action, motivo, locationName, bloco, pessoa, deFolga, operationId, regrasPassadas } = c;
+  const { locationId, date, sourceKey, userId, action, motivo, assignmentId, locationName, bloco, pessoa, deFolga, operationId, regrasPassadas } = c;
   // 09/10: bloco que vem de Livro do Dia muda o próprio Livro (vaga aberta / preenchida), para a
   // Escala e o Livro dizerem a mesma coisa. Sem vaga a mexer, o ajuste fica só na Escala.
-  const viaLivro = bloco.dailyBookId ? await ajustarPessoaNoLivro({ dailyBookId: bloco.dailyBookId, userId, action, actorId: actor.sub }, { tx, depoisDoCommit }) : false;
+  const viaLivro = bloco.dailyBookId ? await ajustarPessoaNoLivro({ dailyBookId: bloco.dailyBookId, userId, action, actorId: actor.sub, assignmentId }, { tx, depoisDoCommit }) : false;
   if (!estado.scale) {
     const [created] = await tx.insert(scalesTable).values({
       operationId, locationId, title: `Escala do dia · ${locationName} · ${date}`, periodStart: date, periodEnd: date,
