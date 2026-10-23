@@ -466,17 +466,36 @@ router.get("/show-books/:id/resolve", requireAuth, requireOrganization, async (r
 
 router.patch("/show-books/:id", requireAuth, requireOrganization, async (req, res) => {
   const id = req.params.id as string;
-  const { title, description, startTime, endTime, details, reason, stageFormat } = req.body;
+  const { title, description, startTime, endTime, details, reason, stageFormat, type } = req.body;
   if (!reason) { res.status(400).json({ error: "reason é obrigatório" }); return; }
+  if (title !== undefined && (typeof title !== "string" || !title.trim() || title.trim().length > 120)) { res.status(400).json({ error: "BAD_REQUEST", message: "O nome do show não pode ficar vazio nem passar de 120 letras." }); return; }
+  if (type !== undefined && !["COMPLETE", "SIMPLE", "CHARACTERS_ONLY"].includes(type)) { res.status(400).json({ error: "BAD_REQUEST", message: "Escolha o tipo do show: completo, só formação ou só personagens." }); return; }
   if (stageFormat !== undefined && !isStageFormat(stageFormat)) { res.status(400).json({ error: "Formato de palco inválido", message: "Escolha L, retangular, quadrado ou sem mapa." }); return; }
   try {
     const book = await requireShowManage(req, res);
     if (!book) return;
+    // Mudar o tipo não apaga nada, mas o tipo novo não pode conviver com o que o show já tem: só personagens não tem cenas nem mapa,
+    // e só formação não tem personagens. Em vez de esconder dados, o app recusa e diz o que tirar antes.
+    if (type !== undefined && type !== book.type) {
+      if (type === "CHARACTERS_ONLY") {
+        const [c] = await db.select({ n: sql<number>`count(*)::int` }).from(showBookScenesTable).where(and(eq(showBookScenesTable.showBookId, id), eq(showBookScenesTable.active, true), eq(showBookScenesTable.isCastRoster, false)));
+        if ((c?.n ?? 0) > 0) { res.status(409).json({ error: "TIPO_NAO_CABE", message: `Este show tem ${c!.n === 1 ? "1 cena" : `${c!.n} cenas`}. Show só de personagens não tem cenas nem mapa. Tire as cenas antes de mudar o tipo.` }); return; }
+      }
+      if (type === "SIMPLE") {
+        const [c] = await db.select({ n: sql<number>`count(*)::int` }).from(showBookLinesTable).innerJoin(showBookRolesTable, eq(showBookLinesTable.positionId, showBookRolesTable.id))
+          .where(and(eq(showBookRolesTable.showBookId, id), eq(showBookRolesTable.active, true), eq(showBookLinesTable.active, true), sql`${showBookLinesTable.characterId} is not null`));
+        if ((c?.n ?? 0) > 0) { res.status(409).json({ error: "TIPO_NAO_CABE", message: `Este show tem ${c!.n === 1 ? "1 vaga" : `${c!.n} vagas`} de personagem. Show só de formação não tem personagens. Tire as vagas antes de mudar o tipo.` }); return; }
+      }
+    }
+    const rotuloDoTipo = (t: string) => t === "CHARACTERS_ONLY" ? "Só personagens" : t === "SIMPLE" ? "Só formação" : "Completo";
+    const novoNome = typeof title === "string" ? title.trim() : book.title;
+    const mudancas = [novoNome !== book.title ? `nome de "${book.title}" para "${novoNome}"` : null, type !== undefined && type !== book.type ? `tipo de ${rotuloDoTipo(book.type)} para ${rotuloDoTipo(type)}` : null].filter(Boolean);
     const updated = await db.transaction(async (tx) => {
       const [next] = await tx
         .update(showBooksTable)
         .set({
-          title: title ?? book.title,
+          title: novoNome,
+          type: type ?? book.type,
           description: description ?? book.description,
           startTime: "startTime" in req.body ? (startTime || null) : book.startTime,
           endTime: "endTime" in req.body ? (endTime || null) : book.endTime,
@@ -488,7 +507,7 @@ router.patch("/show-books/:id", requireAuth, requireOrganization, async (req, re
         .returning();
       await writeHistoryEvent({
         category: "OPERATIONAL_CHANGE", action: "show_book.updated",
-        title: "Livro do Show atualizado", narrative: `Informações do show ${book.title} atualizadas.`,
+        title: "Livro do Show atualizado", narrative: mudancas.length ? `Show ${book.title}: mudou ${mudancas.join(" e ")}.` : `Informações do show ${book.title} atualizadas.`,
         entityType: "show_book", entityId: id, actorId: req.user!.sub,
         operationId: book.operationId, orgId: req.user!.organizationId,
         beforeState: book, afterState: next, metadata: { reason },
