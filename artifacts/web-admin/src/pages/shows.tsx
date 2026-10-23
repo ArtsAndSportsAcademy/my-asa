@@ -746,7 +746,7 @@ function PublishDialog({ show, onClose, onPublish }: { show: Show; onClose: () =
   return <Dialog title="Publicar show" onClose={() => { if (!publishing) onClose(); }} footer={<button type="button" className="shows-primary" onClick={() => void publish()} disabled={publishing}>{publishing ? "Publicando…" : "Publicar show"}</button>}>
     <div className="shows-form">
       <p><strong>{show.title}</strong> está em rascunho. Ao publicar, o Elenco da operação passa a ver o show em Shows, com os links do Drive, as sessões e as observações{show.type !== "CHARACTERS_ONLY" ? " e o Livro oficial" : ""}.</p>
-      <p>Isto não publica a Escala nem o Livro do Dia: eles saem em Escalas, em “Publicar Escala e Livros”. Também não manda aviso no sino.</p>
+      <p>Isto não publica a Escala nem o Livro do Dia: eles saem em Escalas, em “Publicar Escala e Livros”. Cada pessoa do Elenco da operação recebe um aviso no sino (um por show publicado), e você não recebe o seu próprio.</p>
       {error && <p className="shows-error" role="alert">{error}</p>}
     </div>
   </Dialog>;
