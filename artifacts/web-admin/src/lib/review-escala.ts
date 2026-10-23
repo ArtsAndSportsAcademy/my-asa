@@ -15,6 +15,7 @@ export type SampleBloco = {
   regra: "todos" | "ninguem" | "area" | "grupo" | "pessoas" | "livro" | null; pessoaIds: string[]; vazio: boolean; sinal: string | null;
   showBookId: string | null; dailyBookId: string | null; dailyBookStatus: string | null; blocoId: string | null; allocationId: string | null;
   horarioDela?: { chaveOriginal: string; inicio: string; fim: string | null };
+  vagas?: { assignmentId: string; personagem: string; userId: string | null }[];
 };
 export type SampleEscalaState = {
   status: "DRAFT" | "PUBLISHED" | "REPUBLISHED"; version: number; prontas: Record<string, { por: string; em: string }>;
@@ -166,7 +167,7 @@ export function sampleDia(localId: string, date: string) {
     else if (b.regra === "pessoas") pessoaIds = b.pessoaIds.filter((id) => present.has(id));
     const vazio = b.regra !== "ninguem" && pessoaIds.length === 0;
     if (vazio && !sinal) sinal = b.regra === "pessoas" && b.pessoaIds.length === 0 ? "Sem regra de quem entra — fica vazio até alguém decidir" : "Ninguém disponível para a regra deste bloco hoje";
-    blocos.push({ key: `p:${b.id}`, rotulo: b.rotulo, inicio: b.inicio, fim: b.fim, origem: "programacao", regra: b.regra, pessoaIds, vazio, sinal, showBookId: b.showBookId, dailyBookId, dailyBookStatus, blocoId: b.id, allocationId: null });
+    blocos.push({ key: `p:${b.id}`, rotulo: b.rotulo, inicio: b.inicio, fim: b.fim, origem: "programacao", regra: b.regra, pessoaIds, vazio, sinal, showBookId: b.showBookId, dailyBookId, dailyBookStatus, blocoId: b.id, allocationId: null, ...(dailyBookId ? { vagas: pessoaIds.map((id, i) => ({ assignmentId: `${dailyBookId}-${i}`, personagem: `Personagem ${i + 1}`, userId: id })) } : {}) });
   }
   // Show do local sem bloco no molde: o Livro convoca mesmo assim (uma entrada por sessão).
   shows.forEach((show, idx) => {
