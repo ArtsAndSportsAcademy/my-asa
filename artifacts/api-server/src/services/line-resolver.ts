@@ -86,6 +86,11 @@ export async function buildShowBookTree(showBookId: string, executor: TreeExecut
   return scenes.map((s) => ({ ...s, blocks: blocksByScene[s.id] ?? [], keyframes: keyframesByScene[s.id] ?? [] }));
 }
 
+/** Reservas da cena (0078): quem cobre qualquer posição da cena quando o titular não pode, na ordem cadastrada. */
+export function reservasDaCena(scene: { reserveIds?: unknown }): string[] {
+  return Array.isArray(scene.reserveIds) ? [...new Set(scene.reserveIds.filter((x): x is string => typeof x === "string" && x.length > 0))] : [];
+}
+
 // Coleta todos os userIds referenciados nas configs das linhas.
 export function collectUserIdsFromConfig(config: unknown): string[] {
   if (!config || typeof config !== "object") return [];
@@ -503,6 +508,7 @@ export async function resolveShowBookCastComNomes(
     const userIds = new Set<string>();
     const characterIds = new Set<string>();
     for (const scene of tree) {
+      reservasDaCena(scene).forEach((id) => userIds.add(id));
       for (const block of scene.blocks) {
         for (const pos of block.positions) {
           for (const line of pos.lines) {
@@ -639,16 +645,41 @@ export async function resolveShowBookCastComNomes(
       Boolean(line.characterId && characterModes.get(line.characterId) === "titular");
     const entries = scene.blocks.flatMap((block) => block.positions.flatMap((pos) => pos.lines.map((line) => ({ line }))));
     const resolvedByLine = new Map<string, ResolvedLine>();
-    for (const { line } of [...entries.filter((e) => isTitular(e.line)), ...entries.filter((e) => !isTitular(e.line))]) {
+    // Reservas da cena: o titular de cada posição é resolvido primeiro, para que uma reserva nunca tome o lugar de quem é titular
+    // de outra posição da mesma cena. Só depois, as posições cujo titular não pôde entram com substitutos próprios e reservas.
+    const reservas = reservasDaCena(scene);
+    const usaReservas = (line: { type: string; config: unknown }) => {
+      if (reservas.length === 0 || line.type !== "TITULAR_SUBSTITUTE") return false;
+      const cfg = (line.config && typeof line.config === "object" ? line.config : {}) as Record<string, unknown>;
+      return typeof cfg.titularId === "string" && cfg.titularId !== "";
+    };
+    const resolverLinha = (line: (typeof entries)[number]["line"], config: unknown = line.config) => {
       const memberIdsOverride = line.characterId
         ? castMembers.get(line.characterId) ?? []
         : undefined;
-      const resolved = resolveLine(line, weekday, unavailable, nameOf, excluded, rotationCounts, memberIdsOverride, line.characterId ? characterModes.get(line.characterId) : undefined, balance, advancedToday, regras?.bloqueios);
+      return resolveLine({ ...line, config }, weekday, unavailable, nameOf, excluded, rotationCounts, memberIdsOverride, line.characterId ? characterModes.get(line.characterId) : undefined, balance, advancedToday, regras?.bloqueios);
+    };
+    const registrar = (line: { id: string }, resolved: ResolvedLine) => {
       if (resolved.status === "UNCOVERED") uncoveredCount += 1;
       if (excluded) {
         for (const p of resolved.people) excluded.add(p.userId);
       }
       resolvedByLine.set(line.id, resolved);
+    };
+    const pendentes: (typeof entries)[number]["line"][] = [];
+    for (const { line } of [...entries.filter((e) => isTitular(e.line)), ...entries.filter((e) => !isTitular(e.line))]) {
+      if (usaReservas(line)) {
+        const cfg = line.config as Record<string, unknown>;
+        const soTitular = resolverLinha(line, { ...cfg, substituteIds: [] });
+        if (soTitular.status === "COVERED") registrar(line, soTitular); else pendentes.push(line);
+        continue;
+      }
+      registrar(line, resolverLinha(line));
+    }
+    for (const line of pendentes) {
+      const cfg = line.config as Record<string, unknown>;
+      const proprios = Array.isArray(cfg.substituteIds) ? cfg.substituteIds.filter((x): x is string => typeof x === "string") : [];
+      registrar(line, resolverLinha(line, { ...cfg, substituteIds: [...new Set([...proprios, ...reservas])] }));
     }
     return {
       sceneId: scene.id,
