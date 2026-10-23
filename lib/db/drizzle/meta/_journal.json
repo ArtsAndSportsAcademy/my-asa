@@ -312,6 +312,7 @@
     {"idx":73,"version":"7","when":1792548000000,"tag":"0073_pedidos_e_rotinas","breakpoints":true},
     {"idx":74,"version":"7","when":1792634400000,"tag":"0074_formato_do_palco_no_show","breakpoints":true},
     {"idx":75,"version":"7","when":1792720800000,"tag":"0075_tentativas_de_acesso","breakpoints":true},
-    {"idx":76,"version":"7","when":1792807200000,"tag":"0076_relogio_do_sistema","breakpoints":true}
+    {"idx":76,"version":"7","when":1792807200000,"tag":"0076_relogio_do_sistema","breakpoints":true},
+    {"idx":77,"version":"7","when":1792893600000,"tag":"0077_supervisao_participa_dos_shows","breakpoints":true}
   ]
 }

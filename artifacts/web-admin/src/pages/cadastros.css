@@ -40,3 +40,4 @@
 
 /* Dias de funcionamento do local: caixa pequena ao lado do nome, em linha (a regra geral dá 100% de largura e 44 px a todo campo). */
 .cad-form fieldset{display:flex;flex-wrap:wrap;gap:0 14px;margin:0;padding:0;border:0}.cad-form fieldset legend{margin-bottom:4px;padding:0;font-size:13px;font-weight:700}.cad-form fieldset label{display:flex;align-items:center;gap:6px;min-height:44px;font-size:13px}.cad-form input[type=checkbox]{width:20px;min-height:20px;height:20px;padding:0;accent-color:#4c1ca6}
+.cad-form .cad-participa span{display:flex;align-items:center;gap:9px;min-height:44px}.cad-form .cad-participa input{width:20px;min-height:20px;height:20px;flex:none;padding:0}.cad-form .cad-participa small{font-weight:400;color:var(--asa-muted);line-height:1.5}

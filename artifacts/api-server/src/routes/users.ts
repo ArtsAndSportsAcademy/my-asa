@@ -134,7 +134,8 @@ async function attachOperationIds(
     profile: perfilByUser.get(u.id) ?? null,
     // O seletor de personagem começa pelo elenco: direção, administração e
     // supervisão não entram como candidatos de personagem por acidente.
-    isCharacterEligible: characterEligibleUsers.has(u.id),
+    // Supervisão que atua nos shows (opção ligada pela Administração no cadastro) também entra; Direção e Administração nunca.
+    isCharacterEligible: characterEligibleUsers.has(u.id) || (u.participatesInShows && perfilByUser.get(u.id) === "SUP"),
   }));
 }
 
@@ -491,7 +492,8 @@ router.put("/users/:id/cadastro", requireAuth, requireOrganization, async (req, 
     res.status(403).json({ error: "FORBIDDEN", message: `${quem}. Peça a alguém da Administração.` });
     return;
   }
-  const { fullName, email, areaId, perfil, reason } = req.body ?? {};
+  const { fullName, email, areaId, perfil, reason, participaDosShows } = req.body ?? {};
+  if (participaDosShows !== undefined && typeof participaDosShows !== "boolean") { res.status(400).json({ error: "BAD_REQUEST", message: "\"Participa dos shows\" é ligado ou desligado." }); return; }
   if (fullName !== undefined && (typeof fullName !== "string" || !fullName.trim())) { res.status(400).json({ error: "BAD_REQUEST", message: "O nome completo não pode ficar vazio." }); return; }
   if (typeof email === "string" && email.trim()) { res.status(400).json({ error: "BAD_REQUEST", message: "O e-mail é mudado pela própria pessoa, no Perfil dela. Aqui a Administração muda nome, área e perfil." }); return; }
   if (areaId !== undefined && areaId !== null && typeof areaId !== "string") { res.status(400).json({ error: "BAD_REQUEST", message: "A área não é válida." }); return; }
@@ -511,6 +513,7 @@ router.put("/users/:id/cadastro", requireAuth, requireOrganization, async (req, 
       const campos: Record<string, unknown> = {};
       if (novoNome !== undefined && novoNome !== antes.fullName) campos.fullName = novoNome;
       if (novaArea !== undefined && novaArea !== antes.areaId) campos.areaId = novaArea;
+      if (participaDosShows !== undefined && participaDosShows !== antes.participatesInShows) campos.participatesInShows = participaDosShows;
 
       let perfilAntes: Perfil | null = null, perfilDepois: Perfil | null = null;
       if (perfil !== undefined) {
@@ -543,13 +546,14 @@ router.put("/users/:id/cadastro", requireAuth, requireOrganization, async (req, 
       const partes: string[] = [];
       if (campos.fullName !== undefined) partes.push(`nome de "${antes.fullName}" para "${depois!.fullName}"`);
       if (campos.areaId !== undefined) partes.push("área");
+      if (campos.participatesInShows !== undefined) partes.push(campos.participatesInShows ? "passou a participar dos shows (aparece nos seletores de personagem e formação)" : "deixou de participar dos shows");
       if (mudouPerfil) partes.push(perfilAntes ? `perfil de ${NOME_PERFIL[perfilAntes]} para ${NOME_PERFIL[perfil as Perfil]}` : `perfil ${NOME_PERFIL[perfil as Perfil]}`);
       await writeHistoryEvent({
         category: "OPERATIONAL_CHANGE", action: "user.cadastro_changed", title: "Cadastro de pessoa atualizado",
         narrative: `${antes.fullName ?? antes.name}: mudou ${partes.join(", ")}.${motivo ? ` Motivo: ${motivo}` : ""}`,
         entityType: "user", entityId: id, actorId: req.user!.sub, orgId: antes.organizationId,
-        beforeState: { fullName: antes.fullName, areaId: antes.areaId, perfil: perfilAntes },
-        afterState: { fullName: depois!.fullName, areaId: depois!.areaId, perfil: mudouPerfil ? perfil : perfilAntes },
+        beforeState: { fullName: antes.fullName, areaId: antes.areaId, perfil: perfilAntes, participaDosShows: antes.participatesInShows },
+        afterState: { fullName: depois!.fullName, areaId: depois!.areaId, perfil: mudouPerfil ? perfil : perfilAntes, participaDosShows: depois!.participatesInShows },
         metadata: motivo ? { reason: motivo } : undefined,
       }, tx as any);
 
@@ -563,7 +567,7 @@ router.put("/users/:id/cadastro", requireAuth, requireOrganization, async (req, 
           entityType: "user", entityId: id, actionUrl: "/perfil",
         }, new Date(), { deduplicationKey: `cadastro:${id}:${Date.now()}` });
       }
-      return { depois: depois!, perfilAntes, perfilDepois: mudouPerfil ? (perfil as Perfil) : perfilAntes, mudou: true, antesCampos: { fullName: antes.fullName, areaId: antes.areaId, perfil: perfilAntes } };
+      return { depois: depois!, perfilAntes, perfilDepois: mudouPerfil ? (perfil as Perfil) : perfilAntes, mudou: true, antesCampos: { fullName: antes.fullName, areaId: antes.areaId, perfil: perfilAntes, participaDosShows: antes.participatesInShows } };
     });
     if (resultado.mudou) await recordAudit({ actorId: req.user!.sub, action: "USER_UPDATED", targetResource: `user:${id}`, metadata: { change: "cadastro" } });
     res.json({ user: adminPerson(resultado.depois), perfil: resultado.perfilDepois, mudou: resultado.mudou, antes: resultado.antesCampos });

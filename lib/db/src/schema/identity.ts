@@ -115,6 +115,8 @@ export const usersTable = pgTable("users", {
   // dados e uma migração reversível própria.
   defaultLocationId: uuid("default_location_id"),
   specialization: text("specialization").$type<UserSpecialization | null>(),
+  /** Supervisão que também atua nos shows: a Administração liga no cadastro e a pessoa passa a aparecer nos seletores de personagem e formação. Elenco não usa (já entra pelo papel). */
+  participatesInShows: boolean("participa_dos_shows").notNull().default(false),
   birthDate: date("birth_date", { mode: "string" }),
   entryDate: date("entry_date", { mode: "string" }),
   /** Data de saída prevista para Convidados (CONVIDADO). Nulo para membros fixos. */
