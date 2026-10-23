@@ -221,7 +221,7 @@ export default function ShellFoundation() {
       <Suspense fallback={<section className="asa-page"><div className="asa-skeletons" aria-busy="true"><i/><i/><i/></div></section>}>
         {active.href === "/meu-dia" ? <><MeuDiaPage role={role}/><InstallPrompt/></>
           : active.href === "/perfil" ? <PerfilPage role={role}/>
-          : active.href === "/shows" ? <ShowsPage canManage={role === "adm" || role === "sup"} onlyPublished={role === "mem"}/>
+          : active.href === "/shows" ? <ShowsPage canManage={role === "adm" || role === "sup"} isAdmin={role === "adm"} onlyPublished={role === "mem"}/>
           : active.href === "/escalas" ? <EscalasPage role={role} onHeader={setHeaderExtra}/>
           : active.href === "/livro-do-dia" ? <LivroDoDiaPage role={role} canManage={role === "adm" || role === "sup"} onHeader={setHeaderExtra}/>
           : active.href === "/folgas" ? (location === "/solicitacoes" ? <SolicitacoesPage role={role} meuId={user?.id ?? null}/> : <FolgasPage role={role}/>)
