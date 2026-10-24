@@ -20,10 +20,10 @@ export const displayDate = (value?: string) => value ? new Intl.DateTimeFormat("
 export const initials = (name: string) => name.split(/\s+/).map(part => part[0]).join("").slice(0, 2).toUpperCase();
 export const now = () => new Date().toISOString();
 
-export function State({ loading, error, empty, emptyHint, onRetry, children }: { loading: boolean; error: string; empty: boolean; emptyHint?: string; onRetry: () => void; children: React.ReactNode }) {
+export function State({ loading, error, empty, emptyTitle = "Ainda não há nada aqui", emptyHint, onRetry, children }: { loading: boolean; error: string; empty: boolean; emptyTitle?: string; emptyHint?: string; onRetry: () => void; children: React.ReactNode }) {
   if (loading) return <div className="comm-state comm-skeleton" aria-busy="true"><i/><i/><i/></div>;
   if (error) return <div className="comm-state comm-error"><img src="/asa/duvida.webp" alt=""/><strong>{error}</strong><button onClick={onRetry}>Tentar de novo</button></div>;
-  if (empty) return <div className="comm-state"><img src="/asa/oi.webp" alt=""/><strong>Ainda não há nada aqui</strong><span>{emptyHint ?? "Quando houver algo no seu acesso, aparece no mural."}</span></div>;
+  if (empty) return <div className="comm-state"><img src="/asa/oi.webp" alt=""/><strong>{emptyTitle}</strong><span>{emptyHint ??"Quando houver algo no seu acesso, aparece no mural."}</span></div>;
   return <>{children}</>;
 }
 

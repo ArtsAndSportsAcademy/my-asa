@@ -153,3 +153,59 @@
 /* Faixa de números: no celular estreito o rótulo "reconhecimentos" precisa caber. */
 @media(max-width:420px){.comm-metrics article{padding:12px 10px}}
 .comm-datas small{font-size:12px}
+
+/* 24/10 (Claude), revisão da Biblioteca. Bloco novo no fim: cartões, cabeçalho no celular, leitor do documento
+   (antes com estilo escrito dentro do código), citações, gestão e "quem já leu". */
+.comm-document p{color:#4a4363;font-size:14px;line-height:1.55}
+.comm-document footer .comm-doc-confirm{border-radius:12px;background:#6c2bf2;color:#fff;padding:0 16px;box-shadow:0 10px 20px -14px rgba(108,43,242,.8)}
+.comm-secondary.active{border-color:#6c2bf2;background:#f0eafe;color:#4a1eb0}
+/* Leitor do documento */
+.comm-reader{display:grid;gap:16px;padding:16px 18px 20px}
+.comm-reader-msg{padding:20px 18px}
+.comm-reader-meta{color:#6b6482;font-size:12px}
+.comm-reader-summary{margin:0;color:#4a4363;font-size:15px;line-height:1.55}
+.comm-reader-cols{display:grid;grid-template-columns:minmax(120px,.28fr) minmax(0,1fr);gap:20px;align-items:start}
+.comm-reader-index{display:grid;gap:6px;position:sticky;top:0}
+.comm-reader-text{min-height:140px;color:#2f2946;font-size:15px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
+.comm-reader-pager{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px}
+.comm-reader-pager small{color:#6b6482;font-size:12px;text-align:center}
+.comm-reader-section{display:grid;gap:10px;padding-top:14px;border-top:1px solid #eee9f6}
+.comm-reader h3{margin:0;font:600 15px/1.3 Outfit,Manrope,sans-serif}
+.comm-reader-section small{color:#6b6482;font-size:12px}
+.comm-reader-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.comm-reader-buttons{display:flex;flex-wrap:wrap;gap:8px}
+.comm-reader-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
+.comm-cita{display:grid;gap:4px;padding-left:12px;border-left:2px solid #b9d3bd}
+.comm-cita p{margin:0;font-size:14px;line-height:1.55;white-space:pre-wrap}
+.comm-cita-row{display:grid;grid-template-columns:5.5rem minmax(0,1fr) 44px;gap:10px;align-items:start}
+.comm-cita-row label{display:grid;gap:6px;color:#5b5473;font-size:12px;font-weight:700}
+.comm-cita-row input,.comm-cita-row textarea{box-sizing:border-box;width:100%;min-height:44px;padding:10px 11px;border:1px solid #e1dbea;border-radius:10px;background:#faf9fe;color:#1b1630;font:14px/1.5 Manrope}
+.comm-cita-row textarea{resize:vertical}
+.comm-cita-row>button{width:44px;margin-top:22px;padding:0}
+/* Gestão do documento: os formulários internos não repetem a margem do leitor */
+.comm-gestao .comm-form{padding:12px 0 0}
+.comm-leituras{display:grid;max-height:280px;margin:0;padding:0;overflow:auto;list-style:none;scrollbar-width:thin;scrollbar-color:#cfc6e6 transparent}
+.comm-leituras li{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 4px;border-bottom:1px solid #f1edf8;font-size:14px}
+.comm-leituras li:last-child{border:0}
+.comm-leituras b{padding:3px 9px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.comm-leituras b.ok{background:#e3f4f1;color:#075d57}
+.comm-leituras b.meio{background:#fdf3e4;color:#805012}
+.comm-leituras b.nao{background:#fdeef1;color:#99253c}
+@media(max-width:720px){
+  .comm-library-head{flex-direction:column;align-items:stretch}
+  .comm-library-actions{width:100%}
+  .comm-library-actions>button,.comm-library-head .comm-primary{flex:1 1 auto;width:auto;min-width:0;padding:0 10px;white-space:nowrap}
+  .comm-document footer .comm-doc-confirm{flex-basis:100%;margin-left:0}
+  .comm-reader-cols{grid-template-columns:1fr;gap:12px}
+  .comm-reader-index{display:flex;overflow-x:auto;position:static;padding-bottom:2px}
+  .comm-reader-index button{flex:none;min-width:92px}
+  .comm-cita-row{grid-template-columns:4.5rem minmax(0,1fr) 44px}
+}
+.comm-library-head>.comm-library-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.comm-reader-index{scrollbar-width:none}
+.comm-reader-index::-webkit-scrollbar{display:none}
+.comm-reader-section-head button{flex:none;white-space:nowrap}
+.comm-library-head>div>span{font-size:12px}
+.comm-document-icon small,.comm-document>div>small,.comm-document footer span,.comm-pending-url{font-size:12px}
+.comm-note[role="status"]{display:flex;align-items:center;gap:12px;margin:0;padding:12px 14px;border:1px solid #bfe3dd;border-radius:14px;background:#e9f6f3;color:#075d57;font-size:14px;line-height:1.45}
+.comm-note[role="status"] button{flex:none;margin-left:auto}
