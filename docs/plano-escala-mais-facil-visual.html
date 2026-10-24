@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Escala mais fácil – plano visual</title>
+<style>
+:root{
+  --bg:#f7f5fb;--card:#fff;--ink:#241b3a;--muted:#6b6385;--line:#e4dff0;--purple:#6b3fd4;--purple-soft:#efe9fc;
+  --ok:#1f7a4d;--ok-bg:#e3f4ea;--warn:#a05a00;--warn-bg:#fff1d9;--bad:#b3261e;--bad-bg:#fde6e4;
+  --t1:#bcd9fa;--t1f:#0b3a6b;--t2:#d9c4f7;--t2f:#431a82;--t3:#f4b7c6;--t3f:#7d0f30;--t4:#bfe8d0;--t4f:#0f4f2f;
+  --t5:#fbdca0;--t5f:#6d4100;--t6:#d8d8de;--t6f:#33333a;--t7:#bfe9ea;--t7f:#064b4e;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#17131f;--card:#211b2e;--ink:#f1ecfb;--muted:#a69fbd;--line:#352c47;--purple:#a98bff;--purple-soft:#2c2347;
+  --ok:#7fdcab;--ok-bg:#1c3a2b;--warn:#f1c27a;--warn-bg:#3b2d12;--bad:#ff9d96;--bad-bg:#431c1a;
+  --t1:#1d4470;--t1f:#cfe5ff;--t2:#41286f;--t2f:#e6d9ff;--t3:#6a2038;--t3f:#ffd2de;--t4:#1d4a35;--t4f:#c6f0d9;
+  --t5:#5c4413;--t5f:#fbe3b3;--t6:#3a3a42;--t6f:#d8d8e0;--t7:#165255;--t7f:#c4f0f1;}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:24px 16px 80px}
+h1{font-size:30px;line-height:1.15;margin:8px 0 6px}
+h2{font-size:22px;margin:0 0 6px}
+h3{font-size:16px;margin:0 0 6px}
+p{margin:0 0 10px}
+.lead{color:var(--muted);font-size:17px}
+.sec{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px 18px;margin-top:22px}
+.tag{display:inline-block;font-size:13px;font-weight:700;color:var(--purple);background:var(--purple-soft);border-radius:999px;padding:3px 11px;margin-bottom:8px}
+.why{background:var(--purple-soft);border-radius:12px;padding:12px 14px;margin:12px 0;font-size:15px}
+.why b{color:var(--purple)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:700px){.grid2{grid-template-columns:1fr}}
+.mock{border:1px solid var(--line);border-radius:14px;padding:12px;background:var(--bg);overflow:hidden}
+.mock .cap{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:8px;padding:5px 9px;font-size:13px;font-weight:600;margin:2px 3px 2px 0}
+.c1{background:var(--t1);color:var(--t1f)}.c2{background:var(--t2);color:var(--t2f)}.c3{background:var(--t3);color:var(--t3f)}
+.c4{background:var(--t4);color:var(--t4f)}.c5{background:var(--t5);color:var(--t5f)}.c6{background:var(--t6);color:var(--t6f)}.c7{background:var(--t7);color:var(--t7f)}
+.dot{width:9px;height:9px;border-radius:50%;background:currentColor;display:inline-block}
+.bar{display:flex;flex-wrap:wrap;gap:8px}
+.stat{border-radius:12px;padding:9px 12px;font-size:14px;font-weight:600;border:1px solid var(--line);background:var(--card)}
+.stat b{font-size:20px;display:block;line-height:1.1}
+.stat.ok{background:var(--ok-bg);color:var(--ok);border-color:transparent}
+.stat.warn{background:var(--warn-bg);color:var(--warn);border-color:transparent}
+.stat.bad{background:var(--bad-bg);color:var(--bad);border-color:transparent}
+.search{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:9px 14px;font-size:14px;color:var(--muted);margin-bottom:10px}
+.row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:14px;flex-wrap:wrap}
+.row:last-child{border-bottom:0}
+.time{font-family:ui-monospace,Consolas,monospace;font-size:13px;color:var(--muted);min-width:96px}
+.hl{background:var(--purple-soft);border-radius:8px;padding:6px 8px;margin:0 -8px}
+.btn{display:inline-block;border-radius:999px;padding:10px 16px;font-weight:700;font-size:14px;border:1px solid var(--line);background:var(--card)}
+.btn.p{background:var(--purple);color:#fff;border-color:var(--purple)}
+.btn.off{opacity:.55}
+.arrow{text-align:center;font-size:24px;color:var(--purple);margin:6px 0}
+.steps{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px}
+@media(max-width:760px){.steps{grid-template-columns:1fr}}
+.step{border:1px solid var(--line);border-radius:14px;padding:12px;background:var(--bg)}
+.step .n{width:28px;height:28px;border-radius:50%;background:var(--purple);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;margin-bottom:6px}
+.step small{color:var(--muted);display:block;line-height:1.35}
+.menu{border:1px solid var(--line);border-radius:12px;background:var(--card);padding:6px;max-width:300px}
+.menu div{padding:10px 12px;border-radius:8px;font-size:14px;font-weight:600}
+.menu div+div{border-top:1px solid var(--line)}
+.conf{background:var(--bad-bg);color:var(--bad);border:1px solid var(--bad);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:700;display:inline-block}
+ul.chk{list-style:none;padding:0;margin:0}
+ul.chk li{padding:8px 0;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center;font-size:15px}
+ul.chk li:last-child{border-bottom:0}
+.ic{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex:none}
+.ic.ok{background:var(--ok-bg);color:var(--ok)}.ic.w{background:var(--warn-bg);color:var(--warn)}.ic.b{background:var(--bad-bg);color:var(--bad)}
+.q{border-left:4px solid var(--purple);background:var(--bg);border-radius:0 12px 12px 0;padding:10px 14px;margin:10px 0}
+.q small{display:block;color:var(--muted)}
+.note{font-size:13px;color:var(--muted)}
+.flow{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap}
+.flow .box{flex:1 1 200px;border:1px solid var(--line);border-radius:14px;padding:12px;background:var(--bg)}
+.flow .go{align-self:center;font-size:22px;color:var(--purple)}
+/* grade por pessoa */
+.gscroll{overflow-x:auto}
+.grid{display:grid;grid-template-columns:44px repeat(8,minmax(46px,1fr));grid-template-rows:auto 50px 38px 70px 30px 38px 34px;gap:2px;min-width:420px;font-size:11px}
+.grid>div{border-radius:5px;padding:3px 4px;font-weight:700;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.15}
+.grid .h{background:none;color:var(--muted);font-size:11px;padding:2px}
+.grid .hr{background:none;color:var(--muted);font-family:ui-monospace,Consolas,monospace;justify-content:flex-start;font-weight:600}
+.grid .folga{background:repeating-linear-gradient(45deg,var(--t6),var(--t6) 4px,transparent 4px,transparent 8px);color:var(--t6f)}
+.grid .exc{outline:2px solid var(--warn);outline-offset:-2px}
+.legend span{font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<span class="tag">Plano para a Babi ver · desenhos ilustrativos</span>
+<h1>Escala do dia: mais fácil de preencher, de conferir e de publicar</h1>
+<p class="lead">Somos cerca de 40 pessoas. O conceito que a gente construiu está certo e <b>não muda</b>: a Programação gera o dia, a Escala já tira quem está de folga, e os shows viram Livro do Dia. O que muda é o <b>jeito de mexer</b>: menos cliques, menos esquecimento e uma tela tão fácil de ler quanto a planilha de papel.</p>
+<p class="note">Os desenhos são ilustrações. Os nomes são "Pessoa A", "Pessoa B" de propósito.</p>
+<div class="why"><b>Para clicar de verdade:</b> abra o arquivo <b>prototipo-escala-mais-facil.html</b>, que acompanha este plano. Nele dá para trocar entre Supervisão, Administração e Elenco, resolver a folga de uma pessoa, mudar o horário só dela, preencher em lote, enviar a parte e publicar tudo. Os dados são de exemplo. Vale clicar nele antes de responder às perguntas no fim.</div>
+
+<div class="sec">
+  <span class="tag">O fluxo que a gente quer</span>
+  <h2>Cada um preenche a sua parte, envia, e a Administração publica tudo</h2>
+  <div class="flow">
+    <div class="box"><h3>1. Preencher</h3><p class="note" style="margin:0">Cada Supervisão cuida da própria área. A Administração cuida de qualquer uma. A Direção só lê.</p></div>
+    <div class="go">→</div>
+    <div class="box"><h3>2. Enviar minha parte</h3><p class="note" style="margin:0">Um botão. A área fica marcada como pronta. A Administração vê quem já enviou.</p></div>
+    <div class="go">→</div>
+    <div class="box"><h3>3. Publicar tudo</h3><p class="note" style="margin:0">A Administração publica a Escala e todos os Livros do Dia do local, em um clique.</p></div>
+  </div>
+  <div class="why"><b>Quem vê o quê:</b> a Administração e a Supervisão veem o rascunho enquanto o dia é montado. Só o Elenco vê apenas o publicado.</div>
+</div>
+
+<div class="sec">
+  <span class="tag">O que não muda</span>
+  <h2>O conceito já está certo</h2>
+  <ul class="chk">
+    <li><span class="ic ok">✓</span>A Programação coloca o show e o Livro do Dia nasce sozinho.</li>
+    <li><span class="ic ok">✓</span>A Escala já tira folga, recesso e afastamento.</li>
+    <li><span class="ic ok">✓</span>Quem ocupa cada vaga de show é decidido pelo Livro: titular, substituto, reserva do grupo, rodízio. A Escala só mostra.</li>
+    <li><span class="ic ok">✓</span>Folga vence a escala, tudo vai para o Registro e remoção é sempre restaurável.</li>
+  </ul>
+  <p class="note" style="margin-top:10px">Hoje o Livro só publica depois da Escala e um por um. "Publicar tudo" faz essa mesma sequência sozinho, na mesma ordem, e avisa com frase clara se algum Livro não pôde ser publicado.</p>
+</div>
+
+<div class="sec">
+  <span class="tag">O problema</span>
+  <h2>Três dores</h2>
+  <div class="grid2">
+    <div class="mock"><div class="cap">1. Ler o dia</div><p style="font-size:14px;margin:0">A planilha de papel é fácil porque tem <b>cor forte</b>, <b>horários alinhados</b> e <b>faixas</b> de atividades iguais. A tela atual tem cores suaves, toda linha com a mesma altura e colunas largas: a tabela passa de 4.600 px. A visão "por atividade" empilha nomes e ninguém entende o dia de uma pessoa.</p></div>
+    <div class="mock"><div class="cap">2. Preencher</div><p style="font-size:14px;margin:0">Hoje é um clique por pessoa e por bloco. Com 40 pessoas, é muito.</p></div>
+    <div class="mock"><div class="cap">3. A folga esquecida</div><p style="font-size:14px;margin:0">Quando alguém entra de folga, é preciso achá-la em todas as cenas e atividades e trocar uma por uma. E nem sempre a mesma pessoa cobre todos os lugares dela.</p></div>
+    <div class="mock"><div class="cap">O objetivo</div><p style="font-size:14px;margin:0">Preencher em poucos cliques, ver o dia de uma olhada e nunca esquecer ninguém.</p></div>
+  </div>
+</div>
+
+<div class="sec">
+  <span class="tag">Visão geral</span>
+  <h2>As cinco etapas</h2>
+  <p>Cada etapa deixa a tela usável e pode ser entregue sozinha.</p>
+  <div class="steps">
+    <div class="step"><div class="n">1</div><h3>Ler o dia como a planilha</h3><small>Cor forte, altura pela duração, faixas, resumo e busca.</small></div>
+    <div class="step"><div class="n">2</div><h3>Resolver a folga em um clique</h3><small>"Onde esta pessoa aparece", com a reserva de cada lugar.</small></div>
+    <div class="step"><div class="n">3</div><h3>Preencher em lote</h3><small>Várias pessoas de uma vez, com prévia e desfazer.</small></div>
+    <div class="step"><div class="n">4</div><h3>Enviar e publicar tudo</h3><small>Cada área envia. A Administração publica tudo.</small></div>
+    <div class="step"><div class="n">5</div><h3>Copiar de outro dia</h3><small>Por último, com confirmação forte.</small></div>
+  </div>
+</div>
+
+<div class="sec">
+  <span class="tag">Etapa 1</span>
+  <h2>Ler o dia como a planilha de papel</h2>
+  <div class="mock">
+    <div class="cap">"Por pessoa": cor por tipo, altura pela duração, iguais emendadas</div>
+    <div class="gscroll"><div class="grid">
+      <div class="h"></div><div class="h">A</div><div class="h">B</div><div class="h">C</div><div class="h">D</div><div class="h">E</div><div class="h">F</div><div class="h">G</div><div class="h">H</div>
+      <div class="hr">08:40</div><div class="c2" style="grid-column:2/10">Ensaio do show · 08:40–10:00</div>
+      <div class="hr">10:00</div><div class="c1" style="grid-column:2/7">Treino no gelo · 10:00–11:00</div><div class="c4" style="grid-column:7/9">Interação</div><div class="c5">Hotel</div>
+      <div class="hr">11:00</div><div class="c6" style="grid-column:2/10">Almoço · 11:00–13:00</div>
+      <div class="hr">13:00</div><div class="c5" style="grid-column:2/6">Passagem · 13:00–13:30</div><div class="folga" style="grid-column:6/7">Folga</div><div class="c5" style="grid-column:7/10">Passagem</div>
+      <div class="hr">14:00</div><div class="c3" style="grid-column:2/6">Show · 14:00</div><div class="folga" style="grid-column:6/7">Folga</div><div class="c3 exc" style="grid-column:7/8">Show · cobre</div><div class="c3" style="grid-column:8/10">Show</div>
+      <div class="hr">15:00</div><div class="c7" style="grid-column:2/10">Celebração · 16:00</div>
+    </div></div>
+    <p class="note" style="margin-top:8px">Quem tem o mesmo horário vira uma faixa só. A exceção (contorno amarelo) e a folga (listrado) saltam aos olhos. Colunas estreitas fazem o dia caber na tela.</p>
+  </div>
+  <div class="grid2" style="margin-top:14px">
+    <div class="mock">
+      <div class="cap">Resumo fixo no topo</div>
+      <div class="bar">
+        <div class="stat ok"><b>38</b>escaladas</div>
+        <div class="stat"><b>2</b>de folga</div>
+        <div class="stat bad"><b>1</b>choque</div>
+        <div class="stat warn"><b>3</b>exceções</div>
+        <div class="stat"><b>0</b>sem atividade</div>
+      </div>
+      <p class="note" style="margin-top:8px">Cada número abre a lista.</p>
+    </div>
+    <div class="mock">
+      <div class="cap">Tipo sempre escrito, não só colorido</div>
+      <span class="chip c1"><span class="dot"></span>Treino no gelo</span>
+      <span class="chip c2"><span class="dot"></span>Ensaio e preparação</span>
+      <span class="chip c3"><span class="dot"></span>Show e teatro</span>
+      <span class="chip c4"><span class="dot"></span>Interação e personagem</span>
+      <span class="chip c5"><span class="dot"></span>Produção e apoio</span>
+      <span class="chip c6"><span class="dot"></span>Pausa e almoço</span>
+      <span class="chip c7"><span class="dot"></span>Outras</span>
+      <p class="note" style="margin-top:8px">Os sete da planilha vêm prontos. Cada local ajusta a lista.</p>
+    </div>
+    <div class="mock">
+      <div class="cap">Busca de pessoa</div>
+      <div class="search">🔍 Pessoa B</div>
+      <div class="row"><span class="time">10:00–11:00</span><span class="chip c4">Interação</span></div>
+      <div class="row hl"><span class="time">14:00–15:00</span><span class="chip c3">Show · Personagem X</span></div>
+    </div>
+    <div class="mock">
+      <div class="cap">Também entram</div>
+      <p style="font-size:14px;margin:0">Quadro <b>Não trabalha hoje</b>, filtro <b>só exceções e choques</b> e um aviso <i>informativo</i> para quem fica mais de 40 min parado (nunca bloqueia).</p>
+    </div>
+  </div>
+  <div class="why"><b>No bloco de show,</b> cada pessoa aparece com o personagem ou a posição que faz, e quem cobre alguém aparece como "cobre fulano (folga)". Na Escala o show é só leitura, com o botão "Abrir Livro". <b>No celular</b> a visão continua em cartões por pessoa, com uma faixa do dia no topo.</div>
+</div>
+
+<div class="sec">
+  <span class="tag">Etapa 2</span>
+  <h2>Resolver a folga em um clique</h2>
+  <p>Quando alguém entra de folga, o app mostra <b>todos os lugares onde ela aparece</b>, cada um com a sua sugestão de quem cobre. Nem sempre é a mesma pessoa.</p>
+  <div class="mock">
+    <div class="cap">Onde a Pessoa S aparece hoje · está de folga</div>
+    <div class="row"><span class="chip c3">Show 14:00 · As Guardiãs, Backstage Left 2</span><span>→ cobre: <b>Pessoa M</b> <span class="note">(reserva das patinadoras)</span></span></div>
+    <div class="row"><span class="chip c3">Show 14:00 · Cartas para Noel, Backstage Left 1</span><span>→ cobre: <b>Pessoa R</b> <span class="note">(reserva das patinadoras)</span></span></div>
+    <div class="row"><span class="chip c2">Ensaio 12:00</span><span>→ sem reserva: <b>escolher alguém</b></span></div>
+    <div style="margin-top:10px"><span class="btn">Mudar uma</span> <span class="btn p">Aceitar todas as sugestões</span></div>
+    <p class="note" style="margin-top:8px">Antes de gravar há uma prévia, e depois há "Desfazer". Nos shows, a troca passa pelo motor do Livro, o mesmo de hoje.</p>
+  </div>
+  <div class="grid2" style="margin-top:14px">
+    <div class="mock">
+      <div class="cap">Choque aparece em vermelho</div>
+      <div class="row"><span class="time">11:00–12:00</span><span class="chip c6">Almoço</span></div>
+      <div class="row"><span class="time">11:30–12:30</span><span class="chip c2">Ensaio</span><span class="conf">choque</span></div>
+    </div>
+    <div class="mock">
+      <div class="cap">Ao tocar, resolve ali mesmo</div>
+      <div class="menu"><div>Tirar de uma das atividades</div><div>Mudar horário só desta pessoa</div><div>Dividir o horário</div></div>
+      <p class="note" style="margin-top:8px">Pede motivo e deixa claro que é exceção só dela. Show não muda de horário: a saída é tirar do show.</p>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <span class="tag">Etapa 3</span>
+  <h2>Preencher em lote</h2>
+  <div class="grid2">
+    <div class="mock">
+      <div class="cap">1. Marcar e escolher a ação</div>
+      <span class="chip c1">☑ Patinadores (18)</span>
+      <span class="chip c6">☐ Bailarinos (10)</span>
+      <span class="chip c6">☑ Pessoa X</span>
+      <p style="margin-top:8px;font-size:14px"><b>Ação:</b> entrar em <span class="chip c4">Interação · 10:00–11:00</span></p>
+    </div>
+    <div class="mock">
+      <div class="cap">2. Prévia antes de salvar</div>
+      <ul class="chk">
+        <li><span class="ic ok">✓</span>19 pessoas entram</li>
+        <li><span class="ic w">!</span>2 ficam de fora (folga)</li>
+        <li><span class="ic b">×</span>1 choque com o Almoço</li>
+      </ul>
+      <div style="margin-top:8px"><span class="btn">Cancelar</span> <span class="btn p">Confirmar</span></div>
+    </div>
+  </div>
+  <div class="why"><b>Regras:</b> a Supervisão só age em pessoas da própria área, e a prévia diz quem foi barrado por ser de outra. O lote não coloca ninguém em bloco de show, porque show é do Livro: a prévia explica e oferece "Abrir Livro". Há "Desfazer última alteração".</div>
+</div>
+
+<div class="sec">
+  <span class="tag">Etapa 4</span>
+  <h2>Enviar a minha parte e publicar tudo</h2>
+  <div class="grid2">
+    <div class="mock">
+      <div class="cap">Supervisão: só a minha área</div>
+      <ul class="chk">
+        <li><span class="ic ok">✓</span>12 pessoas escaladas</li>
+        <li><span class="ic ok">✓</span>1 fora por folga</li>
+        <li><span class="ic b">×</span>1 choque ainda aberto</li>
+        <li><span class="ic w">!</span>2 exceções ao padrão</li>
+      </ul>
+      <div style="margin-top:8px"><span class="btn p">Enviar minha parte</span></div>
+      <p class="note" style="margin-top:8px">Com choque aberto, avisa antes de enviar.</p>
+    </div>
+    <div class="mock">
+      <div class="cap">Administração: o local, uma linha por área</div>
+      <ul class="chk">
+        <li><span class="ic ok">✓</span>Patinadores · enviada</li>
+        <li><span class="ic b">×</span>Bailarinos · 1 choque aberto</li>
+        <li><span class="ic w">!</span>Produção · ainda não enviada</li>
+        <li><span class="ic ok">✓</span>Personagens · enviada</li>
+        <li><span class="ic w">!</span>Livro "Musical": 1 vaga sem titular</li>
+      </ul>
+      <div style="margin-top:8px"><span class="btn off">Publicar tudo (faltam 2 áreas)</span></div>
+    </div>
+  </div>
+  <div class="why"><b>"Enviada" quer dizer conferida e sem mudança depois.</b> Proposta: se alguém altera uma área já enviada, a marca cai sozinha e a Supervisão daquela área é avisada no sino, com quem mudou o quê. Se duas pessoas mexem ao mesmo tempo, o app confere a versão ao salvar e avisa com uma frase clara, sem apagar o trabalho de ninguém. Mudança depois de publicado espera a republicação, e a Administração é avisada.</div>
+</div>
+
+<div class="sec">
+  <span class="tag">Etapa 5</span>
+  <h2>Copiar de outro dia</h2>
+  <p>"Igual ao último sábado." Fica por último de propósito: copiar pode trazer exceções antigas sem ninguém perceber.</p>
+  <ul class="chk">
+    <li><span class="ic ok">✓</span>Copia as atividades e as pessoas que continuam disponíveis</li>
+    <li><span class="ic w">!</span>Mostra quem ficou de fora (folga no dia novo)</li>
+    <li><span class="ic w">!</span>Pede confirmação forte antes de salvar</li>
+  </ul>
+</div>
+
+<div class="sec">
+  <span class="tag">A sensação da tela</span>
+  <h2>Padrão Apple Design em todas as etapas</h2>
+  <ul class="chk">
+    <li><span class="ic ok">✓</span>Responde na hora ao toque. Todo toque com pelo menos 44 px e nenhum texto abaixo de 12 px.</li>
+    <li><span class="ic ok">✓</span>Simples não é vazio: o caminho comum (resumo, exceções, choques) vem primeiro.</li>
+    <li><span class="ic ok">✓</span>Sempre dá para voltar: prévia antes e "Desfazer" depois. Só o irreversível pede confirmação.</li>
+    <li><span class="ic ok">✓</span>Cada coisa nasce de onde você tocou. No celular, as janelas sobem de baixo e têm confirmar e cancelar sempre à vista.</li>
+    <li><span class="ic ok">✓</span>Mesma cor, mesmo tipo, sempre com o nome escrito. Mesmo botão em toda área.</li>
+    <li><span class="ic ok">✓</span>A tela diz onde você está e o que falta. Cabeçalho e resumo fixos e translúcidos.</li>
+    <li><span class="ic ok">✓</span>Quem pede menos movimento no aparelho recebe transições simples.</li>
+  </ul>
+</div>
+
+<div class="sec">
+  <span class="tag">Para a Babi decidir</span>
+  <h2>Perguntas de regra</h2>
+  <div class="q"><b>1. Os sete tipos de atividade estão bons?</b><small>Falta algum? Exemplo: "Yeti" é interação ou show? A lista é por local e pode mudar depois.</small></div>
+  <div class="q"><b>2. "Todo o elenco do dia" vale para quem?</b><small>Sugestão: todas as pessoas com atividade no dia, sem folga, recesso e afastamento.</small></div>
+  <div class="q"><b>3. Aviso de tempo parado: 40 minutos está bom?</b><small>Será só um aviso, nunca um bloqueio.</small></div>
+  <div class="q"><b>4. Quem pode preencher em lote?</b><small>Sugestão: Administração em qualquer área, Supervisão só na própria.</small></div>
+  <div class="q"><b>5. Área enviada e alguém mexe depois: a marca cai sozinha?</b><small>Sugestão: sim, com aviso no sino para a Supervisão da área.</small></div>
+  <div class="q"><b>6. Rascunho: a Supervisão vê o de todas as áreas ou só o da própria?</b><small>Sugestão: de todas, para conferir choques. Ela edita só a própria. O Elenco vê apenas o publicado.</small></div>
+  <div class="q"><b>7. "Publicar tudo" publica a Escala e todos os Livros de uma vez?</b><small>Sugestão: sim, na ordem de hoje (Escala, depois Livros), avisando se algum Livro não pôde ser publicado.</small></div>
+  <div class="q"><b>8. Livro não gerado ou com vaga vazia impede a área de ser enviada?</b><small>Sugestão: só avisa, e a Administração decide.</small></div>
+  <div class="q"><b>9. Copiar de outro dia: copiar só quem continua disponível e mostrar quem ficou de fora?</b></div>
+</div>
+
+<div class="sec">
+  <span class="tag">Como vai ser feito</span>
+  <h2>Com cuidado</h2>
+  <ul class="chk">
+    <li><span class="ic ok">✓</span>Uma etapa por vez, em um ramo novo, sem mexer no motor do Livro, no Livro do Dia nem no Livro oficial.</li>
+    <li><span class="ic ok">✓</span>Cada etapa é testada na tela, no celular e no computador, com os quatro perfis, antes de ficar pronta.</li>
+    <li><span class="ic ok">✓</span>A etapa 1 precisa de uma tabela nova (os tipos por local): primeiro só no banco de teste.</li>
+  </ul>
+</div>
+
+</div>
+</body>
+</html>

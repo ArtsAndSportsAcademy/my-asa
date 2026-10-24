@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Escala mais fácil – protótipo</title>
+<style>
+:root{
+  --bg:#f5f3fa;--card:#fff;--ink:#231a38;--muted:#625a7c;--line:#e2dcef;--purple:#6b3fd4;--purple-soft:#ece5fb;
+  --ok:#1b6e45;--ok-bg:#dff2e8;--warn:#8f5200;--warn-bg:#fff0d4;--bad:#a8221b;--bad-bg:#fde3e1;
+  --t1:#bcd9fa;--t1f:#0b3a6b;--t2:#d9c4f7;--t2f:#431a82;--t3:#f4b7c6;--t3f:#7d0f30;--t4:#bfe8d0;--t4f:#0f4f2f;
+  --t5:#fbdca0;--t5f:#6d4100;--t6:#d8d8de;--t6f:#33333a;--t7:#bfe9ea;--t7f:#064b4e;
+  --glass:rgba(255,255,255,.72);--shadow:0 10px 40px rgba(35,26,56,.22);
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#15111d;--card:#201a2d;--ink:#f1ecfb;--muted:#a9a2c0;--line:#352c47;--purple:#a98bff;--purple-soft:#2c2347;
+  --ok:#7fdcab;--ok-bg:#1c3a2b;--warn:#f1c27a;--warn-bg:#3b2d12;--bad:#ff9d96;--bad-bg:#431c1a;
+  --t1:#1d4470;--t1f:#cfe5ff;--t2:#41286f;--t2f:#e6d9ff;--t3:#6a2038;--t3f:#ffd2de;--t4:#1d4a35;--t4f:#c6f0d9;
+  --t5:#5c4413;--t5f:#fbe3b3;--t6:#3a3a42;--t6f:#d8d8e0;--t7:#165255;--t7f:#c4f0f1;
+  --glass:rgba(32,26,45,.72);--shadow:0 10px 40px rgba(0,0,0,.55);}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding-bottom:150px}
+button{font:inherit;color:inherit;cursor:pointer}
+.wrap{max-width:1400px;margin:0 auto;padding:0 14px}
+.top{position:sticky;top:0;z-index:20;background:var(--glass);backdrop-filter:blur(18px) saturate(180%);-webkit-backdrop-filter:blur(18px) saturate(180%);border-bottom:1px solid var(--line)}
+.top .in{max-width:1400px;margin:0 auto;padding:10px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+h1{font-size:20px;letter-spacing:-.01em;margin:0}
+.sub{color:var(--muted);font-size:13px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:12px;padding:3px;background:var(--card);gap:2px}
+.seg button{border:0;background:none;min-height:44px;padding:0 14px;border-radius:9px;font-weight:600;font-size:14px;transition:transform .1s ease-out,background .15s}
+.seg button:active{transform:scale(.97)}
+.seg button[aria-pressed=true]{background:var(--purple);color:#fff}
+.btn{min-height:44px;padding:0 18px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-weight:700;font-size:14px;transition:transform .1s ease-out,opacity .15s}
+.btn:active{transform:scale(.97)}
+.btn.p{background:var(--purple);border-color:var(--purple);color:#fff}
+.btn.d{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.banner{margin:12px 0;background:var(--purple-soft);border-radius:12px;padding:10px 14px;font-size:14px}
+.stats{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.stat{border-radius:14px;padding:8px 14px;border:1px solid var(--line);background:var(--card);text-align:left;min-height:44px;font-size:13px;font-weight:600;color:var(--muted);transition:transform .1s ease-out}
+.stat:active{transform:scale(.97)}
+.stat b{display:block;font-size:22px;line-height:1.1;color:var(--ink)}
+.stat.ok b{color:var(--ok)}.stat.bad{background:var(--bad-bg);border-color:transparent}.stat.bad b{color:var(--bad)}.stat.warn{background:var(--warn-bg);border-color:transparent}.stat.warn b{color:var(--warn)}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:8px 0}
+.search{flex:1 1 220px;min-height:44px;border:1px solid var(--line);border-radius:999px;background:var(--card);padding:0 16px;font:inherit;color:var(--ink)}
+.chk{display:inline-flex;align-items:center;gap:8px;min-height:44px;font-size:14px;font-weight:600}
+.chk input{width:22px;height:22px;accent-color:var(--purple)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin:12px 0}
+.card h2{font-size:16px;margin:0 0 8px}
+.att{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.att:first-of-type{border-top:0}
+.att span.t{flex:1 1 220px;font-size:14px}
+.ic{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex:none}
+.ic.ok{background:var(--ok-bg);color:var(--ok)}.ic.w{background:var(--warn-bg);color:var(--warn)}.ic.b{background:var(--bad-bg);color:var(--bad)}
+.moments{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin:6px 0}
+.moment{flex:none;border-radius:12px;padding:6px 10px;font-size:13px;font-weight:600;white-space:nowrap}
+.c1{background:var(--t1);color:var(--t1f)}.c2{background:var(--t2);color:var(--t2f)}.c3{background:var(--t3);color:var(--t3f)}
+.c4{background:var(--t4);color:var(--t4f)}.c5{background:var(--t5);color:var(--t5f)}.c6{background:var(--t6);color:var(--t6f)}.c7{background:var(--t7);color:var(--t7f)}
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.legend span{border-radius:8px;padding:4px 9px;font-size:12px;font-weight:700}
+/* grade */
+.gwrap{overflow-x:auto;border:1px solid var(--line);border-radius:16px;background:var(--card)}
+.grid{display:grid;grid-template-columns:50px repeat(12,minmax(64px,1fr));gap:2px;min-width:880px;padding:6px}
+.hd{position:sticky;top:0;z-index:3;font-size:12px;font-weight:700;text-align:center;padding:6px 2px;min-height:44px;border:0;background:var(--card);border-radius:8px;line-height:1.2}
+.hd small{display:block;color:var(--muted);font-weight:600;font-size:12px}
+.hd.sel{background:var(--purple-soft);color:var(--purple)}
+.axis{position:relative}
+.axis i{position:absolute;left:0;font-style:normal;font-size:12px;color:var(--muted);font-family:ui-monospace,Consolas,monospace;transform:translateY(-50%)}
+.col{position:relative;border-radius:8px;background:var(--bg);transition:opacity .2s}
+.col.folga{background:repeating-linear-gradient(45deg,var(--t6),var(--t6) 5px,transparent 5px,transparent 10px)}
+.col.dim{opacity:.28}
+.blk{position:absolute;border-radius:6px;border:0;padding:0;font-size:12px;font-weight:700;line-height:1.15;overflow:hidden;transition:transform .1s ease-out,opacity .2s,box-shadow .15s}
+.blk:active{transform:scale(.97)}
+.blk:focus-visible{outline:3px solid var(--purple);outline-offset:1px;z-index:5}
+.blk.conf{box-shadow:inset 0 0 0 2px var(--bad)}
+.blk.pend{background-image:repeating-linear-gradient(135deg,transparent 0 6px,rgba(168,34,27,.28) 6px 8px);box-shadow:inset 0 0 0 2px var(--bad)}
+.blk.exc{box-shadow:inset 0 0 0 2px var(--warn)}
+.blk.faded{opacity:.15}
+.lab.faded{opacity:.15}
+.lab{position:absolute;z-index:2;pointer-events:none;display:flex;align-items:center;justify-content:center;text-align:center;padding:2px 3px;font-size:12px;font-weight:700;line-height:1.15;overflow:hidden;color:inherit}
+.fol{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--t6f);writing-mode:vertical-rl;letter-spacing:.1em}
+/* cartões (celular) */
+.cards{display:none}
+.pc{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;margin:10px 0}
+.pc h3{margin:0 0 8px;font-size:16px;display:flex;justify-content:space-between;gap:8px}
+.chip{display:flex;gap:8px;align-items:center;width:100%;min-height:44px;border-radius:10px;border:0;padding:6px 10px;margin:4px 0;text-align:left;font-size:14px;font-weight:600}
+.chip .tm{font-family:ui-monospace,Consolas,monospace;font-size:12px;flex:none;opacity:.85}
+.chip.conf{box-shadow:inset 0 0 0 2px var(--bad)}.chip.pend{box-shadow:inset 0 0 0 2px var(--bad);background-image:repeating-linear-gradient(135deg,transparent 0 6px,rgba(168,34,27,.25) 6px 8px)}
+.chip.exc{box-shadow:inset 0 0 0 2px var(--warn)}
+@media(max-width:760px){.gwrap{display:none}.cards{display:block}.hide-sm{display:none}}
+/* barra de ação */
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:25;background:var(--glass);backdrop-filter:blur(18px) saturate(180%);-webkit-backdrop-filter:blur(18px) saturate(180%);border-top:1px solid var(--line);padding:10px 14px calc(10px + env(safe-area-inset-bottom))}
+.bar .in{max-width:1400px;margin:0 auto;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.bar .msg{flex:1 1 220px;font-size:14px}
+.areas{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 8px;width:100%}
+.area{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;padding:4px 6px 4px 10px;background:var(--card);font-size:13px;font-weight:600}
+.area .btn{min-height:44px;padding:0 12px;font-size:13px}
+/* camadas */
+.layer{position:fixed;inset:0;z-index:50}
+.scrim{position:absolute;inset:0;background:rgba(20,12,36,.42);opacity:0;transition:opacity .2s}
+.layer.on .scrim{opacity:1}
+.dlg{position:absolute;left:50%;top:50%;width:min(560px,calc(100vw - 28px));max-height:calc(100vh - 40px);display:flex;flex-direction:column;background:var(--card);border-radius:20px;box-shadow:var(--shadow);transform:translate(-50%,-48%) scale(.96);opacity:0;transition:transform .22s cubic-bezier(.2,.8,.2,1),opacity .18s}
+.layer.on .dlg{transform:translate(-50%,-50%) scale(1);opacity:1}
+.dlg header{padding:16px 18px 6px}
+.dlg header h2{margin:0;font-size:19px;letter-spacing:-.01em}
+.dlg .body{padding:6px 18px 10px;overflow:auto}
+.dlg footer{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;padding:12px 18px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--card);border-radius:0 0 20px 20px}
+.pop{position:absolute;min-width:250px;max-width:320px;background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:6px;opacity:0;transform:scale(.94);transition:transform .16s cubic-bezier(.2,.8,.2,1),opacity .14s}
+.layer.on .pop{opacity:1;transform:scale(1)}
+.pop .ph{padding:8px 12px 6px;font-size:13px;color:var(--muted)}
+.pop button{display:block;width:100%;min-height:44px;text-align:left;border:0;background:none;padding:8px 12px;border-radius:10px;font-weight:600;font-size:15px}
+.pop button:hover{background:var(--purple-soft)}
+.pop button[disabled]{opacity:.55;cursor:not-allowed}
+.pop button small{display:block;font-weight:500;color:var(--muted);font-size:12px}
+.pop hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+@media(max-width:760px){
+  .dlg{left:0;right:0;top:auto;bottom:0;width:100%;max-height:88vh;border-radius:20px 20px 0 0;transform:translateY(40px);}
+  .layer.on .dlg{transform:translateY(0)}
+  .dlg footer{border-radius:0}
+  .pop{left:0!important;right:0;top:auto!important;bottom:0;max-width:none;border-radius:20px 20px 0 0;transform:translateY(40px);padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+  .layer.on .pop{transform:translateY(0)}
+}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.row .l{flex:1 1 200px;font-size:14px}
+.row select,.dlg input[type=time],.dlg input[type=text]{min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);padding:0 10px;font:inherit}
+.dlg input[type=text]{width:100%}
+.dlg label.pk{display:flex;gap:10px;align-items:center;min-height:44px;font-size:14px}
+.dlg label.pk input{width:22px;height:22px;accent-color:var(--purple)}
+.note{font-size:13px;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:calc(120px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);z-index:60;background:#241b3a;color:#fff;border-radius:14px;padding:6px 8px 6px 16px;display:flex;gap:10px;align-items:center;font-size:14px;opacity:0;transition:opacity .2s,transform .2s;max-width:calc(100vw - 24px);box-shadow:var(--shadow)}
+.toast.on{opacity:1;transform:translateX(-50%)}
+.toast button{border:0;background:rgba(255,255,255,.16);color:#fff;border-radius:999px;min-height:44px;padding:0 14px;font-weight:700}
+.empty{text-align:center;padding:40px 16px;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font-size:18px;margin-bottom:6px}
+.tl .it{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:10px;margin:4px 0;font-size:14px;font-weight:600}
+.tl .it .tm{font-family:ui-monospace,Consolas,monospace;font-size:12px;min-width:92px}
+@media (prefers-reduced-motion:reduce){*{transition:opacity .15s!important}.dlg,.pop{transform:none!important}.dlg{left:50%;top:50%;transform:translate(-50%,-50%)!important}}
+@media (prefers-reduced-motion:reduce) and (max-width:760px){.dlg{left:0;top:auto;transform:none!important}}
+</style>
+</head>
+<body>
+<div class="top"><div class="in">
+  <div style="flex:1 1 220px"><h1>Escala do dia · Snowland</h1><div class="sub">Sábado, 24 de outubro · rascunho · protótipo com dados de exemplo</div></div>
+  <div class="seg" role="group" aria-label="Ver como">
+    <button data-role="sup" aria-pressed="true">Supervisão (Patinadores)</button>
+    <button data-role="adm" aria-pressed="false">Administração</button>
+    <button data-role="mem" aria-pressed="false">Elenco</button>
+  </div>
+</div></div>
+<div class="wrap" id="app"></div>
+<div id="bar" class="bar"></div>
+<div id="layer"></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+const START=8*60+20, END=17*60+10, PX=1.18, GAP=2;
+const TYPES={gelo:['Treino no gelo',1],ensaio:['Ensaio e preparação',2],show:['Shows e teatro',3],inter:['Interações e personagens',4],prod:['Produção e apoio',5],pausa:['Pausas e almoço',6],outra:['Outras atividades',7]};
+const AREAS={pat:'Patinadores',bai:'Bailarinos',pro:'Produção',per:'Personagens'};
+const mm=s=>{const [h,m]=s.split(':').map(Number);return h*60+m};
+const hm=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let S, uid=0, hist=[], ui={role:'sup',filter:false,q:'',sel:null};
+
+function fresh(){
+  uid=0;
+  const P=[['A','pat'],['B','pat'],['C','pat'],['D','pat'],['S','pat'],['M','pat'],['R','pat'],['F','pat'],['X','bai'],['Y','bai'],['Z','pro'],['K','per']];
+  S={people:P.map(([id,area])=>({id,area,name:'Pessoa '+id,folga:false})),blocks:[],vagas:[],
+     areaStatus:{pat:'aberta',bai:'enviada',pro:'aberta',per:'enviada'},published:false};
+  S.people.find(p=>p.id==='F').folga=true;
+  S.people.find(p=>p.id==='S').folga=true; S.people.find(p=>p.id==='S').pend=true;
+  const add=(ids,s,e,type,label,x={})=>ids.forEach(p=>S.blocks.push({id:++uid,p,s:mm(s),e:mm(e),type,label,show:type==='show',...x}));
+  const work=['A','B','C','D','S','M','R','X','Y','Z','K'];
+  const pat=['A','B','C','D','S','M','R'];
+  add(pat.concat(['X','Y','K']),'08:40','10:00','ensaio','Ensaio do show');
+  add(pat,'10:00','11:00','gelo','Treino no gelo');
+  add(['X','Y'],'10:00','11:00','ensaio','Ensaio de bailarinos');
+  add(['Z'],'08:40','11:00','prod','Hotel');
+  add(['K'],'10:00','10:20','inter','Yeti',{exc:true}); add(['K'],'10:40','11:00','inter','Yeti',{exc:true});
+  add(['D'],'10:00','10:20','inter','Yeti',{exc:true});
+  add(work,'11:00','12:00','pausa','Almoço');
+  add(['A','B','C','D','S','M'],'12:00','13:00','ensaio','Ensaio de Natal');
+  add(['Z'],'12:00','14:00','prod','Preparação do show');
+  add(work.filter(x=>x!=='Z'),'13:00','13:30','prod','Passagem do show');
+  add(['A','B','C','D','R'],'14:00','15:00','show','Show Patinação',{livro:'Show Patinação'});
+  add(['X','Y','K'],'14:00','15:00','show','Show Patinação',{livro:'Show Patinação'});
+  add(['Z'],'14:00','15:00','prod','Apoio no show');
+  add(['S'],'14:00','15:00','show','As Guardiãs',{livro:'Show Natal',pos:'Backstage Left 2'});
+  add(['S'],'15:30','16:30','show','Cartas para Noel',{livro:'Show Natal',pos:'Backstage Left 1'});
+  add(['M'],'14:00','15:00','outra','Reserva do grupo',{reserva:true});
+  add(['R'],'15:30','16:30','outra','Reserva do grupo',{reserva:true});
+  add(work,'16:30','17:00','outra','Celebração');
+}
+const needsCover=b=>b.show||b.label==='Ensaio de Natal';
+const person=id=>S.people.find(p=>p.id===id);
+const blocksOf=id=>S.blocks.filter(b=>b.p===id).sort((a,b)=>a.s-b.s);
+const overlap=(a,b)=>a.s<b.e&&b.s<a.e;
+function conflicts(){
+  const out=[];
+  S.people.forEach(p=>{ if(p.folga)return; const bs=blocksOf(p.id);
+    for(let i=0;i<bs.length;i++)for(let j=i+1;j<bs.length;j++) if(overlap(bs[i],bs[j])&&!bs[i].reserva&&!bs[j].reserva) out.push([bs[i],bs[j]]);});
+  return out;
+}
+const confIds=()=>{const s=new Set();conflicts().forEach(([a,b])=>{s.add(a.id);s.add(b.id)});return s};
+function snap(){hist.push(JSON.stringify(S));if(hist.length>30)hist.shift()}
+function undo(){if(!hist.length)return;S=JSON.parse(hist.pop());toast('Alteração desfeita.');render()}
+let tt;function toast(msg,undoable){const t=document.getElementById('toast');t.innerHTML=`<span>${esc(msg)}</span>`+(undoable?'<button id="tundo">Desfazer</button>':'');t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),undoable?7000:4500);const u=document.getElementById('tundo');if(u)u.onclick=()=>{undo();t.classList.remove('on')}}
+function touch(personId,what){
+  const a=person(personId).area;
+  if(S.areaStatus[a]==='enviada'){S.areaStatus[a]='aberta';toast(`A área ${AREAS[a]} foi alterada depois de enviada: voltou para "não enviada". A Supervisão é avisada no sino.`)}
+}
+const canEdit=p=>ui.role==='adm'||(ui.role==='sup'&&p.area==='pat');
+
+/* ---------- renderização ---------- */
+function stats(){
+  const f=S.people.filter(p=>p.folga).length;
+  const esc_=S.people.filter(p=>!p.folga&&blocksOf(p.id).length).length;
+  const c=conflicts().length;
+  const ex=new Set(S.blocks.filter(b=>b.exc).map(b=>b.p)).size;
+  const sem=S.people.filter(p=>!p.folga&&!blocksOf(p.id).length).length;
+  return {esc:esc_,f,c,ex,sem};
+}
+function attention(){
+  const it=[]; const sb=blocksOf('S');
+  const prec=sb.filter(needsCover).length;
+  if(person('S').folga&&sb.length) it.push({ic:'b',t:`Pessoa S está de folga e ainda aparece em ${sb.length} lugares. ${prec} precisam de quem cubra.`,btn:'Resolver',act:'folga'});
+  const c=conflicts(); c.forEach(([a,b])=>it.push({ic:'b',t:`Choque: ${person(a.p).name}, ${a.label} (${hm(a.s)}) e ${b.label} (${hm(b.s)}).`,btn:'Ver',act:'ver',id:a.id}));
+  S.vagas.forEach(v=>it.push({ic:'w',t:`Vaga sem ninguém: ${v}.`}));
+  if(sb.length) it.push({ic:'w',t:'Livro "Show Natal": 2 vagas dependem da Pessoa S (folga).'});
+  return it;
+}
+function moments(){
+  const m={};S.blocks.forEach(b=>{if(b.reserva)return;const k=[b.s,b.e,b.type,b.label].join('|');m[k]=m[k]||{b,n:0};m[k].n++});
+  return Object.values(m).filter(x=>x.n>=3).sort((a,b)=>a.b.s-b.b.s);
+}
+function render(){
+  const app=document.getElementById('app'), r=ui.role;
+  if(r==='mem'){ app.innerHTML=elenco(); bar(); return }
+  const st=stats(), at=attention(), conf=confIds();
+  let h=`<div class="banner">${r==='sup'?'Você é a <b>Supervisão dos Patinadores</b>: edita só a sua área, vê o rascunho das outras e envia a sua parte quando terminar.':'Você é a <b>Administração</b>: edita qualquer área e publica o dia quando todas as áreas estiverem prontas.'} O Elenco só vê o que for publicado.</div>`;
+  h+=`<div class="stats">
+    <button class="stat ok" data-f="all"><b>${st.esc}</b>escaladas</button>
+    <button class="stat"><b>${st.f}</b>de folga</button>
+    <button class="stat ${st.c?'bad':''}" data-f="exc"><b>${st.c}</b>${st.c===1?'choque':'choques'}</button>
+    <button class="stat ${st.ex?'warn':''}" data-f="exc"><b>${st.ex}</b>com exceção</button>
+    <button class="stat"><b>${st.sem}</b>sem atividade</button></div>`;
+  h+=`<div class="card"><h2>Atenção do dia</h2>`+(at.length?at.map((x,i)=>`<div class="att"><span class="ic ${x.ic}">${x.ic==='b'?'×':'!'}</span><span class="t">${esc(x.t)}</span>${x.btn?`<button class="btn" data-att="${i}">${x.btn}</button>`:''}</div>`).join(''):`<div class="att"><span class="ic ok">✓</span><span class="t">Tudo certo por aqui: sem choques, sem folga esquecida e sem vaga vazia.</span></div>`)+`</div>`;
+  h+=`<div class="tools"><input class="search" id="q" type="search" placeholder="Buscar pessoa (ex.: Pessoa S)" value="${esc(ui.q)}" aria-label="Buscar pessoa"><label class="chk"><input type="checkbox" id="fl" ${ui.filter?'checked':''}>Só exceções e choques</label><button class="btn p" id="lote">Preencher em lote</button></div>`;
+  const mo=moments(); h+=`<div class="moments" aria-label="Momentos do dia">${mo.map(x=>`<span class="moment c${TYPES[x.b.type][1]}">${hm(x.b.s)} ${esc(x.b.label)} · ${x.n} pessoas</span>`).join('')}</div>`;
+  h+=`<div class="legend">${Object.values(TYPES).map(t=>`<span class="c${t[1]}">${t[0]}</span>`).join('')}</div>`;
+  const hit=matchIds();
+  h+=grid(conf,hit)+cards(conf,hit);
+  if(ui.sel){h+=`<div class="card tl"><h2>Dia de ${esc(person(ui.sel).name)}</h2>${blocksOf(ui.sel).map(b=>`<div class="it c${TYPES[b.type][1]}"><span class="tm">${hm(b.s)}–${hm(b.e)}</span>${esc(b.label)}${b.pos?' · '+esc(b.pos):''}</div>`).join('')||'<span class="note">Sem atividades hoje.</span>'}<div style="margin-top:8px"><button class="btn" id="selx">Fechar</button></div></div>`}
+  app.innerHTML=h; bar(); wire();
+}
+function matchIds(){const q=ui.q.trim().toLowerCase();if(!q)return null;return new Set(S.people.filter(p=>p.name.toLowerCase().includes(q)).map(p=>p.id))}
+function lanes(bs){ // largura para blocos que se cruzam
+  const res={};bs.forEach(b=>{const o=bs.filter(x=>x!==b&&overlap(x,b)&&!x.reserva&&!b.reserva);res[b.id]=o.length?{n:2,i:(bs.indexOf(b)<bs.indexOf(o[0])||o[0].reserva)?0:1}:{n:1,i:0}});return res}
+function grid(conf,hit){
+  const H=(END-START)*PX, key=b=>[b.s,b.e,b.type,b.label].join('|');
+  let h=`<div class="gwrap"><div class="grid"><div></div>`;
+  S.people.forEach(p=>h+=`<button class="hd ${ui.sel===p.id?'sel':''}" data-sel="${p.id}">${esc(p.name)}<small>${AREAS[p.area]}</small></button>`);
+  h+=`<div class="axis" style="height:${H}px">`;
+  for(let t=Math.ceil(START/60)*60;t<=END;t+=60)h+=`<i style="top:${(t-START)*PX}px">${hm(t)}</i>`;
+  h+=`</div>`;
+  S.people.forEach((p,ci)=>{
+    const bs=blocksOf(p.id), ln=lanes(bs), dim=hit&&!hit.has(p.id);
+    h+=`<div class="col ${p.folga&&!bs.length?'folga':''} ${dim?'dim':''}" style="height:${H}px">`;
+    if(p.folga&&!bs.length)h+=`<div class="fol">FOLGA</div>`;
+    bs.forEach(b=>{
+      const prev=S.people[ci-1], same=prev&&S.blocks.some(x=>x.p===prev.id&&key(x)===key(b)&&!conf.has(x.id)&&!conf.has(b.id));
+      let run=1; if(!same&&!conf.has(b.id)){for(let j=ci+1;j<S.people.length;j++){if(S.blocks.some(x=>x.p===S.people[j].id&&key(x)===key(b)&&!conf.has(x.id)))run++;else break}}
+      const l=ln[b.id], w=100/l.n, top=(b.s-START)*PX, ht=(b.e-b.s)*PX-1;
+      const isEx=b.exc||(ui.filter&&false), faded=ui.filter&&!(b.exc||conf.has(b.id)||(p.folga&&p.pend));
+      h+=`<button class="blk c${TYPES[b.type][1]} ${conf.has(b.id)?'conf':''} ${p.folga&&p.pend?'pend':''} ${b.exc?'exc':''} ${faded?'faded':''}" data-b="${b.id}" style="top:${top}px;height:${ht}px;left:${l.i*w}%;width:${w}%" aria-label="${esc(p.name)}: ${esc(b.label)} ${hm(b.s)} a ${hm(b.e)}${conf.has(b.id)?' (choque)':''}${p.folga&&p.pend?' (pessoa de folga)':''}">`;
+      h+=`</button>`;
+      const lc=`color:var(--t${TYPES[b.type][1]}f);top:${top}px;height:${ht}px;left:${l.i*w}%;`;
+      if(!same&&l.n===1)h+=`<span class="lab ${faded?'faded':''}" style="${lc}width:calc(${run}*100% + ${(run-1)*GAP}px)">${esc(b.label)}${ht>46?`<br>${hm(b.s)}–${hm(b.e)}`:''}</span>`;
+      else if(l.n===2) h+=`<span class="lab ${faded?'faded':''}" style="${lc}width:${w}%">${esc(b.label)}</span>`;
+    });
+    h+=`</div>`;
+  });
+  return h+`</div></div>`;
+}
+function cards(conf,hit){
+  let h=`<div class="cards">`;
+  S.people.filter(p=>!hit||hit.has(p.id)).forEach(p=>{
+    const bs=blocksOf(p.id);
+    h+=`<div class="pc"><h3><span>${esc(p.name)}</span><span class="note">${AREAS[p.area]}${p.folga?' · folga':''}</span></h3>`;
+    if(!bs.length)h+=`<div class="note">${p.folga?'Folga o dia todo.':'Sem atividades hoje.'}</div>`;
+    bs.forEach(b=>{const faded=ui.filter&&!(b.exc||conf.has(b.id)||(p.folga&&p.pend));if(faded)return;
+      h+=`<button class="chip c${TYPES[b.type][1]} ${conf.has(b.id)?'conf':''} ${p.folga&&p.pend?'pend':''} ${b.exc?'exc':''}" data-b="${b.id}"><span class="tm">${hm(b.s)}–${hm(b.e)}</span><span>${esc(b.label)}${b.pos?' · '+esc(b.pos):''}${conf.has(b.id)?' · choque':''}${p.folga&&p.pend?' · folga':''}</span></button>`});
+    h+=`</div>`;
+  });
+  return h+`</div>`;
+}
+function elenco(){
+  if(!S.published)return `<div class="empty"><b>A escala de hoje ainda não foi publicada.</b>O Elenco só vê o dia depois que a Administração publicar. Enquanto isso, Supervisão e Administração montam o rascunho.<br><br>Quando for publicada, o seu dia aparece aqui, com o personagem ou a posição de cada show.</div>`;
+  const p='A';return `<div class="card tl"><h2>Meu dia · ${esc(person(p).name)}</h2>${blocksOf(p).map(b=>`<div class="it c${TYPES[b.type][1]}"><span class="tm">${hm(b.s)}–${hm(b.e)}</span>${esc(b.label)}</div>`).join('')}</div>`;
+}
+function bar(){
+  const b=document.getElementById('bar'), r=ui.role; let h='<div class="in">';
+  if(r==='sup'){const st=S.areaStatus.pat;
+    h+=`<div class="msg">${st==='enviada'?'<b>Patinadores: enviada.</b> A Administração foi avisada. Se você mudar algo, a marca cai e precisa enviar de novo.':'<b>Patinadores: ainda não enviada.</b> Quando terminar a sua parte, envie para a Administração.'}</div>`+
+      (st==='enviada'?'<button class="btn" id="reabrir">Reabrir minha parte</button>':'<button class="btn p" id="enviar">Enviar minha parte</button>');
+  }else if(r==='adm'){
+    const falta=Object.entries(S.areaStatus).filter(([k,v])=>v!=='enviada').length;
+    h+=`<div class="areas">`+Object.entries(AREAS).map(([k,n])=>`<div class="area"><span class="ic ${S.areaStatus[k]==='enviada'?'ok':'w'}">${S.areaStatus[k]==='enviada'?'✓':'!'}</span>${n}: ${S.areaStatus[k]==='enviada'?'enviada':'não enviada'}<button class="btn" data-area="${k}">${S.areaStatus[k]==='enviada'?'Reabrir':'Marcar pronta'}</button></div>`).join('')+`</div>`;
+    h+=`<div class="msg">${S.published?'<b>Publicado.</b> A escala e os Livros do Dia estão publicados.':falta?`${falta>1?'Faltam':'Falta'} ${falta} ${falta>1?'áreas':'área'} para publicar tudo.`:'Todas as áreas enviaram. Pode publicar.'}</div><button class="btn p" id="pub" ${falta||S.published?'disabled':''}>Publicar tudo</button>`;
+  }else h+=`<div class="msg">${S.published?'Escala publicada.':'Sem escala publicada ainda.'}</div>`;
+  h+=`<button class="btn" id="reset">Recomeçar protótipo</button></div>`;
+  b.innerHTML=h;
+  const $=id=>document.getElementById(id);
+  if($('enviar'))$('enviar').onclick=enviar; if($('reabrir'))$('reabrir').onclick=()=>{S.areaStatus.pat='aberta';render()};
+  if($('pub'))$('pub').onclick=publicar; $('reset').onclick=()=>{fresh();hist=[];ui.sel=null;ui.q='';ui.filter=false;render()};
+  b.querySelectorAll('[data-area]').forEach(x=>x.onclick=()=>{snap();const k=x.dataset.area;S.areaStatus[k]=S.areaStatus[k]==='enviada'?'aberta':'enviada';render()});
+}
+function wire(){
+  const app=document.getElementById('app');
+  app.querySelectorAll('[data-b]').forEach(x=>x.onclick=e=>openBlock(+x.dataset.b,x));
+  app.querySelectorAll('[data-sel]').forEach(x=>x.onclick=()=>{ui.sel=ui.sel===x.dataset.sel?null:x.dataset.sel;render()});
+  app.querySelectorAll('[data-f]').forEach(x=>x.onclick=()=>{ui.filter=x.dataset.f==='exc';render()});
+  app.querySelectorAll('[data-att]').forEach(x=>x.onclick=()=>{const a=attention()[+x.dataset.att];if(a.act==='folga')openFolga();else{const el=app.querySelector(`[data-b="${a.id}"]`);if(el){el.scrollIntoView({block:'center',inline:'center',behavior:'smooth'});el.focus();setTimeout(()=>openBlock(a.id,el),350)}}});
+  const q=document.getElementById('q');q.oninput=()=>{ui.q=q.value;const pos=q.selectionStart;render();const n=document.getElementById('q');n.focus();n.setSelectionRange(pos,pos);const m=matchIds();if(m&&m.size===1){ui.sel=[...m][0]}};
+  document.getElementById('fl').onchange=e=>{ui.filter=e.target.checked;render()};
+  document.getElementById('lote').onclick=openLote;
+  const sx=document.getElementById('selx');if(sx)sx.onclick=()=>{ui.sel=null;render()};
+}
+
+/* ---------- camadas (menu, janelas) ---------- */
+let lastFocus=null;
+function layer(inner,cls){const L=document.getElementById('layer');lastFocus=document.activeElement;L.innerHTML=`<div class="layer" id="ly"><div class="scrim"></div>${inner}</div>`;const ly=document.getElementById('ly');requestAnimationFrame(()=>ly.classList.add('on'));ly.querySelector('.scrim').onclick=close;const f=ly.querySelector('button:not([disabled]),input');if(f&&innerWidth>760)f.focus();return ly}
+function close(){const L=document.getElementById('layer');const ly=document.getElementById('ly');if(!ly)return;ly.classList.remove('on');setTimeout(()=>{L.innerHTML='';if(lastFocus&&lastFocus.focus)lastFocus.focus()},180)}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
+function dialog(title,body,foot){return `<div class="dlg" role="dialog" aria-modal="true" aria-label="${esc(title)}"><header><h2>${esc(title)}</h2></header><div class="body">${body}</div><footer>${foot}</footer></div>`}
+
+function openBlock(id,el){
+  const b=S.blocks.find(x=>x.id===id), p=person(b.p), conf=confIds().has(id);
+  if(ui.role==='mem')return;
+  if(!canEdit(p)){toast(`${p.name} é da área ${AREAS[p.area]}. Só a Supervisão dela ou a Administração ajusta.`);return}
+  const r=el.getBoundingClientRect(), X=Math.min(Math.max(8,r.left),innerWidth-330), Y=Math.min(r.bottom+6,innerHeight-330);
+  let inner=`<div class="pop" style="left:${X}px;top:${Math.max(8,Y)}px;transform-origin:${Math.max(0,r.left-X)+20}px 0"><div class="ph"><b>${esc(p.name)}</b> · ${esc(b.label)}${b.pos?' · '+esc(b.pos):''}<br>${hm(b.s)}–${hm(b.e)}${conf?' · <b style="color:var(--bad)">choque de horário</b>':''}${p.folga&&p.pend?' · <b style="color:var(--bad)">de folga</b>':''}</div>`;
+  if(b.show){
+    inner+=`<button data-m="livro">Abrir o Livro do Dia<small>${esc(b.livro||'Show')}: a troca de quem faz a posição é feita lá</small></button>
+      <button data-m="tirarshow">Tirar do show (pelo Livro)<small>A reserva do grupo cobre, se houver</small></button><hr>
+      <button disabled>Mudar horário só desta pessoa<small>Show não muda de horário. A saída é tirar do show.</small></button>`;
+  }else if(b.reserva){
+    inner+=`<button data-m="tirar">Tirar da reserva<small>Pessoa deixa de ficar disponível neste horário</small></button>`;
+  }else{
+    inner+=`<button data-m="tirar">Tirar de ${esc(b.label)}<small>Só esta pessoa. Os outros continuam</small></button>
+      <button data-m="hora">Mudar horário só desta pessoa<small>Exceção individual, com motivo</small></button>
+      <button data-m="dividir">Dividir o horário<small>Parte antes e parte depois de outra atividade</small></button>`;
+  }
+  inner+=`</div>`;
+  const ly=layer(inner);
+  ly.querySelectorAll('[data-m]').forEach(x=>x.onclick=()=>{const m=x.dataset.m;close();setTimeout(()=>{
+    if(m==='livro')toast('No app, abre o Livro do Dia deste show. Aqui é só uma demonstração.');
+    else if(m==='tirar'||m==='tirarshow'){snap();S.blocks=S.blocks.filter(z=>z.id!==id);touch(b.p);if(m==='tirarshow'){const res=S.blocks.find(z=>z.reserva&&overlap(z,b));if(res){res.reserva=false;res.show=true;res.type='show';res.label=b.label;res.pos=b.pos;res.livro=b.livro;res.exc=true;toast(`${p.name} saiu do show. ${person(res.p).name} (reserva do grupo) cobre a posição.`,true)}else toast(`${p.name} saiu do show. Fica uma vaga sem ninguém.`,true),S.vagas.push(`${b.label}, ${b.pos||'posição'} (${hm(b.s)})`)}else toast(`${p.name} saiu de ${b.label}.`,true);render()}
+    else if(m==='hora')openHora(id);
+    else if(m==='dividir')toast('No app, você escolhe onde dividir e o motivo. Aqui é só uma demonstração.');
+  },200)});
+}
+function openHora(id){
+  const b=S.blocks.find(x=>x.id===id),p=person(b.p);
+  const body=`<p class="note">Vale <b>só para ${esc(p.name)}</b>. O horário de ${esc(b.label)} não muda para as outras pessoas.</p>
+   <div class="row"><span class="l">Começa</span><input type="time" id="hs" step="300" value="${hm(b.s)}"></div>
+   <div class="row"><span class="l">Termina</span><input type="time" id="he" step="300" value="${hm(b.e)}"></div>
+   <div class="row"><span class="l" style="flex-basis:100%">Motivo (aparece no Registro)<input type="text" id="mo" placeholder="Ex.: chegou depois do treino"></span></div><div id="err" class="note" style="color:var(--bad)"></div>`;
+  const ly=layer(dialog('Mudar horário de '+p.name,body,`<button class="btn" id="cn">Cancelar</button><button class="btn p" id="sv">Salvar horário</button>`));
+  document.getElementById('cn').onclick=close;
+  document.getElementById('sv').onclick=()=>{const s=mm(document.getElementById('hs').value),e=mm(document.getElementById('he').value);if(!(e>s)){document.getElementById('err').textContent='O fim precisa ser depois do começo.';return}
+    snap();b.s=s;b.e=e;b.exc=true;touch(b.p);close();toast(`Horário de ${p.name} mudado só para ela. Entrou no Registro.`,true);setTimeout(render,200)};
+}
+function openFolga(){
+  const sb=blocksOf('S'), free=(s,e,self)=>S.people.filter(q=>!q.folga&&q.id!=='S'&&!S.blocks.some(x=>x.p===q.id&&overlap(x,{s,e})&&!x.reserva));
+  const outros=sb.filter(b=>!needsCover(b)).length;
+  const rows=sb.filter(needsCover).map(b=>{const res=S.blocks.find(x=>x.reserva&&overlap(x,b));const opts=S.people.filter(q=>!q.folga&&q.id!=='S'&&!S.blocks.some(x=>x.p===q.id&&overlap(x,b)&&!x.reserva));
+    return `<div class="row" data-r="${b.id}"><span class="l"><b>${esc(b.label)}</b>${b.pos?' · '+esc(b.pos):''}<br><span class="note">${hm(b.s)}–${hm(b.e)}${b.show?' · '+esc(b.livro):''}</span></span>
+    <select aria-label="Quem cobre ${esc(b.label)}"><option value="">Deixar sem ninguém</option>${opts.map(q=>`<option value="${q.id}" ${res&&res.p===q.id?'selected':''}>${esc(q.name)}${res&&res.p===q.id?' · reserva do grupo':''}</option>`).join('')}</select></div>`}).join('');
+  const body=`<p class="note">Cada lugar tem a sua sugestão: a reserva do grupo daquela posição. Nem sempre é a mesma pessoa. Mude uma, se quiser.</p>${rows}<p class="note" style="margin-top:10px">Os outros ${outros} compromissos dela (treino, almoço, passagem, celebração) saem da escala dela sem precisar de cobertura.</p>`;
+  layer(dialog('Onde Pessoa S aparece hoje',body,`<button class="btn" id="cn">Cancelar</button><button class="btn p" id="ok">Aceitar as sugestões</button>`));
+  document.getElementById('cn').onclick=close;
+  document.getElementById('ok').onclick=()=>{
+    snap(); const pick=[...document.querySelectorAll('[data-r]')].map(r=>({id:+r.dataset.r,q:r.querySelector('select').value}));
+    let n=0,v=0;
+    blocksOf('S').filter(b=>!needsCover(b)).forEach(b=>{S.blocks=S.blocks.filter(z=>z.id!==b.id)});
+    pick.forEach(x=>{const b=S.blocks.find(z=>z.id===x.id);S.blocks=S.blocks.filter(z=>z.id!==x.id);
+      if(x.q){S.blocks=S.blocks.filter(z=>!(z.p===x.q&&z.reserva&&overlap(z,b)));S.blocks.push({...b,id:++uid,p:x.q,exc:true,cover:'S'});touch(x.q);n++}
+      else{S.vagas.push(`${b.label}${b.pos?', '+b.pos:''} (${hm(b.s)})`);v++}});
+    person('S').pend=false;touch('S');close();toast(`Pessoa S saiu da escala: ${n} de ${pick.length} lugares cobertos${v?`, ${v} sem ninguém`:''}. Entrou no Registro.`,true);setTimeout(render,200)};
+}
+function openLote(){
+  const PRE={reuniao:{n:'Reunião rápida · 16:00–16:30',s:'16:00',e:'16:30',type:'outra',label:'Reunião rápida'},inter:{n:'Interação com guardiões · 10:00–11:00',s:'10:00',e:'11:00',type:'inter',label:'Interação com guardiões'}};
+  const body=`<p class="note">Marque as pessoas e escolha a atividade. Antes de gravar, você vê quem entra e quem fica de fora.</p>
+   <div class="row"><span class="l"><b>Atividade</b></span><select id="pre">${Object.entries(PRE).map(([k,v])=>`<option value="${k}">${v.n}</option>`).join('')}</select></div>
+   <div id="pl">${S.people.map(p=>{const ok=canEdit(p);return `<label class="pk"><input type="checkbox" value="${p.id}" ${ok?'':'disabled'}>${esc(p.name)} <span class="note">· ${AREAS[p.area]}${ok?'':' · só a Supervisão dela'}${p.folga?' · folga':''}</span></label>`}).join('')}</div>
+   <div class="card" style="margin:10px 0 0" id="pv"><b>Prévia</b><div class="note">Marque ao menos uma pessoa.</div></div>`;
+  layer(dialog('Preencher em lote',body,`<button class="btn" id="cn">Cancelar</button><button class="btn p" id="ok" disabled>Confirmar</button>`));
+  const calc=()=>{const pr=PRE[document.getElementById('pre').value],ids=[...document.querySelectorAll('#pl input:checked')].map(x=>x.value);
+    const entram=[],folga=[],choque=[];ids.forEach(id=>{const p=person(id);if(p.folga){folga.push(p.name);return}
+      const s=mm(pr.s),e=mm(pr.e);if(S.blocks.some(x=>x.p===id&&overlap(x,{s,e})&&!x.reserva))choque.push(p.name);entram.push(id)});
+    document.getElementById('pv').innerHTML=`<b>Prévia</b><ul style="margin:6px 0 0;padding-left:18px;font-size:14px"><li>${entram.length} ${entram.length===1?'pessoa entra':'pessoas entram'}</li>${folga.length?`<li>${folga.length} ficam de fora por folga: ${esc(folga.join(', '))}</li>`:''}${choque.length?`<li style="color:var(--bad)">${choque.length} terão choque de horário: ${esc(choque.join(', '))}</li>`:''}</ul>`;
+    document.getElementById('ok').disabled=!entram.length;return {pr,entram}};
+  document.getElementById('pre').onchange=calc;document.getElementById('pl').onchange=calc;
+  document.getElementById('cn').onclick=close;
+  document.getElementById('ok').onclick=()=>{const {pr,entram}=calc();snap();entram.forEach(id=>{S.blocks.push({id:++uid,p:id,s:mm(pr.s),e:mm(pr.e),type:pr.type,label:pr.label,show:false,exc:true});touch(id)});close();toast(`${entram.length} ${entram.length===1?'pessoa entrou':'pessoas entraram'} em "${pr.label}". Entrou no Registro.`,true);setTimeout(render,200)};
+}
+function enviar(){
+  const pend=attention().filter(x=>x.ic==='b'||x.ic==='w');
+  const go=()=>{snap();S.areaStatus.pat='enviada';close();toast('Parte dos Patinadores enviada. A Administração foi avisada.');setTimeout(render,200)};
+  if(!pend.length){go();return}
+  layer(dialog('Ainda há pendências',`<p>Antes de enviar, veja o que ainda está aberto na sua área:</p><ul style="padding-left:18px;font-size:14px">${pend.map(x=>`<li>${esc(x.t)}</li>`).join('')}</ul><p class="note">Você pode enviar mesmo assim. A Administração verá as pendências ao publicar.</p>`,`<button class="btn" id="cn">Voltar e resolver</button><button class="btn p" id="ok">Enviar mesmo assim</button>`));
+  document.getElementById('cn').onclick=close;document.getElementById('ok').onclick=go;
+}
+function publicar(){
+  const pend=attention().filter(x=>x.ic==='b').length;
+  layer(dialog('Publicar tudo',`<p>Vai publicar a Escala do dia e, em seguida, os Livros do Dia deste local. A ordem é sempre essa: Escala primeiro, Livros depois.</p>${pend?`<p style="color:var(--bad)"><b>Atenção:</b> ainda há ${pend} pendência${pend>1?'s':''} aberta${pend>1?'s':''}. Você decide se publica assim.</p>`:''}<div id="prog" class="note"></div>`,`<button class="btn" id="cn">Cancelar</button><button class="btn p" id="ok">Publicar tudo</button>`));
+  document.getElementById('cn').onclick=close;
+  document.getElementById('ok').onclick=()=>{const ok=document.getElementById('ok');ok.disabled=true;ok.textContent='Publicando…';const pr=document.getElementById('prog');
+    const steps=['Escala do dia publicada.','Livro "Show Patinação" publicado.','Livro "Show Natal" publicado.'];let i=0;
+    const t=setInterval(()=>{pr.innerHTML+=`<div>✓ ${steps[i]}</div>`;i++;if(i===steps.length){clearInterval(t);S.published=true;ok.textContent='Pronto';document.getElementById('cn').textContent='Fechar';pr.innerHTML+='<div><b>Tudo publicado. O Elenco já vê o seu dia.</b></div>';render()}},650)};
+}
+document.querySelectorAll('[data-role]').forEach(b=>b.onclick=()=>{ui.role=b.dataset.role;document.querySelectorAll('[data-role]').forEach(x=>x.setAttribute('aria-pressed',x===b));render()});
+fresh();render();
+</script>
+</body>
+</html>
