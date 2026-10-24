@@ -229,6 +229,7 @@ export default function SolicitacoesPage({ role, meuId }: { role: Role; meuId: s
     {novo === "escolher" && <div className="cycle-modal" onClick={(e) => { if (e.target === e.currentTarget) setNovo(null); }}><div>
       <header><h2>O que você precisa?</h2><button type="button" aria-label="Fechar" onClick={() => setNovo(null)}>×</button></header>
       <div className="sol-tipos">{TIPOS.map(({ tipo, nome, dica, Icon }) => <button key={tipo} type="button" onClick={() => setNovo(tipo)}><Icon size={20}/><b>{nome}</b><small>{dica}</small></button>)}</div>
+      <footer><button type="button" className="cycle-secondary" onClick={() => setNovo(null)}>Cancelar</button></footer>
     </div></div>}
     {novo && novo !== "escolher" && <div className="cycle-modal"><form onSubmit={enviarNovo}>
       <header><h2>{TIPOS.find((t) => t.tipo === novo)?.nome}</h2><button type="button" aria-label="Fechar" onClick={() => setNovo(null)}>×</button></header>

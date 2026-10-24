@@ -213,7 +213,7 @@ function WeekFillMenu({ x, y, onSelect, onClose }: WeekFillMenuProps) {
       style={menuStyle}
       className="bg-white border border-border rounded-lg shadow-lg p-1.5 flex flex-col gap-0.5 min-w-[150px]"
     >
-      <p className="text-[11px] text-muted-foreground px-2 py-1 font-medium">Tipo para a semana</p>
+      <p className="text-xs text-muted-foreground px-2 py-1 font-medium">Tipo para a semana</p>
       {GRID_TYPES.map((t) => (
         <button
           key={t.value}
@@ -475,7 +475,7 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
       <div className="flex items-center gap-3 px-4 py-2 border-b bg-muted/20 flex-wrap">
         {GRID_TYPES.map((t) => (
           <div key={t.value} className="flex items-center gap-1.5">
-            <span className={`inline-flex items-center justify-center w-6 h-5 rounded text-[11px] font-bold ${t.bg} ${t.text}`}>
+            <span className={`inline-flex items-center justify-center w-6 h-5 rounded text-xs font-bold ${t.bg} ${t.text}`}>
               {t.abbr}
             </span>
             <span className="text-xs text-muted-foreground">{t.label}</span>
@@ -505,7 +505,7 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
                     } ${isToday ? "bg-blue-50 text-blue-600 font-bold" : ""}`}
                   >
                     <div className="leading-none">{d}</div>
-                    <div className="text-[11px] leading-tight opacity-70 mt-0.5">{getDayAbbr(year, month, d)}</div>
+                    <div className="text-xs leading-tight opacity-70 mt-0.5">{getDayAbbr(year, month, d)}</div>
                   </th>
                 );
               })}
@@ -527,7 +527,7 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
                 <tr>
                   <td
                     colSpan={days.length + 3}
-                    className="sticky left-0 z-10 bg-muted/50 border-b border-border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                    className="sticky left-0 z-10 bg-muted/50 border-b border-border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                   >
                     {groupLabel}
                   </td>
@@ -560,7 +560,7 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
                       onMouseUp={(e) => handleCellMouseUp(e, m.userId, d)}
                     >
                       {info && (
-                        <span className={`inline-flex items-center justify-center w-7 h-5 rounded text-[11px] font-bold ${info.bg} ${info.text}`}>
+                        <span className={`inline-flex items-center justify-center w-7 h-5 rounded text-xs font-bold ${info.bg} ${info.text}`}>
                           {info.abbr}
                         </span>
                       )}
@@ -582,7 +582,7 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
                 </td>
                 <td className="border-b border-l border-border px-2 py-1">
                   {editable(m.userId) && <button
-                    className="text-[11px] text-muted-foreground hover:text-foreground whitespace-nowrap px-2 min-h-[36px] rounded hover:bg-muted transition-colors"
+                    className="text-xs text-muted-foreground hover:text-foreground whitespace-nowrap px-2 min-h-[44px] rounded hover:bg-muted transition-colors"
                     onClick={(e) => handleFillWeekClick(e, m.userId)}
                     title="Preencher semana visível"
                   >

@@ -20,3 +20,8 @@
   .ldd-diff-row{flex-wrap:wrap;row-gap:4px}
   .ldd-diff-row>span{flex:1 1 100%!important;padding-right:0!important}
 }
+
+/* Celular: a fila de abas rola de lado; o esmaecido à direita avisa que há mais abas escondidas. */
+@media (max-width: 720px) {
+  .ldd-tabs { mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); }
+}

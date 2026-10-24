@@ -2,7 +2,7 @@
 .sol-abas{display:flex;gap:6px;flex-wrap:wrap}
 .cycle-page .cycle-toolbar .sol-abas button{width:auto;min-height:44px;border:1px solid #e6e1f2;background:#fff;color:#3d3559;border-radius:999px;padding:8px 14px;font:700 12px Manrope,sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
 .cycle-page .cycle-toolbar .sol-abas button.active{background:#1c1440;border-color:#1c1440;color:#fff}
-.sol-abas b{min-width:20px;height:20px;border-radius:999px;display:inline-grid;place-items:center;padding:0 6px;background:#f3ecfe;color:#5b23c9;font:700 11px 'JetBrains Mono',monospace}
+.sol-abas b{min-width:20px;height:20px;border-radius:999px;display:inline-grid;place-items:center;padding:0 6px;background:#f3ecfe;color:#5b23c9;font:700 12px 'JetBrains Mono',monospace}
 .sol-abas button.active b{background:#fff;color:#1c1440}
 .sol-aviso{border:1px solid #cbb8f7;background:#faf8ff;color:#3d3559;border-radius:12px;padding:10px 14px;font-size:13px}
 .sol-layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(260px,.7fr);gap:16px;align-items:start}
@@ -15,7 +15,7 @@
 .sol-titulo strong{font:600 15px Manrope,sans-serif;color:#1b1630}
 .sol-titulo small{font-size:12px;color:#6b6482}
 .sol-meta{font-size:12px;color:#6b6482}
-.sol-estado{border-radius:6px;padding:3px 7px;font:700 10px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.04em;background:#f0ecf8;color:#6b6482}
+.sol-estado{border-radius:6px;padding:3px 7px;font:700 12px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.04em;background:#f0ecf8;color:#6b6482}
 .sol-estado.warn{background:#fdf3e4;color:#8f5409}
 .sol-estado.ok{background:#e3f4f1;color:#0a6f68}
 .sol-estado.bad{background:#fff0f2;color:#b42340}

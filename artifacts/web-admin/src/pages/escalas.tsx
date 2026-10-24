@@ -53,10 +53,10 @@ const STATUS: Record<string, { bg: string; fg: string }> = {
 const pillBase = "border:none;border-radius:999px;padding:6px 13px;font-size:12px;cursor:pointer;font-family:Manrope,sans-serif;font-weight:600;";
 const pillOn = pillBase + "background:#fff;color:var(--asa-ink-dark);font-weight:700;box-shadow:0 1px 3px rgba(40,20,90,.14);";
 const pillOff = pillBase + "background:none;color:var(--asa-label);";
-const MONO_TH = "text-align:left;background:var(--asa-bg-tinted);border-bottom:1px solid var(--asa-line-soft);border-right:1px solid var(--asa-line-soft);padding:9px 11px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--asa-label);font-weight:700";
+const MONO_TH = "text-align:left;background:var(--asa-bg-tinted);border-bottom:1px solid var(--asa-line-soft);border-right:1px solid var(--asa-line-soft);padding:9px 11px;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--asa-label);font-weight:700";
 const blockStyle = (tone: Tone, extra = "") => "display:flex;align-items:baseline;gap:6px;border-radius:7px;padding:6px 9px;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;background:" + tone.bg + ";color:" + tone.fg + ";border:1px solid " + tone.bd + ";" + extra;
 const btn = (kind: "primary" | "ghost") => "border-radius:999px;padding:9px 17px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:Manrope,sans-serif;" + (kind === "primary" ? "border:none;background:linear-gradient(135deg,var(--asa-purple),var(--asa-aula-fg));color:#fff;" : "border:1px solid var(--asa-line);background:#fff;color:var(--asa-ink-medium);");
-const chipBase = "border-radius:999px;padding:5px 11px;font-size:11.5px;cursor:pointer;font-family:Manrope,sans-serif;white-space:nowrap;";
+const chipBase = "border-radius:999px;padding:5px 11px;font-size:12px;cursor:pointer;font-family:Manrope,sans-serif;white-space:nowrap;";
 const chipOn = chipBase + "border:1px solid var(--asa-purple-border);background:var(--asa-chip-on);color:var(--asa-purple);font-weight:700;";
 const chipOff = chipBase + "border:1px dashed var(--asa-line-soft);background:#fff;color:var(--asa-chip-off);font-weight:600;";
 import { REVIEW_PERSON } from "@/lib/amostra";
@@ -204,7 +204,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
   // Cabeçalho do shell: "somente leitura" (Direção) e o seletor de local, como no quadro.
   useEffect(() => {
     onHeader?.(<div style={css("position:relative;display:flex;align-items:center;gap:12px")}>
-      {isDir && <span style={css("font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--asa-readonly-fg);background:var(--asa-readonly-bg);padding:5px 10px;border-radius:999px;")}>somente leitura</span>}
+      {isDir && <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--asa-readonly-fg);background:var(--asa-readonly-bg);padding:5px 10px;border-radius:999px;")}>somente leitura</span>}
       <button type="button" className="esc-hit" aria-haspopup="menu" aria-expanded={opMenu} disabled={isMem || locais.length < 2} onClick={() => setOpMenu((v) => !v)}
         style={css("display:flex;flex:none;white-space:nowrap;align-items:center;gap:8px;border:1px solid var(--asa-line);background:#fff;border-radius:999px;padding:6px 12px;font-size:13.5px;font-weight:600;color:var(--asa-ink-medium);font-family:Manrope,sans-serif;" + (!isMem && locais.length > 1 ? "cursor:pointer;" : "cursor:default;") + (isMem ? "opacity:.75;" : ""))}>
         <span style={css("width:8px;height:8px;border-radius:50%;background:var(--asa-ok-fg)")}/>
@@ -387,7 +387,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       <div style={css("display:flex;align-items:baseline;gap:2px 9px;flex-wrap:wrap")}>
         <span style={css("font-family:Outfit,sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.02em;white-space:nowrap")}>{WEEKDAY_LONG[weekdayOf(date)]}</span>
         <span style={css("font-size:13.5px;color:var(--asa-ink-muted);font-weight:500;white-space:nowrap")}>{fullDate(date)}</span>
-        <span style={css("font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:var(--asa-show-bg);color:var(--asa-purple);")}>{relOf(date)}</span>
+        <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:var(--asa-show-bg);color:var(--asa-purple);")}>{relOf(date)}</span>
       </div>
       <div style={css("display:flex;align-items:center;gap:9px;font-size:12px;color:var(--asa-label);flex-wrap:wrap")}>
         <span>{operationLabel}</span>
@@ -396,7 +396,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       </div>
     </div>
     <span style={css("flex:1")}/>
-    <span style={css("font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:5px 10px;border-radius:999px;background:" + S.bg + ";color:" + S.fg + ";")}>{isMem ? (carregandoTela && !minha ? "carregando…" : error && !minha ? "não carregou" : minha?.publicada ? "publicada" : "sem escala") : status}</span>
+    <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:5px 10px;border-radius:999px;background:" + S.bg + ";color:" + S.fg + ";")}>{isMem ? (carregandoTela && !minha ? "carregando…" : error && !minha ? "não carregou" : minha?.publicada ? "publicada" : "sem escala") : status}</span>
     <div style={css("display:flex;align-items:center;gap:6px;border:1px solid var(--asa-line);border-radius:999px;padding:3px;background:var(--asa-fade);flex:none;white-space:nowrap")}>
       <button type="button" className="esc-hit" onClick={() => { setDate(todayISO()); setCal(false); }} style={css(date === todayISO() ? pillOn : pillOff)}>Hoje</button>
       <button type="button" className="esc-hit" onClick={() => { setDate(addDays(todayISO(), 1)); setCal(false); }} style={css(date === addDays(todayISO(), 1) ? pillOn : pillOff)}>Amanhã</button>
@@ -457,13 +457,13 @@ function Calendario({ date, onPick }: { date: string; onPick: (d: string) => voi
       </span>
     </div>
     <div style={css("display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:6px")}>
-      {["D", "S", "T", "Q", "Q", "S", "S"].map((h, i) => <span key={i} style={css("text-align:center;font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--asa-label)")}>{h}</span>)}
+      {["D", "S", "T", "Q", "Q", "S", "S"].map((h, i) => <span key={i} style={css("text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--asa-label)")}>{h}</span>)}
     </div>
     <div style={css("display:grid;grid-template-columns:repeat(7,1fr);gap:3px")}>
       {Array.from({ length: first.getDay() }, (_, i) => <span key={`e${i}`} style={css("height:30px")}/>)}
       {Array.from({ length: days }, (_, i) => {
         const d = iso(i + 1), isSel = d === date, isToday = d === todayISO();
-        return <button key={d} type="button" onClick={() => onPick(d)} style={css("display:flex;flex-direction:column;align-items:center;gap:2px;height:30px;justify-content:center;border-radius:8px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:600;" + (isSel ? "border:1px solid var(--asa-purple);background:var(--asa-show-bg);color:var(--asa-purple);" : isToday ? "border:1px solid var(--asa-line-soft);background:#fff;color:var(--asa-ink-dark);" : "border:1px solid transparent;background:none;color:var(--asa-label);"))}>{i + 1}</button>;
+        return <button key={d} type="button" onClick={() => onPick(d)} style={css("display:flex;flex-direction:column;align-items:center;gap:2px;height:30px;justify-content:center;border-radius:8px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;" + (isSel ? "border:1px solid var(--asa-purple);background:var(--asa-show-bg);color:var(--asa-purple);" : isToday ? "border:1px solid var(--asa-line-soft);background:#fff;color:var(--asa-ink-dark);" : "border:1px solid transparent;background:none;color:var(--asa-label);"))}>{i + 1}</button>;
       })}
     </div>
   </div>;
@@ -529,10 +529,10 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
     const inner = <>
       {b.dailyBookId && <span title={`Livro do Dia · ${b.dailyBookStatus ?? ""}`} style={css("width:6px;height:6px;border-radius:50%;flex:none;background:" + (b.dailyBookStatus === "DRAFT" ? "var(--asa-vaga-fg)" : "var(--asa-prep-fg)") + ";")}/>}
       <span style={css("overflow:hidden;text-overflow:ellipsis")}>{textoDoBloco(b)}</span>
-      {!semHora && b.fim && b.regra !== "livro" && <span style={css("font-family:'JetBrains Mono',monospace;font-size:11px;color:" + tone.fg + ";opacity:.75;margin-left:auto;")}>{faixa(b)}</span>}
+      {!semHora && b.fim && b.regra !== "livro" && <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;color:" + tone.fg + ";opacity:.75;margin-left:auto;")}>{faixa(b)}</span>}
     </>;
     return b.dailyBookId
-      ? <Link key={b.key} href="/livro-do-dia" title="Abrir no Livro do Dia" style={css(blockStyle(tone, "cursor:pointer;text-decoration:none;" + extra))}>{inner}</Link>
+      ? <Link key={b.key} href="/livro-do-dia" title="Abrir no Livro do Dia" className="esc-bloco-link" style={css(blockStyle(tone, "cursor:pointer;text-decoration:none;" + extra))}>{inner}</Link>
       : <div key={b.key} style={css(blockStyle(tone, extra))}>{inner}</div>;
   };
 
@@ -540,21 +540,21 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
     <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:9px")}>
       <div style={css("display:flex;align-items:center;gap:3px;border:1px solid var(--asa-line);border-radius:10px;padding:3px;background:var(--asa-fade)")}>
         {([["pessoa", "Por pessoa"], ["atividade", "Por atividade"]] as const).map(([key, label]) => <button key={key} type="button" className="esc-hit" aria-pressed={view === key} onClick={() => setView(key)}
-          style={css("border-radius:8px;padding:6px 12px;font-size:11.5px;cursor:pointer;font-family:Manrope,sans-serif;border:none;" + (view === key ? "background:#fff;color:var(--asa-ink-dark);font-weight:700;box-shadow:0 1px 3px rgba(40,20,90,.14);" : "background:none;color:var(--asa-label);font-weight:600;"))}>{label}</button>)}
+          style={css("border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:Manrope,sans-serif;border:none;" + (view === key ? "background:#fff;color:var(--asa-ink-dark);font-weight:700;box-shadow:0 1px 3px rgba(40,20,90,.14);" : "background:none;color:var(--asa-label);font-weight:600;"))}>{label}</button>)}
       </div>
       <span style={css("width:1px;height:20px;background:var(--asa-line)")}/>
       {[{ id: "todos", name: "Todos os grupos" }, ...dia.areas].map((a) => <button key={a.id} type="button" className="esc-hit" aria-pressed={team === a.id} onClick={() => setTeam(a.id)}
-        style={css("border-radius:999px;padding:5px 11px;font-size:11.5px;cursor:pointer;font-family:Manrope,sans-serif;" + (team === a.id ? "border:1px solid var(--asa-ink-dark);background:var(--asa-ink-dark);color:#fff;font-weight:700;" : "border:1px solid var(--asa-line);background:#fff;color:var(--asa-label);font-weight:600;"))}>{a.name}</button>)}
+        style={css("border-radius:999px;padding:5px 11px;font-size:12px;cursor:pointer;font-family:Manrope,sans-serif;" + (team === a.id ? "border:1px solid var(--asa-ink-dark);background:var(--asa-ink-dark);color:#fff;font-weight:700;" : "border:1px solid var(--asa-line);background:#fff;color:var(--asa-label);font-weight:600;"))}>{a.name}</button>)}
       <span style={css("flex:1")}/>
-      <span style={css("font-size:11px;color:var(--asa-label)")}>{`${cols.length} de ${dia.pessoas.length} pessoas · ${dia.location.name}`}</span>
+      <span style={css("font-size:12px;color:var(--asa-label)")}>{`${cols.length} de ${dia.pessoas.length} pessoas · ${dia.location.name}`}</span>
       <span className="esc-hide-sm" style={css("width:1px;height:20px;background:var(--asa-line)")}/>
       <div className="esc-hide-sm" style={css("display:flex;align-items:center;gap:6px")}>
         <button type="button" className="esc-hit" aria-label="Diminuir" onClick={() => setZoom((z) => Math.max(40, z - 15))} style={css("flex:none;width:26px;height:26px;border-radius:8px;border:1px solid var(--asa-line);background:#fff;color:var(--asa-ink-muted);font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center")}>−</button>
         <div style={css("display:flex;align-items:center;gap:2px;border:1px solid var(--asa-line);border-radius:10px;padding:3px;background:var(--asa-fade)")}>
-          {[100, 85, 70, 55, 40].map((z) => <button key={z} type="button" className="esc-hit" onClick={() => setZoom(z)} style={css("flex:none;height:26px;padding:0 9px;border-radius:8px;border:none;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;background:" + (zoom === z ? "var(--asa-ink-dark)" : "transparent") + ";color:" + (zoom === z ? "#fff" : "var(--asa-label)"))}>{z}%</button>)}
+          {[100, 85, 70, 55, 40].map((z) => <button key={z} type="button" className="esc-hit" onClick={() => setZoom(z)} style={css("flex:none;height:26px;padding:0 9px;border-radius:8px;border:none;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;background:" + (zoom === z ? "var(--asa-ink-dark)" : "transparent") + ";color:" + (zoom === z ? "#fff" : "var(--asa-label)"))}>{z}%</button>)}
         </div>
         <button type="button" className="esc-hit" aria-label="Aumentar" onClick={() => setZoom((z) => Math.min(100, z + 15))} style={css("flex:none;width:26px;height:26px;border-radius:8px;border:1px solid var(--asa-line);background:#fff;color:var(--asa-ink-muted);font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center")}>+</button>
-        <span style={css("flex:none;white-space:nowrap;font-size:11px;color:var(--asa-label)")}>{zoom === 100 ? "escala em tamanho real" : zoom >= 75 ? "cabe mais gente na tela" : "visão geral do dia inteiro"}</span>
+        <span style={css("flex:none;white-space:nowrap;font-size:12px;color:var(--asa-label)")}>{zoom === 100 ? "escala em tamanho real" : zoom >= 75 ? "cabe mais gente na tela" : "visão geral do dia inteiro"}</span>
       </div>
     </div>
 
@@ -562,7 +562,7 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
       <summary style={css("display:flex;align-items:center;gap:11px;cursor:pointer;list-style:none;min-height:30px")}>
         <img src="/asa/aviso-importante.webp" alt="" style={css("width:30px;height:30px;object-fit:contain;flex:none")}/>
         <span style={css("font-size:12.5px;font-weight:700;color:var(--asa-amber-mid);flex:1")}>{plural(vazios.length, "bloco sem ninguém", "blocos sem ninguém")}</span>
-        <span className="esc-vazios-ver" style={css("font-size:11.5px;font-weight:700;color:var(--asa-amber-mid)")}>ver quais</span>
+        <span className="esc-vazios-ver" style={css("font-size:12px;font-weight:700;color:var(--asa-amber-mid)")}>ver quais</span>
       </summary>
       <ul style={css("margin:10px 0 2px;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px")}>
         {vazios.map((b) => <li key={b.key} style={css("display:flex;align-items:center;gap:10px;font-size:12px;color:var(--asa-amber-brown)")}>
@@ -577,7 +577,7 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
       <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:10px")}>
         <img src="/asa/aviso-importante.webp" alt="" style={css("width:28px;height:28px;object-fit:contain;flex:none")}/>
         <span style={css("flex:none;font-family:Outfit,sans-serif;font-size:15px;font-weight:600;color:var(--asa-rose-fg)")}>Mesma pessoa em dois lugares</span>
-        <span style={css("font-size:11.5px;color:var(--asa-label)")}>{`${plural(new Set(conflitos.map((c) => c.pessoaId)).size, "pessoa em duas coisas", "pessoas em duas coisas")} ao mesmo tempo · eu aviso, quem decide é a supervisão da atividade · alerta — não bloqueia a publicação`}</span>
+        <span style={css("font-size:12px;color:var(--asa-label)")}>{`${plural(new Set(conflitos.map((c) => c.pessoaId)).size, "pessoa em duas coisas", "pessoas em duas coisas")} ao mesmo tempo · eu aviso, quem decide é a supervisão da atividade · alerta — não bloqueia a publicação`}</span>
       </div>
       {gruposDeConflito.map((g) => {
         const ini = g.a.inicio > g.b.inicio ? g.a.inicio : g.b.inicio;
@@ -588,9 +588,9 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
           <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:9px")}>
             <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--asa-rose-fg)")}>{fim > ini ? `${ini}–${fim}` : ini}</span>
             <span style={css("font-size:13px;font-weight:700;color:var(--asa-ink-dark)")}>{`${textoDoBloco(g.a)}  ×  ${textoDoBloco(g.b)}`}</span>
-            <span style={css("font-size:11.5px;color:var(--asa-label)")}>{plural(g.pessoas.length, "pessoa", "pessoas")}</span>
+            <span style={css("font-size:12px;color:var(--asa-label)")}>{plural(g.pessoas.length, "pessoa", "pessoas")}</span>
           </div>
-          <span style={css("font-size:11.5px;color:var(--asa-label);line-height:1.45;text-wrap:pretty")}>{g.a.regra === "livro" || g.b.regra === "livro" ? "O show tem prioridade, mas não decide sozinho: quem responde pela atividade escolhe de qual a pessoa sai. Tirar do show é no Livro do Dia." : "Duas coisas ao mesmo tempo e nenhuma tem prioridade. Quem responde pela atividade escolhe de qual a pessoa sai."}</span>
+          <span style={css("font-size:12px;color:var(--asa-label);line-height:1.45;text-wrap:pretty")}>{g.a.regra === "livro" || g.b.regra === "livro" ? "O show tem prioridade, mas não decide sozinho: quem responde pela atividade escolhe de qual a pessoa sai. Tirar do show é no Livro do Dia." : "Duas coisas ao mesmo tempo e nenhuma tem prioridade. Quem responde pela atividade escolhe de qual a pessoa sai."}</span>
           <div style={css("display:flex;flex-wrap:wrap;gap:6px")}>
             {g.pessoas.map((c) => {
               const pode = canEdit && (editableAreaIds === null || (c.areaId !== null && editableAreaIds.includes(c.areaId)));
@@ -630,7 +630,7 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
           const pode = canEdit && (editableAreaIds === null || (p.areaId !== null && editableAreaIds.includes(p.areaId)));
           return <li key={p.id} className="esc-cartao">
             <header className="esc-cartao-topo" style={{ background: away ? away.tone.bg : "var(--asa-bg-tinted)" }}>
-              <span aria-hidden="true" style={css("width:30px;height:30px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#fff;" + (away ? "background:var(--asa-lavender-muted);" : "background:linear-gradient(135deg,var(--asa-violet),var(--asa-indigo));"))}>{initials(p.name)}</span>
+              <span aria-hidden="true" style={css("width:30px;height:30px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#fff;" + (away ? "background:var(--asa-lavender-muted);" : "background:linear-gradient(135deg,var(--asa-violet),var(--asa-indigo));"))}>{initials(p.name)}</span>
               <div style={css("display:flex;flex-direction:column;gap:1px;min-width:0")}>
                 <strong style={css("font-size:13.5px;color:var(--asa-ink-dark);overflow-wrap:anywhere")}>{p.name}</strong>
                 <span style={css("font-size:12px;" + (away ? "font-weight:700;color:" + away.tone.fg : "color:var(--asa-label)"))}>{away ? `${away.label} — dia todo` : `${p.areaName ?? "sem área"} · ${plural(lista.length, "bloco", "blocos")}`}</span>
@@ -641,8 +641,8 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
                 <span className="esc-cartao-hora">{b.fim && b.regra !== "livro" ? <>{b.inicio}<small>{b.fim}</small></> : b.inicio}</span>
                 <div style={css("flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px")}>
                   {blockEl(b, "white-space:normal;max-width:100%;" + (emConflito.has(`${p.name}|${b.key}`) ? "box-shadow:0 0 0 1.5px var(--asa-ausente-fg) inset;" : ""), true)}
-                  {emConflito.has(`${p.name}|${b.key}`) && <span style={css("font-size:11.5px;font-weight:700;color:var(--asa-ausente-fg)")}>Cruza com outro bloco dela</span>}
-                  {b.horarioDela && <span style={css("font-size:11.5px;color:var(--asa-label)")}>{`Horário só desta pessoa · era ${faixa(b.horarioDela)}`}</span>}
+                  {emConflito.has(`${p.name}|${b.key}`) && <span style={css("font-size:12px;font-weight:700;color:var(--asa-ausente-fg)")}>Cruza com outro bloco dela</span>}
+                  {b.horarioDela && <span style={css("font-size:12px;color:var(--asa-label)")}>{`Horário só desta pessoa · era ${faixa(b.horarioDela)}`}</span>}
                   {pode && b.horarioDela && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => void onHorario({ ...b, key: b.horarioDela!.chaveOriginal }, p.id, null)} aria-label={`Voltar ${p.name} ao horário normal de ${textoDoBloco(b)}`}>Voltar ao normal</button>}
                   {pode && !b.horarioDela && b.regra !== "ninguem" && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setAjustando(b)} aria-label={`Ajustar ${textoDoBloco(b)}`}>Ajustar</button>}
                 </div>
@@ -660,10 +660,10 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
               const n = blocosDe(p.id).length;
               return <th key={p.id} style={css("text-align:left;background:" + (away ? away.tone.bg : "var(--asa-bg-tinted)") + ";border-bottom:1px solid var(--asa-line-soft);border-right:1px solid var(--asa-lavender-surface);padding:8px 10px;min-width:132px;font-weight:600;")}>
                 <div style={css("display:flex;align-items:center;gap:7px")}>
-                  <span style={css("width:24px;height:24px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#fff;" + (away ? "background:var(--asa-lavender-muted);" : "background:linear-gradient(135deg,var(--asa-violet),var(--asa-indigo));"))}>{initials(p.name)}</span>
+                  <span style={css("width:24px;height:24px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#fff;" + (away ? "background:var(--asa-lavender-muted);" : "background:linear-gradient(135deg,var(--asa-violet),var(--asa-indigo));"))}>{initials(p.name)}</span>
                   <div style={css("display:flex;flex-direction:column;gap:1px;min-width:0")}>
                     <span style={css("font-size:12.5px;font-weight:700;color:var(--asa-ink-dark)")}>{p.name}</span>
-                    <span style={css("font-size:11.5px;font-weight:600;" + (away ? "color:" + away.tone.fg + ";" : "color:var(--asa-label);font-weight:500;"))}>{away ? `${away.label.toLocaleLowerCase("pt-BR")} o dia todo` : `${p.areaName ?? "sem área"} · ${plural(n, "bloco", "blocos")}`}</span>
+                    <span style={css("font-size:12px;font-weight:600;" + (away ? "color:" + away.tone.fg + ";" : "color:var(--asa-label);font-weight:500;"))}>{away ? `${away.label.toLocaleLowerCase("pt-BR")} o dia todo` : `${p.areaName ?? "sem área"} · ${plural(n, "bloco", "blocos")}`}</span>
                   </div>
                 </div>
               </th>;
@@ -679,7 +679,7 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
                 {cols.map((p) => {
                   const away = p.folga ? FOLGA[p.folga] ?? FOLGA.OUTRO : null;
                   if (away) return <td key={p.id} style={css("position:relative;border-bottom:1px solid " + (ri === faixas.length - 1 ? "var(--asa-purple-airy)" : "transparent") + ";border-right:1px solid var(--asa-purple-lift);padding:0 6px;vertical-align:middle;min-width:138px;background:repeating-linear-gradient(135deg," + away.tone.bg + "," + away.tone.bg + " 7px,#ffffff 7px,#ffffff 14px);")}>
-                    {ri === 0 && <div style={css("display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:" + away.tone.fg + ";background:" + away.tone.bg + ";border:1px solid " + away.tone.bd + ";border-radius:7px;padding:6px 4px;white-space:nowrap;")}>{`${away.label} — dia todo`}</div>}
+                    {ri === 0 && <div style={css("display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:" + away.tone.fg + ";background:" + away.tone.bg + ";border:1px solid " + away.tone.bd + ";border-radius:7px;padding:6px 4px;white-space:nowrap;")}>{`${away.label} — dia todo`}</div>}
                   </td>;
                   const list = f.blocos.filter((b) => b.pessoaIds.includes(p.id));
                   return <td key={p.id} style={css("position:relative;border-bottom:1px solid var(--asa-purple-airy);border-right:1px solid var(--asa-purple-lift);padding:5px 6px;vertical-align:middle;min-width:138px;")}>
@@ -709,13 +709,13 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
                 <td style={css("border-bottom:1px solid var(--asa-purple-airy);border-right:1px solid var(--asa-purple-lift);padding:6px 9px;vertical-align:middle;width:210px;")}>{blockEl(b, "display:inline-flex;")}</td>
                 <td style={css("border-bottom:1px solid var(--asa-purple-airy);padding:6px 9px;vertical-align:middle;")}>
                   <div style={css("display:flex;flex-wrap:wrap;gap:5px;align-items:center")}>
-                    {who.map((id) => <span key={id} style={css("display:inline-flex;align-items:center;gap:5px;border:1px solid var(--asa-line);background:#fff;border-radius:999px;padding:3px 10px 3px 4px;font-size:11.5px;font-weight:600;color:var(--asa-ink-medium);")}>
+                    {who.map((id) => <span key={id} style={css("display:inline-flex;align-items:center;gap:5px;border:1px solid var(--asa-line);background:#fff;border-radius:999px;padding:3px 10px 3px 4px;font-size:12px;font-weight:600;color:var(--asa-ink-medium);")}>
                       <span style={css("width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--asa-violet),var(--asa-indigo));")}>{initials(personName(id))}</span>
                       <span>{personName(id)}</span>
                     </span>)}
-                    {b.regra !== "ninguem" && (b.vazio ? <span style={css("display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:700;background:var(--asa-vaga-bg);color:var(--asa-vaga-fg);border:1px dashed var(--asa-vaga-bd);")}>sem ninguém · defina quem entra</span>
-                      : <span style={css("font-size:10.5px;color:var(--asa-label);margin-left:2px")}>{plural(who.length, "pessoa", "pessoas")}</span>)}
-                    {b.horarioDela && <span style={css("font-size:11.5px;color:var(--asa-label)")}>{`Horário só desta pessoa · era ${faixa(b.horarioDela)}`}</span>}
+                    {b.regra !== "ninguem" && (b.vazio ? <span style={css("display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;background:var(--asa-vaga-bg);color:var(--asa-vaga-fg);border:1px dashed var(--asa-vaga-bd);")}>sem ninguém · defina quem entra</span>
+                      : <span style={css("font-size:12px;color:var(--asa-label);margin-left:2px")}>{plural(who.length, "pessoa", "pessoas")}</span>)}
+                    {b.horarioDela && <span style={css("font-size:12px;color:var(--asa-label)")}>{`Horário só desta pessoa · era ${faixa(b.horarioDela)}`}</span>}
                     {canEdit && b.horarioDela && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => void onHorario({ ...b, key: b.horarioDela!.chaveOriginal }, b.pessoaIds[0]!, null)}>Voltar ao normal</button>}
                     {canEdit && !b.horarioDela && b.regra !== "ninguem" && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setAjustando(b)}>Ajustar</button>}
                     {onEditManual && b.origem === "manual" && b.allocationId && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => onEditManual(b)}>Mudar horário</button>}
@@ -831,11 +831,11 @@ function HorarioDialog({ nome, bloco, outro, onClose, onSalvar }: { nome: string
         <strong>{`Sugestão: ${faixa(sugestao)}`}</strong> — logo depois de {textoDoBloco(outro)}.{sugestao.aviso ? ` ${sugestao.aviso}` : ""}
       </div>
       <div style={css("display:grid;grid-template-columns:1fr 1fr;gap:10px")}>
-        <label style={css("display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--asa-label)")}>Começa às<input type="time" value={inicio} onChange={(e) => setInicio(e.target.value)} style={css(campo)}/></label>
-        <label style={css("display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--asa-label)")}>Termina às<input type="time" value={fim} onChange={(e) => setFim(e.target.value)} style={css(campo)}/></label>
+        <label style={css("display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--asa-label)")}>Começa às<input type="time" value={inicio} onChange={(e) => setInicio(e.target.value)} style={css(campo)}/></label>
+        <label style={css("display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--asa-label)")}>Termina às<input type="time" value={fim} onChange={(e) => setFim(e.target.value)} style={css(campo)}/></label>
       </div>
       {fim !== "" && fim <= inicio && <span role="alert" style={css("font-size:12px;color:var(--asa-ausente-fg)")}>O fim precisa ser depois do início.</span>}
-      <label style={css("display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--asa-label)")}>Por quê? (opcional, fica no Registro)
+      <label style={css("display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--asa-label)")}>Por quê? (opcional, fica no Registro)
         <textarea rows={2} value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Tem boas-vindas às 10:00" style={css(campo + ";resize:vertical")}/>
       </label>
       {erro && <p role="alert" style={css("margin:0;font-size:12.5px;line-height:1.5;color:var(--asa-ausente-fg)")}>{erro}</p>}
@@ -933,10 +933,10 @@ export function AjusteCelulaDialog({ bloco, pessoas, editableAreaIds, focoVaga, 
               {candidatas.map((p) => {
                 const jaFaz = vagas.find((o) => o.assignmentId !== v.assignmentId && quemFaz(o) === p.id);
                 return <button key={p.id} type="button" className="esc-hit" disabled={saving} onClick={() => { setTrocas(escolher(v, p.id)); setEscolhendo(null); setBusca(""); }} style={css("display:flex;align-items:center;gap:10px;text-align:left;border:1px solid var(--asa-border-soft);background:#fff;border-radius:10px;padding:8px 11px;cursor:pointer;font-family:Manrope,sans-serif")}>
-                  <span style={css("width:26px;height:26px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--asa-violet),var(--asa-indigo));color:#fff;font:700 10px 'JetBrains Mono',monospace")}>{initials(p.name)}</span>
+                  <span style={css("width:26px;height:26px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--asa-violet),var(--asa-indigo));color:#fff;font:700 12px 'JetBrains Mono',monospace")}>{initials(p.name)}</span>
                   <span style={css("display:flex;flex-direction:column;gap:1px;min-width:0;flex:1")}>
                     <strong style={css("font-size:12.5px;color:var(--asa-ink-dark)")}>{p.name}</strong>
-                    <span style={css("font-size:11.5px;color:" + (jaFaz ? "var(--asa-badge-fg)" : "var(--asa-label)"))}>{jaFaz ? `já faz ${jaFaz.personagem} · ${jaFaz.personagem} fica sem ninguém` : p.areaName ?? "Sem área"}</span>
+                    <span style={css("font-size:12px;color:" + (jaFaz ? "var(--asa-badge-fg)" : "var(--asa-label)"))}>{jaFaz ? `já faz ${jaFaz.personagem} · ${jaFaz.personagem} fica sem ninguém` : p.areaName ?? "Sem área"}</span>
                   </span>
                 </button>;
               })}
@@ -951,18 +951,18 @@ export function AjusteCelulaDialog({ bloco, pessoas, editableAreaIds, focoVaga, 
         const entra = entraAgora(p.id);
         const mudou = entra !== bloco.pessoaIds.includes(p.id);
         return <div key={p.id} style={css("display:flex;align-items:center;gap:10px;border:1px solid " + (mudou ? "var(--asa-lavender)" : "var(--asa-border-soft)") + ";background:" + (mudou ? "var(--asa-purple-dawn)" : "#fff") + ";border-radius:11px;padding:10px 12px")}>
-          <span style={css("width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--asa-violet),var(--asa-indigo));color:#fff;font:700 10px 'JetBrains Mono',monospace")}>{initials(p.name)}</span>
-          <span style={css("display:flex;flex-direction:column;gap:1px;min-width:0;flex:1")}><strong style={css("font-size:12.5px;color:var(--asa-ink-dark)")}>{p.name}</strong><span style={css("font-size:11.5px;color:" + (mudou ? "var(--asa-purple)" : "var(--asa-label)"))}>{mudou ? (entra ? "vai entrar" : "vai sair") : p.areaName ?? "Sem área"}</span></span>
+          <span style={css("width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--asa-violet),var(--asa-indigo));color:#fff;font:700 12px 'JetBrains Mono',monospace")}>{initials(p.name)}</span>
+          <span style={css("display:flex;flex-direction:column;gap:1px;min-width:0;flex:1")}><strong style={css("font-size:12.5px;color:var(--asa-ink-dark)")}>{p.name}</strong><span style={css("font-size:12px;color:" + (mudou ? "var(--asa-purple)" : "var(--asa-label)"))}>{mudou ? (entra ? "vai entrar" : "vai sair") : p.areaName ?? "Sem área"}</span></span>
           <button type="button" className="esc-hit" disabled={saving} onClick={() => setMexidas((m) => ({ ...m, [p.id]: !entra }))} style={css(entra ? btn("ghost") + "padding:7px 12px" : btn("primary") + "padding:7px 12px")}>{entra ? "Tirar" : "Colocar"}</button>
         </div>;
       })}</div>}
       {!emVagas && !elegiveis.length && <span style={css("font-size:12px;color:var(--asa-label);padding:8px 0")}>Nenhuma pessoa disponível neste filtro.</span>}
       {deFolga.length > 0 && (!emVagas || escolhendo) && <details style={css("border-top:1px solid var(--asa-book-fade);padding-top:10px")}>
-        <summary style={css("cursor:pointer;list-style:none;font-size:11.5px;font-weight:700;color:var(--asa-badge-fg)")}>{`${plural(deFolga.length, "pessoa de folga hoje", "pessoas de folga hoje")} · chamar em emergência`}</summary>
-        <p style={css("margin:8px 0 6px;font-size:11.5px;line-height:1.5;color:var(--asa-label)")}>Folga vence a escala. Chamar alguém na folga pede o motivo, avisa a pessoa na hora e deixa a folga para a Administração remarcar.</p>
+        <summary style={css("cursor:pointer;list-style:none;font-size:12px;font-weight:700;color:var(--asa-badge-fg)")}>{`${plural(deFolga.length, "pessoa de folga hoje", "pessoas de folga hoje")} · chamar em emergência`}</summary>
+        <p style={css("margin:8px 0 6px;font-size:12px;line-height:1.5;color:var(--asa-label)")}>Folga vence a escala. Chamar alguém na folga pede o motivo, avisa a pessoa na hora e deixa a folga para a Administração remarcar.</p>
         <div style={css("display:flex;flex-direction:column;gap:6px")}>
           {deFolga.map((p) => <div key={p.id} style={css("display:flex;align-items:center;gap:10px;border:1px dashed var(--asa-vaga-bd);background:var(--asa-late-bg);border-radius:11px;padding:9px 12px")}>
-            <span style={css("display:flex;flex-direction:column;gap:1px;min-width:0;flex:1")}><strong style={css("font-size:12.5px;color:var(--asa-ink-dark)")}>{p.name}</strong><span style={css("font-size:11px;color:var(--asa-badge-fg)")}>de folga hoje</span></span>
+            <span style={css("display:flex;flex-direction:column;gap:1px;min-width:0;flex:1")}><strong style={css("font-size:12.5px;color:var(--asa-ink-dark)")}>{p.name}</strong><span style={css("font-size:12px;color:var(--asa-badge-fg)")}>de folga hoje</span></span>
             <button type="button" className="esc-hit" disabled={saving} onClick={() => { setChamar(p); setMotivo(""); }} style={css(btn("ghost") + "padding:7px 12px")}>Chamar mesmo assim</button>
           </div>)}
         </div>
@@ -970,7 +970,7 @@ export function AjusteCelulaDialog({ bloco, pessoas, editableAreaIds, focoVaga, 
       {excecao && <div role="alert" style={css("display:flex;flex-direction:column;gap:7px;border:1px solid var(--asa-vaga-bd);background:var(--asa-late-bg);border-radius:11px;padding:11px 13px")}>
         <strong style={css("font-size:12.5px;color:var(--asa-amber-dark)")}>Passar de uma regra da escala</strong>
         <p style={css("margin:0;font-size:12px;line-height:1.5;color:var(--asa-ink-muted)")}>{excecao.mensagem}</p>
-        <label style={css("display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--asa-label)")}>Por quê? (fica no Registro e avisa a Administração e a Supervisão)
+        <label style={css("display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--asa-label)")}>Por quê? (fica no Registro e avisa a Administração e a Supervisão)
           <textarea rows={2} value={excecao.motivo} onChange={(e) => setExcecao({ ...excecao, motivo: e.target.value })} placeholder="Alguém ficou mal de última hora" style={css("border:1px solid var(--asa-line-soft);border-radius:9px;padding:8px 10px;font:600 12.5px Manrope,sans-serif;color:var(--asa-ink-dark);resize:vertical")}/>
         </label>
         <div style={css("display:flex;gap:8px;justify-content:flex-end")}>
@@ -980,7 +980,7 @@ export function AjusteCelulaDialog({ bloco, pessoas, editableAreaIds, focoVaga, 
       </div>}
       {chamar && <div style={css("display:flex;flex-direction:column;gap:7px;border:1px solid var(--asa-vaga-bd);background:var(--asa-late-bg);border-radius:11px;padding:11px 13px")}>
         <strong style={css("font-size:12.5px;color:var(--asa-amber-dark)")}>{`Chamar ${chamar.name} na folga`}</strong>
-        <label style={css("display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--asa-label)")}>Por quê? (fica no Registro e vai no aviso para ela)
+        <label style={css("display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--asa-label)")}>Por quê? (fica no Registro e vai no aviso para ela)
           <textarea rows={2} value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Falta de gente no show das 14h" style={css("border:1px solid var(--asa-line-soft);border-radius:9px;padding:8px 10px;font:600 12.5px Manrope,sans-serif;color:var(--asa-ink-dark);resize:vertical")}/>
         </label>
         <div style={css("display:flex;gap:8px;justify-content:flex-end")}>
@@ -1089,7 +1089,7 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, b
   return <footer className="esc-pad" style={css("display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 20px;border-top:1px solid var(--asa-border-soft);background:#fff")}>
     {areas.length > 0 && <div style={css("display:flex;flex-wrap:wrap;gap:6px;width:100%")}>
       {areas.map((a) => {
-        const chip = "display:inline-flex;align-items:center;gap:6px;flex:none;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;padding:3px 9px;border-radius:999px;background:" + (a.pronta ? "var(--asa-teal-pale)" : "var(--asa-amber-paper)") + ";color:" + (a.pronta ? "var(--asa-teal-dark)" : "var(--asa-badge-fg)");
+        const chip = "display:inline-flex;align-items:center;gap:6px;flex:none;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;padding:3px 9px;border-radius:999px;background:" + (a.pronta ? "var(--asa-teal-pale)" : "var(--asa-amber-paper)") + ";color:" + (a.pronta ? "var(--asa-teal-dark)" : "var(--asa-badge-fg)");
         const label = `${a.name} · ${a.pronta ? `pronta${a.pronta.por ? ` (${a.pronta.por})` : ""}` : "falta"}`;
         // Administração pode marcar qualquer área (ex.: Produção, cuja supervisão não fica num local só).
         return isAdm && dia && (!dia.escala || dia.escala.status === "DRAFT")
@@ -1129,7 +1129,7 @@ function MinhaEscalaLocal({ minha, date, onHoje, onConfirm, saving }: { minha: M
     </div>
     <div style={css("display:flex;align-items:center;gap:11px;border:1px solid " + (minha.confirmada ? "var(--asa-prep-bd)" : "var(--asa-late-amber-bd)") + ";background:" + (minha.confirmada ? "var(--asa-swap-ok-bg)" : "var(--asa-late-bg)") + ";border-radius:13px;padding:12px 14px;")}>
       <img src={minha.confirmada ? "/asa/tarefa-concluida.webp" : "/asa/lembrete.webp"} alt="" style={css("width:34px;height:34px;object-fit:contain;flex:none")}/>
-      <span style={css("display:flex;flex-direction:column;gap:2px;flex:1")}><strong style={css("font-size:12.5px;color:" + (minha.confirmada ? "var(--asa-teal-medium)" : "var(--asa-amber-dark)"))}>{minha.confirmada ? "Escala confirmada" : "Confira sua escala"}</strong><span style={css("font-size:11.5px;color:var(--asa-label);line-height:1.4")}>{minha.confirmada ? `Ciente${minha.confirmedAt ? ` às ${hhmm(minha.confirmedAt)}` : ""}.` : `Confirme que você viu os horários de ${relOf(date)}.`}</span></span>
+      <span style={css("display:flex;flex-direction:column;gap:2px;flex:1")}><strong style={css("font-size:12.5px;color:" + (minha.confirmada ? "var(--asa-teal-medium)" : "var(--asa-amber-dark)"))}>{minha.confirmada ? "Escala confirmada" : "Confira sua escala"}</strong><span style={css("font-size:12px;color:var(--asa-label);line-height:1.4")}>{minha.confirmada ? `Ciente${minha.confirmedAt ? ` às ${hhmm(minha.confirmedAt)}` : ""}.` : `Confirme que você viu os horários de ${relOf(date)}.`}</span></span>
       {!minha.confirmada && <button type="button" className="esc-hit" disabled={saving} onClick={() => void onConfirm()} style={css(btn("primary"))}>{saving ? "Confirmando…" : "Confirmar escala"}</button>}
     </div>
     {!minha.folga && <div style={css("display:flex;flex-wrap:wrap;gap:8px")}>
@@ -1142,7 +1142,7 @@ function MinhaEscalaLocal({ minha, date, onHoje, onConfirm, saving }: { minha: M
       const row = <>
         <div style={css("display:flex;flex-direction:column;gap:2px;width:104px;flex:none")}>
           <span style={css("font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--asa-ink-medium)")}>{b.inicio}</span>
-          <span style={css("font-size:10.5px;color:var(--asa-label)")}>{durLabel(b.inicio, b.fim)}</span>
+          <span style={css("font-size:12px;color:var(--asa-label)")}>{durLabel(b.inicio, b.fim)}</span>
         </div>
         {/* No telefone a coluna do meio não pode encolher até sobrar uma palavra por linha. */}
         <div style={css("display:flex;flex-direction:column;gap:3px;flex:1 1 150px;min-width:150px")}>
@@ -1151,8 +1151,8 @@ function MinhaEscalaLocal({ minha, date, onHoje, onConfirm, saving }: { minha: M
         </div>
         {/* No telefone estes dois ficam juntos na direita, sem espremer o nome do bloco. */}
         <span style={css("display:flex;align-items:center;gap:8px;flex:none;white-space:nowrap")}>
-          {livro && <span style={css("flex:none;font-size:11px;font-weight:700;color:var(--asa-purple);white-space:nowrap")}>abrir Livro do Dia →</span>}
-          {b.regra === "livro" && <span style={css("flex:none;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;border-radius:6px;background:" + tone.bg + ";color:" + tone.fg + ";")}>show</span>}
+          {livro && <span style={css("flex:none;font-size:12px;font-weight:700;color:var(--asa-purple);white-space:nowrap")}>abrir Livro do Dia →</span>}
+          {b.regra === "livro" && <span style={css("flex:none;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;border-radius:6px;background:" + tone.bg + ";color:" + tone.fg + ";")}>show</span>}
         </span>
       </>;
       const rowStyle = "display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;background:#fff;border:1px solid var(--asa-line);border-radius:13px;padding:13px 16px;text-decoration:none;color:inherit;" + (livro ? "cursor:pointer;" : "");
@@ -1323,14 +1323,14 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
   return <div style={css("display:flex;flex-direction:column;gap:14px;padding-bottom:18px")}>
     {error && <div role="alert" style={css("padding:11px 13px;border-radius:12px;font-size:12px;line-height:1.5;background:var(--asa-ausente-bg);border:1px solid var(--asa-red-wash);color:var(--asa-error-fg)")}>{error}</div>}
     <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:8px")}>
-      <span style={css("font-size:11.5px;font-weight:700;color:var(--asa-label);margin-right:2px")}>Molde</span>
+      <span style={css("font-size:12px;font-weight:700;color:var(--asa-label);margin-right:2px")}>Molde</span>
       {vivos.map((p) => <button key={p.id} type="button" className="esc-hit" aria-pressed={p.id === prog?.id} onClick={() => { if (p.id !== prog?.id) semPerder(() => setProgId(p.id)); }}
         style={css("border-radius:999px;padding:6px 13px;font-size:12px;cursor:pointer;font-family:Manrope,sans-serif;white-space:nowrap;" + (p.id === prog?.id ? "border:1px solid var(--asa-purple);background:var(--asa-show-bg);color:var(--asa-purple);font-weight:700;" : estadoDe(p) === "encerrado" ? "border:1px solid var(--asa-purple-soft);background:#fff;color:var(--asa-label);font-weight:600;" : "border:1px solid var(--asa-line);background:#fff;color:var(--asa-label);font-weight:600;"))}>
         {`${p.nome} · ${shortDate(p.vigenciaInicio)}–${shortDate(p.vigenciaFim)}${estadoDe(p) === "vigente" ? " ✓" : ""}`}
-        {p.id.startsWith("sample-prog-") && <span style={css("margin-left:7px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:5px;background:var(--asa-amber-surface);color:var(--asa-amber-mid)")}>dado de exemplo</span>}
+        {p.id.startsWith("sample-prog-") && <span style={css("margin-left:7px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:5px;background:var(--asa-amber-surface);color:var(--asa-amber-mid)")}>dado de exemplo</span>}
       </button>)}
       {arquivados.length > 0 && <details style={css("position:relative")}>
-        <summary style={css("cursor:pointer;list-style:none;font-size:11.5px;font-weight:700;color:var(--asa-label);padding:6px 10px;border:1px dashed var(--asa-line-soft);border-radius:999px")}>{`${arquivados.length} ${arquivados.length === 1 ? "arquivado" : "arquivados"}`}</summary>
+        <summary style={css("cursor:pointer;list-style:none;font-size:12px;font-weight:700;color:var(--asa-label);padding:6px 10px;border:1px dashed var(--asa-line-soft);border-radius:999px")}>{`${arquivados.length} ${arquivados.length === 1 ? "arquivado" : "arquivados"}`}</summary>
         <div style={css("position:absolute;left:0;top:36px;z-index:20;width:300px;background:#fff;border:1px solid var(--asa-line-soft);border-radius:12px;padding:8px;box-shadow:0 22px 40px -20px rgba(40,20,90,.45);display:flex;flex-direction:column;gap:6px")}>
           {arquivados.map((p) => <div key={p.id} style={css("display:flex;align-items:center;gap:9px;font-size:12px;color:var(--asa-ink-muted)")}>
             <span style={css("flex:1;min-width:0")}>{`${p.nome} · ${shortDate(p.vigenciaInicio)}–${shortDate(p.vigenciaFim)}`}</span>
@@ -1344,21 +1344,21 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
     {!prog ? <div style={css("padding:16px;text-align:center;font-size:12.5px;color:var(--asa-label);background:#fff;border:1px dashed var(--asa-line-soft);border-radius:12px")}>{`${localName} ainda não tem Programação. ${canEdit ? "Crie o primeiro molde — ele diz, por dia da semana, os horários e quem entra em cada bloco." : ""}`}</div> : <>
       <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:14px;background:#fff;border:1px solid var(--asa-line);border-radius:12px;padding:12px 15px")}>
         <div style={css("display:flex;flex-direction:column;gap:2px")}>
-          <span style={css("font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--asa-label)")}>Vigência</span>
+          <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--asa-label)")}>Vigência</span>
           <span style={css("font-size:13px;font-weight:600")}>{rangeLabel(prog.vigenciaInicio, prog.vigenciaFim)}</span>
         </div>
         <div style={css("display:flex;flex-direction:column;gap:2px")}>
-          <span style={css("font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--asa-label)")}>Local</span>
+          <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--asa-label)")}>Local</span>
           <span style={css("font-size:13px;font-weight:600")}>{localName}</span>
         </div>
-        <span style={css("flex:none;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;padding:3px 9px;border-radius:999px;background:" + (estado === "vigente" ? "var(--asa-teal-pale)" : estado === "agendado" ? "var(--asa-purple-blossom)" : "var(--asa-refeicao-bg)") + ";color:" + (estado === "vigente" ? "var(--asa-teal-dark)" : estado === "agendado" ? "var(--asa-purple)" : "var(--asa-label)"))}>{estado}</span>
+        <span style={css("flex:none;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;padding:3px 9px;border-radius:999px;background:" + (estado === "vigente" ? "var(--asa-teal-pale)" : estado === "agendado" ? "var(--asa-purple-blossom)" : "var(--asa-refeicao-bg)") + ";color:" + (estado === "vigente" ? "var(--asa-teal-dark)" : estado === "agendado" ? "var(--asa-purple)" : "var(--asa-label)"))}>{estado}</span>
         <span style={css("flex:1;min-width:20px")}/>
         {canEdit && <div style={css("display:flex;flex-wrap:wrap;gap:7px")}>
           <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setDialog("vigencia")}>Mudar nome ou vigência</button>
           <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setDialog("duplicar")}>Duplicar molde</button>
           <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setConfirmar({ titulo: "Arquivar molde", texto: `"${prog.nome}" para de valer para os próximos dias e sai da lista de cima. Fica guardado em "arquivados" e dá para reativar quando quiser.`, acao: "Arquivar", onSim: () => void arquivarMolde(prog, false) })}>Arquivar molde</button>
         </div>}
-        <span style={css("font-size:11.5px;color:var(--asa-label);max-width:38ch;line-height:1.4;text-wrap:pretty")}>{estado === "agendado" ? "Este molde ainda não entrou em vigor: dá para montá-lo agora sem afetar a escala que está rodando." : estado === "encerrado" ? "Vigência já passou. Fica de histórico e pode ser duplicado para a próxima temporada." : "Molde em vigor: é ele que a Escala usa para abrir as necessidades deste local."}</span>
+        <span style={css("font-size:12px;color:var(--asa-label);max-width:38ch;line-height:1.4;text-wrap:pretty")}>{estado === "agendado" ? "Este molde ainda não entrou em vigor: dá para montá-lo agora sem afetar a escala que está rodando." : estado === "encerrado" ? "Vigência já passou. Fica de histórico e pode ser duplicado para a próxima temporada." : "Molde em vigor: é ele que a Escala usa para abrir as necessidades deste local."}</span>
       </div>
 
       <div style={css("display:flex;align-items:center;gap:6px;flex-wrap:wrap")}>
@@ -1384,22 +1384,22 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
                   <span style={css("display:inline-block;border-radius:7px;padding:6px 10px;font-size:12px;font-weight:600;background:" + t.bg + ";color:" + t.fg + ";border:1px solid " + t.bd + ";")}>{textoDoBloco(b)}</span>
                 </td>
                 <td style={css("border-bottom:1px solid var(--asa-purple-airy);padding:6px 12px;background:" + (selected ? "var(--asa-purple-mist)" : "transparent") + ";")}>
-                  <span style={css("display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:700;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" + (tone === "livro" ? "background:var(--asa-teal-glow);color:var(--asa-teal-medium);border:1px solid var(--asa-teal-border);" : tone === "vazio" ? "background:var(--asa-refeicao-bg);color:var(--asa-label);border:1px dashed var(--asa-line-soft);" : "background:var(--asa-chip-on);color:var(--asa-purple);border:1px solid var(--asa-show-bd);"))}>
+                  <span style={css("display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" + (tone === "livro" ? "background:var(--asa-teal-glow);color:var(--asa-teal-medium);border:1px solid var(--asa-teal-border);" : tone === "vazio" ? "background:var(--asa-refeicao-bg);color:var(--asa-label);border:1px dashed var(--asa-line-soft);" : "background:var(--asa-chip-on);color:var(--asa-purple);border:1px solid var(--asa-show-bd);"))}>
                     {tone === "livro" && <span style={css("flex:none;font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.7;")}>fixo</span>}
                     <span>{resumo(b)}</span>
                   </span>
-                  <span style={css("display:block;margin-top:3px;font-size:11.5px;color:var(--asa-label);")}>{b.regra === "livro" ? "o elenco do Livro do Dia" : b.regra === "ninguem" ? "nenhuma pessoa entra" : n ? plural(n, "pessoa", "pessoas") : "fica vazio e sinalizado na escala"}</span>
+                  <span style={css("display:block;margin-top:3px;font-size:12px;color:var(--asa-label);")}>{b.regra === "livro" ? "o elenco do Livro do Dia" : b.regra === "ninguem" ? "nenhuma pessoa entra" : n ? plural(n, "pessoa", "pessoas") : "fica vazio e sinalizado na escala"}</span>
                 </td>
               </tr>;
             })}
-            {canEdit && <tr><td colSpan={3} onClick={() => setDialog("bloco")} style={css("padding:9px 12px;font-size:11.5px;color:var(--asa-label);cursor:pointer")}>+ bloco</td></tr>}
+            {canEdit && <tr><td colSpan={3} onClick={() => setDialog("bloco")} style={css("padding:9px 12px;font-size:12px;color:var(--asa-label);cursor:pointer")}>+ bloco</td></tr>}
             {!blocosDia.length && !canEdit && <tr><td colSpan={3} style={css("padding:16px;text-align:center;font-size:12.5px;color:var(--asa-label)")}>Nenhum bloco neste dia da semana.</td></tr>}
           </tbody>
         </table>
       </div>
 
       {tiradosDoDia.length > 0 && <details style={css("background:#fff;border:1px dashed var(--asa-line-soft);border-radius:12px;padding:9px 13px;max-width:900px")}>
-        <summary style={css("cursor:pointer;list-style:none;font-size:11.5px;font-weight:700;color:var(--asa-label)")}>{`${plural(tiradosDoDia.length, "bloco tirado do molde", "blocos tirados do molde")} em ${WEEKDAY_LONG[wd]}s · ver`}</summary>
+        <summary style={css("cursor:pointer;list-style:none;font-size:12px;font-weight:700;color:var(--asa-label)")}>{`${plural(tiradosDoDia.length, "bloco tirado do molde", "blocos tirados do molde")} em ${WEEKDAY_LONG[wd]}s · ver`}</summary>
         <ul style={css("margin:9px 0 2px;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px")}>
           {tiradosDoDia.map((b) => <li key={b.id} style={css("display:flex;align-items:center;gap:10px;font-size:12px;color:var(--asa-ink-muted)")}>
             <span style={css("font-family:\x27JetBrains Mono\x27,monospace;font-weight:700;width:96px;flex:none")}>{faixa(b)}</span>
@@ -1413,55 +1413,55 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
         <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:10px")}>
           <span style={css("font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--asa-ink-medium)")}>{faixa(bloco)}</span>
           <span style={css("font-family:Outfit,sans-serif;font-size:16px;font-weight:600")}>{textoDoBloco(bloco)}</span>
-          <span style={css("flex:none;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;border-radius:999px;" + (isShow ? "background:var(--asa-teal-glow);color:var(--asa-teal-medium);" : "background:var(--asa-chip-on);color:var(--asa-purple);"))}>{isShow ? "show · livro manda" : "atividade · você monta"}</span>
+          <span style={css("flex:none;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;border-radius:999px;" + (isShow ? "background:var(--asa-teal-glow);color:var(--asa-teal-medium);" : "background:var(--asa-chip-on);color:var(--asa-purple);"))}>{isShow ? "show · livro manda" : "atividade · você monta"}</span>
           <span style={css("flex:1;min-width:16px")}/>
-          <span style={css("font-size:11.5px;color:var(--asa-label);max-width:42ch;line-height:1.45;text-wrap:pretty")}>{isShow ? "Quem entra vem do livro deste show, no dia. Aqui não se edita: mude o livro e a escala acompanha." : "A escala guarda a regra, não a lista. Quem entra na área depois passa a aparecer sozinho."}</span>
+          <span style={css("font-size:12px;color:var(--asa-label);max-width:42ch;line-height:1.45;text-wrap:pretty")}>{isShow ? "Quem entra vem do livro deste show, no dia. Aqui não se edita: mude o livro e a escala acompanha." : "A escala guarda a regra, não a lista. Quem entra na área depois passa a aparecer sozinho."}</span>
         </div>
         {canEdit && <div style={css("display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;border-top:1px solid var(--asa-book-fade);padding-top:12px")}>
-          <label style={css("display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:700;color:var(--asa-label)")}>Atividade
+          <label style={css("display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:700;color:var(--asa-label)")}>Atividade
             <input value={valorDe("rotulo")} onChange={(e) => mudarCampo("rotulo", e.target.value)} maxLength={80}
               style={css("border:1px solid var(--asa-line-soft);border-radius:9px;padding:6px 9px;font:600 12.5px Manrope,sans-serif;color:var(--asa-ink-dark);min-width:190px")}/>
           </label>
-          <label style={css("display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:700;color:var(--asa-label)")}>Início
+          <label style={css("display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:700;color:var(--asa-label)")}>Início
             <input type="time" value={valorDe("inicio")} onChange={(e) => mudarCampo("inicio", e.target.value)}
               style={css("border:1px solid var(--asa-line-soft);border-radius:9px;padding:6px 9px;font:600 12.5px Manrope,sans-serif;color:var(--asa-ink-dark)")}/>
           </label>
-          <label style={css("display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:700;color:var(--asa-label)")}>Fim (opcional)
+          <label style={css("display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:700;color:var(--asa-label)")}>Fim (opcional)
             <input type="time" value={valorDe("fim") ?? ""} onChange={(e) => mudarCampo("fim", e.target.value || null)}
               style={css("border:1px solid var(--asa-line-soft);border-radius:9px;padding:6px 9px;font:600 12.5px Manrope,sans-serif;color:var(--asa-ink-dark)")}/>
           </label>
-          <span style={css("font-size:11px;color:var(--asa-label);flex:1;min-width:140px")}>Só vale depois de “Salvar alterações”, e muda apenas os dias que ainda não foram publicados.</span>
+          <span style={css("font-size:12px;color:var(--asa-label);flex:1;min-width:140px")}>Só vale depois de “Salvar alterações”, e muda apenas os dias que ainda não foram publicados.</span>
         </div>}
         {!isShow && <div style={css("display:flex;flex-direction:column;gap:11px;border-top:1px solid var(--asa-book-fade);padding-top:12px")}>
           <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:7px")}>
             {(["ninguem", "todos", "area", "pessoas"] as Regra[]).map((r) => <button key={r} type="button" className="esc-hit" disabled={!canEdit} aria-pressed={valorDe("regra") === r} onClick={() => mudarCampo("regra", r as ProgBloco["regra"])}
-              style={css("border-radius:9px;padding:6px 12px;font-size:11.5px;font-family:Manrope,sans-serif;" + (canEdit ? "cursor:pointer;" : "cursor:default;") + (valorDe("regra") === r ?"border:1px solid var(--asa-ink-dark);background:var(--asa-ink-dark);color:#fff;font-weight:700;" : "border:1px solid var(--asa-line);background:#fff;color:var(--asa-label);font-weight:600;"))}>{REGRA_LABEL[r]}</button>)}
+              style={css("border-radius:9px;padding:6px 12px;font-size:12px;font-family:Manrope,sans-serif;" + (canEdit ? "cursor:pointer;" : "cursor:default;") + (valorDe("regra") === r ?"border:1px solid var(--asa-ink-dark);background:var(--asa-ink-dark);color:#fff;font-weight:700;" : "border:1px solid var(--asa-line);background:#fff;color:var(--asa-label);font-weight:600;"))}>{REGRA_LABEL[r]}</button>)}
           </div>
           {valorDe("regra") === "area" && <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:7px")}>
-            <span style={css("font-size:11px;font-weight:700;color:var(--asa-label);width:132px;flex:none")}>Áreas</span>
+            <span style={css("font-size:12px;font-weight:700;color:var(--asa-label);width:132px;flex:none")}>Áreas</span>
             {areas.map((a) => { const marcadas = valorDe("areaIds"); const on = marcadas.includes(a.id); return <button key={a.id} type="button" className="esc-hit" disabled={!canEdit} aria-pressed={on} onClick={() => mudarCampo("areaIds", on ? marcadas.filter((x) => x !== a.id) : [...marcadas, a.id])} style={css(on ? chipOn : chipOff)}>{a.name}</button>; })}
           </div>}
           {valorDe("regra") === "pessoas" && <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:7px")}>
-            <span style={css("font-size:11px;font-weight:700;color:var(--asa-label);width:132px;flex:none")}>Pessoas específicas</span>
+            <span style={css("font-size:12px;font-weight:700;color:var(--asa-label);width:132px;flex:none")}>Pessoas específicas</span>
             {pessoas.map((p) => { const marcadas = valorDe("pessoaIds"); const on = marcadas.includes(p.id); return <button key={p.id} type="button" className="esc-hit" disabled={!canEdit} aria-pressed={on} onClick={() => mudarCampo("pessoaIds", on ? marcadas.filter((x) => x !== p.id) : [...marcadas, p.id])} style={css(on ? chipOn : chipOff)}>{p.name}</button>; })}
           </div>}
         </div>}
         <div style={css("display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--asa-book-fade);padding-top:12px")}>
           <div style={css("display:flex;flex-wrap:wrap;align-items:baseline;gap:9px")}>
             <span style={css("font-size:12.5px;font-weight:700;color:var(--asa-ink-dark)")}>{`Quem entra ${dia && weekdayOf(dia.date) === bloco.weekday ? `em ${WEEKDAY_LONG[bloco.weekday]}, ${shortDate(dia.date)}` : `às ${WEEKDAY_LONG[bloco.weekday]}s`}`}</span>
-            <span style={css("font-size:11px;color:var(--asa-label)")}>{`${plural(quem.length, "pessoa entra", "pessoas entram")} · folga e recesso não entram`}</span>
+            <span style={css("font-size:12px;color:var(--asa-label)")}>{`${plural(quem.length, "pessoa entra", "pessoas entram")} · folga e recesso não entram`}</span>
           </div>
           <div style={css("display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:7px")}>
             {quem.map((id) => <div key={id} style={css("display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:10px;border:1px solid var(--asa-line);background:#fff;")}>
               <span style={css("width:7px;height:7px;border-radius:50%;flex:none;background:var(--asa-ok-fg);")}/>
               <span style={css("font-size:13.5px;font-weight:600;flex:1;min-width:0;color:var(--asa-ink-dark);")}>{personName(id)}</span>
-              <span style={css("font-size:11.5px;color:var(--asa-label);flex:none;")}>{isShow ? "no livro deste dia" : bloco.regra === "todos" ? "via todo mundo" : bloco.regra === "area" ? `via área ${pessoas.find((p) => p.id === id)?.areaName ?? ""}` : "pessoa específica"}</span>
+              <span style={css("font-size:12px;color:var(--asa-label);flex:none;")}>{isShow ? "no livro deste dia" : bloco.regra === "todos" ? "via todo mundo" : bloco.regra === "area" ? `via área ${pessoas.find((p) => p.id === id)?.areaName ?? ""}` : "pessoa específica"}</span>
             </div>)}
           </div>
-          {!quem.length && <span style={css("font-size:11.5px;color:var(--asa-label);font-style:italic")}>{isShow ? "O Livro do Dia deste show ainda não tem ninguém para este dia." : "Nenhuma pessoa nesta regra — o bloco existe na programação, mas ninguém é convocado. Na escala ele aparece vazio e sinalizado."}</span>}
+          {!quem.length && <span style={css("font-size:12px;color:var(--asa-label);font-style:italic")}>{isShow ? "O Livro do Dia deste show ainda não tem ninguém para este dia." : "Nenhuma pessoa nesta regra — o bloco existe na programação, mas ninguém é convocado. Na escala ele aparece vazio e sinalizado."}</span>}
         </div>
         {canEdit && <div style={css("display:flex;justify-content:flex-end")}>
-          <button type="button" className="esc-hit" onClick={() => setConfirmar({ titulo: "Tirar do molde", texto: `"${textoDoBloco(bloco)}" sai de ${WEEKDAY_LONG[bloco.weekday]} e dos dias que ainda não foram publicados. Ele fica guardado e você pode devolver depois.`, acao: "Tirar do molde", onSim: () => void salvarBloco(bloco, { active: false }) })} style={css("border:1px solid var(--asa-line);background:#fff;color:var(--asa-label);border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:Manrope,sans-serif;flex:none;")}>tirar do molde</button>
+          <button type="button" className="esc-hit" onClick={() => setConfirmar({ titulo: "Tirar do molde", texto: `"${textoDoBloco(bloco)}" sai de ${WEEKDAY_LONG[bloco.weekday]} e dos dias que ainda não foram publicados. Ele fica guardado e você pode devolver depois.`, acao: "Tirar do molde", onSim: () => void salvarBloco(bloco, { active: false }) })} style={css("border:1px solid var(--asa-line);background:#fff;color:var(--asa-label);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:Manrope,sans-serif;flex:none;")}>tirar do molde</button>
         </div>}
         {/* Rodapé do bloco: sempre à vista enquanto se edita. Nada vale no molde até "Salvar alterações". */}
         {canEdit && <div className="esc-rodape" role="group" aria-label="Salvar as alterações do bloco">
@@ -1531,11 +1531,11 @@ function BlocoDialog({ weekday, vocabulario, areas, shows, pessoas, onClose, onS
     <header className="shows-dialog-header"><h2>Novo bloco</h2><button type="button" onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
     <div className="shows-dialog-content"><form id="esc-bloco" onSubmit={submit} className="shows-form">
       <fieldset style={css("border:none;padding:0;margin:0;display:flex;flex-direction:column;gap:5px")}>
-        <legend style={css("padding:0;font-size:11px;font-weight:700;color:var(--asa-label)")}>Em quais dias</legend>
+        <legend style={css("padding:0;font-size:12px;font-weight:700;color:var(--asa-label)")}>Em quais dias</legend>
         <div style={css("display:flex;flex-wrap:wrap;gap:6px")}>
           {[1, 2, 3, 4, 5, 6, 0].map((d) => { const on = dias.includes(d); return <button key={d} type="button" aria-pressed={on} onClick={() => setDias(on ? dias.filter((x) => x !== d) : [...dias, d])} style={css(on ? chipOn : chipOff)}>{WEEKDAY_LONG[d]!.slice(0, 3)}</button>; })}
         </div>
-        <span style={css("font-size:11px;color:var(--asa-label)")}>{dias.length > 1 ? `Cria o mesmo bloco em ${dias.length} dias da semana.` : "Marque mais dias para repetir o bloco neles."}</span>
+        <span style={css("font-size:12px;color:var(--asa-label)")}>{dias.length > 1 ? `Cria o mesmo bloco em ${dias.length} dias da semana.` : "Marque mais dias para repetir o bloco neles."}</span>
       </fieldset>
       <label>Atividade (vocabulário da escala)<input required list="esc-vocab" value={rotulo} onChange={(e) => setRotulo(e.target.value.toLocaleUpperCase("pt-BR"))}/></label>
       <datalist id="esc-vocab">{vocabulario.map((v) => <option key={v} value={v}/>)}</datalist>
@@ -1582,16 +1582,16 @@ function AtividadeDeHojeDialog({ pessoas, bloco, saving, onClose, onSubmit }: { 
           const marcada = escolhidas.includes(p.id);
           return <button key={p.id} type="button" className="esc-hit" onClick={() => marcar(p.id)} aria-pressed={marcada}
             style={css("display:flex;align-items:center;gap:9px;text-align:left;border:1px solid " + (marcada ? "var(--asa-lavender)" : "var(--asa-purple-veil)") + ";background:" + (marcada ? "var(--asa-purple-snow)" : "#fff") + ";border-radius:10px;padding:7px 10px;cursor:pointer;font-family:Manrope,sans-serif")}>
-            <span style={css("width:17px;height:17px;flex:none;border-radius:5px;border:1.5px solid " + (marcada ? "var(--asa-purple)" : "var(--asa-purple-line)") + ";background:" + (marcada ? "var(--asa-purple)" : "#fff") + ";color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center")}>{marcada ? "✓" : ""}</span>
+            <span style={css("width:17px;height:17px;flex:none;border-radius:5px;border:1.5px solid " + (marcada ? "var(--asa-purple)" : "var(--asa-purple-line)") + ";background:" + (marcada ? "var(--asa-purple)" : "#fff") + ";color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center")}>{marcada ? "✓" : ""}</span>
             <span style={css("display:flex;flex-direction:column;gap:1px;min-width:0")}>
               <strong style={css("font-size:12.5px;color:var(--asa-ink-dark)")}>{p.name}</strong>
-              <span style={css("font-size:11px;color:var(--asa-label)")}>{p.areaName ?? "Sem área"}</span>
+              <span style={css("font-size:12px;color:var(--asa-label)")}>{p.areaName ?? "Sem área"}</span>
             </span>
           </button>;
         })}
         {!filtradas.length && <span style={css("font-size:12px;color:var(--asa-label);padding:6px 4px")}>Ninguém com esse nome hoje.</span>}
       </div>}
-      {!corrigindo && <span style={css("font-size:11.5px;color:var(--asa-label);margin-top:-4px")}>{escolhidas.length ? `${escolhidas.length === 1 ? "1 pessoa escolhida" : `${escolhidas.length} pessoas escolhidas`} · quem está de folga não aparece` : "Escolha uma ou mais pessoas · quem está de folga não aparece"}</span>}
+      {!corrigindo && <span style={css("font-size:12px;color:var(--asa-label);margin-top:-4px")}>{escolhidas.length ? `${escolhidas.length === 1 ? "1 pessoa escolhida" : `${escolhidas.length} pessoas escolhidas`} · quem está de folga não aparece` : "Escolha uma ou mais pessoas · quem está de folga não aparece"}</span>}
       <label>O que é<input value={rotulo} onChange={(e) => setRotulo(e.target.value)} placeholder="Prova de figurino" maxLength={60} required/></label>
       <label>Começa às<input type="time" value={inicio} onChange={(e) => setInicio(e.target.value)} required/></label>
       <label>Termina às (opcional)<input type="time" value={fim} onChange={(e) => setFim(e.target.value)}/></label>

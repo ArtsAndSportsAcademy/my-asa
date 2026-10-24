@@ -56,14 +56,14 @@ const TIPO_META: Record<ShowKind, [string, string, string, string]> = {
   mix: ["formação + personagens", "var(--asa-purple)", "Cenas com mapa, e dentro delas os personagens do show.", "A cena tem posições, e alguns lugares são de personagem."],
   pers: ["só personagens", "var(--asa-chars-fg)", "Sem cena e sem mapa — o livro é a lista de quem faz cada personagem.", "Para trocar quem faz, use Trocar ao lado do personagem (ou Ajustar na Escala do dia)."],
 };
-const MONO_LABEL = "font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--asa-label)";
+const MONO_LABEL = "font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--asa-label)";
 const CARD = "flex:none;border:1px solid var(--asa-line);border-radius:16px;background:#fff;overflow:hidden";
 const PRIMARY = "height:34px;padding:0 15px;border-radius:11px;border:none;background:var(--asa-purple);color:#fff;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap";
 const GHOST = "height:34px;padding:0 14px;border-radius:11px;border:1px solid var(--asa-line-soft);background:#fff;color:var(--asa-ink-muted);font-size:12.5px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap";
-const SAVE_FORM = "height:30px;padding:0 13px;border-radius:9px;border:1px dashed var(--asa-save-bd);background:var(--asa-save-bg);color:var(--asa-purple-dark);font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:pointer;align-self:flex-start";
-const NOTE_OK = "font-size:11px;font-weight:700;color:var(--asa-prep-fg)";
+const SAVE_FORM = "height:30px;padding:0 13px;border-radius:9px;border:1px dashed var(--asa-save-bd);background:var(--asa-save-bg);color:var(--asa-purple-dark);font-family:Manrope,sans-serif;font-size:12px;font-weight:700;cursor:pointer;align-self:flex-start";
+const NOTE_OK = "font-size:12px;font-weight:700;color:var(--asa-prep-fg)";
 const DASHED_NOTE = "padding:13px 15px;border:1px dashed var(--asa-note-bd);border-radius:13px;background:var(--asa-note-bg);font-size:12.5px;line-height:1.5;color:var(--asa-ink-muted);max-width:96ch";
-const estadoChip = (est: Est, extra = "") => `font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:${EST[est].tone};background:${EST[est].tone}1f;padding:3px 9px;border-radius:999px${extra}`;
+const estadoChip = (est: Est, extra = "") => `font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:${EST[est].tone};background:${EST[est].tone}1f;padding:3px 9px;border-radius:999px${extra}`;
 import { REVIEW_PERSON } from "@/lib/amostra";
 
 /* ---------- datas e nomes ---------- */
@@ -523,7 +523,7 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
   useEffect(() => {
     onHeader?.(<div style={css("display:flex;align-items:center;gap:12px")}>
       {scopeLabel && <span style={css("font-size:12.5px;color:var(--asa-label)")}>{scopeLabel}</span>}
-      <span className="ldd-hide-sm" style={css("font-size:11.5px;color:var(--asa-label);background:transparent;border:none;font-family:Manrope,sans-serif;padding:0;cursor:default;white-space:nowrap")}>{isMem ? "a mesma escalação está na sua escala" : "a mesma escalação está na Escala do dia"}</span>
+      <span className="ldd-hide-sm" style={css("font-size:12px;color:var(--asa-label);background:transparent;border:none;font-family:Manrope,sans-serif;padding:0;cursor:default;white-space:nowrap")}>{isMem ? "a mesma escalação está na sua escala" : "a mesma escalação está na Escala do dia"}</span>
     </div>);
     return () => onHeader?.(null);
   }, [scopeLabel, isMem]);
@@ -542,7 +542,7 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
       {tabDefs.map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={tab === key} className="ldd-hit" onClick={() => setTab(key)}
         style={css(`display:flex;align-items:center;gap:7px;border:none;background:transparent;font-family:Manrope,sans-serif;font-size:13px;font-weight:${tab === key ? 700 : 500};color:${tab === key ? "var(--asa-purple)" : "var(--asa-label)"};padding:11px 4px;margin-right:14px;cursor:pointer;border-bottom:2px solid ${tab === key ? "var(--asa-purple)" : "transparent"};white-space:nowrap`)}>
         <span>{label}</span>
-        {key === "diff" && book && <span style={css("font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:999px;background:var(--asa-badge-bg);color:var(--asa-badge-fg)")}>{diffs.length}</span>}
+        {key === "diff" && book && <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;padding:2px 6px;border-radius:999px;background:var(--asa-badge-bg);color:var(--asa-badge-fg)")}>{diffs.length}</span>}
       </button>)}
     </div>
 
@@ -593,7 +593,7 @@ function CalendarioDoLivro({ date, onPick, onClose }: { date: string; onPick: (i
       <button type="button" aria-label="Próximo mês" onClick={() => mover(1)} style={css(seta)}>›</button>
     </div>
     <div style={css("display:grid;grid-template-columns:repeat(7,1fr);gap:3px")}>
-      {["D", "S", "T", "Q", "Q", "S", "S"].map((h, i) => <span key={i} style={css("text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--asa-label)")}>{h}</span>)}
+      {["D", "S", "T", "Q", "Q", "S", "S"].map((h, i) => <span key={i} style={css("text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--asa-label)")}>{h}</span>)}
       {Array.from({ length: primeiro }, (_, i) => <span key={`v${i}`}/>)}
       {Array.from({ length: dias }, (_, i) => {
         const d = iso(i + 1), sel = d === date, hoje = d === todayISO();
@@ -601,7 +601,7 @@ function CalendarioDoLivro({ date, onPick, onClose }: { date: string; onPick: (i
           style={css(`height:40px;border-radius:9px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:${sel || hoje ? 700 : 500};border:1px solid ${sel ? "var(--asa-purple)" : hoje ? "var(--asa-purple-border)" : "transparent"};background:${sel ? "var(--asa-purple)" : "#fff"};color:${sel ? "#fff" : "var(--asa-ink)"}`)}>{i + 1}</button>;
       })}
     </div>
-    <span style={css("font-size:11.5px;color:var(--asa-label);line-height:1.4")}>Dia sem Livro aparece vazio: o Livro nasce quando a Escala do dia é gerada.</span>
+    <span style={css("font-size:12px;color:var(--asa-label);line-height:1.4")}>Dia sem Livro aparece vazio: o Livro nasce quando a Escala do dia é gerada.</span>
   </div>;
 }
 
@@ -670,11 +670,11 @@ function HojeTab(props: {
           style={css(`display:flex;flex-direction:column;gap:4px;padding:11px 14px;min-width:246px;border-radius:13px;border:1px solid ${on ? "var(--asa-purple)" : "var(--asa-line)"};background:${on ? "var(--asa-purple-lighter)" : "#fff"};cursor:pointer;font-family:Manrope,sans-serif`)}>
           <div style={css("display:flex;align-items:center;gap:4px 9px;flex-wrap:wrap")}>
             <span style={css(`font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:${on ? "var(--asa-purple)" : "var(--asa-ink)"}`)}>{horasDoLivro(b).join(" · ") || "—"}</span>
-            <span style={css(`font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:${EST[e].tone};background:${EST[e].tone}1f;padding:2px 7px;border-radius:999px`)}>{EST[e].label}</span>
+            <span style={css(`font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:${EST[e].tone};background:${EST[e].tone}1f;padding:2px 7px;border-radius:999px`)}>{EST[e].label}</span>
           </div>
           <span style={css("font-size:13px;font-weight:700;text-align:left")}>{tituloDoLivro(b)}</span>
-          <span style={css("font-size:11.5px;color:var(--asa-label);text-align:left")}>{b.locationName ?? b.operationName}{n ? ` · ${plural(n, "convocado", "convocados")}` : ""}</span>
-          {!horasDoLivro(b).length && <span style={css("font-size:11px;color:var(--asa-amber);text-align:left;line-height:1.35")}>{SEM_HORARIO}, nem sessão no Livro do Show</span>}
+          <span style={css("font-size:12px;color:var(--asa-label);text-align:left")}>{b.locationName ?? b.operationName}{n ? ` · ${plural(n, "convocado", "convocados")}` : ""}</span>
+          {!horasDoLivro(b).length && <span style={css("font-size:12px;color:var(--asa-amber);text-align:left;line-height:1.35")}>{SEM_HORARIO}, nem sessão no Livro do Show</span>}
         </button>;
       })}
     </div>}
@@ -768,20 +768,20 @@ function HojeTab(props: {
             <span style={css(estadoChip(e))}>{EST[e].label}</span>
           </div>
           <span style={css("font-size:13px;color:var(--asa-ink-muted)")}>{[longDate(book.eventDate ?? date).toLocaleLowerCase("pt-BR"), (book.programacaoHoje?.length ? [...new Set(book.programacaoHoje.map((h) => h.inicio))].join(" · ") : firstSession ? time(firstSession.startTime) : book.eventStartTime ? time(book.eventStartTime) : "sem horário"), book.locationName ?? book.operationName].filter(Boolean).join(" · ")}</span>
-          {!isMem && <span style={css("font-size:11.5px;color:var(--asa-label);font-family:'JetBrains Mono',monospace")}>{`feito a partir do Livro do Show${source ? ` (versão ${source.version})` : ""}${book.eventTitle && book.eventTitle !== book.showTitle ? ` · evento de agenda ${book.eventTitle}` : ""}`}</span>}
+          {!isMem && <span style={css("font-size:12px;color:var(--asa-label);font-family:'JetBrains Mono',monospace")}>{`feito a partir do Livro do Show${source ? ` (versão ${source.version})` : ""}${book.eventTitle && book.eventTitle !== book.showTitle ? ` · evento de agenda ${book.eventTitle}` : ""}`}</span>}
         </div>
         <div className="ldd-actions" style={css("display:flex;flex-direction:column;gap:7px;align-items:flex-end")}>
           <div style={css("display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end")}>
             {showPublicar && <button type="button" className="ldd-hit" disabled={saving} onClick={e === "pub" ? props.onRepublish : props.onPublish} style={css(PRIMARY)}>{e === "pub" ? "Republicar com o ajuste" : "Publicar o dia"}</button>}
             {showExec && <button type="button" className="ldd-hit" disabled={saving} onClick={e === "pub" ? props.onExecute : e === "rasc" ? props.onCancel : props.onReopen} style={css(GHOST)}>{execLabel}</button>}
           </div>
-          <span style={css("font-size:11.5px;color:var(--asa-label);max-width:44ch;text-align:right;line-height:1.45")}>{actionHint}</span>
+          <span style={css("font-size:12px;color:var(--asa-label);max-width:44ch;text-align:right;line-height:1.45")}>{actionHint}</span>
         </div>
       </div>
       <div style={css("display:flex;flex-wrap:wrap;gap:0;border-top:1px solid var(--asa-book-fade)")}>
         {stats.map((s, i) => <div key={s.label} style={css(statCell(i === stats.length - 1))}>
           <span style={css(`font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:700;color:${s.tone}`)}>{s.n}</span>
-          <span style={css("font-size:11px;font-weight:600;color:var(--asa-ink-muted)")}>{s.label}</span>
+          <span style={css("font-size:12px;font-weight:600;color:var(--asa-ink-muted)")}>{s.label}</span>
         </div>)}
       </div>
       {locked && <div style={css("padding:10px 16px;border-top:1px solid var(--asa-book-fade);background:var(--asa-fade);font-size:12px;color:var(--asa-ink-muted);line-height:1.5")}>
@@ -791,10 +791,10 @@ function HojeTab(props: {
 
     <div style={css(CARD)}>
       <div style={css("padding:14px 18px;border-bottom:1px solid var(--asa-book-fade);display:flex;align-items:center;gap:12px;flex-wrap:wrap")}>
-        <span style={css(`flex:none;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:6px 11px;border-radius:999px;white-space:nowrap;background:${tm[1]}1a;color:${tm[1]}`)}>{tm[0]}</span>
+        <span style={css(`flex:none;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:6px 11px;border-radius:999px;white-space:nowrap;background:${tm[1]}1a;color:${tm[1]}`)}>{tm[0]}</span>
         <span style={css("display:flex;flex-direction:column;gap:2px;flex:1;min-width:220px")}>
           <span style={css("font-family:Outfit,sans-serif;font-size:15px;font-weight:600")}>{tm[2]}</span>
-          <span style={css("font-size:11.5px;color:var(--asa-label);line-height:1.45;text-wrap:pretty")}>{tm[3]}</span>
+          <span style={css("font-size:12px;color:var(--asa-label);line-height:1.45;text-wrap:pretty")}>{tm[3]}</span>
         </span>
       </div>
       <div style={css("padding:14px 18px;display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start")}>
@@ -807,9 +807,9 @@ function HojeTab(props: {
               <span style={css("font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--asa-ink);flex:none")}>{`${time(s.startTime)} — ${time(s.endTime)}`}</span>
               <span style={css("flex:1;min-width:0;display:flex;flex-direction:column;gap:2px")}>
                 <span style={css("font-size:13px;font-weight:600;line-height:1.25")}>{sessions.length === 1 ? "sessão única" : `${ORDINAL[i] ?? `${i + 1}ª`} sessão`}</span>
-                {aviso && <span style={css("font-size:11.5px;color:var(--asa-amber);line-height:1.4;text-wrap:pretty")}>{aviso}</span>}
+                {aviso && <span style={css("font-size:12px;color:var(--asa-amber);line-height:1.4;text-wrap:pretty")}>{aviso}</span>}
               </span>
-              {chamada && <span style={css("flex:none;font-size:11px;color:var(--asa-label);font-family:'JetBrains Mono',monospace")}>chamada {chamada}</span>}
+              {chamada && <span style={css("flex:none;font-size:12px;color:var(--asa-label);font-family:'JetBrains Mono',monospace")}>chamada {chamada}</span>}
             </div>;
           })}
           {!sessions.length && (book.programacaoHoje?.length
@@ -818,15 +818,15 @@ function HojeTab(props: {
                 <span style={css("font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--asa-ink);flex:none")}>{h.fim ? `${h.inicio} — ${h.fim}` : h.inicio}</span>
                 <span style={css("flex:1;min-width:0;font-size:13px;font-weight:600;line-height:1.25")}>{h.rotulo}</span>
               </div>)}
-              <span style={css("font-size:11.5px;color:var(--asa-label);line-height:1.45;text-wrap:pretty")}>Horários vindos da Programação do local. Este show ainda não tem sessões no Livro do Show.</span>
+              <span style={css("font-size:12px;color:var(--asa-label);line-height:1.45;text-wrap:pretty")}>Horários vindos da Programação do local. Este show ainda não tem sessões no Livro do Show.</span>
             </>
-            : <span style={css("font-size:11.5px;color:var(--asa-label);line-height:1.45;text-wrap:pretty")}>Nem o Livro do Show nem a Programação deste local marcam este show hoje.</span>)}
-          <span style={css("font-size:11px;line-height:1.5;color:var(--asa-label);text-wrap:pretty")}>Uma formação para o dia inteiro. Se alguém falta só numa sessão, o aviso aparece nela e você ajusta à mão.</span>
+            : <span style={css("font-size:12px;color:var(--asa-label);line-height:1.45;text-wrap:pretty")}>Nem o Livro do Show nem a Programação deste local marcam este show hoje.</span>)}
+          <span style={css("font-size:12px;line-height:1.5;color:var(--asa-label);text-wrap:pretty")}>Uma formação para o dia inteiro. Se alguém falta só numa sessão, o aviso aparece nela e você ajusta à mão.</span>
         </div>
         <div className="ldd-shrink" style={css("flex:1 1 360px;min-width:300px;display:flex;flex-direction:column;gap:9px")}>
           <div style={css("display:flex;align-items:baseline;gap:9px;flex-wrap:wrap")}>
             <span style={css(MONO_LABEL + ";flex:1")}>quem faz cada personagem hoje</span>
-            <span style={css("font-size:11.5px;color:var(--asa-label)")}>{charactersToday.length ? plural(charactersToday.length, "personagem", "personagens") : "este show não usa personagens"}</span>
+            <span style={css("font-size:12px;color:var(--asa-label)")}>{charactersToday.length ? plural(charactersToday.length, "personagem", "personagens") : "este show não usa personagens"}</span>
           </div>
           {charactersToday.map((p) => {
             const mine = isMem && samePerson(p.selectedName, me);
@@ -835,13 +835,13 @@ function HojeTab(props: {
               <span style={css("flex:1 1 120px;min-width:100px;font-size:13.5px;font-weight:700;line-height:1.25")}>{p.name}</span>
               <span style={css("flex:1 1 130px;min-width:110px;display:flex;flex-direction:column;gap:2px")}>
                 <span style={css(`font-size:13px;font-weight:600;line-height:1.25${!p.selectedName ? ";color:var(--asa-vaga-fg)" : mine ? ";color:var(--asa-mine-fg);font-weight:700" : ""}`)}>{p.selectedName ?? "sem ninguém definido"}</span>
-                <span style={css("font-size:11px;color:var(--asa-label);line-height:1.35;text-wrap:pretty")}>{mine ? `você · ${p.why}` : p.why}</span>
+                <span style={css("font-size:12px;color:var(--asa-label);line-height:1.35;text-wrap:pretty")}>{mine ? `você · ${p.why}` : p.why}</span>
               </span>
               {podeTrocar && p.assignmentId && <button type="button" className="ldd-hit" disabled={abrindoTroca !== null} aria-label={`Trocar quem faz ${p.name}`} onClick={() => void abrirTroca(p.assignmentId!)}
                 style={css("flex:none;border:1px solid var(--asa-purple-border);background:#fff;color:var(--asa-purple);border-radius:999px;padding:7px 14px;font:700 12px Manrope,sans-serif;cursor:pointer;min-height:36px")}>{abrindoTroca === p.assignmentId ? "Abrindo…" : p.selectedName ? "Trocar" : "Escolher"}</button>}
             </div>;
           })}
-          {charactersToday.length > 0 && <span style={css("font-size:11px;line-height:1.5;color:var(--asa-label);text-wrap:pretty")}>É quem está escalado neste Livro do Dia e cobre todas as sessões deste show hoje. {podeTrocar ? "Para trocar quem faz um personagem, use o botão ao lado dele." : "Para trocar, use Ajustar na Escala."}</span>}
+          {charactersToday.length > 0 && <span style={css("font-size:12px;line-height:1.5;color:var(--asa-label);text-wrap:pretty")}>É quem está escalado neste Livro do Dia e cobre todas as sessões deste show hoje. {podeTrocar ? "Para trocar quem faz um personagem, use o botão ao lado dele." : "Para trocar, use Ajustar na Escala."}</span>}
           {erroTroca && <span role="alert" style={css("font-size:12px;line-height:1.5;color:var(--asa-red-dark);border-left:3px solid var(--asa-red);background:var(--asa-red-airy);border-radius:8px;padding:8px 11px")}>{erroTroca}</span>}
           {troca && <AjusteCelulaDialog bloco={troca.bloco} pessoas={troca.dia.pessoas} editableAreaIds={troca.areas} focoVaga={troca.foco} onClose={() => setTroca(null)}
             onAdjust={async (mudancas, motivo) => {
@@ -874,14 +874,14 @@ function HojeTab(props: {
           return <button key={c.id} type="button" onClick={() => props.setOpenSceneId(c.id)} aria-pressed={on}
             style={css(`display:flex;flex-direction:column;gap:3px;padding:10px 12px;border-radius:12px;border:1px solid ${on ? "var(--asa-purple)" : "var(--asa-line)"};background:${on ? "var(--asa-purple-lighter)" : out ? "var(--asa-off-white)" : "#fff"};cursor:pointer;font-family:Manrope,sans-serif;opacity:${out ? ".62" : "1"};min-height:44px`)}>
             <div style={css("display:flex;align-items:baseline;gap:8px;width:100%")}>
-              <span style={css("font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--asa-label)")}>{String(i + 1).padStart(2, "0")}</span>
+              <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--asa-label)")}>{String(i + 1).padStart(2, "0")}</span>
               <span style={css("font-size:13.5px;font-weight:700;flex:1;text-align:left")}>{c.name}</span>
-              {tag && <span style={css(`font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:${tagTone}`)}>{tag}</span>}
+              {tag && <span style={css(`font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:${tagTone}`)}>{tag}</span>}
             </div>
-            <span style={css("font-size:11px;color:var(--asa-label);text-align:left")}>{out ? "fora do dia" : plural(live.length, "posição", "posições") + (mineHere ? " · você entra" : "")}</span>
+            <span style={css("font-size:12px;color:var(--asa-label);text-align:left")}>{out ? "fora do dia" : plural(live.length, "posição", "posições") + (mineHere ? " · você entra" : "")}</span>
           </button>;
         })}
-        <span style={css("font-size:11px;line-height:1.5;color:var(--asa-label);padding:2px 2px 0")}>{isMem ? "As cenas em que você entra vêm marcadas. O resto está aqui para você entender o show inteiro." : "Remover uma cena leva os blocos e as posições dela junto — e volta inteira se você restaurar."}</span>
+        <span style={css("font-size:12px;line-height:1.5;color:var(--asa-label);padding:2px 2px 0")}>{isMem ? "As cenas em que você entra vêm marcadas. O resto está aqui para você entender o show inteiro." : "Remover uma cena leva os blocos e as posições dela junto — e volta inteira se você restaurar."}</span>
       </div>
 
       <SceneMapColumn {...props} scene={openScene} slots={slotsByScene.get(openScene.id) ?? []}/>
@@ -892,20 +892,20 @@ function HojeTab(props: {
         {!isMem && nRem > 0 && <div style={css("border:1px solid var(--asa-amber-cream);border-radius:16px;background:var(--asa-amber-white);padding:15px 17px;display:flex;flex-direction:column;gap:9px")}>
           <div style={css("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
             <span style={css("font-family:Outfit,sans-serif;font-size:15px;font-weight:600")}>Removido hoje</span>
-            <span style={css("font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--asa-badge-fg);background:var(--asa-badge-bg);padding:2px 7px;border-radius:999px")}>{nRem}</span>
+            <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--asa-badge-fg);background:var(--asa-badge-bg);padding:2px 7px;border-radius:999px")}>{nRem}</span>
             <span style={css("flex:1")}/>
-            <span style={css("font-size:11.5px;color:var(--asa-label)")}>{locked ? "dia fechado — só registro" : "soft-delete: sai do dia, não do padrão"}</span>
+            <span style={css("font-size:12px;color:var(--asa-label)")}>{locked ? "dia fechado — só registro" : "soft-delete: sai do dia, não do padrão"}</span>
           </div>
           {[...removedScenes.map((s) => ({ key: s.id, what: `Cena ${s.name} — e as posições dela`, why: whyByWhere.get(`${s.name} · ${(slotsByScene.get(s.id) ?? [])[0]?.label}`) ?? "Removida no ajuste do dia.", restore: () => props.onToggleScene(s) })),
             ...removedPositions.map(({ scene, slot }) => ({ key: slot.position.id, what: `Posição ${slot.label} · cena ${scene.name}`, why: whyByWhere.get(`${scene.name} · ${slot.label}`) ?? "Tirada no ajuste do dia.", restore: () => props.onTogglePosition(slot.position) }))]
             .map((r) => <div key={r.key} style={css("display:flex;align-items:center;gap:12px;padding:9px 11px;border:1px solid var(--asa-amber-cream);border-radius:11px;background:var(--asa-amber-white)")}>
               <div style={css("display:flex;flex-direction:column;gap:2px;flex:1;min-width:0")}>
                 <span style={css("font-size:12.5px;font-weight:700")}>{r.what}</span>
-                <span style={css("font-size:11.5px;color:var(--asa-label)")}>{r.why}</span>
+                <span style={css("font-size:12px;color:var(--asa-label)")}>{r.why}</span>
               </div>
-              {canEdit && <button type="button" className="ldd-hit" disabled={saving} onClick={r.restore} style={css("height:29px;padding:0 12px;border-radius:9px;border:1px solid var(--asa-line-soft);background:#fff;color:var(--asa-purple);font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;flex:none")}>restaurar</button>}
+              {canEdit && <button type="button" className="ldd-hit" disabled={saving} onClick={r.restore} style={css("height:29px;padding:0 12px;border-radius:9px;border:1px solid var(--asa-line-soft);background:#fff;color:var(--asa-purple);font-size:12px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;flex:none")}>restaurar</button>}
             </div>)}
-          <span style={css("font-size:11.5px;line-height:1.5;color:var(--asa-label)")}>Nada disso alterou o Livro do Show. O padrão continua com a cena e a posição no lugar.</span>
+          <span style={css("font-size:12px;line-height:1.5;color:var(--asa-label)")}>Nada disso alterou o Livro do Show. O padrão continua com a cena e a posição no lugar.</span>
         </div>}
       </div>
     </div>}
@@ -941,8 +941,8 @@ function SceneMapColumn(props: Parameters<typeof HojeTab>[0] & { scene: DScene; 
           const i = cur.indexOf(f.name);
           if (i >= 0) cur.splice(i, 1); else cur.push(f.name);
           return { ...prev, [scene.id]: cur };
-        })} style={css(`display:flex;align-items:center;gap:7px;height:30px;padding:0 12px;border-radius:999px;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:pointer;border:1px solid ${on ? "var(--asa-ok-fg)" : "var(--asa-line)"};background:${on ? "var(--asa-prep-bg)" : "#fff"};color:${on ? "var(--asa-prep-fg)" : "var(--asa-label)"}`)}>
-          <span style={css(`width:13px;height:13px;border-radius:4px;flex:none;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;background:${on ? "var(--asa-ok-fg)" : "var(--asa-purple-line)"}`)} aria-hidden="true">{on ? "✓" : ""}</span>
+        })} style={css(`display:flex;align-items:center;gap:7px;height:30px;padding:0 12px;border-radius:999px;font-family:Manrope,sans-serif;font-size:12px;font-weight:700;cursor:pointer;border:1px solid ${on ? "var(--asa-ok-fg)" : "var(--asa-line)"};background:${on ? "var(--asa-prep-bg)" : "#fff"};color:${on ? "var(--asa-prep-fg)" : "var(--asa-label)"}`)}>
+          <span style={css(`width:13px;height:13px;border-radius:4px;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;background:${on ? "var(--asa-ok-fg)" : "var(--asa-purple-line)"}`)} aria-hidden="true">{on ? "✓" : ""}</span>
           <span>{f.name}</span>
         </button>;
       })}
@@ -956,12 +956,12 @@ function SceneMapColumn(props: Parameters<typeof HojeTab>[0] & { scene: DScene; 
       return <div key={name} style={css("display:flex;flex-direction:column;gap:5px")}>
         <div style={css("display:flex;align-items:baseline;gap:8px")}>
           <span style={css("font-size:12px;font-weight:700;color:#3c3559")}>{name}</span>
-          <span style={css("font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--asa-label)")}>{`${points.length} em cena${fora ? ` · ${fora} fora hoje` : ""}`}</span>
+          <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--asa-label)")}>{`${points.length} em cena${fora ? ` · ${fora} fora hoje` : ""}`}</span>
         </div>
         <StageMap stage={stage} label={`Mapa de palco · ${scene.name} · ${name}`}>
           {stage.zones.map(([label, x, y]) => {
             const edge = x <= 20 ? " edge-left" : x >= 80 ? " edge-right" : "";
-            return <span className={`daily-stage-zone${edge}`} key={label} aria-hidden="true" style={{ ...css("position:absolute;transform:translate(-50%,-50%);font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.14em;color:var(--asa-lavender-border);white-space:nowrap;pointer-events:none;z-index:1"), left: `${x}%`, top: `${y}%` }}>{label}</span>;
+            return <span className={`daily-stage-zone${edge}`} key={label} aria-hidden="true" style={{ ...css("position:absolute;transform:translate(-50%,-50%);font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--asa-lavender-border);white-space:nowrap;pointer-events:none;z-index:1"), left: `${x}%`, top: `${y}%` }}>{label}</span>;
           })}
           {points.map((mk) => {
             const s = bySide[mk.side][seen[mk.side]++];
@@ -978,14 +978,14 @@ function SceneMapColumn(props: Parameters<typeof HojeTab>[0] & { scene: DScene; 
             const shortLabel = (s?.label ?? mk.label).replace(/\s+/g, "");
             return <span className={`daily-stage-marker side-${mk.side.toLowerCase()}${isChar ? " is-character" : ""}`} key={`${mk.side}-${s?.position.id ?? mk.label}`} title={`${s?.label ?? mk.label}${s?.papel ? ` · ${s.papel}` : ""} · ${person || "vago"}`}
               style={{ ...css(`position:absolute;transform:translate(-50%,-50%);width:${size}px;height:${size}px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:Manrope,sans-serif;box-sizing:border-box;background:${bg};${ring}`), left: `${mk.x}%`, top: `${mk.y}%` }}>
-              <span className="daily-stage-marker-label" style={css(`font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:${fg}`)}>{shortLabel}</span>
-              <span className="daily-stage-marker-person" style={css(`position:absolute;top:100%;margin-top:3px;font-size:9px;font-weight:700;white-space:nowrap;color:${mine ? "var(--asa-mine-fg)" : trocada ? "var(--asa-amber-text2)" : "var(--asa-ink-muted)"}`)}>{person ? person.split(", ")[0].split(" ")[0] : "vago"}</span>
+              <span className="daily-stage-marker-label" style={css(`font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:${fg}`)}>{shortLabel}</span>
+              <span className="daily-stage-marker-person" style={css(`position:absolute;top:100%;margin-top:3px;font-size:12px;font-weight:700;white-space:nowrap;color:${mine ? "var(--asa-mine-fg)" : trocada ? "var(--asa-amber-text2)" : "var(--asa-ink-muted)"}`)}>{person ? person.split(", ")[0].split(" ")[0] : "vago"}</span>
             </span>;
           })}
         </StageMap>
       </div>;
     })}
-    {!mapsOn.length && <span style={css("font-size:11.5px;color:var(--asa-vaga-fg);padding:10px 12px;border-radius:11px;background:var(--asa-amber-paper);border:1px solid var(--asa-amber-light)")}>Escolha ao menos um quadro acima para ver o mapa.</span>}
+    {!mapsOn.length && <span style={css("font-size:12px;color:var(--asa-vaga-fg);padding:10px 12px;border-radius:11px;background:var(--asa-amber-paper);border:1px solid var(--asa-amber-light)")}>Escolha ao menos um quadro acima para ver o mapa.</span>}
   </div>;
 }
 
@@ -1006,13 +1006,13 @@ function ScenePanel(props: Parameters<typeof HojeTab>[0] & { scene: DScene; slot
     const tone = s.out ? "var(--asa-error-fg)" : mine ? "var(--asa-mine-fg)" : vago ? "var(--asa-vaga-fg)" : s.sub ? "var(--asa-ok-fg)" : "var(--asa-purple)";
     const note = alerta ?? (s.out ? "fora do dia" : s.sub ? `no lugar de ${s.sub}` : s.papel ? s.papel : mine ? "você" : "");
     return <div key={s.position.id} style={css(`display:flex;align-items:center;gap:9px;padding:8px 10px;border:1px solid ${alerta ? "var(--asa-amber-glow)" : s.out ? "var(--asa-error2-bg)" : mine ? "var(--asa-pink-subtle)" : "var(--asa-line)"};border-radius:11px;background:${alerta ? "var(--asa-late-bg)" : s.out ? "var(--asa-red-cloud)" : mine ? "var(--asa-mine-faint)" : "#fff"};min-width:172px;max-width:214px`)}>
-      <span style={css(`font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;color:${tone};background:${tone}18;min-width:24px;text-align:center;padding:3px 5px;border-radius:7px;flex:none;white-space:nowrap`)}>{s.label}</span>
+      <span style={css(`font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:${tone};background:${tone}18;min-width:24px;text-align:center;padding:3px 5px;border-radius:7px;flex:none;white-space:nowrap`)}>{s.label}</span>
       <div style={css("display:flex;flex-direction:column;gap:2px;min-width:0;flex:1")}>
         <span style={css("display:flex;align-items:center;gap:5px;min-width:0")}>
           <span style={css(`font-size:12.5px;font-weight:${mine ? 700 : 600};color:${vago ? "var(--asa-vaga-fg)" : mine ? "var(--asa-mine-fg)" : "var(--asa-ink)"};white-space:nowrap;overflow:hidden;text-overflow:ellipsis${s.out ? ";text-decoration:line-through" : ""}`)}>{s.who ?? "sem titular"}</span>
           {manual && !s.out && <span title="Trocado à mão — não se completa mais sozinho" style={css("flex:none;font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--asa-label);background:var(--asa-book-fade);padding:1px 5px;border-radius:999px")}>fixo</span>}
         </span>
-        {note && <span style={css(`font-size:10.5px;color:${alerta ? "var(--asa-amber)" : s.out ? "var(--asa-error-fg)" : s.sub ? "var(--asa-ok-fg)" : mine ? "var(--asa-mine-fg)" : "var(--asa-label)"}`)}>{note}</span>}
+        {note && <span style={css(`font-size:12px;color:${alerta ? "var(--asa-amber)" : s.out ? "var(--asa-error-fg)" : s.sub ? "var(--asa-ok-fg)" : mine ? "var(--asa-mine-fg)" : "var(--asa-label)"}`)}>{note}</span>}
       </div>
       {canEdit && !out && <button type="button" className="ldd-hit" disabled={saving} onClick={() => props.onTogglePosition(s.position)} title={s.out ? "restaurar esta posição no dia" : "tirar esta posição do dia"} aria-label={`${s.out ? "Restaurar" : "Tirar"} ${s.label} do dia`}
         style={css("border:none;background:transparent;color:var(--asa-label);font-size:14px;line-height:1;cursor:pointer;padding:2px 4px;flex:none")}>{s.out ? "↺" : "×"}</button>}
@@ -1061,7 +1061,7 @@ function ScenePanel(props: Parameters<typeof HojeTab>[0] & { scene: DScene; slot
       <>
         <div style={css("display:flex;align-items:baseline;gap:9px;flex-wrap:wrap")}>
           <span style={css("font-family:Outfit,sans-serif;font-size:14px;font-weight:600")}>Formações desta cena</span>
-          <span style={css("font-size:11.5px;color:var(--asa-label)")}>{`${vivos}${vivos === 1 ? " pessoa hoje" : " pessoas hoje"} · a ASA sugere a que serve`}</span>
+          <span style={css("font-size:12px;color:var(--asa-label)")}>{`${vivos}${vivos === 1 ? " pessoa hoje" : " pessoas hoje"} · a ASA sugere a que serve`}</span>
         </div>
         <div style={css("display:flex;gap:8px;flex-wrap:wrap")}>
           {forms.map((f) => {
@@ -1069,8 +1069,8 @@ function ScenePanel(props: Parameters<typeof HojeTab>[0] & { scene: DScene; slot
             return <button key={f.id} type="button" aria-pressed={on} onClick={props.canEdit ? () => props.setFormSel((prev) => ({ ...prev, [scene.id]: f.id })) : undefined}
               style={css(`display:flex;flex-direction:column;gap:2px;align-items:flex-start;padding:9px 12px;border-radius:11px;text-align:left;font-family:Manrope,sans-serif;cursor:${props.canEdit ? "pointer" : "default"};border:1px solid ${on ? "var(--asa-purple)" : "var(--asa-line)"};background:${on ? "var(--asa-purple-lighter)" : "#fff"};min-height:44px;color:inherit`)}>
               <span style={css(`font-size:12.5px;font-weight:700;color:${on ? "var(--asa-purple-dark)" : "var(--asa-ink)"}`)}>{f.name}</span>
-              <span style={css("font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--asa-label)")}>{f.id === "__padrao" ? "do padrão" : `${f.n} pessoas`}</span>
-              {f.n === vivos && <span style={css("font-size:10px;font-weight:700;color:var(--asa-ok-fg)")}>serve para hoje</span>}
+              <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--asa-label)")}>{f.id === "__padrao" ? "do padrão" : `${f.n} pessoas`}</span>
+              {f.n === vivos && <span style={css("font-size:12px;font-weight:700;color:var(--asa-ok-fg)")}>serve para hoje</span>}
             </button>;
           })}
         </div>
@@ -1082,8 +1082,8 @@ function ScenePanel(props: Parameters<typeof HojeTab>[0] & { scene: DScene; slot
           return <div style={css("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
             <button type="button" className="ldd-hit" disabled={saving} onClick={() => props.onApplyToday(selected.formation!)} style={css(PRIMARY)}>Aplicar só hoje</button>
             <span style={css("flex:1 1 220px;min-width:0;display:flex;flex-direction:column;gap:4px")}>
-              <span style={css("font-size:11.5px;line-height:1.5;color:var(--asa-ink-muted)")}>{`${selected.name} vale só para ${longDate(props.book?.eventDate ?? props.date).toLocaleLowerCase("pt-BR")}. Quem já está num slot da formação continua nele; slot sem correspondência fica vago. O Livro do Show não muda.`}</span>
-              {saem.length > 0 && <span style={css("font-size:11.5px;line-height:1.5;color:var(--asa-amber);background:var(--asa-amber-surface);border-radius:8px;padding:6px 9px")}>
+              <span style={css("font-size:12px;line-height:1.5;color:var(--asa-ink-muted)")}>{`${selected.name} vale só para ${longDate(props.book?.eventDate ?? props.date).toLocaleLowerCase("pt-BR")}. Quem já está num slot da formação continua nele; slot sem correspondência fica vago. O Livro do Show não muda.`}</span>
+              {saem.length > 0 && <span style={css("font-size:12px;line-height:1.5;color:var(--asa-amber);background:var(--asa-amber-surface);border-radius:8px;padding:6px 9px")}>
                 {`Sai da cena hoje: ${saem.map((x) => x.who ? `${x.label} (${x.who})` : x.label).join(", ")}. Dá para trazer de volta depois, em "restaurar".`}
               </span>}
             </span>
@@ -1094,13 +1094,13 @@ function ScenePanel(props: Parameters<typeof HojeTab>[0] & { scene: DScene; slot
       {note && <span style={css(NOTE_OK)}>{note}</span>}
     </div>}
 
-    <span style={css("font-size:11px;line-height:1.5;color:var(--asa-label);border-top:1px solid var(--asa-book-fade);padding-top:11px")}>O rótulo da posição é a identidade; quem faz é camada. Trocar a pessoa não redesenha o mapa.</span>
+    <span style={css("font-size:12px;line-height:1.5;color:var(--asa-label);border-top:1px solid var(--asa-book-fade);padding-top:11px")}>O rótulo da posição é a identidade; quem faz é camada. Trocar a pessoa não redesenha o mapa.</span>
   </div>;
 }
 
 /* ---------- aba: diferenças do padrão ---------- */
 function DiffTab({ diffs, hasBook }: { diffs: PatternDiffRow[]; hasBook: boolean }) {
-  const head = "font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--asa-label)";
+  const head = "font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--asa-label)";
   return <>
     <div style={css("display:flex;flex-direction:column;gap:4px")}>
       <span style={css("font-family:Outfit,sans-serif;font-size:18px;font-weight:600")}>O que hoje tem de diferente do padrão</span>
@@ -1115,10 +1115,10 @@ function DiffTab({ diffs, hasBook }: { diffs: PatternDiffRow[]; hasBook: boolean
           <span style={css("flex:0 0 190px;" + head)}>Por quê</span>
         </div>
         {diffs.map((d, i) => <div key={i} className="ldd-diff-row" style={css("display:flex;align-items:flex-start;gap:0;padding:12px 14px;border-bottom:1px solid var(--asa-purple-screen)")}>
-          <span style={css("flex:0 0 118px;font-size:11.5px;font-weight:700;color:var(--asa-ink-muted);padding-right:10px")}>{d.where}</span>
+          <span style={css("flex:0 0 118px;font-size:12px;font-weight:700;color:var(--asa-ink-muted);padding-right:10px")}>{d.where}</span>
           <span style={css("flex:1;font-size:12.5px;color:var(--asa-label);padding-right:12px;text-decoration:line-through")}>{d.padrao}</span>
           <span style={css("flex:1;font-size:12.5px;font-weight:600;padding-right:12px")}>{d.hoje}</span>
-          <span style={css("flex:0 0 190px;font-size:11.5px;line-height:1.45;color:var(--asa-ink-muted)")}>{d.why}</span>
+          <span style={css("flex:0 0 190px;font-size:12px;line-height:1.45;color:var(--asa-ink-muted)")}>{d.why}</span>
         </div>)}
       </div>}
     <div style={css("display:flex;gap:12px;flex-wrap:wrap;padding:13px 15px;border:1px dashed var(--asa-note-bd);border-radius:14px;background:var(--asa-card-faint)")}>
@@ -1202,36 +1202,36 @@ function FormacoesTab({ review, scopeLocal, currentShowId, currentFormations, ca
       </div>
       <div style={css("display:flex;flex-wrap:wrap")}>
         <div className="ldd-shrink" style={css("flex:0 1 250px;min-width:220px;border-right:1px solid var(--asa-book-fade);padding:12px;display:flex;flex-direction:column;gap:5px")}>
-          <span style={css("font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--asa-label);padding:0 6px 4px")}>show</span>
+          <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--asa-label);padding:0 6px 4px")}>show</span>
           {shows.map((s) => {
             const n = cache[s.id]?.source?.scenes.length;
             return <button key={s.id} type="button" onClick={() => { setShowId(s.id); setSceneId(""); }} style={css(bibNavStyle(s.id === showId))}>
               <span style={css("flex:1;min-width:0;font-size:13px;font-weight:600")}>{s.title}</span>
-              {n !== undefined && <span style={css("flex:none;font-size:11px;color:var(--asa-label)")}>{plural(n, "cena", "cenas")}</span>}
+              {n !== undefined && <span style={css("flex:none;font-size:12px;color:var(--asa-label)")}>{plural(n, "cena", "cenas")}</span>}
             </button>;
           })}
         </div>
         <div className="ldd-shrink" style={css("flex:0 1 230px;min-width:200px;border-right:1px solid var(--asa-book-fade);padding:12px;display:flex;flex-direction:column;gap:5px")}>
-          <span style={css("font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--asa-label);padding:0 6px 4px")}>cena</span>
+          <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--asa-label);padding:0 6px 4px")}>cena</span>
           {visibleScenes.map((s) => <button key={s.id} type="button" onClick={() => setSceneId(s.id)} style={css(bibNavStyle(s.id === scene?.id))}>
             <span style={css("flex:1;min-width:0;font-size:13px;font-weight:600")}>{s.name}</span>
-            <span style={css("flex:none;font-size:11px;color:var(--asa-label)")}>{1 + formations.filter((f) => f.sceneId === s.id).length}</span>
+            <span style={css("flex:none;font-size:12px;color:var(--asa-label)")}>{1 + formations.filter((f) => f.sceneId === s.id).length}</span>
           </button>)}
-          {entry && !visibleScenes.length && <span style={css("font-size:11.5px;color:var(--asa-label);padding:0 6px")}>{scenes.length ? "Nenhuma cena com esta busca." : "Este show ainda não tem cenas no Livro do Show."}</span>}
+          {entry && !visibleScenes.length && <span style={css("font-size:12px;color:var(--asa-label);padding:0 6px")}>{scenes.length ? "Nenhuma cena com esta busca." : "Este show ainda não tem cenas no Livro do Show."}</span>}
         </div>
         <div className="ldd-shrink" style={css("flex:1 1 420px;min-width:360px;padding:14px 16px;background:var(--asa-bg-page);display:flex;flex-direction:column;gap:11px")}>
           <div style={css("display:flex;align-items:baseline;gap:10px;flex-wrap:wrap")}>
-            <span style={css("font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--asa-label);flex:1")}>{scene ? `${scene.name} · ${plural(list.length, "formação", "formações")}` : "formações"}</span>
-            <span style={css("font-size:11.5px;color:var(--asa-label)")}>da cheia para a menor</span>
+            <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--asa-label);flex:1")}>{scene ? `${scene.name} · ${plural(list.length, "formação", "formações")}` : "formações"}</span>
+            <span style={css("font-size:12px;color:var(--asa-label)")}>da cheia para a menor</span>
           </div>
           {list.map((f) => <div key={f.id} style={css("background:#fff;border:1px solid var(--asa-purple-subdued);border-radius:14px;padding:13px 15px;display:flex;flex-direction:column;gap:10px")}>
             <div style={css("display:flex;align-items:center;gap:12px;flex-wrap:wrap")}>
               <span style={css("flex:none;width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:Outfit,sans-serif;font-size:17px;font-weight:700;" + (f.padrao ? "background:var(--asa-teal-surface);color:var(--asa-teal);" : "background:var(--asa-purple-surface);color:var(--asa-purple-dark);"))}>{f.qtd}</span>
               <span style={css("flex:1 1 170px;min-width:140px;display:flex;flex-direction:column;gap:2px")}>
                 <span style={css("font-size:14px;font-weight:700;line-height:1.25")}>{f.nome}</span>
-                <span style={css("font-size:11.5px;color:var(--asa-label);line-height:1.4")}>{f.uso}</span>
+                <span style={css("font-size:12px;color:var(--asa-label);line-height:1.4")}>{f.uso}</span>
               </span>
-              {(qtdCount.get(f.qtd) ?? 0) > 1 && <span style={css("flex:none;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 9px;border-radius:6px;background:var(--asa-amber-surface);color:var(--asa-amber)")}>{`duas para ${f.qtd}`}</span>}
+              {(qtdCount.get(f.qtd) ?? 0) > 1 && <span style={css("flex:none;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 9px;border-radius:6px;background:var(--asa-amber-surface);color:var(--asa-amber)")}>{`duas para ${f.qtd}`}</span>}
               {f.formation && canApplyToday(f.formation) && <button type="button" className="ldd-hit" disabled={saving} onClick={() => onApplyToday(f.formation!)} style={css(PRIMARY)}>Aplicar só hoje</button>}
             </div>
             {stage && api && <div style={css("width:220px;max-width:100%")}>
@@ -1244,7 +1244,7 @@ function FormacoesTab({ review, scopeLocal, currentShowId, currentFormations, ca
             <span style={css("font-size:13px;font-weight:700")}>Duas formações para a mesma quantidade</span>
             <span style={css("font-size:12px;line-height:1.5;color:var(--asa-ink-muted);text-wrap:pretty")}>O app não escolhe: mostra as duas com o mapa e quantas vezes cada uma foi usada, e você decide.</span>
           </div>}
-          {scene && list.length === 1 && <span style={css("font-size:11.5px;line-height:1.5;color:var(--asa-label)")}>Só a formação do padrão por enquanto. As reduzidas aparecem aqui quando alguém guarda uma no Livro do Dia.</span>}
+          {scene && list.length === 1 && <span style={css("font-size:12px;line-height:1.5;color:var(--asa-label)")}>Só a formação do padrão por enquanto. As reduzidas aparecem aqui quando alguém guarda uma no Livro do Dia.</span>}
         </div>
       </div>
     </div>
@@ -1274,20 +1274,20 @@ function ListaTab({ isMem, books, me, review, filter, onFilter, onOpen }: { isMe
         return <button key={b.id} type="button" onClick={() => onOpen(b.id)} style={css("display:flex;align-items:center;gap:14px;padding:13px 15px;border:1px solid var(--asa-line);border-radius:13px;background:#fff;cursor:pointer;font-family:Manrope,sans-serif;text-align:left;flex-wrap:wrap")}>
           <div style={css("display:flex;flex-direction:column;gap:2px;flex:0 0 92px;text-align:left")}>
             <span style={css("font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--asa-purple)")}>{shortDate(b.eventDate)}</span>
-            <span style={css("font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--asa-label)")}>{horasDoLivro(b).join(" · ") || "sem horário"}</span>
+            <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--asa-label)")}>{horasDoLivro(b).join(" · ") || "sem horário"}</span>
           </div>
           <div style={css("display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;text-align:left")}>
             <span style={css("font-size:14px;font-weight:700")}>{tituloDoLivro(b)}</span>
             {/* O local separa os dois "Musical" do mesmo dia; a operação sozinha não dizia nada. */}
             <span style={css("font-size:12px;color:var(--asa-ink-muted)")}>{[b.locationName ?? b.operationName, n ? plural(n, "convocado", "convocados") : ""].filter(Boolean).join(" · ")}</span>
           </div>
-          {meIn && <span style={css("font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--asa-mine-fg);background:#C2508F1c;padding:3px 8px;border-radius:999px;flex:none")}>você entra</span>}
+          {meIn && <span style={css("font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--asa-mine-fg);background:#C2508F1c;padding:3px 8px;border-radius:999px;flex:none")}>você entra</span>}
           <span style={css(estadoChip(e, ";flex:none;min-width:78px;text-align:center"))}>{EST[e].label}</span>
         </button>;
       })}
       {!rows.length && <div style={css(DASHED_NOTE)}>Nenhum Livro com este filtro. Tire ou troque o filtro para ver os outros.</div>}
     </div>
-    <span style={css("font-size:11.5px;line-height:1.5;color:var(--asa-label);max-width:100ch")}>{isMem ? "Abrir um dia mostra as cenas com seu nome destacado. Você não edita nada aqui — se algo estiver errado, é ocorrência ou recado para quem coordena." : "Clicar num livro abre o dia dele no estado em que está."}</span>
+    <span style={css("font-size:12px;line-height:1.5;color:var(--asa-label);max-width:100ch")}>{isMem ? "Abrir um dia mostra as cenas com seu nome destacado. Você não edita nada aqui — se algo estiver errado, é ocorrência ou recado para quem coordena." : "Clicar num livro abre o dia dele no estado em que está."}</span>
   </>;
 }
 
