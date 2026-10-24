@@ -1,18 +1,102 @@
-/* 17 Meu Dia — o visual está inline em meu-dia.tsx, copiado do .dc.html.
-   Aqui só o que estilo inline não resolve: foco, alvo de toque, esqueleto e refluxo no celular. */
-.md-root{background:#faf9fe}
-.md-root + .asa-install{margin:4px 20px 24px}
+/* 17 Meu Dia — layout em classes, usando a margem e a escala do shell (--asa-gutter).
+   Tamanhos de letra: nada abaixo de 12px; títulos de cartão 17px, corpo 15px, apoio 13px. */
+.md-root{background:#faf9fe;overflow-wrap:break-word}
+.md-root + .asa-install{margin:4px var(--asa-gutter) 24px}
 .md-root a:focus-visible,.md-root button:focus-visible{outline:3px solid #6C2BF2;outline-offset:2px;border-radius:8px}
+.md-root .md-hero-cta:focus-visible{outline-color:#fff}
 .md-hit{position:relative;display:inline-flex;align-items:center}
 .md-hit::after{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
 .md-root button:disabled{opacity:.7;cursor:default}
 .md-row:hover{background:#f6f3fd}
-.md-skeleton{height:96px;border-radius:16px;background:linear-gradient(90deg,#f1edf9,#faf8fe,#f1edf9);background-size:200% 100%;animation:md-pulse 1.4s linear infinite;margin-bottom:14px}
+.md-root h2,.md-root h3,.md-root p{margin:0}
+
+/* Página: duas colunas no computador, uma no celular. */
+.md-page{max-width:1180px;margin:0 auto;padding:var(--asa-gutter)}
+.md-grid{display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:16px;align-content:start}
+.md-col{display:flex;flex-direction:column;gap:16px;min-width:0}
+
+/* Cartão: um único padrão para todos os blocos da tela. */
+.md-card{display:flex;flex-direction:column;gap:12px;padding:16px 20px;background:#fff;border:1px solid var(--asa-line);border-radius:16px}
+.md-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.md-card-head h3,.md-card-title h3{font:600 17px Outfit,sans-serif}
+.md-card-title{display:flex;align-items:center;gap:10px}
+.md-card-img{width:36px;height:36px;object-fit:contain;flex:none}
+.md-label{font:500 12px 'JetBrains Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--asa-label)}
+.md-note{font-size:12px;color:var(--asa-label)}
+.md-link{font-size:13px;font-weight:600;color:var(--asa-purple);text-decoration:none}
+.md-stack{display:flex;flex-direction:column;gap:8px}
+.md-empty{font-size:13px;line-height:1.5;color:var(--asa-label);padding:4px 0}
+
+/* Cores por tom: a linha, o ponto, a etiqueta e o contador leem estas duas variáveis. */
+.tone-ok{--tone-bg:var(--asa-teal-surface);--tone-fg:var(--asa-ok-fg)}
+.tone-warn{--tone-bg:var(--asa-warn-bg);--tone-fg:var(--asa-warn-fg)}
+.tone-mute{--tone-bg:var(--asa-mute-bg);--tone-fg:var(--asa-label)}
+.tone-mine{--tone-bg:var(--asa-mine-bg);--tone-fg:var(--asa-mine-fg)}
+
+/* Boas-vindas: mascote ao lado do texto; o botão fica à direita (computador) ou embaixo (celular). */
+.md-hero{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px 16px;padding:16px 20px;border-radius:18px;color:#fff;background:linear-gradient(120deg,var(--asa-deep),var(--asa-hero-to))}
+.md-hero-img{width:72px;height:72px;object-fit:contain}
+.md-hero-text{display:flex;flex-direction:column;gap:4px;min-width:0}
+.md-hero-text h2{font:600 22px/1.2 Outfit,sans-serif;letter-spacing:-.01em}
+.md-hero-text p{font-size:15px;line-height:1.45;color:var(--asa-hero-text);text-wrap:pretty}
+.md-hero-text .md-hero-alert{font-size:13px;color:var(--asa-hero-alert)}
+.md-hero-cta{justify-content:center;min-height:44px;padding:10px 20px;border:0;border-radius:999px;background:#fff;color:var(--asa-cta-fg);font:700 15px Manrope,sans-serif;text-decoration:none;white-space:nowrap;cursor:pointer}
+
+/* Próxima atividade. */
+.md-next{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.md-next-time{display:flex;flex-direction:column;align-items:center;gap:2px;flex:none;min-width:72px}
+.md-next-time b{font:700 28px/1.1 Outfit,sans-serif;letter-spacing:-.02em}
+.md-next-time span{font-size:12px;color:var(--asa-label)}
+.md-next-bar{width:3px;align-self:stretch;border-radius:3px;background:linear-gradient(var(--asa-purple),var(--asa-aula-fg))}
+.md-next-text{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 120px}
+.md-next-text b{font:600 17px Outfit,sans-serif}
+.md-next-text span{font-size:13px;color:var(--asa-label)}
+.md-chips{display:flex;gap:8px;flex-wrap:wrap}
+.md-chip{padding:6px 12px;border-radius:999px;background:var(--asa-chip-pale);color:var(--asa-ink-medium);font-size:12px;font-weight:600}
+
+/* Linha do tempo. A etiqueta desce para a direita quando falta largura. */
+.md-timeline{display:flex;flex-direction:column;gap:2px;margin:0 -8px}
+.md-t-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;min-height:44px;padding:8px;border-radius:10px;color:inherit;text-decoration:none}
+.md-t-row.tone-mine{background:var(--asa-mine-row)}
+.md-t-time{flex:none;width:48px;font:700 13px 'JetBrains Mono',monospace;color:var(--asa-label)}
+.md-t-dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--tone-fg)}
+.md-t-row.tone-mute .md-t-dot{opacity:.5}
+.md-t-text{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:10px;flex:1 1 150px;min-width:0}
+.md-t-text>*{min-width:0}
+.md-t-text b{font-size:15px;font-weight:600}
+.md-t-text span{font-size:13px;color:var(--asa-label)}
+.md-t-tag{margin-left:auto;padding:3px 8px;border-radius:6px;background:var(--tone-bg);color:var(--tone-fg);font:700 12px 'JetBrains Mono',monospace;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+
+/* Pendências e Mural. */
+.md-pend{display:flex;align-items:center;gap:12px;min-height:44px;padding:8px 12px;border-radius:12px;background:var(--asa-bg-page);border:1px solid var(--asa-purple-muted);color:inherit;text-decoration:none}
+.md-pend-count{flex:none;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:9px;background:var(--tone-bg);color:var(--tone-fg);font:700 13px 'JetBrains Mono',monospace}
+.md-pend-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.md-pend-text b{font-size:14px;font-weight:600}
+.md-pend-text span{font-size:12px;color:var(--asa-label)}
+.md-mural-item{display:flex;align-items:center;gap:10px}
+.md-mural-img{width:28px;height:28px;object-fit:contain;flex:none}
+.md-mural-item span{min-width:0;font-size:13px;line-height:1.45;color:var(--asa-ink-medium);text-wrap:pretty}
+
+/* Erro ao carregar e esqueleto. */
+.md-error{flex-direction:row;align-items:center}
+.md-error-img{width:44px;height:44px;object-fit:contain;flex:none}
+.md-error-text{flex:1;font-size:14px;color:var(--asa-ink-medium)}
+.md-btn-ghost{min-height:44px;padding:9px 16px;border:1px solid var(--asa-line);border-radius:999px;background:#fff;color:var(--asa-ink-medium);font:700 13px Manrope,sans-serif;cursor:pointer}
+.md-skeleton{height:96px;border-radius:16px;background:linear-gradient(90deg,#f1edf9,#faf8fe,#f1edf9);background-size:200% 100%;animation:md-pulse 1.4s linear infinite;margin-bottom:16px}
 @keyframes md-pulse{from{background-position:200% 0}to{background-position:-200% 0}}
 @media (prefers-reduced-motion:reduce){.md-skeleton{animation:none}}
+
+/* Rodapé da tela. */
+.md-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;min-height:44px;padding:8px var(--asa-gutter);border-top:1px solid var(--asa-border-soft);background:#fff;font-size:12px;color:var(--asa-label)}
+.md-foot-brand{font:500 12px 'JetBrains Mono',monospace;letter-spacing:.08em;text-transform:uppercase}
+
 @media(max-width:900px){
-  .md-grid{grid-template-columns:1fr!important;padding:14px 16px!important}
-  .md-hero{flex-wrap:wrap}
-  .md-root + .asa-install{margin:4px 16px 96px}
-  .md-hero > a,.md-hero > button{width:100%;justify-content:center;min-height:52px;border-radius:14px!important}
+  .md-grid{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:720px){
+  .md-card{padding:16px}
+  .md-hero{grid-template-columns:auto minmax(0,1fr);padding:16px}
+  .md-hero-img{width:56px;height:56px}
+  .md-hero-cta{grid-column:1 / -1;min-height:52px;border-radius:14px}
+  .md-root + .asa-install{margin-bottom:96px}
 }
