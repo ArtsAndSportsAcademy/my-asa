@@ -98,3 +98,58 @@
 
 /* Filtros da Biblioteca: toque de 44 px e letra legível no celular (eram 25 px de altura e letra de 10 px). */
 .comm-thread-filters button{min-height:44px;padding:0 14px;font-size:12px}
+
+/* 24/10 (Claude): Mural com acabamento mais refinado. Bloco novo no fim; só o que muda o visual dos cartões, dos números
+   e dos alvos de toque. Selos suaves em vez de blocos sólidos, texto de leitura em 15px, mais respiro, sombra leve. */
+.comm-page{gap:20px;padding:24px var(--asa-gutter,20px) 40px}
+.comm-feed{display:grid;gap:16px}
+.comm-primary{box-shadow:0 10px 22px -14px rgba(108,43,242,.7)}
+.comm-primary,.comm-secondary{border-radius:12px}
+.comm-metrics{gap:0;margin:0;overflow:hidden;border:1px solid #e6e1f2;border-radius:16px;background:#fff}
+.comm-metrics article{padding:14px 18px;border:0;border-radius:0;background:transparent}
+.comm-metrics article+article{border-left:1px solid #eee9f6}
+.comm-metrics b{font-size:24px;letter-spacing:-.02em}
+.comm-metrics span{font-size:12px}
+.comm-pinned{gap:12px}
+.comm-post{gap:14px;padding:22px 24px;border-radius:20px;box-shadow:0 1px 2px rgba(34,20,80,.04),0 14px 32px -22px rgba(34,20,80,.4)}
+.comm-post.pinned{border-color:#f3dcc4;background:linear-gradient(180deg,#fffaf4,#fff6ec)}
+.comm-post h2{font:600 20px/1.25 Outfit;letter-spacing:-.01em}
+.comm-post p{color:#3f3858;font-size:15px;line-height:1.6}
+.comm-post>header b{font-size:13px}
+.comm-post-badge{background:#f0eafe;color:#5b23c9;font-size:12px}
+.comm-pinned>header,.comm-feed-title,.comm-event-date{font-size:12px}
+.comm-post.pinned .comm-post-badge{background:#ffe8d2;color:#a24e0b}
+.comm-post.recognition .comm-post-badge{background:#fde7f2;color:#a3306f}
+.comm-recipient{padding:12px 14px;border-color:#f4e3f0;border-radius:14px}
+.comm-avatar{width:38px;height:38px}
+.comm-ack-progress>span{height:4px}
+.comm-post .comm-ack{border-radius:12px;box-shadow:0 10px 20px -14px rgba(194,96,15,.8)}
+/* Alvos de toque: os controles pequenos mantêm o tamanho visual, mas respondem num quadro de 44px. */
+.comm-post button,.comm-undo button,.comm-post .comm-picker button,.comm-removidas .comm-secondary,.comm-form .comm-datas-acoes button{min-height:44px}
+.comm-people-list .comm-check,.comm-paraquem .comm-check{min-height:44px}
+.comm-post .comm-reacoes button,.comm-people-chosen button,.comm-ack-progress button,.comm-form .comm-chips button,.comm-retry,.comm-links button{position:relative}
+.comm-post .comm-reacoes button::after,.comm-people-chosen button::after,.comm-ack-progress button::after,.comm-form .comm-chips button::after,.comm-retry::after,.comm-links button::after{content:"";position:absolute;left:0;right:0;top:50%;height:44px;transform:translateY(-50%)}
+@media(max-width:720px){.comm-page{gap:16px;padding:16px var(--asa-gutter,16px) 32px}.comm-post{padding:18px}.comm-metrics article{padding:12px 14px}}
+.comm-form label>small{font-size:12px;font-weight:500;color:#6b6482}
+
+/* 24/10 (Claude), revisão do Mural, passo 2: o que só apareceu abrindo cada janela. */
+/* Barras de rolagem finas e no tom da tela, em vez da barra cinza padrão do navegador. */
+.comm-modal,.comm-people-list,.comm-missing ul,.comm-comments,.comm-thread,.comm-chat>aside{scrollbar-width:thin;scrollbar-color:#cfc6e6 transparent}
+.comm-modal::-webkit-scrollbar,.comm-people-list::-webkit-scrollbar,.comm-missing ul::-webkit-scrollbar,.comm-comments::-webkit-scrollbar{width:6px}
+.comm-modal::-webkit-scrollbar-thumb,.comm-people-list::-webkit-scrollbar-thumb,.comm-missing ul::-webkit-scrollbar-thumb,.comm-comments::-webkit-scrollbar-thumb{background:#cfc6e6;border-radius:3px}
+/* "Para quem": o título entra no quadro e quebra de linha sem passar por cima da borda. */
+.comm-paraquem{padding:14px}
+.comm-paraquem legend{float:left;width:100%;padding:0 0 4px;line-height:1.4}
+/* "Quem já deu ciente" e "Quem reagiu": margem interna como nas outras janelas. */
+.comm-missing{padding:16px 18px 8px}
+.comm-modal>.comm-modal-footer{padding:12px 18px 16px}
+/* Comentários: cada comentário num balão, com nome, texto e hora em ordem de leitura. */
+.comm-comments{display:grid;gap:10px;padding:16px 18px 4px;max-height:min(44dvh,340px);overflow:auto}
+.comm-comments>p{margin:0;padding:18px 0;color:#6b6482;font-size:14px;text-align:center}
+.comm-comments article{display:grid;gap:4px;padding:12px 14px;border-radius:14px;background:#f7f5fb}
+.comm-comments article strong{font:600 14px Outfit,Manrope,sans-serif}
+.comm-comments article p{margin:0;color:#3f3858;font-size:14px;line-height:1.5}
+.comm-comments article small{color:#6b6482;font-size:12px}
+/* Faixa de números: no celular estreito o rótulo "reconhecimentos" precisa caber. */
+@media(max-width:420px){.comm-metrics article{padding:12px 10px}}
+.comm-datas small{font-size:12px}

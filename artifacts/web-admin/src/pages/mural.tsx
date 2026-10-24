@@ -177,7 +177,7 @@ export function MuralPage({ role }: { role: Role }) {
       <button type="button" onClick={() => setRemovidasAberto(true)}><Trash2 size={14}/> Removidas</button>
       {podeGerirDatas && <button type="button" onClick={() => setDatasAberto(true)}><CalendarDays size={14}/> Datas especiais</button>}
     </div>
-    <div className="comm-metrics" aria-label="Resumo do Mural"><article><b>{pinned.length}</b><span>aguardando seu ciente</span></article><article><b>{noticeCount}</b><span>{noticeCount === 1 ? "aviso" : "avisos"}</span></article><article><b>{recognitionCount}</b><span>{recognitionCount === 1 ? "reconhecimento" : "reconhecimentos"}</span></article></div>
+    {!loading && !error && <div className="comm-metrics" aria-label="Resumo do Mural"><article><b>{pinned.length}</b><span>aguardando seu ciente</span></article><article><b>{noticeCount}</b><span>{noticeCount === 1 ? "aviso" : "avisos"}</span></article><article><b>{recognitionCount}</b><span>{recognitionCount === 1 ? "reconhecimento" : "reconhecimentos"}</span></article></div>}
     {datas.length > 0 && <section className="comm-datas" aria-label="Datas especiais">
       {/* A data de hoje é um cartão com a mensagem; as da semana cabem numa linha só, para não empurrar os avisos para baixo no telefone. */}
       {datas.filter(data => data.emDias === 0).map(data => <article key={data.id} className="hoje">
@@ -228,10 +228,12 @@ function PostCard({ post, people, pinned, ocupados, onAck, onReact, onComment, o
   const nomes = post.recipientNames ?? [];
   const recipient = people.find(person => person.id === post.recipientId);
   const acknowledgement = post.requiresConfirmation && !post.mine?.confirmedAt;
+  // Quando a caixa do destinatário aparece (reconhecimento a pessoas), o "para …" do cabeçalho só repetiria o mesmo nome.
+  const destinatarioEmCaixa = post.type === "RECOGNITION" && (nomes.length > 1 || Boolean(recipient || nomes[0]));
   return <article className={`comm-post ${pinned ? "pinned" : ""} ${post.type.toLocaleLowerCase("pt-BR")}`}>
-    <header><span className="comm-post-badge">{ETIQUETA[post.type]}</span><b>{post.authorName}</b><small>· {displayDate(post.publishedAt)}{post.editedAt ? " · editado" : ""} · para {scopeText(post)}</small></header>
+    <header><span className="comm-post-badge">{ETIQUETA[post.type]}</span><b>{post.authorName}</b><small>· {displayDate(post.publishedAt)}{post.editedAt ? " · editado" : ""}{!destinatarioEmCaixa && <> · para {scopeText(post)}</>}</small></header>
     {post.type === "RECOGNITION" && (nomes.length > 1
-      ? <div className="comm-recipient"><span className="comm-avatar">{nomes.length}</span><div><strong>{peopleText(nomes)}</strong>{post.destinationLabel && <small>{post.destinationLabel}</small>}</div></div>
+      ? <div className="comm-recipient"><span className="comm-avatar">{nomes.length}</span><div><strong>{peopleText(nomes)}</strong>{post.destinationLabel && post.destinationLabel !== peopleText(nomes) && <small>{post.destinationLabel}</small>}</div></div>
       : (recipient || nomes[0]) && <div className="comm-recipient"><span className="comm-avatar">{initials(recipient?.name ?? nomes[0]!)}</span><div><strong>{recipient?.name ?? nomes[0]}</strong><small>{recipient?.areaName}</small></div></div>)}
     {post.eventDate && <span className="comm-event-date"><CalendarDays size={14}/> {new Date(`${post.eventDate}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" })}</span>}
     {post.title && <h2>{post.title}</h2>}
