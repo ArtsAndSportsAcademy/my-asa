@@ -29,3 +29,10 @@
 .restricoes-linha{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .restricoes-linha label,.restricoes-motivo{display:grid;gap:4px;font-size:12px;font-weight:700;color:var(--asa-muted)}
 @media(max-width:720px){.restricoes-linha{grid-template-columns:1fr}.restricoes-page .shows-primary{min-height:48px}}
+/* Revisão de layout: selo só nas encerradas, motivo em 2 linhas com "ver mais", pessoas escolhidas à vista e lista de pessoas mais alta no celular. */
+.restricoes-lista .asa-status{font-size:12px}
+.restricoes-motivo-texto{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}.restricoes-motivo-texto.aberto{display:block;-webkit-line-clamp:unset}
+.restricoes-corpo .restricoes-mais{justify-self:start;min-height:44px;padding:0;border:0;background:none;color:var(--asa-purple,#6c2bf2);font:700 12px Manrope,sans-serif;cursor:pointer}
+.restricoes-escolhidas{display:flex;flex-wrap:wrap;gap:6px}.restricoes-escolhidas button{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 12px;border:1px solid var(--asa-purple,#6c2bf2);border-radius:999px;background:#f3ecfe;color:#5b23c9;font:700 12px Manrope,sans-serif;cursor:pointer}
+@media(max-width:720px){.restricoes-pessoas{max-height:min(320px,42dvh)}}
+.restricoes-erro .shows-secondary{margin-left:12px;min-height:44px}

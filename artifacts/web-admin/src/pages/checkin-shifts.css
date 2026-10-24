@@ -18,3 +18,8 @@
 /* 16/10 (crivo 16): rodapé com Cancelar e Confirmar, colado embaixo da janela. */
 .shift-footer{position:sticky;bottom:0;z-index:2;display:flex;gap:10px;justify-content:flex-end;margin-top:6px;padding:12px 0 2px;background:#fff;border-top:1px solid #eee9f6}
 @media(max-width:560px){.shift-footer button{flex:1}}
+/* Revisão de layout: contadores em 3 colunas (6 cartões = 3x2, sem sobra) e, no celular, uma faixa só que rola de lado; as abas de seção também. */
+.shift-counts{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:800px){.shift-counts{display:flex;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:thin;scrollbar-color:#d9d2e8 transparent;margin-inline:-16px;padding-inline:16px;padding-bottom:4px}.shift-counts>div{flex:0 0 132px;scroll-snap-align:start}.shift-sections{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;scrollbar-color:#d9d2e8 transparent;margin-inline:-16px;padding-inline:16px}.shift-sections button{flex:0 0 auto;white-space:nowrap}}
+@media(max-width:800px){.shift-counts,.shift-sections{scrollbar-width:none}.shift-counts::-webkit-scrollbar,.shift-sections::-webkit-scrollbar{display:none}}
+@media(max-width:800px){.shift-config fieldset>button{grid-column:1/-1}}
