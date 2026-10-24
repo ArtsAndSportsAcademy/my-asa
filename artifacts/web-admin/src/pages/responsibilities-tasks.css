@@ -38,3 +38,18 @@
 .rt-mine{margin:0 0 12px;padding:12px 14px;border:1px solid var(--asa-border);border-radius:8px;background:#fff}.rt-mine h3{margin:0 0 8px;font:600 15px Outfit,sans-serif}.rt-mine ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}.rt-mine li{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap}.rt-mine li>div{flex:1;min-width:180px;display:grid;gap:2px}.rt-mine strong{font-size:13px;overflow-wrap:anywhere}.rt-mine span{color:var(--asa-muted);font-size:12px;overflow-wrap:anywhere}
 .rt-req-state{padding:3px 7px;border-radius:5px;background:#fdf3e4;color:#805012;font-size:11px;font-style:normal;font-weight:700}.rt-req-state.accepted{background:#e3f4f1;color:#075d57}.rt-req-state.declined,.rt-req-state.cancelled{background:#fdeef1;color:#99253c}
 @media(max-width:720px){.rt-toolbar-actions{width:100%}.rt-toolbar-actions>button{flex:1}.rt-detail-footer{margin:12px -15px -15px;padding:12px 15px}.rt-detail-footer button{flex:1}.rt-req-list li,.rt-routine-list li{flex-wrap:wrap}.rt-req-actions,.rt-routine-actions{width:100%;justify-content:stretch}.rt-req-actions button{flex:1}.rt-drive iframe{height:260px}}
+
+/* Revisão de layout: nenhum texto abaixo de 12 px. */
+.rt-kicker{font-size:12px}
+.rt-tabs button span{font-size:12px}
+.rt-task-main>div{font-size:12px}
+.rt-task-end time{font-size:12px}
+.rt-state{font-size:12px}
+.rt-resp-main span{font-size:12px}
+.rt-active{font-size:12px}
+.rt-resp-meta{font-size:12px}
+.rt-form legend{font-size:12px}
+.rt-remove{font-size:12px}
+.rt-step-mark{font-size:12px}
+.rt-step-state{font-size:12px}
+.rt-req-state{font-size:12px}

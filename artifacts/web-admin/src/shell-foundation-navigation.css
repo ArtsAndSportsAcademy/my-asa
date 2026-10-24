@@ -15,3 +15,7 @@
   .asa-shell.menu-hidden{grid-template-columns:0 minmax(0,1fr)}
   .asa-shell.menu-hidden .asa-sidebar{transform:translateX(-100%);visibility:hidden}
 }
+/* Revisão de layout: título longo no cabeçalho do celular (ex.: "Responsabilidades e tarefas") alargava a página em 25 px; o cabeçalho e a página podem encolher até a largura da tela. */
+@media(max-width:720px){.asa-shell>.asa-mobile-head,.asa-shell>main{min-width:0}}
+.asa-menu-toggle.asa-menu-toggle{width:44px;height:44px}
+.asa-bell-count.asa-bell-count{font-size:12px;min-width:20px;height:20px;line-height:20px}

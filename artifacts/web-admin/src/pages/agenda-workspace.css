@@ -56,3 +56,16 @@
 .ag-person-tools{display:flex;gap:8px;margin:0 0 6px}.ag-person-tools button{min-height:40px;padding:0 12px;border:1px solid var(--asa-border);border-radius:6px;background:#fff;color:var(--asa-ink);font-size:12px;font-weight:700;cursor:pointer}
 .ag-month-grid article:first-child{grid-column-start:var(--ag-offset,1)}
 @media(max-width:720px){.ag-month-grid article:first-child{grid-column-start:auto}}
+
+/* Revisão de layout: nenhum texto abaixo de 12 px. */
+.ag-kicker{font-size:12px}
+.ag-tabs button span{font-size:12px}
+.ag-form legend{font-size:12px}
+.ag-day-strip button span{font-size:12px}
+.ag-entry>time{font-size:12px}
+.ag-month-grid header span,.ag-month-empty{font-size:12px}
+.ag-month-grid button b{font-size:12px}
+.ag-month-grid button small{font-size:12px}
+
+/* Revisão de layout: botão "Hoje" com 44 px. */
+.ag-today{min-height:44px}

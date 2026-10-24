@@ -40,3 +40,10 @@
 .lg-regras li.ok{color:#0a6f68}
 .lg-regras li.ok svg{background:#0a6f68;color:#fff}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* Revisão de layout: nenhum texto abaixo de 12 px. */
+.lg-marca span{font-size:12px}
+.lg-campo>span:first-child{font-size:12px}
+
+/* Revisão de layout: "mostrar a senha" com 44 px de altura (a caixa tem 48). */
+.lg-senha button{min-height:44px}

@@ -17,8 +17,8 @@ type Me = { id: string; name?: string; displayName?: string; username?: string |
 const ROLE_NAME: Record<ShellRole, string> = { adm: "Administração", dir: "Direção", sup: "Supervisão", mem: "Elenco" };
 const CARD = "background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:15px 18px;display:flex;flex-direction:column;gap:12px";
 const H2 = "font-family:Outfit,sans-serif;font-size:16px;font-weight:600";
-const NOTE = "font-size:11.5px;color:#6b6482";
-const MONO = "font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482";
+const NOTE = "font-size:12px;color:#6b6482";
+const MONO = "font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482";
 const LINK = "font-size:12px;font-weight:700;color:#6C2BF2;cursor:pointer;background:none;border:0;padding:0;font-family:inherit";
 const INPUT = "font:inherit;font-size:13px;font-weight:600;padding:10px 12px;border:1px solid #e6e1f2;border-radius:11px;background:#faf9fe;color:#1c1440;min-height:44px;width:100%;box-sizing:border-box";
 const PRIMARY = "cursor:pointer;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;color:#fff;background:#6C2BF2;border:0;border-radius:999px;padding:10px 18px;min-height:44px";
@@ -107,7 +107,7 @@ function Linha({ label, note, children, tag }: { label: string; note: string; ch
   return <div style={css("display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:11px 13px;background:#faf9fe;border:1px solid #f0ecf8;border-radius:13px")}>
     <div style={css("flex:1 1 260px;min-width:200px;display:flex;flex-direction:column;gap:2px")}>
       <span style={css("display:flex;align-items:center;gap:8px;flex-wrap:wrap")}><span style={css("font-size:13px;font-weight:700")}>{label}</span>{tag}</span>
-      <span style={css("font-size:11.5px;line-height:1.45;color:#6b6482")}>{note}</span>
+      <span style={css("font-size:12px;line-height:1.45;color:#6b6482")}>{note}</span>
     </div>
     {children}
   </div>;
@@ -251,7 +251,7 @@ export default function PerfilPage({ role }: { role: ShellRole }) {
         <div style={css("display:flex;align-items:baseline;gap:10px;flex-wrap:wrap")}><span style={css(H2)}>O que é seu para mudar</span><span style={css("flex:1")}/><span style={css(NOTE)}>nome completo, vínculo e perfil de acesso só mudam em Pessoas</span></div>
         <div className="pf-fields">
           {campos.map((f) => <label key={f.label} style={css("display:flex;flex-direction:column;gap:5px")}>
-            <span style={css("display:flex;gap:8px;align-items:center")}><span style={css(MONO)}>{f.label}</span><span style={css("font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:#6C2BF2;background:#f1ebfe;padding:2px 7px;border-radius:5px")}>{f.tag}</span></span>
+            <span style={css("display:flex;gap:8px;align-items:center")}><span style={css(MONO)}>{f.label}</span><span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#6C2BF2;background:#f1ebfe;padding:2px 7px;border-radius:5px")}>{f.tag}</span></span>
             <input aria-label={f.label} type={f.type} autoComplete={f.auto} value={f.value} onChange={(e) => f.set(e.target.value)} style={css(INPUT)} />
           </label>)}
         </div>
@@ -263,9 +263,9 @@ export default function PerfilPage({ role }: { role: ShellRole }) {
       <div style={css(CARD + ";gap:13px")}>
         <div style={css("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
           <span style={css(H2)}>Quem vê o que sobre você</span>
-          <span style={css("font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#B03C7D;background:#fbeaf3;padding:4px 9px;border-radius:6px")}>Sua escolha, de ninguém mais</span>
+          <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#B03C7D;background:#fbeaf3;padding:4px 9px;border-radius:6px")}>Sua escolha, de ninguém mais</span>
           <span style={css("flex:1")}/>
-          {salvo && <span role="status" style={css("font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px;border-radius:999px;color:#0E8F86;background:#e3f4f1")}>{salvo}</span>}
+          {salvo && <span role="status" style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px;border-radius:999px;color:#0E8F86;background:#e3f4f1")}>{salvo}</span>}
         </div>
         <Linha label="Telefone" note="quem consegue ligar para você direto do cartão do grupo"><Opcoes rotulo="Quem vê seu telefone" valor={privacidade.tel} opcoes={NIVEIS} onPick={(v) => void preferencias({ privacidade: { tel: v } })}/></Linha>
         <Linha label="E-mail" note="aparece no cartão de quem pode ver"><Opcoes rotulo="Quem vê seu e-mail" valor={privacidade.mail} opcoes={NIVEIS} onPick={(v) => void preferencias({ privacidade: { mail: v } })}/></Linha>
@@ -279,14 +279,14 @@ export default function PerfilPage({ role }: { role: ShellRole }) {
       <div style={css(CARD + ";gap:12px")}>
         <div style={css("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
           <span style={css(H2)}>Como o My ASA te avisa</span>
-          <span style={css("font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6b6482;background:#f0eef5;padding:4px 9px;border-radius:6px")}>Sem chave para desligar</span>
+          <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6b6482;background:#f0eef5;padding:4px 9px;border-radius:6px")}>Sem chave para desligar</span>
         </div>
         <span style={css("font-size:12px;line-height:1.5;color:#5b5473")}>{role === "adm" ? "É a lista que vale para a casa inteira; cada pessoa vê a mesma no perfil dela, em leitura." : "Você não desliga nada disso, e ninguém desliga por você. A casa decide o que interrompe; aqui você confere o que vai chegar."}</span>
-        {janela && <Linha label="Silêncio noturno" tag={<span style={css("font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#0E8F86;background:#e3f4f1;padding:3px 7px;border-radius:5px")}>A única coisa sua aqui</span>}
+        {janela && <Linha label="Silêncio noturno" tag={<span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#0E8F86;background:#e3f4f1;padding:3px 7px;border-radius:5px")}>A única coisa sua aqui</span>}
           note={!janela.on ? "Desligado: tudo chega na hora que acontece, de madrugada inclusive." : `${semSilencioProprio ? "Você segue o horário da casa. " : ""}Nesse intervalo o push espera a manhã — aviso marcado como urgente e troca de última hora atravessam de qualquer forma.`}>
           <div style={css("display:flex;align-items:center;gap:7px;flex:none")}>
             <input aria-label="Silêncio começa" type="time" value={silDe} disabled={!janela.on} onChange={(e) => setSilDe(e.target.value)} style={css("width:96px;border:1px solid #e6e1f2;border-radius:9px;padding:8px 8px;font:700 12.5px 'JetBrains Mono',monospace;color:#3d3559;background:#fff;min-height:40px")}/>
-            <span style={css("font-size:11.5px;color:#6b6482")}>às</span>
+            <span style={css("font-size:12px;color:#6b6482")}>às</span>
             <input aria-label="Silêncio termina" type="time" value={silAte} disabled={!janela.on} onChange={(e) => setSilAte(e.target.value)} style={css("width:96px;border:1px solid #e6e1f2;border-radius:9px;padding:8px 8px;font:700 12.5px 'JetBrains Mono',monospace;color:#3d3559;background:#fff;min-height:40px")}/>
             <button type="button" role="switch" aria-checked={janela.on} aria-label="Silêncio noturno ligado" onClick={() => void preferencias({ silencio: { ...janela, on: !janela.on } })}
               style={css("cursor:pointer;flex:none;width:54px;min-height:44px;background:none;border:none;padding:0;display:flex;align-items:center;justify-content:center")}>
@@ -306,8 +306,8 @@ export default function PerfilPage({ role }: { role: ShellRole }) {
         <div style={css("display:flex;flex-direction:column")}>
           {avisos.map((n, i) => <div key={n.label} style={css("display:flex;align-items:center;gap:11px;padding:11px 2px;" + (i ? "border-top:1px solid #f5f2fa;" : ""))}>
             <span style={css("flex:none;width:7px;height:7px;border-radius:50%;background:" + (n.how === "push" ? "#6C2BF2" : "#d8d2e6"))}/>
-            <span style={css("flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px")}><span style={css("font-size:13px;font-weight:600")}>{n.label}</span><span style={css("font-size:11px;color:#6b6482")}>{n.sub}</span></span>
-            <span style={css("flex:none;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;border-radius:6px;" + (n.how === "push" ? "color:#6C2BF2;background:#f1ebfe;" : "color:#6b6482;background:#f4f2fa;"))}>{n.how}</span>
+            <span style={css("flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px")}><span style={css("font-size:13px;font-weight:600")}>{n.label}</span><span style={css("font-size:12px;color:#6b6482")}>{n.sub}</span></span>
+            <span style={css("flex:none;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;border-radius:6px;" + (n.how === "push" ? "color:#6C2BF2;background:#f1ebfe;" : "color:#6b6482;background:#f4f2fa;"))}>{n.how}</span>
           </div>)}
         </div>
       </div>
@@ -315,7 +315,7 @@ export default function PerfilPage({ role }: { role: ShellRole }) {
       {role === "adm" && regras && <div style={css("background:#6C2BF20a;border:1px solid #6C2BF233;border-radius:16px;padding:15px 18px;display:flex;flex-direction:column;gap:12px")}>
         <div style={css("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
           <span style={css(H2)}>Regras da organização</span>
-          <span style={css("font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6C2BF2;background:#6C2BF21a;padding:4px 9px;border-radius:6px")}>vale para todo mundo</span>
+          <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6C2BF2;background:#6C2BF21a;padding:4px 9px;border-radius:6px")}>vale para todo mundo</span>
         </div>
         <span style={css("font-size:12.5px;line-height:1.5;color:#4a4363")}>Isto não é preferência sua — é como o My ASA se comporta para a casa inteira. Só a Administração muda, e cada mudança fica no Registro com nome e hora.</span>
         <Linha label="Lembrete de check-in" note="quanto antes do primeiro bloco de cada pessoa o push de check-in chega">

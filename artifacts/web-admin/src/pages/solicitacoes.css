@@ -52,3 +52,7 @@
   .sol-lista{padding:2px 14px}
 }
 .sol-erro{margin:0;border-radius:10px;background:#fff0f2;color:#b42340;padding:9px 12px;font-size:13px;line-height:1.4}
+
+/* Revisão de layout: nenhum texto abaixo de 12 px. */
+.sol-abas b{font-size:12px}
+.sol-estado{font-size:12px}

@@ -209,3 +209,17 @@
 .comm-document-icon small,.comm-document>div>small,.comm-document footer span,.comm-pending-url{font-size:12px}
 .comm-note[role="status"]{display:flex;align-items:center;gap:12px;margin:0;padding:12px 14px;border:1px solid #bfe3dd;border-radius:14px;background:#e9f6f3;color:#075d57;font-size:14px;line-height:1.45}
 .comm-note[role="status"] button{flex:none;margin-left:auto}
+
+/* Revisão de layout: nenhum texto abaixo de 12 px. */
+.comm-pinned>header,.comm-feed-title{font-size:12px}
+.comm-post-badge{font-size:12px}
+.comm-messages-head span,.comm-library-head span{font-size:12px}
+.comm-chat>aside>b{font-size:12px}
+.comm-thread small{font-size:12px}
+.comm-document-icon small{font-size:12px}
+.comm-document>div>small{font-size:12px}
+.comm-document footer span{font-size:12px}
+.comm-metrics span{font-size:12px}
+.comm-thread-filters button{font-size:12px}
+.comm-event-date{font-size:12px}
+.comm-datas small{font-size:12px}

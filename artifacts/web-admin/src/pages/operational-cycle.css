@@ -1331,3 +1331,22 @@
     width: 100%;
   }
 }
+
+/* Revisão de layout: texto mínimo de 12 px nos rótulos do ciclo. */
+.cycle-kicker{font-size:12px}
+
+/* Revisão de layout: nenhum texto abaixo de 12 px. */
+.cycle-kicker{font-size:12px}
+.cycle-week span{font-size:12px}
+.cycle-dot{font-size:12px}
+.cycle-person-key > b{font-size:12px}
+.cycle-tag{font-size:12px}
+.cycle-check-person > b{font-size:12px}
+.cycle-check-person i{font-size:12px}
+.cycle-filter{font-size:12px}
+.cycle-folga-dias small{font-size:12px}
+
+/* Revisão de layout: alvos de toque de 44 px nas abas do ciclo. */
+.cycle-tabs button{min-height:44px}
+
+.cycle-info-button{min-height:44px}

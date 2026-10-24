@@ -28,7 +28,7 @@ const TONES: Record<Tom, { bg: string; fg: string }> = {
   mute: { bg: "var(--asa-mute-bg)", fg: "var(--asa-label)" },
   mine: { bg: "var(--asa-mine-bg)", fg: "var(--asa-mine-fg)" },
 };
-const MONO_LABEL = "font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--asa-label)";
+const MONO_LABEL = "font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--asa-label)";
 const WEEKDAY = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
 const MONTH = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const dataLonga = (iso: string) => { const [y, m, d] = iso.split("-").map(Number); return `${WEEKDAY[new Date(y, m - 1, d).getDay()]}, ${d} de ${MONTH[m - 1]}`; };
@@ -107,12 +107,12 @@ export default function MeuDiaPage({ role }: { role: Role }) {
           <div style={css("display:flex;align-items:center;gap:10px")}>
             <span style={css(MONO_LABEL)}>{dia.proximo.rotulo}</span>
             <span style={css("flex:1")}/>
-            <Link href={dia.proximo.href} className="md-hit" style={css("font-size:11.5px;font-weight:600;color:var(--asa-purple);text-decoration:none")}>{dia.proximo.link}</Link>
+            <Link href={dia.proximo.href} className="md-hit" style={css("font-size:12px;font-weight:600;color:var(--asa-purple);text-decoration:none")}>{dia.proximo.link}</Link>
           </div>
           <div style={css("display:flex;align-items:center;gap:16px;flex-wrap:wrap")}>
             <div style={css("display:flex;flex-direction:column;align-items:center;gap:2px;flex:none;width:74px")}>
               <span style={css("font-family:Outfit,sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.02em")}>{dia.proximo.time}</span>
-              <span style={css("font-size:11px;color:var(--asa-label)")}>{dia.proximo.rel}</span>
+              <span style={css("font-size:12px;color:var(--asa-label)")}>{dia.proximo.rel}</span>
             </div>
             <span style={css("width:3px;align-self:stretch;border-radius:3px;background:linear-gradient(var(--asa-purple),var(--asa-aula-fg))")}/>
             <div style={css("display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 160px")}>
@@ -120,7 +120,7 @@ export default function MeuDiaPage({ role }: { role: Role }) {
               <span style={css("font-size:13px;color:var(--asa-label)")}>{dia.proximo.sub}</span>
             </div>
             <span style={css("flex:1")}/>
-            {dia.proximo.chips.map((c) => <span key={c} style={css("font-size:11.5px;font-weight:600;color:var(--asa-ink-medium);background:var(--asa-chip-pale);border-radius:999px;padding:5px 11px")}>{c}</span>)}
+            {dia.proximo.chips.map((c) => <span key={c} style={css("font-size:12px;font-weight:600;color:var(--asa-ink-medium);background:var(--asa-chip-pale);border-radius:999px;padding:5px 11px")}>{c}</span>)}
           </div>
         </div>}
 
@@ -128,7 +128,7 @@ export default function MeuDiaPage({ role }: { role: Role }) {
           <div style={css("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
             <span style={css(MONO_LABEL)}>{dia.linhaDoTempo.rotulo}</span>
             <span style={css("flex:1")}/>
-            <span style={css("font-size:11.5px;color:var(--asa-label)")}>{dia.linhaDoTempo.dica}</span>
+            <span style={css("font-size:12px;color:var(--asa-label)")}>{dia.linhaDoTempo.dica}</span>
           </div>
           <div style={css("display:flex;flex-direction:column;gap:2px")}>
             {dia.linhaDoTempo.itens.map((t, i) => {
@@ -140,7 +140,7 @@ export default function MeuDiaPage({ role }: { role: Role }) {
                   <span style={css("font-size:13.5px;font-weight:600;min-width:0")}>{t.title}</span>
                   <span style={css("font-size:12px;color:var(--asa-label)")}>{t.sub}</span>
                 </span>
-                {t.tag && <span style={css("font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:" + T.bg + ";color:" + T.fg + ";font-family:'JetBrains Mono',monospace;white-space:nowrap;margin-left:auto")}>{t.tag}</span>}
+                {t.tag && <span style={css("font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:" + T.bg + ";color:" + T.fg + ";font-family:'JetBrains Mono',monospace;white-space:nowrap;margin-left:auto")}>{t.tag}</span>}
               </>;
               // Sem quebra, a etiqueta (até 140 px) espremia o nome do local em 60 px no celular; agora ela desce para a direita.
               const rowStyle = "display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 8px;border-radius:10px;text-decoration:none;color:inherit;" + (t.tone === "mine" ? "background:var(--asa-mine-row);" : "");
@@ -164,7 +164,7 @@ export default function MeuDiaPage({ role }: { role: Role }) {
                 <span style={css("flex:none;width:26px;height:26px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;background:" + T.bg + ";color:" + T.fg + ";")}>{p.count}</span>
                 <div style={css("display:flex;flex-direction:column;gap:2px;min-width:0")}>
                   <span style={css("font-size:13px;font-weight:600")}>{p.title}</span>
-                  <span style={css("font-size:11.5px;color:var(--asa-label)")}>{p.sub}</span>
+                  <span style={css("font-size:12px;color:var(--asa-label)")}>{p.sub}</span>
                 </div>
               </Link>;
             })}
@@ -176,7 +176,7 @@ export default function MeuDiaPage({ role }: { role: Role }) {
           <div style={css("display:flex;align-items:center;gap:8px")}>
             <span style={css("font-family:Outfit,sans-serif;font-size:15px;font-weight:600")}>Mural</span>
             <span style={css("flex:1")}/>
-            <Link href="/mural" className="md-hit" style={css("font-size:11.5px;font-weight:600;color:var(--asa-purple);text-decoration:none")}>abrir o Mural</Link>
+            <Link href="/mural" className="md-hit" style={css("font-size:12px;font-weight:600;color:var(--asa-purple);text-decoration:none")}>abrir o Mural</Link>
           </div>
           <div style={css("display:flex;flex-direction:column;gap:8px")}>
             {dia.mural.map((m, i) => <div key={i} style={css("display:flex;align-items:center;gap:9px")}>
@@ -189,9 +189,9 @@ export default function MeuDiaPage({ role }: { role: Role }) {
       </div>
     </div>
     <footer style={css("display:flex;align-items:center;gap:8px;padding:8px 20px;border-top:1px solid var(--asa-border-soft);background:#fff;min-height:40px;box-sizing:border-box")}>
-      <span style={css("font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--asa-label)")}>My ASA</span>
+      <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--asa-label)")}>My ASA</span>
       <span style={css("flex:1")}/>
-      <span style={css("font-size:11px;color:var(--asa-label)")}>{`${dataLonga(dia.data)} · atualizado às ${dia.hora}`}</span>
+      <span style={css("font-size:12px;color:var(--asa-label)")}>{`${dataLonga(dia.data)} · atualizado às ${dia.hora}`}</span>
     </footer>
   </section>;
 }

@@ -138,3 +138,14 @@ button.msg-visto{cursor:pointer;min-height:24px;text-decoration:underline;text-u
   .msg-lista>header h2{font-size:21px}
   .msg-picker button{width:38px;height:38px}
 }
+
+/* Revisão de layout: nenhum texto abaixo de 12 px. */
+.msg-lista>header span{font-size:12px}
+.msg-item-lado small{font-size:12px}
+.msg-item-lado b{font-size:12px}
+.msg-citada b{font-size:12px}
+.msg-meta{font-size:12px}
+.msg-figurinhas button{font-size:12px}
+
+/* Revisão de layout: alvos de toque de 44 px nos filtros e no atalho. */
+.msg-filtros button,.msg-gestao{min-height:44px}

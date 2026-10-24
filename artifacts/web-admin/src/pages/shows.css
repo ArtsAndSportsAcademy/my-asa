@@ -204,3 +204,42 @@
   .official-book-grid.structure-hidden>.official-stage{grid-column:1!important}
 }
 @media(max-width:1100px){.official-structure-toggle{display:none}}
+
+/* Revisão de layout: nenhum texto abaixo de 12 px. */
+.asa-review-sidebar{font-size:12px}
+.character-summary-row>span,.character-warning{font-size:12px}
+.character-mode{font-size:12px}
+.character-card h3{font-size:12px}
+.character-queue b{font-size:12px}
+.character-show span{font-size:12px}
+.stage-frames>header{font-size:12px}
+.stage-frame small{font-size:12px}
+.stage-shape i{font-size:12px}
+.drive-links small{font-size:12px}
+.drive-kind{font-size:12px}
+.version-row b{font-size:12px}
+.version-row small{font-size:12px}
+.queue-editor li>b{font-size:12px}
+.queue-editor li>small{font-size:12px}
+.queue-options small{font-size:12px}
+.asa-mini{font-size:12px}
+.official-scenes>li>button>b{font-size:12px}
+.official-slot-group h3{font-size:12px}
+.official-slot>b{font-size:12px}
+.official-slot em{font-size:12px}
+.official-map-controls strong{font-size:12px}
+.official-stage-presets button,.official-zone-controls button{font-size:12px}
+.official-zone-controls>span{font-size:12px}
+.official-zone-controls button{font-size:12px}
+.official-main-map .stage-zone{font-size:12px}
+.official-slot-card header span{font-size:12px}
+.official-slot-card dd li b{font-size:12px}
+.publish-diff span{font-size:12px}
+/* O alvo continua com 44 px; somente a sigla dentro do disco de 20 px é compacta. */ .official-main-map .stage-marker{font-size:12px}
+.official-history strong{font-size:12px}
+.show-session-tag{font-size:12px}
+.official-main-map .stage-marker-dot{font-size:12px}
+.official-main-map .stage-marker.per .stage-marker-dot{font-size:12px}
+.official-reservas header strong{font-size:12px}
+.official-reservas li b{font-size:12px}
+.reserva-escolhidas span b{font-size:12px}

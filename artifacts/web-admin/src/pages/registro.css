@@ -24,3 +24,8 @@
 @keyframes rg-pulse{from{background-position:200% 0}to{background-position:-200% 0}}
 @media (prefers-reduced-motion:reduce){.rg-skel{animation:none}}
 @media(max-width:720px){.rg-root{padding:14px 16px 96px}.rg-detalhe{padding:4px 14px 14px}.rg-detalhe tbody th{width:34%}}
+
+/* Revisão de layout: texto mínimo de 12 px e botões de período com 44 px. */
+.rg-chip,.rg-tecnico{font-size:12px}
+.rg-detalhe thead th{font-size:12px}
+.rg-pill{min-height:44px}
