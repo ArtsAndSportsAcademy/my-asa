@@ -5,7 +5,7 @@
 .analise h3{margin:0 0 4px;font:700 13px Outfit,sans-serif;color:#1c1440}
 .analise p{margin:0;font-size:13px;line-height:1.5;color:#3d3559;overflow-wrap:anywhere}
 .analise small{color:#6b6482;font-size:12px}
-.analise-rotulo{margin-top:8px!important;font:700 11px 'JetBrains Mono',monospace!important;letter-spacing:.08em;text-transform:uppercase;color:#6b6482!important}
+.analise-rotulo{margin-top:8px!important;font:700 12px 'JetBrains Mono',monospace!important;letter-spacing:.08em;text-transform:uppercase;color:#6b6482!important}
 .analise-resultado{margin-top:10px!important;padding:8px 10px;border-radius:10px}
 .analise-resultado.ok{background:#e3f4f1;color:#0a6f68!important}
 .analise-resultado.nao{background:#fdecef;color:#a52a41!important}

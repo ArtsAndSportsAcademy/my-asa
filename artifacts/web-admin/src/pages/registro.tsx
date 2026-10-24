@@ -18,7 +18,7 @@ type Pessoa = { id: string; name?: string; displayName?: string; fullName?: stri
 
 const PAGE = 50;
 const CARD = "background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:14px 16px";
-const MONO = "font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#6b6482";
+const MONO = "font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482";
 const INPUT = "font:inherit;font-size:13px;padding:9px 12px;border:1px solid #e6e1f2;border-radius:11px;background:#fff;color:#1c1440;min-height:44px";
 
 const PERIODOS = [

@@ -99,7 +99,7 @@
 
 .cycle-kicker {
   display: block;
-  font: 700 11px 'JetBrains Mono', monospace;
+  font: 700 12px 'JetBrains Mono', monospace;
   letter-spacing: .14em;
   text-transform: uppercase;
   color: var(--asa-label);
@@ -165,7 +165,7 @@
 .cycle-week span {
   padding: 6px;
   text-align: center;
-  font: 700 11px 'JetBrains Mono', monospace;
+  font: 700 12px 'JetBrains Mono', monospace;
   color: var(--asa-label);
 }
 
@@ -203,7 +203,7 @@
 .cycle-dot {
   width: 20px;
   height: 20px;
-  font: 700 10px 'JetBrains Mono', monospace;
+  font: 700 12px 'JetBrains Mono', monospace;
 }
 
 .cycle-calendar-card footer {
@@ -232,7 +232,7 @@
   border-radius: 8px;
   color: var(--asa-purple-dark);
   background: var(--asa-purple-surface);
-  font: 700 10px 'JetBrains Mono', monospace;
+  font: 700 12px 'JetBrains Mono', monospace;
 }
 
 .cycle-person-key small {
@@ -285,7 +285,7 @@
   background: var(--asa-purple-muted);
   color: var(--asa-label);
   padding: 4px 8px;
-  font: 700 11px 'JetBrains Mono', monospace;
+  font: 700 12px 'JetBrains Mono', monospace;
   text-transform: uppercase;
 }
 
@@ -456,13 +456,13 @@
   border-radius: 50%;
   background: var(--asa-purple-surface);
   color: var(--asa-purple-dark);
-  font: 700 10px 'JetBrains Mono', monospace;
+  font: 700 12px 'JetBrains Mono', monospace;
 }
 
 .cycle-check-person i {
   font-style: normal;
   color: var(--asa-label);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .cycle-check-person.checked_in {
@@ -668,7 +668,7 @@
   .cycle-dot {
     width: 17px;
     height: 17px;
-    font-size: 9px;
+    font-size: 12px;
   }
 
   .cycle-calendar-card {
@@ -742,7 +742,8 @@
   border: 0;
   background: transparent;
   color: var(--asa-label);
-  padding: 9px 12px;
+  min-height: 44px;
+  padding: 0 12px;
   font: inherit;
   white-space: nowrap;
   cursor: pointer;
@@ -758,10 +759,11 @@
   display: grid;
   gap: 4px;
   color: var(--asa-label);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .cycle-filter input {
+  min-height: 44px;
   border: 1px solid var(--asa-line);
   border-radius: 8px;
   padding: 7px 9px;
@@ -866,6 +868,7 @@
 }
 
 .cycle-info-button {
+  position: relative;
   display: inline-grid;
   place-items: center;
   width: 30px;
@@ -1015,7 +1018,7 @@
 }
 
 .cycle-folga-dias small {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--asa-label);
 }
 
@@ -1350,3 +1353,19 @@
 .cycle-tabs button{min-height:44px}
 
 .cycle-info-button{min-height:44px}
+
+/* Celular: a fila de abas rola de lado; o esmaecido à direita avisa que há mais abas escondidas. */
+@media (max-width: 720px) {
+  .cycle-tabs {
+    scrollbar-width: none;
+    mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+  }
+  .cycle-tabs::-webkit-scrollbar { display: none; }
+}
+
+/* Botão "i" continua pequeno no desenho, mas a área de toque chega a 44 px. */
+.cycle-info-button::after {
+  content: "";
+  position: absolute;
+  inset: -7px;
+}

@@ -1,7 +1,6 @@
 ﻿import { useCallback, useEffect, useState } from "react";
 import { Link } from "wouter";
 import { ApiError, customFetch } from "@workspace/api-client-react";
-import { css } from "@/lib/dc-style";
 import { semRede } from "@/lib/sem-rede";
 import { REVIEW_PERSON } from "@/lib/amostra";
 import { sampleDia, todayISO } from "@/lib/review-escala";
@@ -22,13 +21,6 @@ type MeuDia = {
   mural: { icone: string; texto: string }[];
 };
 
-const TONES: Record<Tom, { bg: string; fg: string }> = {
-  ok: { bg: "var(--asa-teal-surface)", fg: "var(--asa-ok-fg)" },
-  warn: { bg: "var(--asa-warn-bg)", fg: "var(--asa-warn-fg)" },
-  mute: { bg: "var(--asa-mute-bg)", fg: "var(--asa-label)" },
-  mine: { bg: "var(--asa-mine-bg)", fg: "var(--asa-mine-fg)" },
-};
-const MONO_LABEL = "font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--asa-label)";
 const WEEKDAY = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
 const MONTH = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const dataLonga = (iso: string) => { const [y, m, d] = iso.split("-").map(Number); return `${WEEKDAY[new Date(y, m - 1, d).getDay()]}, ${d} de ${MONTH[m - 1]}`; };
@@ -76,122 +68,98 @@ export default function MeuDiaPage({ role }: { role: Role }) {
     } finally { setSaving(false); }
   };
 
-  if (loading && !dia) return <section className="md-root" aria-busy="true" style={css("padding:18px 20px")}><div className="md-skeleton"/><div className="md-skeleton"/><div className="md-skeleton"/></section>;
-  if (error || !dia) return <section className="md-root" style={css("padding:18px 20px")}>
-    <div role="alert" style={css("display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--asa-line);border-radius:16px;padding:16px 18px")}>
-      <img src={mascote("duvida")} alt="" style={css("width:44px;height:44px;object-fit:contain;flex:none")}/>
-      <span style={css("font-size:13.5px;color:var(--asa-ink-medium);flex:1")}>{error || "Não consegui montar o seu dia agora."}</span>
-      <button type="button" className="md-hit" onClick={load} style={css("border:1px solid var(--asa-line);background:#fff;color:var(--asa-ink-medium);border-radius:999px;padding:9px 16px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:Manrope,sans-serif")}>Tentar de novo</button>
+  if (loading && !dia) return <section className="md-root" aria-busy="true"><div className="md-page"><div className="md-skeleton"/><div className="md-skeleton"/><div className="md-skeleton"/></div></section>;
+  if (error || !dia) return <section className="md-root"><div className="md-page">
+    <div role="alert" className="md-card md-error">
+      <img src={mascote("duvida")} alt="" className="md-error-img"/>
+      <span className="md-error-text">{error || "Não consegui montar o seu dia agora."}</span>
+      <button type="button" className="md-hit md-btn-ghost" onClick={load}>Tentar de novo</button>
     </div>
-  </section>;
+  </div></section>;
 
   const acao = dia.saudacao.acao;
-  const primaryStyle = "border:none;cursor:pointer;font-family:Manrope,sans-serif;font-weight:700;border-radius:999px;padding:11px 20px;font-size:13.5px;background:#fff;color:var(--asa-cta-fg);text-decoration:none;white-space:nowrap;flex:none";
   return <section className="md-root">
-    <div className="md-grid" style={css("padding:18px 20px;display:grid;grid-template-columns:1fr 296px;gap:16px;align-content:start")}>
-      <div style={css("display:flex;flex-direction:column;gap:14px;min-width:0")}>
-        <div className="md-hero" style={css("display:flex;align-items:center;gap:16px;background:linear-gradient(120deg,var(--asa-deep),var(--asa-hero-to));border-radius:18px;padding:16px 20px;color:#fff")}>
-          <img src={mascote(dia.saudacao.mascote)} alt="ASA" style={css("width:82px;height:82px;object-fit:contain;flex:none")}/>
-          <div style={css("display:flex;flex-direction:column;gap:5px;min-width:0")}>
-            <span style={css("font-family:Outfit,sans-serif;font-size:22px;font-weight:600;letter-spacing:-0.01em")}>{dia.saudacao.titulo}</span>
-            <span style={css("font-size:13.5px;line-height:1.5;color:var(--asa-hero-text);text-wrap:pretty")}>{dia.saudacao.texto}</span>
-            {aviso && <span role="alert" style={css("font-size:12.5px;line-height:1.45;color:var(--asa-hero-alert)")}>{aviso}</span>}
+    <div className="md-page md-grid">
+      <div className="md-col">
+        <div className="md-hero">
+          <img src={mascote(dia.saudacao.mascote)} alt="ASA" className="md-hero-img"/>
+          <div className="md-hero-text">
+            <h2>{dia.saudacao.titulo}</h2>
+            <p>{dia.saudacao.texto}</p>
+            {aviso && <p role="alert" className="md-hero-alert">{aviso}</p>}
           </div>
-          <span style={css("flex:1")}/>
           {acao && ("checkIn" in acao
-            ? <button type="button" className="md-hit" disabled={saving || review} onClick={() => void checkIn(acao.checkIn)} style={css(primaryStyle)}>{saving ? "Registrando…" : acao.label}</button>
-            : <Link href={acao.href} className="md-hit" style={css(primaryStyle)}>{acao.label}</Link>)}
+            ? <button type="button" className="md-hit md-hero-cta" disabled={saving || review} onClick={() => void checkIn(acao.checkIn)}>{saving ? "Registrando…" : acao.label}</button>
+            : <Link href={acao.href} className="md-hit md-hero-cta">{acao.label}</Link>)}
         </div>
 
-        {dia.proximo && <div style={css("background:#fff;border:1px solid var(--asa-line);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:12px")}>
-          <div style={css("display:flex;align-items:center;gap:10px")}>
-            <span style={css(MONO_LABEL)}>{dia.proximo.rotulo}</span>
-            <span style={css("flex:1")}/>
-            <Link href={dia.proximo.href} className="md-hit" style={css("font-size:12px;font-weight:600;color:var(--asa-purple);text-decoration:none")}>{dia.proximo.link}</Link>
+        {dia.proximo && <div className="md-card">
+          <div className="md-card-head">
+            <span className="md-label">{dia.proximo.rotulo}</span>
+            <Link href={dia.proximo.href} className="md-hit md-link">{dia.proximo.link}</Link>
           </div>
-          <div style={css("display:flex;align-items:center;gap:16px;flex-wrap:wrap")}>
-            <div style={css("display:flex;flex-direction:column;align-items:center;gap:2px;flex:none;width:74px")}>
-              <span style={css("font-family:Outfit,sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.02em")}>{dia.proximo.time}</span>
-              <span style={css("font-size:12px;color:var(--asa-label)")}>{dia.proximo.rel}</span>
-            </div>
-            <span style={css("width:3px;align-self:stretch;border-radius:3px;background:linear-gradient(var(--asa-purple),var(--asa-aula-fg))")}/>
-            <div style={css("display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 160px")}>
-              <span style={css("font-family:Outfit,sans-serif;font-size:17px;font-weight:600")}>{dia.proximo.title}</span>
-              <span style={css("font-size:13px;color:var(--asa-label)")}>{dia.proximo.sub}</span>
-            </div>
-            <span style={css("flex:1")}/>
-            {dia.proximo.chips.map((c) => <span key={c} style={css("font-size:12px;font-weight:600;color:var(--asa-ink-medium);background:var(--asa-chip-pale);border-radius:999px;padding:5px 11px")}>{c}</span>)}
+          <div className="md-next">
+            <div className="md-next-time"><b>{dia.proximo.time}</b><span>{dia.proximo.rel}</span></div>
+            <span className="md-next-bar" aria-hidden="true"/>
+            <div className="md-next-text"><b>{dia.proximo.title}</b><span>{dia.proximo.sub}</span></div>
+            {dia.proximo.chips.length > 0 && <div className="md-chips">{dia.proximo.chips.map((c) => <span key={c} className="md-chip">{c}</span>)}</div>}
           </div>
         </div>}
 
-        <div style={css("background:#fff;border:1px solid var(--asa-line);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:12px;min-height:0")}>
-          <div style={css("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
-            <span style={css(MONO_LABEL)}>{dia.linhaDoTempo.rotulo}</span>
-            <span style={css("flex:1")}/>
-            <span style={css("font-size:12px;color:var(--asa-label)")}>{dia.linhaDoTempo.dica}</span>
+        <div className="md-card">
+          <div className="md-card-head">
+            <span className="md-label">{dia.linhaDoTempo.rotulo}</span>
+            <span className="md-note">{dia.linhaDoTempo.dica}</span>
           </div>
-          <div style={css("display:flex;flex-direction:column;gap:2px")}>
+          <div className="md-timeline">
             {dia.linhaDoTempo.itens.map((t, i) => {
-              const T = TONES[t.tone];
               const row = <>
-                <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--asa-label);width:46px;flex:none")}>{t.time}</span>
-                <span style={css("width:8px;height:8px;border-radius:50%;flex:none;background:" + T.fg + ";" + (t.tone === "mute" ? "opacity:.5;" : ""))}/>
-                <span style={css("display:flex;flex-wrap:wrap;align-items:baseline;column-gap:10px;flex:1 1 150px;min-width:0")}>
-                  <span style={css("font-size:13.5px;font-weight:600;min-width:0")}>{t.title}</span>
-                  <span style={css("font-size:12px;color:var(--asa-label)")}>{t.sub}</span>
-                </span>
-                {t.tag && <span style={css("font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:" + T.bg + ";color:" + T.fg + ";font-family:'JetBrains Mono',monospace;white-space:nowrap;margin-left:auto")}>{t.tag}</span>}
+                <span className="md-t-time">{t.time}</span>
+                <span className="md-t-dot" aria-hidden="true"/>
+                <span className="md-t-text"><b>{t.title}</b>{t.sub && <span>{t.sub}</span>}</span>
+                {t.tag && <span className="md-t-tag">{t.tag}</span>}
               </>;
-              // Sem quebra, a etiqueta (até 140 px) espremia o nome do local em 60 px no celular; agora ela desce para a direita.
-              const rowStyle = "display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 8px;border-radius:10px;text-decoration:none;color:inherit;" + (t.tone === "mine" ? "background:var(--asa-mine-row);" : "");
-              return t.href ? <Link key={i} href={t.href} className="md-row" style={css(rowStyle)}>{row}</Link> : <div key={i} style={css(rowStyle)}>{row}</div>;
+              const cls = `md-t-row tone-${t.tone}`;
+              return t.href ? <Link key={i} href={t.href} className={`${cls} md-row`}>{row}</Link> : <div key={i} className={cls}>{row}</div>;
             })}
-            {!dia.linhaDoTempo.itens.length && <span style={css("font-size:13px;color:var(--asa-label);padding:8px")}>{dia.perfil === "mem" ? "Nada na sua escala de hoje." : "Nada pedindo atenção aqui agora."}</span>}
+            {!dia.linhaDoTempo.itens.length && <p className="md-empty">{dia.perfil === "mem" ? "Nada na sua escala de hoje." : "Nada pedindo atenção aqui agora."}</p>}
           </div>
         </div>
       </div>
 
-      <div style={css("display:flex;flex-direction:column;gap:14px;min-width:0")}>
-        <div style={css("background:#fff;border:1px solid var(--asa-line);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:12px")}>
-          <div style={css("display:flex;align-items:center;gap:8px")}>
-            <img src={mascote(dia.pendencias.mascote)} alt="" style={css("width:34px;height:34px;object-fit:contain;flex:none")}/>
-            <span style={css("font-family:Outfit,sans-serif;font-size:15px;font-weight:600")}>{dia.pendencias.titulo}</span>
+      <div className="md-col">
+        <div className="md-card">
+          <div className="md-card-title">
+            <img src={mascote(dia.pendencias.mascote)} alt="" className="md-card-img"/>
+            <h3>{dia.pendencias.titulo}</h3>
           </div>
-          <div style={css("display:flex;flex-direction:column;gap:8px")}>
-            {dia.pendencias.itens.map((p, i) => {
-              const T = TONES[p.tone];
-              return <Link key={i} href={p.href} className="md-hit md-row" style={css("display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:11px;background:var(--asa-bg-page);border:1px solid var(--asa-purple-muted);text-decoration:none;color:inherit;min-height:44px")}>
-                <span style={css("flex:none;width:26px;height:26px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;background:" + T.bg + ";color:" + T.fg + ";")}>{p.count}</span>
-                <div style={css("display:flex;flex-direction:column;gap:2px;min-width:0")}>
-                  <span style={css("font-size:13px;font-weight:600")}>{p.title}</span>
-                  <span style={css("font-size:12px;color:var(--asa-label)")}>{p.sub}</span>
-                </div>
-              </Link>;
-            })}
-            {!dia.pendencias.itens.length && <span style={css("font-size:12.5px;color:var(--asa-label);line-height:1.45")}>Nada esperando por você agora.</span>}
+          <div className="md-stack">
+            {dia.pendencias.itens.map((p, i) => <Link key={i} href={p.href} className={`md-hit md-row md-pend tone-${p.tone}`}>
+              <span className="md-pend-count">{p.count}</span>
+              <span className="md-pend-text"><b>{p.title}</b><span>{p.sub}</span></span>
+            </Link>)}
+            {!dia.pendencias.itens.length && <p className="md-empty">Nada esperando por você agora.</p>}
           </div>
         </div>
 
-        <div style={css("background:#fff;border:1px solid var(--asa-line);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:10px")}>
-          <div style={css("display:flex;align-items:center;gap:8px")}>
-            <span style={css("font-family:Outfit,sans-serif;font-size:15px;font-weight:600")}>Mural</span>
-            <span style={css("flex:1")}/>
-            <Link href="/mural" className="md-hit" style={css("font-size:12px;font-weight:600;color:var(--asa-purple);text-decoration:none")}>abrir o Mural</Link>
+        <div className="md-card">
+          <div className="md-card-head">
+            <h3>Mural</h3>
+            <Link href="/mural" className="md-hit md-link">abrir o Mural</Link>
           </div>
-          <div style={css("display:flex;flex-direction:column;gap:8px")}>
-            {dia.mural.map((m, i) => <div key={i} style={css("display:flex;align-items:center;gap:9px")}>
-              <img src={mascote(m.icone)} alt="" style={css("width:26px;height:26px;object-fit:contain;flex:none")}/>
-              <span style={css("font-size:12.5px;line-height:1.4;color:var(--asa-ink-medium);text-wrap:pretty")}>{m.texto}</span>
+          <div className="md-stack">
+            {dia.mural.map((m, i) => <div key={i} className="md-mural-item">
+              <img src={mascote(m.icone)} alt="" className="md-mural-img"/>
+              <span>{m.texto}</span>
             </div>)}
-            {!dia.mural.length && <span style={css("font-size:12.5px;color:var(--asa-label)")}>Nada novo no Mural.</span>}
+            {!dia.mural.length && <p className="md-empty">Nada novo no Mural.</p>}
           </div>
         </div>
       </div>
     </div>
-    <footer style={css("display:flex;align-items:center;gap:8px;padding:8px 20px;border-top:1px solid var(--asa-border-soft);background:#fff;min-height:40px;box-sizing:border-box")}>
-      <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--asa-label)")}>My ASA</span>
-      <span style={css("flex:1")}/>
-      <span style={css("font-size:12px;color:var(--asa-label)")}>{`${dataLonga(dia.data)} · atualizado às ${dia.hora}`}</span>
+    <footer className="md-foot">
+      <span className="md-foot-brand">My ASA</span>
+      <span>{`${dataLonga(dia.data)} · atualizado às ${dia.hora}`}</span>
     </footer>
   </section>;
 }
