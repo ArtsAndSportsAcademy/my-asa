@@ -152,7 +152,7 @@ export async function avisarRepublicacaoPendente(
   executor: Exec,
   scale: { id: string; operationId: string; locationId: string | null; periodStart: string; publishedAt: Date | null; republishedAt: Date | null },
   motivo: string,
-  options: { areaIds?: (string | null)[]; now?: Date } = {},
+  options: { areaIds?: (string | null)[]; now?: Date; soAdministracao?: boolean } = {},
 ) {
   const now = options.now ?? new Date();
   const admins = await executor.selectDistinct({ id: usersTable.id }).from(usersTable)
@@ -160,7 +160,8 @@ export async function avisarRepublicacaoPendente(
     .where(and(eq(userRolesTable.operationId, scale.operationId), eq(userRolesTable.role, "ADMIN"), eq(userRolesTable.active, true), eq(usersTable.status, "ACTIVE")));
   // Supervisão da área mexida naquele local; sem área conhecida, quem responde pelo local.
   const areas = [...new Set((options.areaIds ?? []).filter((id): id is string => Boolean(id)))];
-  const supervisores = scale.locationId
+  // `soAdministracao`: quem mexeu foi uma Supervisão em pessoa de outra área; a Supervisão daquela área recebe o aviso de "quem mexeu" (escala-mexidas.ts).
+  const supervisores = scale.locationId && !options.soAdministracao
     ? await executor.selectDistinct({ id: usersTable.id }).from(areaLocalSupervisorsTable)
       .innerJoin(usersTable, eq(usersTable.id, areaLocalSupervisorsTable.supervisorId))
       .where(and(eq(areaLocalSupervisorsTable.locationId, scale.locationId), eq(areaLocalSupervisorsTable.active, true), eq(usersTable.status, "ACTIVE"),

@@ -38,6 +38,7 @@ import { avisarExcecaoDeRegra, codigoDaExcecao, frasesDasRegras, verificarRegras
 import { APP_ROUTES } from "../lib/app-routes.js";
 import { VersionConflictError } from "../lib/versioning.js";
 import { viradaDoLocal } from "../lib/virada-do-dia.js";
+import { mexidasDoDia, novaColeta } from "../services/escala-mexidas.js";
 
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const DIAS_DA_SEMANA = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
@@ -56,6 +57,11 @@ async function supervisedAreas(actor: Actor, locationId: string) {
   ));
   return rows.map((r) => r.areaId);
 }
+/** A Escala do dia como a tela a recebe: a montada na leitura mais `mexidas`, quem da Supervisão mexeu em pessoa de OUTRA área (ver escala-mexidas.ts). */
+async function diaParaTela(organizationId: string, locationId: string, date: string) {
+  const dia = await montarEscalaDoDia(organizationId, locationId, date);
+  return dia ? { ...dia, mexidas: await mexidasDoDia(dia.escala?.id) } : dia;
+}
 /** Vê a grade inteira do local: Administração e Direção em qualquer local;
  * Supervisão apenas no local no qual responde por alguma área. */
 async function canReadLocal(actor: Actor, locationId: string) {
@@ -64,7 +70,7 @@ async function canReadLocal(actor: Actor, locationId: string) {
   return (await supervisedAreas(actor, locationId)).length > 0;
 }
 /** Edita a Programação do local: Administração, ou Supervisão de alguma área do local. */
-async function canManageLocal(actor: Actor, locationId: string) {
+async function canManageLocal(actor: Actor, locationId: string) { // mexer na escala de QUALQUER pessoa do local (25/10/2026): Supervisão com ao menos uma área aqui
   if (actor.role === "ADMIN") return true;
   return SUPERVISOR.includes(actor.role) && (await supervisedAreas(actor, locationId)).length > 0;
 }
@@ -98,7 +104,7 @@ router.get("/escalas/dia", requireAuth, requireOrganization, async (req, res) =>
     if (dia?.escala && escalaPublicada(dia.escala.status) && !dia.escala.alteradaDesde && (await comoPublicada(dia)).mudouDesdeAPublicacao) {
       dia.escala = { ...dia.escala, alteradaDesde: dia.escala.publishedAt ?? new Date() };
     }
-    res.json({ dia, areasSupervisionadas: await supervisedAreas(actor, locationId), podePublicar: actor.role === "ADMIN" });
+    res.json({ dia: dia ? { ...dia, mexidas: await mexidasDoDia(dia.escala?.id) } : dia, areasSupervisionadas: await supervisedAreas(actor, locationId), podePublicar: actor.role === "ADMIN" });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível montar a Escala. Tente de novo." });
@@ -171,7 +177,7 @@ router.post("/escalas/dia/gerar", requireAuth, requireOrganization, async (req, 
   try {
     const r = await gerarDiaDoLocal(actor, location, date);
     if (!r.ok) { res.status(r.status).json({ error: r.error, message: r.message }); return; }
-    res.status(201).json({ escala: r.scale, livros: r.livros.map((book) => ({ id: book.dailyBook.id, showBookId: book.dailyBook.showBookId, generated: book.generated, conflicts: book.conflicts })), dia: await montarEscalaDoDia(actor.organizationId, locationId, date) });
+    res.status(201).json({ escala: r.scale, livros: r.livros.map((book) => ({ id: book.dailyBook.id, showBookId: book.dailyBook.showBookId, generated: book.generated, conflicts: book.conflicts })), dia: await diaParaTela(actor.organizationId, locationId, date) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível gerar a Escala. Tente de novo." });
@@ -286,7 +292,7 @@ const HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
 /**
  * Horário só da pessoa (0080). Quando alguém cai em duas atividades ao mesmo tempo, além de tirar dá para mudar o horário de UMA
  * delas só para essa pessoa (treino de gelo às 10:20 para quem tem boas-vindas às 10:00). Show não muda de horário aqui: horário de show
- * é exceção, resolvida no Livro do Dia. Quem pode é quem pode ajustar a pessoa (Administração, ou a Supervisão da área dela).
+ * é exceção, resolvida no Livro do Dia. Quem pode: a Administração, ou a Supervisão do local (de qualquer área, por ora); se for pessoa de outra área, fica visível quem mexeu.
  * Com "voltar" o horário normal da atividade volta para ela. Entra no Registro; escala já publicada pede republicação e avisa.
  */
 router.post("/escalas/dia/horario", requireAuth, requireOrganization, async (req, res) => {
@@ -305,7 +311,7 @@ router.post("/escalas/dia/horario", requireAuth, requireOrganization, async (req
   try {
     const location = await locationInOrg(locationId, actor.organizationId);
     if (!location) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
-    if (!(await canManageLocal(actor, locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Você não ajusta a Escala deste local." }); return; }
+    if (!(await canManageLocal(actor, locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: `${fraseDeRecusaPorPerfil(["ADMIN", "SUPERVISOR_A"], actor.role)} Ajustar a Escala é da Administração e da Supervisão do local.` }); return; }
     const dia = await montarEscalaDoDia(actor.organizationId, locationId, date);
     const original = dia?.blocos.find((b) => b.key === sourceKey);
     const bloco = original ?? dia?.blocos.find((b) => b.horarioDela?.chaveOriginal === sourceKey && b.pessoaIds.includes(userId));
@@ -324,13 +330,10 @@ router.post("/escalas/dia/horario", requireAuth, requireOrganization, async (req
     const [pessoa] = await db.select({ id: usersTable.id, areaId: usersTable.areaId, name: usersTable.name }).from(usersTable)
       .where(and(eq(usersTable.id, userId), eq(usersTable.organizationId, actor.organizationId))).limit(1);
     if (!pessoa) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Pessoa não encontrada." }); return; }
-    const minhasAreas = await supervisedAreas(actor, locationId);
-    if (actor.role !== "ADMIN" && (!pessoa.areaId || !minhasAreas.includes(pessoa.areaId))) {
-      res.status(403).json({ error: "ACESSO_NEGADO", message: "Supervisão ajusta somente pessoas da própria área." }); return;
-    }
     const scaleAntes = await findEscalaDoDia(locationId, date);
     const operationId = scaleAntes?.operationId ?? await operationForLocation(locationId);
     if (!operationId) { res.status(409).json({ error: "LOCAL_SEM_OPERACAO", message: "Este local ainda não está ligado a uma operação." }); return; }
+    const coleta = await novaColeta(actor, locationId, date);
     const chave = `h:${sourceKey}`;
     const rotulo = alvo.rotulo;
     const resultado = await db.transaction(async (tx) => {
@@ -356,6 +359,7 @@ router.post("/escalas/dia/horario", requireAuth, requireOrganization, async (req
       }
       const faixa = (a: string, b: string | null | undefined) => (b ? `${a}–${b}` : a);
       const doOriginal = original ? faixa(original.inicio, original.fim) : bloco?.horarioDela ? faixa(bloco.horarioDela.inicio, bloco.horarioDela.fim) : "";
+      const mex = await coleta.registrar(scale.id, [{ pessoa, texto: desfazer ? `voltou ao horário normal de ${rotulo}` : `mudou o horário de ${rotulo} só para ${pessoa.name}` }]);
       await writeHistoryEvent({
         category: "SCALE", action: desfazer ? "escala.horario_restaurado" : "escala.horario_ajustado", title: desfazer ? "Horário da pessoa voltou ao normal" : "Horário só de uma pessoa mudado",
         narrative: desfazer
@@ -364,16 +368,17 @@ router.post("/escalas/dia/horario", requireAuth, requireOrganization, async (req
         entityType: "scale", entityId: scale.id, actorId: actor.sub, operationId, orgId: actor.organizationId,
         beforeState: { sourceKey, pessoaId: userId, horario: anterior ? { inicio: anterior.newStart, fim: anterior.newEnd } : null },
         afterState: { sourceKey, pessoaId: userId, horario: desfazer ? null : { inicio, fim: typeof fim === "string" ? fim : null } },
-        ...(porque ? { metadata: { reason: porque } } : {}),
+        ...(porque || Object.keys(mex).length ? { metadata: { ...(porque ? { reason: porque } : {}), ...mex } } : {}),
       }, tx as unknown as HistoryExecutor);
       if (escalaPublicada(scale.status)) {
         scale = (await tx.update(scalesTable).set({ alteradaDesde: scale.alteradaDesde ?? new Date(), updatedAt: new Date(), version: scale.version + 1 }).where(eq(scalesTable.id, scale.id)).returning())[0]!;
         await avisarRepublicacaoPendente(tx as unknown as Parameters<typeof avisarRepublicacaoPendente>[0], scale,
-          desfazer ? `${pessoa.name} voltou ao horário normal de ${rotulo}` : `${pessoa.name} mudou o horário de ${rotulo} para ${faixa(inicio, typeof fim === "string" ? fim : null)}`, { areaIds: [pessoa.areaId] });
+          desfazer ? `${pessoa.name} voltou ao horário normal de ${rotulo}` : `${pessoa.name} mudou o horário de ${rotulo} para ${faixa(inicio, typeof fim === "string" ? fim : null)}`, { areaIds: [pessoa.areaId], ...coleta.paraARepublicacao() });
       }
+      await coleta.avisar(tx as unknown as typeof db, scale);
       return { mudou: true as const, scale };
     });
-    res.json({ mudou: resultado.mudou, dia: await montarEscalaDoDia(actor.organizationId, locationId, date) });
+    res.json({ mudou: resultado.mudou, dia: await diaParaTela(actor.organizationId, locationId, date) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "ERRO_INTERNO", message: "Não consegui mudar o horário agora. Nada foi alterado; tente de novo." });
@@ -397,14 +402,11 @@ async function planejarSaida(actor: Actor, { locationId, date, userId, corte }: 
   const location = await locationInOrg(locationId, actor.organizationId);
   if (!location) return { ok: false, status: 404, body: { error: "NAO_ENCONTRADO", message: "Local não encontrado." } } satisfies ErroDaSaida;
   if (!(await canManageLocal(actor, locationId))) {
-    return { ok: false, status: 403, body: { error: "ACESSO_NEGADO", message: `${fraseDeRecusaPorPerfil(["ADMIN", "SUPERVISOR_A"], actor.role)} Tirar alguém do resto do dia é da Administração ou da Supervisão da área da pessoa.` } } satisfies ErroDaSaida;
+    return { ok: false, status: 403, body: { error: "ACESSO_NEGADO", message: `${fraseDeRecusaPorPerfil(["ADMIN", "SUPERVISOR_A"], actor.role)} Tirar alguém do resto do dia é da Administração ou da Supervisão do local.` } } satisfies ErroDaSaida;
   }
   const [pessoa] = await db.select({ id: usersTable.id, areaId: usersTable.areaId, name: usersTable.name }).from(usersTable)
     .where(and(eq(usersTable.id, userId), eq(usersTable.organizationId, actor.organizationId))).limit(1);
   if (!pessoa) return { ok: false, status: 404, body: { error: "NAO_ENCONTRADO", message: "Pessoa não encontrada." } } satisfies ErroDaSaida;
-  if (actor.role !== "ADMIN" && (!pessoa.areaId || !(await supervisedAreas(actor, locationId)).includes(pessoa.areaId))) {
-    return { ok: false, status: 403, body: { error: "ACESSO_NEGADO", message: `Supervisão tira do dia só pessoas da própria área. ${pessoa.name} não é de uma área que você supervisiona neste local; fale com a Administração ou com quem supervisiona essa área.` } } satisfies ErroDaSaida;
-  }
   const dia = await montarEscalaDoDia(actor.organizationId, locationId, date);
   const naEscala = dia?.pessoas.find((p) => p.id === userId);
   if (!dia || !naEscala) return { ok: false, status: 409, body: { error: "PESSOA_FORA_DO_DIA", message: `${pessoa.name} não faz parte da escala deste dia neste local.` } } satisfies ErroDaSaida;
@@ -465,6 +467,7 @@ router.post("/escalas/dia/saiu", requireAuth, requireOrganization, async (req, r
     const resumo = resumoDaSaida(passos, userId, aPartirDe);
     if (previa) { res.json({ simulado: true, pessoa: { id: pessoa.id, name: pessoa.name }, ...resumo }); return; }
 
+    const coleta = await novaColeta(actor, locationId, date);
     const depoisDoCommit: (() => void)[] = [];
     type Registro = { tipo: "REMOVER" | "HORARIO"; ajusteId: string; sourceKey: string; anteriorId: string | null; horarioAnteriorId?: string | null } | { tipo: "VAGA"; dailyBookId: string; assignmentId: string; sourceKey: string };
     const registros: Registro[] = [];
@@ -516,22 +519,24 @@ router.post("/escalas/dia/saiu", requireAuth, requireOrganization, async (req, r
       const publicada = escalaPublicada(scale.status);
       if (publicada) scale = (await tx.update(scalesTable).set({ alteradaDesde: scale.alteradaDesde ?? new Date(), updatedAt: new Date(), version: scale.version + 1 }).where(eq(scalesTable.id, scale.id)).returning())[0]!;
       const quantas = resumo.atividades.length;
+      const mex = await coleta.registrar(scale.id, [{ pessoa, texto: `tirou ${pessoa.name} do resto do dia a partir das ${aPartirDe}` }]);
       const saiuId = await writeHistoryEvent({
         category: "SCALE", action: "escala.saiu_no_dia", title: "Pessoa saiu no meio do dia",
         narrative: `${pessoa.name} saiu ou não vem a partir das ${aPartirDe} em ${date}: ${quantas} ${quantas === 1 ? "atividade" : "atividades"} tirada${quantas === 1 ? "" : "s"} dela${resumo.semNinguem ? `, ${resumo.semNinguem} ${resumo.semNinguem === 1 ? "posição de show ficou sem ninguém" : "posições de show ficaram sem ninguém"}` : ""}. Motivo: ${porque}.`,
         entityType: "scale", entityId: scale.id, actorId: actor.sub, operationId, orgId: actor.organizationId,
         beforeState: { pessoaId: userId, atividades: resumo.atividades.map((a) => ({ key: a.key, rotulo: a.rotulo, inicio: a.inicio, fim: a.fim })) },
         afterState: { pessoaId: userId, aPartirDe, acoes: resumo.atividades, shows: resumo.shows, registros },
-        metadata: { reason: porque, tipo: tipo ?? "OUTRO", aPartirDe, pessoaId: userId },
+        metadata: { reason: porque, tipo: tipo ?? "OUTRO", aPartirDe, pessoaId: userId, ...mex },
       }, tx as unknown as HistoryExecutor);
       if (publicada) {
         await avisarRepublicacaoPendente(tx as unknown as Parameters<typeof avisarRepublicacaoPendente>[0], scale,
-          `${pessoa.name} saiu ou não vem a partir das ${aPartirDe} (${porque})`, { areaIds: [pessoa.areaId] });
+          `${pessoa.name} saiu ou não vem a partir das ${aPartirDe} (${porque})`, { areaIds: [pessoa.areaId], ...coleta.paraARepublicacao() });
       }
+      await coleta.avisar(tx as unknown as typeof db, scale);
       return { saiuId, scale };
     });
     for (const emitir of depoisDoCommit) { try { emitir(); } catch (err) { console.error(err); } }
-    res.json({ saiuId: resultado.saiuId, pessoa: { id: pessoa.id, name: pessoa.name }, ...resumo, dia: await montarEscalaDoDia(actor.organizationId, locationId, date) });
+    res.json({ saiuId: resultado.saiuId, pessoa: { id: pessoa.id, name: pessoa.name }, ...resumo, dia: await diaParaTela(actor.organizationId, locationId, date) });
   } catch (err) {
     console.error(err);
     const conflito = err instanceof VersionConflictError;
@@ -553,7 +558,7 @@ router.post("/escalas/dia/saiu/desfazer", requireAuth, requireOrganization, asyn
   try {
     const location = await locationInOrg(locationId, actor.organizationId);
     if (!location) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
-    if (!(await canManageLocal(actor, locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: `${fraseDeRecusaPorPerfil(["ADMIN", "SUPERVISOR_A"], actor.role)} Desfazer a saída de alguém é da Administração ou da Supervisão da área da pessoa.` }); return; }
+    if (!(await canManageLocal(actor, locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: `${fraseDeRecusaPorPerfil(["ADMIN", "SUPERVISOR_A"], actor.role)} Desfazer a saída de alguém é da Administração ou da Supervisão do local.` }); return; }
     const scale = await findEscalaDoDia(locationId, date);
     const [evento] = scale ? await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.id, saiuId), eq(historyEventsTable.entityId, scale.id), eq(historyEventsTable.action, "escala.saiu_no_dia"))).limit(1) : [];
     if (!scale || !evento) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Não achei essa saída neste dia. Atualize a tela." }); return; }
@@ -561,14 +566,12 @@ router.post("/escalas/dia/saiu/desfazer", requireAuth, requireOrganization, asyn
     const userId = estado.pessoaId ?? "";
     const [pessoa] = await db.select({ id: usersTable.id, areaId: usersTable.areaId, name: usersTable.name }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
     if (!pessoa) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Pessoa não encontrada." }); return; }
-    if (actor.role !== "ADMIN" && (!pessoa.areaId || !(await supervisedAreas(actor, locationId)).includes(pessoa.areaId))) {
-      res.status(403).json({ error: "ACESSO_NEGADO", message: `Supervisão desfaz só saídas de pessoas da própria área. ${pessoa.name} não é de uma área que você supervisiona neste local.` }); return;
-    }
     const [jaDesfeito] = await db.select({ id: historyEventsTable.id }).from(historyEventsTable).where(and(
       eq(historyEventsTable.entityId, scale.id), eq(historyEventsTable.action, "escala.saiu_desfeito"), sql`${historyEventsTable.metadata}->>'saiuId' = ${saiuId}`,
     )).limit(1);
     if (jaDesfeito) { res.status(409).json({ error: "JA_DESFEITO", message: `A saída de ${pessoa.name} já foi desfeita.` }); return; }
 
+    const coleta = await novaColeta(actor, locationId, date);
     const depoisDoCommit: (() => void)[] = [];
     const naoDevolvidas: string[] = [];
     const operationId = scale.operationId;
@@ -589,20 +592,22 @@ router.post("/escalas/dia/saiu/desfazer", requireAuth, requireOrganization, asyn
       let atual = scale;
       const publicada = escalaPublicada(atual.status);
       if (publicada) atual = (await tx.update(scalesTable).set({ alteradaDesde: atual.alteradaDesde ?? new Date(), updatedAt: new Date(), version: atual.version + 1 }).where(eq(scalesTable.id, atual.id)).returning())[0]!;
+      const mex = await coleta.registrar(atual.id, [{ pessoa, texto: `desfez a saída de ${pessoa.name}: ela volta ao dia` }]);
       await writeHistoryEvent({
         category: "SCALE", action: "escala.saiu_desfeito", title: "Saída no meio do dia desfeita",
         narrative: `A saída de ${pessoa.name} a partir das ${estado.aPartirDe ?? "?"} em ${date} foi desfeita.${naoDevolvidas.length ? ` ${naoDevolvidas.length === 1 ? "Uma posição de show já tinha outra pessoa e continuou como estava" : `${naoDevolvidas.length} posições de show já tinham outra pessoa e continuaram como estavam`}.` : ""}`,
         entityType: "scale", entityId: atual.id, actorId: actor.sub, operationId, orgId: actor.organizationId,
-        beforeState: { saiuId }, afterState: { pessoaId: userId, naoDevolvidas }, metadata: { saiuId, pessoaId: userId },
+        beforeState: { saiuId }, afterState: { pessoaId: userId, naoDevolvidas }, metadata: { saiuId, pessoaId: userId, ...mex },
       }, tx as unknown as HistoryExecutor);
       if (publicada) {
-        await avisarRepublicacaoPendente(tx as unknown as Parameters<typeof avisarRepublicacaoPendente>[0], atual, `${pessoa.name} voltou ao dia (a saída foi desfeita)`, { areaIds: [pessoa.areaId] });
+        await avisarRepublicacaoPendente(tx as unknown as Parameters<typeof avisarRepublicacaoPendente>[0], atual, `${pessoa.name} voltou ao dia (a saída foi desfeita)`, { areaIds: [pessoa.areaId], ...coleta.paraARepublicacao() });
       }
+      await coleta.avisar(tx as unknown as typeof db, atual);
       return atual;
     });
     void resultado;
     for (const emitir of depoisDoCommit) { try { emitir(); } catch (err) { console.error(err); } }
-    res.json({ desfeito: true, naoDevolvidas, dia: await montarEscalaDoDia(actor.organizationId, locationId, date) });
+    res.json({ desfeito: true, naoDevolvidas, dia: await diaParaTela(actor.organizationId, locationId, date) });
   } catch (err) {
     console.error(err);
     const conflito = err instanceof VersionConflictError;
@@ -634,12 +639,15 @@ router.post("/escalas/dia/ajustes", requireAuth, requireOrganization, async (req
     // Depois grava o lote inteiro numa transação só: se qualquer passo falhar, nada fica gravado.
     // Os avisos do Livro do Dia só saem depois que a transação fecha.
     const depoisDoCommit: (() => void)[] = [];
+    const coleta = await novaColeta(actor, locationId, date);
     await db.transaction(async (tx) => {
       const estado = { scale: await findEscalaDoDia(locationId, date) };
-      for (const c of conferidos) await gravarAjuste(actor, tx as unknown as typeof db, estado, c, depoisDoCommit);
+      for (const c of conferidos) await gravarAjuste(actor, tx as unknown as typeof db, estado, c, depoisDoCommit, coleta);
+      // UM aviso por acontecimento (o pedido todo), para a Supervisão de cada área de outra pessoa que foi mexida.
+      if (estado.scale) await coleta.avisar(tx as unknown as typeof db, estado.scale);
     });
     for (const emitir of depoisDoCommit) { try { emitir(); } catch (err) { console.error(err); } }
-    res.json({ dia: await montarEscalaDoDia(actor.organizationId, locationId, date) });
+    res.json({ dia: await diaParaTela(actor.organizationId, locationId, date) });
   } catch (err) {
     console.error(err);
     const conflito = err instanceof VersionConflictError;
@@ -649,7 +657,7 @@ router.post("/escalas/dia/ajustes", requireAuth, requireOrganization, async (req
         ? "O Livro do Dia mudou enquanto você ajustava. Nada foi gravado; confira a grade e tente de novo."
         : "Não foi possível gravar o ajuste. Nada foi gravado; confira a grade e tente de novo.",
       nadaFoiGravado: true,
-      dia: await montarEscalaDoDia(actor.organizationId, locationId, date).catch(() => null),
+      dia: await diaParaTela(actor.organizationId, locationId, date).catch(() => null),
     });
   }
 });
@@ -669,7 +677,7 @@ async function conferirAjuste(
 ): Promise<AjusteConferido | AjusteErro> {
   const location = await locationInOrg(locationId, actor.organizationId);
   if (!location) return { ok: false, status: 404, body: { error: "Local não encontrado" } };
-  if (!(await canManageLocal(actor, locationId))) return { ok: false, status: 403, body: { error: "ACESSO_NEGADO", message: "Você não ajusta a Escala deste local" } };
+  if (!(await canManageLocal(actor, locationId))) return { ok: false, status: 403, body: { error: "ACESSO_NEGADO", message: `${fraseDeRecusaPorPerfil(["ADMIN", "SUPERVISOR_A"], actor.role)} Ajustar a Escala é da Administração e da Supervisão do local.` } };
   const diaAntes = await montarEscalaDoDia(actor.organizationId, locationId, date);
   const bloco = diaAntes?.blocos.find((b) => b.key === sourceKey);
   if (!bloco) return { ok: false, status: 404, body: { error: "Bloco não encontrado nesta Escala" } };
@@ -677,10 +685,6 @@ async function conferirAjuste(
     eq(usersTable.id, userId), eq(usersTable.organizationId, actor.organizationId),
   )).limit(1);
   if (!pessoa) return { ok: false, status: 404, body: { error: "Pessoa não encontrada neste local" } };
-  const minhasAreas = await supervisedAreas(actor, locationId);
-  if (actor.role !== "ADMIN" && (!pessoa.areaId || !minhasAreas.includes(pessoa.areaId))) {
-    return { ok: false, status: 403, body: { error: "ACESSO_NEGADO", message: "Supervisão ajusta somente pessoas da própria área" } };
-  }
   // Folga vence por padrão. Chamar alguém na folga é exceção: pede motivo escrito, e a folga
   // perdida fica pendente de decisão (remarcar para outro dia ou deixar como está).
   const deFolga = (diaAntes?.pessoas.find((p) => p.id === userId)?.folga ?? null) !== null;
@@ -708,7 +712,7 @@ async function conferirAjuste(
  * mudança no Livro do Dia entram na mesma transação; só o evento do Livro espera o commit.
  */
 async function gravarAjuste(
-  actor: Actor, tx: typeof db, estado: { scale: Awaited<ReturnType<typeof findEscalaDoDia>> }, c: AjusteConferido, depoisDoCommit: (() => void)[],
+  actor: Actor, tx: typeof db, estado: { scale: Awaited<ReturnType<typeof findEscalaDoDia>> }, c: AjusteConferido, depoisDoCommit: (() => void)[], coleta: Awaited<ReturnType<typeof novaColeta>>,
 ): Promise<void> {
   const { locationId, date, sourceKey, userId, action, motivo, assignmentId, locationName, bloco, pessoa, deFolga, operationId, regrasPassadas } = c;
   // 09/10: bloco que vem de Livro do Dia muda o próprio Livro (vaga aberta / preenchida), para a
@@ -736,11 +740,12 @@ async function gravarAjuste(
     scale = (await tx.update(scalesTable).set({ alteradaDesde: scale.alteradaDesde ?? new Date(), updatedAt: new Date(), version: scale.version + 1 }).where(eq(scalesTable.id, scale.id)).returning())[0]!;
   }
   estado.scale = scale;
+  const mex = await coleta.registrar(scale.id, [{ pessoa, texto: `${action === "ADICIONAR" ? `pôs ${pessoa.name} em` : `tirou ${pessoa.name} de`} ${bloco.rotulo}` }]);
   await writeHistoryEvent({
     category: "SCALE", action: action === "ADICIONAR" ? "escala.pessoa_adicionada" : "escala.pessoa_removida", title: action === "ADICIONAR" ? "Pessoa adicionada à Escala" : "Pessoa removida da Escala",
     narrative: `${action === "ADICIONAR" ? "Adicionou" : "Removeu"} ${pessoa.name} no bloco ${bloco.rotulo} de ${date}.${deFolga && action === "ADICIONAR" ? ` Estava de folga; chamada mesmo assim: ${motivo?.trim()}` : ""}${regrasPassadas.length ? ` Passou da regra (${frasesDasRegras(regrasPassadas)}); motivo: ${motivo?.trim()}` : ""}`, entityType: "scale", entityId: scale.id, actorId: actor.sub, operationId, orgId: actor.organizationId,
     beforeState: { sourceKey, pessoaId: userId, ajuste: anterior?.action ?? null }, afterState: { ajuste, noLivroDoDia: viaLivro ? bloco.dailyBookId : null },
-    ...(regrasPassadas.length ? { metadata: { regras: regrasPassadas.map((r) => r.regra), frases: regrasPassadas.map((r) => r.frase), motivo: motivo?.trim() ?? null } } : {}),
+    ...(regrasPassadas.length || Object.keys(mex).length ? { metadata: { ...(regrasPassadas.length ? { regras: regrasPassadas.map((r) => r.regra), frases: regrasPassadas.map((r) => r.frase), motivo: motivo?.trim() ?? null } : {}), ...mex } } : {}),
   }, tx as unknown as HistoryExecutor);
   if (regrasPassadas.length) {
     await avisarExcecaoDeRegra(tx as never, {
@@ -760,7 +765,7 @@ async function gravarAjuste(
   }
   if (escalaPublicada(scale.status)) {
     await avisarRepublicacaoPendente(tx as unknown as Parameters<typeof avisarRepublicacaoPendente>[0], scale,
-      `${pessoa.name} ${action === "ADICIONAR" ? "entrou em" : "saiu de"} ${bloco.rotulo}`, { areaIds: [pessoa.areaId] });
+      `${pessoa.name} ${action === "ADICIONAR" ? "entrou em" : "saiu de"} ${bloco.rotulo}`, { areaIds: [pessoa.areaId], ...coleta.paraARepublicacao() });
   }
 }
 
@@ -796,7 +801,7 @@ router.post("/escalas/dia/folga-resolvida", requireAuth, requireOrganization, as
       return rows.length;
     });
     if (!resolvidos) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Esta pessoa não foi chamada na folga neste dia." }); return; }
-    res.json({ dia: await montarEscalaDoDia(actor.organizationId, locationId, date) });
+    res.json({ dia: await diaParaTela(actor.organizationId, locationId, date) });
   } catch (err) { console.error(err); res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível resolver a folga. Tente de novo." }); }
 });
 
@@ -859,7 +864,7 @@ router.post("/escalas/dia/pronta", requireAuth, requireOrganization, async (req,
       }
       return scale;
     });
-    res.json({ dia: await montarEscalaDoDia(actor.organizationId, locationId, date), scaleId: result.id });
+    res.json({ dia: await diaParaTela(actor.organizationId, locationId, date), scaleId: result.id });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "ERRO_INTERNO", message: "Erro ao marcar a área. Tente de novo." });

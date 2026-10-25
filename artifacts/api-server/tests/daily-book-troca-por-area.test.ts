@@ -1,5 +1,5 @@
 /**
- * Troca de pessoa no Livro do Dia: a Supervisão só mexe em pessoas das áreas que supervisiona naquele local (a mesma
+ * Troca de pessoa no Livro do Dia: a Supervisão troca pessoas de QUALQUER área dos locais em que supervisiona alguma área (25/10/2026; antes só da própria área; a mesma
  * regra da Escala); o responsável pelo show e a Administração trocam qualquer pessoa. O "capitão delegado" não existe
  * mais: delegação de DAILY_BOOK não dá acesso ao Livro. Contra PostgreSQL real de teste.
  */
@@ -77,18 +77,18 @@ async function run() {
     };
     assert(gen.status === 201 && alocacao?.userId === a1.id, "o Livro nasce com a pessoa fixa da área A");
 
-    // 1 · A Supervisão da área B não troca pessoa da área A.
+    // 1 · A Supervisão da área B troca pessoa da área A (qualquer área do local).
     const deOutraArea = await trocar(asSupB, a2.id);
-    assert(deOutraArea.status === 403 && /só pessoas das áreas que supervisiona/.test(deOutraArea.body.message ?? ""), "Supervisão da área B é recusada ao trocar pessoa da área A, com a frase da regra");
-    assert((await db.select().from(dailyBookAssignmentsTable).where(eq(dailyBookAssignmentsTable.id, alocacao!.id)))[0]!.userId === a1.id, "a recusa não mexeu na alocação");
+    assert(deOutraArea.status === 200, "Supervisão da área B troca pessoa da área A (decisão de 25/10/2026: qualquer área do local)");
+    assert((await db.select().from(dailyBookAssignmentsTable).where(eq(dailyBookAssignmentsTable.id, alocacao!.id)))[0]!.userId === a2.id, "a troca gravou a alocação");
 
-    // 2 · A Supervisão da área A não põe pessoa da área B (quem entra também conta).
+    // 2 · A Supervisão da área A põe pessoa da área B.
     const entraDeOutraArea = await trocar(asSupA, b1.id);
-    assert(entraDeOutraArea.status === 403 && (entraDeOutraArea.body.message ?? "").includes("é de"), "Supervisão da área A é recusada ao pôr pessoa da área B, e a frase diz de que área ela é");
+    assert(entraDeOutraArea.status === 200, "Supervisão da área A põe pessoa da área B");
 
-    // 3 · Dentro da própria área, pode.
+    // 3 · Dentro da própria área, também.
     const dentro = await trocar(asSupA, a2.id);
-    assert(dentro.status === 200, "Supervisão da área A troca pessoa da área A por outra da área A");
+    assert(dentro.status === 200, "Supervisão da área A troca pessoa da área A por outra da área A")
 
     // 4 · Capitão delegado deixou de existir: a delegação de DAILY_BOOK não dá acesso.
     await db.insert(delegationsTable).values({ delegatorId: admin.id, delegateeId: capitao.id, operationId: operation!.id, showBookId: showBook!.id, responsibilities: ["DAILY_BOOK"], validFrom: new Date(Date.now() - 60_000) });

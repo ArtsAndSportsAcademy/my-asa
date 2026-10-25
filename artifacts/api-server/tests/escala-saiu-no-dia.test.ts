@@ -33,14 +33,15 @@ async function run() {
   await db.insert(operationLocationsTable).values({ operationId: operation!.id, locationId: local!.id });
   const [pat, bai] = await db.insert(areasTable).values([{ organizationId: org!.id, name: `${tag}_Patinadores` }, { organizationId: org!.id, name: `${tag}_Bailarinos` }]).returning();
   const mk = async (suffix: string, areaId: string | null) => (await db.insert(usersTable).values({ organizationId: org!.id, name: `${tag}_${suffix}`, username: `${tag}_${suffix}`, areaId }).returning())[0]!;
-  const admin = await mk("admin", null), dir = await mk("dir", null), supPat = await mk("deborah", pat!.id), supBai = await mk("victor", bai!.id);
+  const admin = await mk("admin", null), dir = await mk("dir", null), supPat = await mk("deborah", pat!.id), supBai = await mk("victor", bai!.id), supFora = await mk("fora", bai!.id);
   const jeff = await mk("jeff", pat!.id), carol = await mk("carol", pat!.id);
-  const todos = [admin, dir, supPat, supBai, jeff, carol];
+  const todos = [admin, dir, supPat, supBai, supFora, jeff, carol];
   await db.insert(userRolesTable).values([
     { userId: admin.id, operationId: operation!.id, role: "ADMIN", active: true },
     { userId: dir.id, operationId: operation!.id, role: "DIR", active: true },
     { userId: supPat.id, operationId: operation!.id, role: "SUPERVISOR_A", active: true },
     { userId: supBai.id, operationId: operation!.id, role: "SUPERVISOR_A", active: true },
+    { userId: supFora.id, operationId: operation!.id, role: "SUPERVISOR_A", active: true },
     ...[jeff, carol].map((u) => ({ userId: u.id, operationId: operation!.id, role: "MEMBER" as const, active: true })),
   ]);
   await db.insert(areaLocalSupervisorsTable).values([{ areaId: pat!.id, locationId: local!.id, supervisorId: supPat.id }, { areaId: bai!.id, locationId: local!.id, supervisorId: supBai.id }]);
@@ -66,7 +67,7 @@ async function run() {
         return { status: r.status, text, body: (() => { try { return JSON.parse(text) as Record<string, any>; } catch { return {}; } })() };
       };
     };
-    const asAdmin = as(admin, "ADMIN"), asDir = as(dir, "DIR"), asPat = as(supPat, "SUPERVISOR_A"), asBai = as(supBai, "SUPERVISOR_A"), asJeff = as(jeff, "MEMBER");
+    const asAdmin = as(admin, "ADMIN"), asDir = as(dir, "DIR"), asPat = as(supPat, "SUPERVISOR_A"), asBai = as(supBai, "SUPERVISOR_A"), asFora = as(supFora, "SUPERVISOR_A"), asJeff = as(jeff, "MEMBER");
 
     const prog = (await asAdmin("POST", "/programacoes", { locationId: local!.id, nome: "Natal", vigenciaInicio: "2026-10-01", vigenciaFim: "2026-10-31" })).body.programacao as { id: string };
     for (const b of [
@@ -92,8 +93,8 @@ async function run() {
     const dirR = await saiu(asDir, {});
     assert(dirR.status === 403 && /Direção/.test(dirR.text) && /Administração/.test(dirR.text) && !/Role .* is not authorized/.test(dirR.text), "Direção é recusada com a frase de quem pode e do perfil de quem tentou");
     assert((await saiu(asJeff, {})).status === 403, "Elenco não tira ninguém do dia");
-    const outra = await saiu(asBai, {});
-    assert(outra.status === 403 && /própria área/.test(outra.text), "Supervisão de outra área é recusada com frase");
+    const outra = await saiu(asFora, {});
+    assert(outra.status === 403 && /Supervisão do local/.test(outra.text), "Supervisão que não supervisiona nenhuma área deste local é recusada com frase");
     assert((await saiu(asAdmin, { motivo: "" })).status === 400 && /motivo/i.test((await saiu(asAdmin, { motivo: "ab" })).text), "motivo é obrigatório (mínimo 3 letras)");
     assert((await saiu(asAdmin, { aPartirDe: "25:99" })).status === 400 && /formato 14:30/.test((await saiu(asAdmin, { aPartirDe: "abc" })).text), "hora que não existe é 400 com frase");
     assert((await saiu(asAdmin, { tipo: "OUTRA_COISA" })).status === 400, "tipo fora da lista é 400");
@@ -133,7 +134,7 @@ async function run() {
     assert(repete.status === 409 && /nada marcado/.test(repete.text) && (await eventos("escala.saiu_no_dia", escalaId)).length === 1, "repetir o mesmo pedido não grava de novo");
 
     // ── desfazer ──
-    assert((await asBai("POST", "/escalas/dia/saiu/desfazer", { locationId: local!.id, date, saiuId: ok.body.saiuId })).status === 403, "Supervisão de outra área não desfaz");
+    assert((await asFora("POST", "/escalas/dia/saiu/desfazer", { locationId: local!.id, date, saiuId: ok.body.saiuId })).status === 403, "Supervisão sem área neste local não desfaz");
     assert((await asAdmin("POST", "/escalas/dia/saiu/desfazer", { locationId: local!.id, date, saiuId: "00000000-0000-0000-0000-000000000000" })).status === 404, "saída que não existe: 404 com frase");
     const volta = await asPat("POST", "/escalas/dia/saiu/desfazer", { locationId: local!.id, date, saiuId: ok.body.saiuId });
     assert(volta.status === 200 && volta.body.desfeito === true && (volta.body.naoDevolvidas ?? []).length === 0, "a Supervisão da área desfaz a saída");

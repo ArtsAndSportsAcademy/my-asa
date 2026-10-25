@@ -1,4 +1,4 @@
-﻿import { randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { Router, type IRouter } from "express";
 import { eq, and, inArray, ne, isNull, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
@@ -52,6 +52,7 @@ import {
 } from "../services/line-resolver.js";
 import { detectConflictsForDailyBooks, detectDailyBookConflicts, type PublicScheduleConflict } from "../services/schedule-conflicts.js";
 import { lembrarOuLer, type LeiturasDoMes } from "../services/leituras-do-mes.js";
+import { areasQueSupervisiona, novaColeta } from "../services/escala-mexidas.js";
 import { escalaDoDiaDoLivro, escalaPublicada, horariosDoShowNaProgramacao, horariosDosShowsNaProgramacao, marcarEscalaAlteradaPeloLivro } from "../services/escala-dia.js";
 import { eligibleSessions, eligibleSessionsDoDia, isNotSessionBlock, listSessionBlocks, syncSessionBlocks } from "../services/session-blocks.js";
 
@@ -97,8 +98,9 @@ async function loadShowRef(
 }
 
 /**
- * Regra de área da troca de pessoa no Livro do Dia: quem não é Administração nem responsável pelo show só mexe em
- * pessoas das áreas que supervisiona NAQUELE local. Devolve a frase da recusa, ou null quando pode.
+ * Regra da troca de pessoa no Livro do Dia (25/10/2026): quem não é Administração nem responsável pelo show só troca pessoas nos locais em que
+ * supervisiona alguma área, e aí pode trocar QUALQUER pessoa (de qualquer área). Mexer em pessoa de outra área fica visível para a Supervisão dela
+ * (ver escala-mexidas.ts). Devolve a frase da recusa, ou null quando pode.
  */
 async function recusaDeAreaNaTroca(
   book: { showBookId: string | null; scaleId: string | null },
@@ -118,16 +120,9 @@ async function recusaDeAreaNaTroca(
   }
   const ids = [...new Set(pessoas.filter((id): id is string => Boolean(id)))];
   if (!ids.length) return null;
-  const minhas = locationId
-    ? new Set((await db.select({ areaId: areaLocalSupervisorsTable.areaId }).from(areaLocalSupervisorsTable).where(and(
-        eq(areaLocalSupervisorsTable.supervisorId, actor.sub), eq(areaLocalSupervisorsTable.locationId, locationId), eq(areaLocalSupervisorsTable.active, true),
-      ))).map((r) => r.areaId))
-    : new Set<string>();
-  const linhas = await db.select({ id: usersTable.id, name: usersTable.name, areaId: usersTable.areaId, areaName: areasTable.name }).from(usersTable)
-    .leftJoin(areasTable, eq(usersTable.areaId, areasTable.id)).where(inArray(usersTable.id, ids));
-  const fora = linhas.find((p) => !p.areaId || !minhas.has(p.areaId));
-  if (!fora) return null;
-  return `Supervisão troca só pessoas das áreas que supervisiona neste local. ${fora.name} é ${fora.areaName ? `de ${fora.areaName}` : "sem área"}: peça à Administração ou a quem é responsável pelo show.`;
+  const minhas = locationId ? await areasQueSupervisiona(actor.sub, locationId) : [];
+  if (minhas.length) return null;
+  return "Supervisão troca pessoas só nos locais em que supervisiona alguma área. Este show é de outro local: peça à Administração ou a quem é responsável pelo show.";
 }
 
 // Estilo MyASA antigo: o operador não precisa digitar "Motivo" nas ações do dia.
@@ -2286,6 +2281,23 @@ router.patch("/daily-book/:id/assignments/:assignmentId", requireAuth, requireOr
     }, async (tx, _claimedBook, next) => {
       const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id, tx) };
       await marcarEscalaAlteradaPeloLivro(tx as unknown as typeof db, id, actorId, "troca de pessoa");
+      // Supervisão que troca pessoa de OUTRA área: fica visível quem mexeu e a Supervisão dela é avisada (um aviso por troca).
+      const { day: diaDoLivro, scale: escalaDoLivro } = await escalaDoDiaDoLivro(id, tx as unknown as typeof db);
+      if (escalaDoLivro && diaDoLivro?.locationId) {
+        const envolvidos = [...new Set([before.userId, userId ?? null].filter((v): v is string => Boolean(v)))];
+        const pessoasDaTroca = envolvidos.length ? await tx.select({ id: usersTable.id, name: usersTable.name, areaId: usersTable.areaId }).from(usersTable).where(inArray(usersTable.id, envolvidos)) : [];
+        const coleta = await novaColeta(req.user!, diaDoLivro.locationId, diaDoLivro.date);
+        const mex = await coleta.registrar(escalaDoLivro.id, pessoasDaTroca.map((p) => ({ pessoa: p, texto: p.id === (userId ?? null) ? `pôs ${p.name} numa vaga do Livro do Dia` : `tirou ${p.name} de uma vaga do Livro do Dia` })));
+        if (Object.keys(mex).length) {
+          await writeHistoryEvent({
+            category: "SCALE", action: "escala.mexida_pelo_livro", title: "Supervisão trocou pessoa de outra área pelo Livro do Dia",
+            narrative: `${(mex as { porNome?: string }).porNome ?? "A Supervisão"} trocou pessoa de outra área no Livro do Dia de ${diaDoLivro.date}.`,
+            entityType: "scale", entityId: escalaDoLivro.id, actorId, actorType: "HUMAN", operationId: diaDoLivro.operationId, orgId: req.user!.organizationId,
+            beforeState: null, afterState: { assignmentId, de: before.userId, para: userId ?? null }, metadata: mex,
+          }, tx as any);
+          await coleta.avisar(tx as unknown as typeof db, escalaDoLivro);
+        }
+      }
       await writeDailyBookAudit(id, actorId, "assignment_swap",
         { version: book.version, snapshot: beforeSnapshot, assignmentId, userId: before?.userId ?? null, status: before?.status ?? null },
         { version: book.version + 1, snapshot: afterSnapshot, assignmentId, userId: userId ?? null, status: next.status }, tx);

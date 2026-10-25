@@ -254,10 +254,10 @@ async function run() {
     const carol = (await (await asCarol(`/escalas/minha?date=${date}`)).json()) as { folga: string | null; blocos: unknown[] };
     assert(carol.folga === "DAY_OFF" && carol.blocos.length === 0, "quem está de folga vê a folga e nenhum bloco");
 
-    // Ajuste é uma exceção só deste dia: SUP só mexe em pessoa da própria área; o molde não muda.
+    // Ajuste é uma exceção só deste dia: a Supervisão do local mexe em qualquer área (25/10/2026, coberto em escala-supervisao-todas-as-areas.test.ts); o molde não muda.
     const treinoKey = bloco(await dia(), "TREINO GELO")!.key;
-    const outsideScope = await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: treinoKey, userId: bai1.id, action: "ADICIONAR" });
-    assert(outsideScope.status === 403, "Supervisão não ajusta pessoa de outra área na célula");
+    const outsideScope = await post(asDir, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: treinoKey, userId: bai1.id, action: "ADICIONAR" });
+    assert(outsideScope.status === 403, "Direção não ajusta ninguém na célula");
     const removedFromCell = await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: treinoKey, userId: pat1.id, action: "REMOVER" });
     assert(removedFromCell.status === 200 && !(bloco(await dia(), "TREINO GELO")?.pessoaIds ?? []).includes(pat1.id), "Supervisão tira uma pessoa do bloco só neste dia");
     const addedBack = await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: treinoKey, userId: pat1.id, action: "ADICIONAR" });
@@ -271,20 +271,20 @@ async function run() {
     const depoisDoLote = bloco(await dia(), "TREINO GELO")?.pessoaIds ?? [];
     assert(lote.status === 200 && !depoisDoLote.includes(pat1.id) && !depoisDoLote.includes(supPat.id), "um pedido só tira duas pessoas do bloco");
     const loteErrado = await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: treinoKey, mudancas: [
-      { userId: pat1.id, action: "ADICIONAR" }, { userId: bai1.id, action: "ADICIONAR" },
+      { userId: pat1.id, action: "ADICIONAR" }, { userId: pat2.id, action: "ADICIONAR" },
     ] });
     // 17/10: o lote é conferido inteiro antes de gravar; um "não" na segunda pessoa não deixa a primeira entrar.
     const corpoDoErro = (await loteErrado.json()) as { nadaFoiGravado?: boolean };
-    assert(loteErrado.status === 403 && corpoDoErro.nadaFoiGravado === true &&!(bloco(await dia(), "TREINO GELO")?.pessoaIds ?? []).includes(pat1.id), "no lote, pessoa de outra área é recusada e ninguém do lote é gravado");
+    assert(loteErrado.status === 409 && corpoDoErro.nadaFoiGravado === true && !(bloco(await dia(), "TREINO GELO")?.pessoaIds ?? []).includes(pat1.id), "no lote, a pessoa de folga sem motivo é recusada e ninguém do lote é gravado");
     await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: treinoKey, mudancas: [{ userId: supPat.id, action: "ADICIONAR" }, { userId: pat1.id, action: "ADICIONAR" }] });
     // 18/10: a terceira pessoa é a inválida — as duas primeiras, que são válidas, não podem ficar gravadas.
     const ajustesAntes = (await db.select().from(escalaBlocoAjustesTable).where(eq(escalaBlocoAjustesTable.scaleId, scaleId))).length;
     const registroAntes = (await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, scaleId), inArray(historyEventsTable.action, ["escala.pessoa_adicionada", "escala.pessoa_removida"])))).length;
     const terceiraInvalida = await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: treinoKey, mudancas: [
-      { userId: pat1.id, action: "REMOVER" }, { userId: supPat.id, action: "REMOVER" }, { userId: bai1.id, action: "REMOVER" },
+      { userId: pat1.id, action: "REMOVER" }, { userId: supPat.id, action: "REMOVER" }, { userId: pat2.id, action: "ADICIONAR" },
     ] });
     const idsDepois = bloco(await dia(), "TREINO GELO")?.pessoaIds ?? [];
-    assert(terceiraInvalida.status === 403 && idsDepois.includes(pat1.id) && idsDepois.includes(supPat.id), "lote com a terceira pessoa inválida não tira nem a primeira nem a segunda");
+    assert(terceiraInvalida.status === 409 && idsDepois.includes(pat1.id) && idsDepois.includes(supPat.id), "lote com a terceira pessoa inválida não tira nem a primeira nem a segunda");
     assert((await db.select().from(escalaBlocoAjustesTable).where(eq(escalaBlocoAjustesTable.scaleId, scaleId))).length === ajustesAntes
       && (await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, scaleId), inArray(historyEventsTable.action, ["escala.pessoa_adicionada", "escala.pessoa_removida"])))).length === registroAntes, "o lote recusado não deixa ajuste nem Registro");
 

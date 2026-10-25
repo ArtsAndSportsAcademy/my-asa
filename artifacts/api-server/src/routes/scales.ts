@@ -20,7 +20,8 @@ import {
   locationsTable,
   webPushSubscriptionsTable,
 } from "@workspace/db";
-import { requireAuth, requireOrganization } from "../middlewares/auth.js";
+import { fraseDeRecusaPorPerfil, requireAuth, requireOrganization } from "../middlewares/auth.js";
+import { areasQueSupervisiona, novaColeta } from "../services/escala-mexidas.js";
 import { requestLogger } from "../lib/logger.js";
 import { eventBus } from "../lib/event-bus.js";
 import { runCoverageEngine, persistEngineResult } from "../services/coverage-engine.js";
@@ -47,6 +48,17 @@ import { hasScaleAuthority } from "../services/scale-access.js";
 const router: IRouter = Router();
 // ADMIN tem autoridade global; supervisores são validados por Operação abaixo.
 const MANAGER_ROLES = ["ADMIN"];
+
+/**
+ * Atividade só de hoje (entradas manuais) da Escala do dia: a Administração, ou a Supervisão do local, de QUALQUER área (decisão de 25/10/2026).
+ * Escala que não é a do dia de um local segue a regra antiga (autoridade da operação).
+ */
+async function podeMexerNaEscalaDoDia(user: { sub: string; role: string }, scale: { operationId: string; groupId: string | null; areaId: string | null; locationId: string | null }) {
+  if (MANAGER_ROLES.includes(user.role)) return true;
+  if (scale.locationId && !scale.areaId && ["SUPERVISOR_A", "SUPERVISOR_B"].includes(user.role)) return (await areasQueSupervisiona(user.sub, scale.locationId)).length > 0;
+  return hasScaleAuthority(user.sub, scale.operationId, scale.groupId, scale.areaId, scale.locationId);
+}
+const recusaDaEscalaDoDia = (role: string) => `${fraseDeRecusaPorPerfil(["ADMIN", "SUPERVISOR_A"], role)} Mexer nas atividades da escala do dia é da Administração e da Supervisão do local.`;
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
@@ -989,15 +1001,16 @@ router.post("/scales/:id/entries", requireAuth, requireOrganization, async (req,
       return;
     }
 
-    if (!MANAGER_ROLES.includes(user.role)) {
-      if (!(await hasScaleAuthority(userId, scale.operationId, scale.groupId, scale.areaId, scale.locationId))) {
-        res.status(403).json({ error: "Forbidden" });
-        return;
-      }
+    if (!(await podeMexerNaEscalaDoDia(user, scale))) {
+      res.status(403).json({ error: "ACESSO_NEGADO", message: recusaDaEscalaDoDia(user.role) });
+      return;
     }
     expectedVersion = requireExpectedVersion(req, res, "a Escala");
     if (expectedVersion === null) return;
     const beforeSnapshot = await buildScaleVersionSnapshot(id);
+    // Quem mexeu: Supervisão pondo gente de OUTRA área na atividade fica visível e avisa a Supervisão dela (um aviso por pedido).
+    const pessoasDoLote = await db.select({ id: usersTable.id, name: usersTable.name, areaId: usersTable.areaId }).from(usersTable).where(inArray(usersTable.id, quem));
+    const coleta = scale.locationId ? await novaColeta(user, scale.locationId, date) : null;
 
     const entries = await mutateScale(id, expectedVersion, async (tx) => {
       return tx
@@ -1017,6 +1030,7 @@ router.post("/scales/:id/entries", requireAuth, requireOrganization, async (req,
         })))
         .returning();
     }, async (tx, _claimedScale, nextEntries) => {
+      const mex = coleta ? await coleta.registrar(id, pessoasDoLote.map((pessoa) => ({ pessoa, texto: `pôs ${pessoa.name} em ${label}` }))) : {};
       await writeHistoryEvent({
         category: "SCALE", action: "manual_entry_added",
         title: nextEntries.length === 1 ? "Entrada manual adicionada à Escala" : `${nextEntries.length} entradas manuais adicionadas à Escala`,
@@ -1025,14 +1039,16 @@ router.post("/scales/:id/entries", requireAuth, requireOrganization, async (req,
         actorId: userId, actorType: "HUMAN", operationId: scale.operationId,
         orgId: req.user!.organizationId, beforeState: beforeSnapshot,
         afterState: { entries: nextEntries, snapshot: await buildScaleVersionSnapshot(id, tx) },
+        ...(Object.keys(mex).length ? { metadata: mex } : {}),
       }, tx as any);
     });
 
     // Atividade acrescentada a um dia já publicado: a Administração precisa republicar para quem faz receber.
     if (escalaPublicada(scale.status) && scale.periodStart <= date && scale.periodEnd >= date) {
       const areas = await db.select({ areaId: usersTable.areaId }).from(usersTable).where(inArray(usersTable.id, quem));
-      await avisarRepublicacaoPendente(db, scale, `${label} entrou no dia`, { areaIds: areas.map((a) => a.areaId) });
+      await avisarRepublicacaoPendente(db, scale, `${label} entrou no dia`, { areaIds: areas.map((a) => a.areaId), ...(coleta?.paraARepublicacao() ?? {}) });
     }
+    if (coleta) await coleta.avisar(db, scale);
     const conflicts = await detectScaleConflicts(quem.map((pessoa) => ({ userId: pessoa, date })));
     res.status(201).json({
       entry: entries[0],
@@ -1066,11 +1082,9 @@ router.delete("/scales/:id/entries/:entryId", requireAuth, requireOrganization, 
       return;
     }
 
-    if (!MANAGER_ROLES.includes(user.role)) {
-      if (!(await hasScaleAuthority(userId, scale.operationId, scale.groupId, scale.areaId, scale.locationId))) {
-        res.status(403).json({ error: "Forbidden" });
-        return;
-      }
+    if (!(await podeMexerNaEscalaDoDia(user, scale))) {
+      res.status(403).json({ error: "ACESSO_NEGADO", message: recusaDaEscalaDoDia(user.role) });
+      return;
     }
     expectedVersion = requireExpectedVersion(req, res, "a Escala");
     if (expectedVersion === null) return;
@@ -1080,6 +1094,10 @@ router.delete("/scales/:id/entries/:entryId", requireAuth, requireOrganization, 
     // de uma vez, na mesma versão da Escala, como a grade as mostra (um bloco só).
     const corpoIds = Array.isArray((req.body as { entryIds?: unknown })?.entryIds) ? (req.body as { entryIds: unknown[] }).entryIds : [];
     const alvos = [...new Set([entryId, ...corpoIds.filter((v): v is string => typeof v === "string" && v.length > 0)])];
+    const atingidas = await db.select({ id: usersTable.id, name: usersTable.name, areaId: usersTable.areaId, label: scaleAllocationsTable.manualLabel }).from(scaleAllocationsTable)
+      .innerJoin(usersTable, eq(usersTable.id, scaleAllocationsTable.userId))
+      .where(and(inArray(scaleAllocationsTable.id, alvos), eq(scaleAllocationsTable.scaleId, id), eq(scaleAllocationsTable.active, true)));
+    const coleta = scale.locationId ? await novaColeta(user, scale.locationId, scale.periodStart) : null;
 
     await mutateScale(id, expectedVersion, async (tx) => {
       await tx
@@ -1087,6 +1105,7 @@ router.delete("/scales/:id/entries/:entryId", requireAuth, requireOrganization, 
         .set({ active: false, updatedAt: new Date() })
         .where(and(inArray(scaleAllocationsTable.id, alvos), eq(scaleAllocationsTable.scaleId, id), eq(scaleAllocationsTable.active, true)));
       const afterSnapshot = await buildScaleVersionSnapshot(id, tx as any);
+      const mex = coleta ? await coleta.registrar(id, atingidas.map((pessoa) => ({ pessoa, texto: `tirou ${pessoa.name} de ${pessoa.label ?? "uma atividade de hoje"}` }))) : {};
       await writeHistoryEvent({
         category: "SCALE",
         action: "entry_archived",
@@ -1099,11 +1118,13 @@ router.delete("/scales/:id/entries/:entryId", requireAuth, requireOrganization, 
         operationId: scale.operationId,
         beforeState: beforeSnapshot,
         afterState: afterSnapshot,
+        ...(Object.keys(mex).length ? { metadata: mex } : {}),
       }, tx as any);
       return true;
     });
 
-    if (escalaPublicada(scale.status)) await avisarRepublicacaoPendente(db, scale, "uma atividade saiu do dia");
+    if (escalaPublicada(scale.status)) await avisarRepublicacaoPendente(db, scale, "uma atividade saiu do dia", { ...(coleta?.paraARepublicacao() ?? {}) });
+    if (coleta) await coleta.avisar(db, scale);
     res.json({ ok: true, version: expectedVersion + 1 });
   } catch (err) {
     if (expectedVersion !== null && await respondScaleMutationError(err, req, res, id, expectedVersion)) return;
@@ -1131,8 +1152,8 @@ router.patch("/scales/:id/entries/:entryId", requireAuth, requireOrganization, a
     const scale = await getScaleOrFail(id, user.organizationId, res);
     if (!scale) return;
     if (scale.status === "ARCHIVED") { res.status(409).json({ error: "Escala arquivada não pode ser modificada" }); return; }
-    if (!MANAGER_ROLES.includes(user.role) && !(await hasScaleAuthority(user.sub, scale.operationId, scale.groupId, scale.areaId, scale.locationId))) {
-      res.status(403).json({ error: "Forbidden" }); return;
+    if (!(await podeMexerNaEscalaDoDia(user, scale))) {
+      res.status(403).json({ error: "ACESSO_NEGADO", message: recusaDaEscalaDoDia(user.role) }); return;
     }
     expectedVersion = requireExpectedVersion(req, res, "a Escala");
     if (expectedVersion === null) return;
@@ -1143,6 +1164,7 @@ router.patch("/scales/:id/entries/:entryId", requireAuth, requireOrganization, a
       ...(endTime !== undefined ? { endTime: (endTime as string | null) } : {}),
       updatedAt: new Date(),
     };
+    const coleta = scale.locationId ? await novaColeta(user, scale.locationId, scale.periodStart) : null;
     const entries = await mutateScale(id, expectedVersion, async (tx) => {
       const rows = await tx.update(scaleAllocationsTable).set(patch)
         .where(and(inArray(scaleAllocationsTable.id, alvos), eq(scaleAllocationsTable.scaleId, id), eq(scaleAllocationsTable.active, true)))
@@ -1150,15 +1172,20 @@ router.patch("/scales/:id/entries/:entryId", requireAuth, requireOrganization, a
       if (!rows.length) throw new VersionedResourceNotFoundError("Entrada manual");
       return rows;
     }, async (tx, _claimed, rows) => {
+      const donos = [...new Set(rows.map((r) => r.userId).filter((v): v is string => Boolean(v)))];
+      const pessoasDaAtividade = donos.length ? await db.select({ id: usersTable.id, name: usersTable.name, areaId: usersTable.areaId }).from(usersTable).where(inArray(usersTable.id, donos)) : [];
+      const mex = coleta ? await coleta.registrar(id, pessoasDaAtividade.map((pessoa) => ({ pessoa, texto: `mudou ${rows[0]!.manualLabel ?? "uma atividade de hoje"} de ${pessoa.name}` }))) : {};
       await writeHistoryEvent({
         category: "SCALE", action: "manual_entry_updated", title: "Entrada manual corrigida na Escala",
         narrative: `${rows[0]!.manualLabel} em ${rows[0]!.manualDate} corrigida para ${rows.length === 1 ? "1 pessoa" : `${rows.length} pessoas`}.`,
         entityType: "scale", entityId: id, actorId: user.sub, actorType: "HUMAN", operationId: scale.operationId,
         orgId: user.organizationId, beforeState: beforeSnapshot,
         afterState: { entries: rows, snapshot: await buildScaleVersionSnapshot(id, tx as any) },
+        ...(Object.keys(mex).length ? { metadata: mex } : {}),
       }, tx as any);
     });
-    if (escalaPublicada(scale.status)) await avisarRepublicacaoPendente(db, scale, `${entries[0]!.manualLabel} mudou de horário ou nome`);
+    if (escalaPublicada(scale.status)) await avisarRepublicacaoPendente(db, scale, `${entries[0]!.manualLabel} mudou de horário ou nome`, { ...(coleta?.paraARepublicacao() ?? {}) });
+    if (coleta) await coleta.avisar(db, scale);
     res.json({ entries, version: expectedVersion + 1 });
   } catch (err) {
     if (expectedVersion !== null && await respondScaleMutationError(err, req, res, id, expectedVersion)) return;
@@ -1368,11 +1395,9 @@ router.delete("/scales/:id", requireAuth, requireOrganization, async (req, res) 
     const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
 
-    if (!MANAGER_ROLES.includes(user.role)) {
-      if (!(await hasScaleAuthority(userId, scale.operationId, scale.groupId, scale.areaId, scale.locationId))) {
-        res.status(403).json({ error: "Forbidden" });
-        return;
-      }
+    if (!(await podeMexerNaEscalaDoDia(user, scale))) {
+      res.status(403).json({ error: "ACESSO_NEGADO", message: recusaDaEscalaDoDia(user.role) });
+      return;
     }
 
     if (scale.status !== "DRAFT") {
@@ -1427,11 +1452,9 @@ router.post("/scales/:id/duplicate-previous", requireAuth, requireOrganization, 
     const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
 
-    if (!MANAGER_ROLES.includes(user.role)) {
-      if (!(await hasScaleAuthority(userId, scale.operationId, scale.groupId, scale.areaId, scale.locationId))) {
-        res.status(403).json({ error: "Forbidden" });
-        return;
-      }
+    if (!(await podeMexerNaEscalaDoDia(user, scale))) {
+      res.status(403).json({ error: "ACESSO_NEGADO", message: recusaDaEscalaDoDia(user.role) });
+      return;
     }
 
     if (scale.status === "ARCHIVED") {

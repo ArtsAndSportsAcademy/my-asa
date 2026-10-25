@@ -32,11 +32,12 @@ async function run() {
   await db.insert(operationLocationsTable).values({ operationId: operation!.id, locationId: local!.id });
   const [pat, bai] = await db.insert(areasTable).values([{ organizationId: org!.id, name: `${tag}_Patinadores` }, { organizationId: org!.id, name: `${tag}_Bailarinos` }]).returning();
   const mk = async (suffix: string, areaId: string | null) => (await db.insert(usersTable).values({ organizationId: org!.id, name: `${tag}_${suffix}`, username: `${tag}_${suffix}`, areaId }).returning())[0]!;
-  const admin = await mk("admin", null), supPat = await mk("deborah", pat!.id), supBai = await mk("victor", bai!.id);
+  const admin = await mk("admin", null), dir = await mk("dir", null), supPat = await mk("deborah", pat!.id), supBai = await mk("victor", bai!.id);
   const jeff = await mk("jeff", pat!.id), carol = await mk("carol", pat!.id);
-  const todos = [admin, supPat, supBai, jeff, carol];
+  const todos = [admin, dir, supPat, supBai, jeff, carol];
   await db.insert(userRolesTable).values([
     { userId: admin.id, operationId: operation!.id, role: "ADMIN", active: true },
+    { userId: dir.id, operationId: operation!.id, role: "DIR", active: true },
     { userId: supPat.id, operationId: operation!.id, role: "SUPERVISOR_A", active: true },
     { userId: supBai.id, operationId: operation!.id, role: "SUPERVISOR_A", active: true },
     ...[jeff, carol].map((u) => ({ userId: u.id, operationId: operation!.id, role: "MEMBER" as const, active: true })),
@@ -61,7 +62,7 @@ async function run() {
         return { status: r.status, text, body: (() => { try { return JSON.parse(text) as Record<string, any>; } catch { return {}; } })() };
       };
     };
-    const asAdmin = as(admin, "ADMIN"), asPat = as(supPat, "SUPERVISOR_A"), asBai = as(supBai, "SUPERVISOR_A"), asJeff = as(jeff, "MEMBER");
+    const asAdmin = as(admin, "ADMIN"), asDir = as(dir, "DIR"), asPat = as(supPat, "SUPERVISOR_A"), asBai = as(supBai, "SUPERVISOR_A"), asJeff = as(jeff, "MEMBER");
 
     const prog = (await asAdmin("POST", "/programacoes", { locationId: local!.id, nome: "Natal", vigenciaInicio: "2026-10-01", vigenciaFim: "2026-10-31" })).body.programacao as { id: string };
     for (const b of [
@@ -80,8 +81,8 @@ async function run() {
 
     // ── quem pode, e as recusas com frase ──
     assert((await horario(asJeff, { sourceKey: treino.key, userId: jeff.id, inicio: "10:20", fim: "11:00" })).status === 403, "Elenco não muda horário de ninguém");
-    const outraArea = await horario(asBai, { sourceKey: treino.key, userId: jeff.id, inicio: "10:20", fim: "11:00" });
-    assert(outraArea.status === 403 && /própria área/.test(outraArea.text), "Supervisão de outra área é recusada com frase");
+    const dirTenta = await horario(asDir, { sourceKey: treino.key, userId: jeff.id, inicio: "10:20", fim: "11:00" });
+    assert(dirTenta.status === 403 && /Direção/.test(dirTenta.text) && /Administração/.test(dirTenta.text), "Direção é recusada com a frase de quem pode e do perfil de quem tentou");
     const show1 = await horario(asAdmin, { sourceKey: teatro.key, userId: jeff.id, inicio: "11:40", fim: "12:10" });
     assert(show1.status === 409 && /Horário de show não muda aqui/.test(show1.text), "horário de show não muda: 409 com a frase do porquê");
     const feio = await horario(asAdmin, { sourceKey: treino.key, userId: jeff.id, inicio: "25:99" });
