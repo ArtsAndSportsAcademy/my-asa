@@ -17,6 +17,8 @@ import "@/components/escala/escala-tokens.css";
 import { diaQueAEscalaAbre, type ViradaDoDia } from "@/lib/dia-da-escala";
 import { SaiuDialog, type PreviaDaSaida, type SaiuApi } from "@/components/escala/saiu-dialog";
 import { AtividadeLoteDialog } from "@/components/escala/atividade-lote-dialog";
+import { LivrosDoDia } from "@/components/escala/livros-do-dia";
+import { ShowLinha } from "@/components/escala/show-linha";
 import "./shows.css"; // a janela do Ajustar usa .shows-dialog: sem isto ela não rola e o rodapé some quando a Escala abre direto
 import "./escalas.css";
 
@@ -26,7 +28,7 @@ import "./escalas.css";
 
 type Role = "adm" | "dir" | "sup" | "mem";
 type Regra = "todos" | "ninguem" | "area" | "grupo" | "pessoas" | "livro";
-export type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; origem: "programacao" | "livro" | "manual" | "solicitacao"; regra: Regra | null; pessoaIds: string[]; vazio: boolean; sinal: string | null; showBookId: string | null; dailyBookId: string | null; dailyBookStatus: string | null; blocoId: string | null; allocationId?: string | null; allocationIds?: string[]; vagas?: VagaDoLivro[]; horarioDela?: { chaveOriginal: string; inicio: string; fim: string | null } };
+export type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; origem: "programacao" | "livro" | "manual" | "solicitacao"; regra: Regra | null; pessoaIds: string[]; vazio: boolean; sinal: string | null; showBookId: string | null; dailyBookId: string | null; dailyBookStatus: string | null; blocoId: string | null; allocationId?: string | null; allocationIds?: string[]; vagas?: VagaDoLivro[]; showTipo?: string | null; horarioDela?: { chaveOriginal: string; inicio: string; fim: string | null } };
 /** Personagem de um bloco que vem de Livro do Dia: quem o faz hoje (ou ninguém, se a vaga está aberta). */
 type VagaDoLivro = { assignmentId: string; personagem: string; userId: string | null };
 /** Uma mexida no bloco; com `assignmentId`, vale para aquele personagem e não para "a primeira vaga aberta". */
@@ -476,7 +478,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       </div>}
       {carregandoTela && !error && !dia && !minha && <div aria-busy="true" style={css("padding:16px;text-align:center;font-size:12.5px;color:var(--asa-label);background:#fff;border:1px dashed var(--asa-line-soft);border-radius:12px")}>Montando a escala…</div>}
       {showMinha && minha && <MinhaEscala minha={minha} date={date} onHoje={() => setDate(todayISO())} onConfirm={confirmarEscala} saving={saving}/>}
-      {!isMem && tab === "escala" && dia && <EscalaGrid dia={dia} canEdit={isAdm || areasMinhas.length > 0} editableAreaIds={null} onAdjust={ajustarCelulaEmLote} onHorario={mudarHorario} onRemoveManual={isAdm ? removerEntradaManual : undefined} onEditManual={isAdm ? ((b) => setManual({ bloco: b })) : undefined} onFolgaResolvida={folgaResolvida} saiu={saiuApi}/>} 
+      {!isMem && tab === "escala" && dia && <EscalaGrid dia={dia} review={review} canEdit={isAdm || areasMinhas.length > 0} editableAreaIds={null} onAdjust={ajustarCelulaEmLote} onHorario={mudarHorario} onRemoveManual={isAdm ? removerEntradaManual : undefined} onEditManual={isAdm ? ((b) => setManual({ bloco: b })) : undefined} onFolgaResolvida={folgaResolvida} saiu={saiuApi}/>} 
       {!isMem && tab === "prog" && localId && <ProgramacaoTab review={review} localId={localId} localName={operationLabel} date={date} dia={dia} canEdit={Boolean(local?.podeEditar)} onChanged={() => setRefresh((n) => n + 1)}/>}
     </div>
 
@@ -556,7 +558,7 @@ function useTelefone() {
 }
 
 /* ---------- aba Escala: grade pessoas × horários ---------- */
-function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemoveManual, onEditManual, onFolgaResolvida, saiu }: { saiu?: SaiuApi; dia: Dia; canEdit: boolean; editableAreaIds: string[] | null; onHorario: (bloco: Bloco, pessoaId: string, horario: { inicio: string; fim: string | null; motivo?: string } | null) => Promise<string | null>; onAdjust: (bloco: Bloco, mudancas: Mudanca[], motivo?: string) => Promise<void>; onRemoveManual?: (allocationIds: string[]) => Promise<void>; onEditManual?: (bloco: Bloco) => void; onFolgaResolvida?: (userId: string) => Promise<void> }) {
+function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario, onRemoveManual, onEditManual, onFolgaResolvida, saiu }: { saiu?: SaiuApi; review: boolean; dia: Dia; canEdit: boolean; editableAreaIds: string[] | null; onHorario: (bloco: Bloco, pessoaId: string, horario: { inicio: string; fim: string | null; motivo?: string } | null) => Promise<string | null>; onAdjust: (bloco: Bloco, mudancas: Mudanca[], motivo?: string) => Promise<void>; onRemoveManual?: (allocationIds: string[]) => Promise<void>; onEditManual?: (bloco: Bloco) => void; onFolgaResolvida?: (userId: string) => Promise<void> }) {
   const [view, setView] = useState<"pessoa" | "atividade">(() => typeof window !== "undefined" && window.matchMedia?.("(max-width: 640px)").matches ? "atividade" : "pessoa");
   const [team, setTeam] = useState("todos");
   const [busca, setBusca] = useState("");
@@ -649,6 +651,8 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
       onVoltarHorario={(bloco, pessoaId) => void onHorario({ ...bloco, key: bloco.horarioDela!.chaveOriginal }, pessoaId, null)}
       onAjustarVazio={setAjustando} onFolgaResolvida={onFolgaResolvida}/>
 
+    <LivrosDoDia dia={dia} review={review}/>
+
     <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:9px")}>
       <div style={css("display:flex;align-items:center;gap:3px;border:1px solid var(--asa-line);border-radius:10px;padding:3px;background:var(--asa-fade)")}>
         {(["pessoa", "atividade"] as const).map((key) => <button key={key} type="button" className="esc-hit" aria-pressed={view === key} onClick={() => setView(key)} style={css(botaoDeVisao(view === key))}>{etiquetaDaVisao[key]}</button>)}
@@ -720,6 +724,7 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
                 <td style={css("border-bottom:1px solid var(--asa-purple-airy);border-right:1px solid var(--asa-purple-lift);padding:6px 9px;vertical-align:middle;width:210px;")}>{blockEl(b, "display:inline-flex;")}</td>
                 <td style={css("border-bottom:1px solid var(--asa-purple-airy);padding:6px 9px;vertical-align:middle;")}>
                   <div style={css("display:flex;flex-wrap:wrap;gap:5px;align-items:center")}>
+                    {b.regra === "livro" ? <ShowLinha bloco={b} data={dia.date} nomeDe={personName}/> : <>
                     {todoOElenco
                       ? <details style={css("font-size:12px;color:var(--asa-ink-medium)")}>
                         <summary style={css("cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:8px;min-height:44px;font-weight:700")}><span style={css("border:1px solid var(--asa-line);background:var(--asa-fade);border-radius:999px;padding:4px 12px")}>{`Todo o elenco do dia (${who.length})`}</span><span style={css("color:var(--asa-purple)")}>ver nomes</span></summary>
@@ -731,6 +736,7 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
                       </span>)}
                     {b.regra !== "ninguem" && (b.vazio ? <span style={css("display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;background:var(--asa-vaga-bg);color:var(--asa-vaga-fg);border:1px dashed var(--asa-vaga-bd);")}>sem ninguém · defina quem entra</span>
                       : !todoOElenco && <span style={css("font-size:12px;color:var(--asa-label);margin-left:2px")}>{plural(who.length, "pessoa", "pessoas")}</span>)}
+                    </>}
                     {b.horarioDela && <span style={css("font-size:12px;color:var(--asa-label)")}>{`Horário só desta pessoa · era ${faixa(b.horarioDela)}`}</span>}
                     {canEdit && b.horarioDela && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => void onHorario({ ...b, key: b.horarioDela!.chaveOriginal }, b.pessoaIds[0]!, null)}>Voltar ao normal</button>}
                     {canEdit && !b.horarioDela && b.regra !== "ninguem" && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setAjustando(b)}>Ajustar</button>}

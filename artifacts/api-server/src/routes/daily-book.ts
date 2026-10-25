@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { Router, type IRouter } from "express";
 import { eq, and, inArray, ne, isNull, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
@@ -586,6 +586,7 @@ async function writeDailyBookAudit(
         execute: "Livro do Dia marcado como executado", cancel: "Livro do Dia cancelado", reopen: "Livro do Dia reaberto", archive: "Livro do Dia arquivado",
         position_removed: "Posição tirada do Livro do Dia", scene_removed: "Cena tirada do Livro do Dia", block_removed: "Grupo tirado do Livro do Dia",
         scene_restored: "Cena devolvida ao Livro do Dia", block_restored: "Grupo devolvido ao Livro do Dia", position_restored: "Posição devolvida ao Livro do Dia",
+        conferido: "Livro do Dia conferido", conferencia_desfeita: "Conferência do Livro do Dia desfeita",
         scenes_reordered: "Cenas do Livro do Dia reordenadas", formation_applied_today: "Formação aplicada ao Livro do Dia", formation_saved_from_day: "Formação do dia guardada na biblioteca",
       };
       let narrative = frases[action] ? `${frases[action]}.` : undefined;
@@ -868,6 +869,70 @@ async function resolveLiveTree(
       for (const a of position.assignments) if (a.userId && missing.has(a.userId) && !a.userName) a.userName = byId.get(a.userId) ?? null;
   }
   return liveTree;
+}
+
+type ArvoreParaRetrato = {
+  name: string; isRemoved: boolean;
+  blocks: { name: string; isRemoved: boolean; positions: { name: string; isRemoved: boolean; assignments: { userId: string | null; status: string }[] }[] }[];
+}[];
+
+/**
+ * Retrato de quem faz cada papel no Livro neste instante (cena, grupo, posição e as pessoas dela). Só isto entra: texto, horário
+ * e ordem não mudam o retrato, então não derrubam a marca de "conferido". O retrato sai da árvore AO VIVO, a mesma que a tela mostra.
+ */
+export function retratoDoElenco(tree: ArvoreParaRetrato): string {
+  const linhas: string[] = [];
+  for (const cena of tree) {
+    if (cena.isRemoved) continue;
+    for (const grupo of cena.blocks) {
+      if (grupo.isRemoved) continue;
+      for (const posicao of grupo.positions) {
+        if (posicao.isRemoved) continue;
+        const pessoas = posicao.assignments.filter((a) => a.status !== "REMOVED").map((a) => a.userId ?? "-").sort();
+        linhas.push(`${cena.name}|${grupo.name}|${posicao.name}|${pessoas.join(",")}`);
+      }
+    }
+  }
+  return createHash("sha1").update(linhas.sort().join("\n")).digest("hex");
+}
+
+/** Vagas vivas do Livro e quantas estão sem ninguém (para o cartão da Escala dizer "falta gente"). */
+function contagemDasVagas(tree: ArvoreParaRetrato) {
+  let total = 0, semPessoa = 0;
+  for (const cena of tree) {
+    if (cena.isRemoved) continue;
+    for (const grupo of cena.blocks) {
+      if (grupo.isRemoved) continue;
+      for (const posicao of grupo.positions) {
+        if (posicao.isRemoved) continue;
+        for (const a of posicao.assignments) { if (a.status === "REMOVED") continue; total += 1; if (!a.userId) semPessoa += 1; }
+      }
+    }
+  }
+  return { total, semPessoa };
+}
+
+type LivroComConferencia = { conferredBy: string | null; conferredAt: Date | null; conferredFingerprint: string | null };
+
+/** "Conferido" só vale enquanto o retrato de agora for igual ao retrato de quando foi conferido. */
+function conferenciaDoLivro(book: LivroComConferencia, retratoAgora: string) {
+  const marcado = Boolean(book.conferredBy && book.conferredFingerprint);
+  const vale = marcado && book.conferredFingerprint === retratoAgora;
+  return { conferido: vale, caiu: marcado && !vale, porId: marcado ? book.conferredBy : null, em: marcado ? book.conferredAt : null };
+}
+
+/**
+ * Quem conferiu e depois trocou alguém ele mesmo continua com o Livro conferido: viu o que fez. Só renova o retrato quando a marca
+ * ainda valia ANTES da troca (`retratoAntes` igual ao guardado). Troca de outra pessoa nunca passa por aqui, então derruba a marca.
+ */
+async function manterConferenciaDeQuemMexeu(
+  tx: typeof db,
+  claimedBook: { id: string; status: string; agendaEventId: string; showBookId: string | null; scaleId: string | null; conferredFingerprint: string | null },
+  retratoAntes: string | null,
+) {
+  if (!retratoAntes || retratoAntes !== claimedBook.conferredFingerprint) return;
+  const depois = retratoDoElenco(await resolveLiveTree(claimedBook, tx));
+  await tx.update(dailyBooksTable).set({ conferredFingerprint: depois }).where(eq(dailyBooksTable.id, claimedBook.id));
 }
 
 /**
@@ -2060,6 +2125,7 @@ router.get("/daily-book", requireAuth, requireOrganization, async (req, res) => 
     const dailyBooks = visiveis
       .map((r, i) => ({
         ...r.book,
+        conferredFingerprint: undefined,
         horarios: horarios[i],
         operationId: r.operationId,
         operationName: r.operationName,
@@ -2072,6 +2138,123 @@ router.get("/daily-book", requireAuth, requireOrganization, async (req, res) => 
     res.json({ dailyBooks });
   } catch (err) {
     res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível listar os Livros do Dia. Tente de novo." });
+  }
+});
+
+/**
+ * Cartões "Livros do dia" da Escala: um por show do local naquela data, com o estado da conferência. Fica ANTES de `/daily-book/:id`
+ * para "cartoes" não ser lido como id. Elenco não vê cartão; cada Supervisão vê só os shows que pode operar (a mesma regra do Livro).
+ */
+router.get("/daily-book/cartoes", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user!;
+  const { locationId, date } = req.query as Record<string, string | undefined>;
+  if (!locationId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(locationId) || !date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    res.status(400).json({ error: "PEDIDO_INVALIDO", message: "Informe o local e a data (AAAA-MM-DD) para ver os Livros do dia." });
+    return;
+  }
+  if (!["ADMIN", "DIR", "SUPERVISOR_A", "SUPERVISOR_B"].includes(actor.role)) {
+    res.json({ cartoes: [] });
+    return;
+  }
+  try {
+    const rows = await db
+      .select({
+        book: dailyBooksTable,
+        operationId: agendaEventsTable.operationId,
+        eventStartTime: agendaEventsTable.startTime,
+        showTitle: showBooksTable.title,
+        showType: showBooksTable.type,
+        showResponsibleId: showBooksTable.responsibleId,
+        responsibleName: usersTable.name,
+      })
+      .from(dailyBooksTable)
+      .innerJoin(agendaEventsTable, eq(dailyBooksTable.agendaEventId, agendaEventsTable.id))
+      .innerJoin(operationsTable, eq(agendaEventsTable.operationId, operationsTable.id))
+      .innerJoin(showBooksTable, eq(dailyBooksTable.showBookId, showBooksTable.id))
+      .leftJoin(usersTable, eq(usersTable.id, showBooksTable.responsibleId))
+      .where(and(
+        eq(operationsTable.organizationId, actor.organizationId as string),
+        eq(agendaEventsTable.date, date), eq(showBooksTable.locationId, locationId), ne(dailyBooksTable.status, "CANCELLED"),
+      ));
+    const visiveis: typeof rows = [];
+    for (const r of rows) {
+      if (await canViewDailyBook(actor, r.operationId, r.book.status, { id: r.book.showBookId!, responsibleId: r.showResponsibleId })) visiveis.push(r);
+    }
+    const daProgramacao = await horariosDosShowsNaProgramacao([...new Set(visiveis.filter((r) => !r.book.sessionId).map((r) => r.book.showBookId!))], date);
+    const cartoes = await Promise.all(visiveis.map(async (r) => {
+      const tree = await resolveLiveTree(r.book);
+      const vagas = contagemDasVagas(tree);
+      const conferencia = conferenciaDoLivro(r.book, retratoDoElenco(tree));
+      const quem = conferencia.porId ? (await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, conferencia.porId)).limit(1))[0]?.name ?? null : null;
+      const programacao = !r.book.sessionId ? daProgramacao.get(r.book.showBookId!) ?? [] : [];
+      const horarios = programacao.length ? [...new Set(programacao.map((h) => h.inicio))] : r.eventStartTime ? [r.eventStartTime.slice(0, 5)] : [];
+      const terminal = r.book.status === "EXECUTED" || r.book.status === "CANCELLED";
+      return {
+        id: r.book.id, showBookId: r.book.showBookId, showTitle: r.showTitle, showType: r.showType,
+        sessionLabel: r.book.sessionId && r.eventStartTime ? r.eventStartTime.slice(0, 5) : null,
+        horarios, status: r.book.status,
+        responsavel: r.showResponsibleId ? { id: r.showResponsibleId, name: r.responsibleName } : null,
+        vagas: vagas.total, vagasSemPessoa: vagas.semPessoa,
+        conferido: conferencia.conferido, conferidoPor: conferencia.conferido ? quem : null, conferidoEm: conferencia.conferido ? conferencia.em : null,
+        conferenciaCaiu: conferencia.caiu ? { por: quem, em: conferencia.em } : null,
+        podeConferir: !terminal && actor.role !== "DIR" && (await canOperateDailyBook(actor, r.operationId, { id: r.book.showBookId!, responsibleId: r.showResponsibleId })),
+      };
+    }));
+    cartoes.sort((a, b) => (a.horarios[0] ?? "99:99").localeCompare(b.horarios[0] ?? "99:99") || (a.showTitle ?? "").localeCompare(b.showTitle ?? "", "pt-BR"));
+    res.json({ cartoes });
+  } catch (err) {
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível montar os Livros do dia. Tente de novo." });
+  }
+});
+
+/** Marca o Livro como conferido: o retrato do elenco de agora fica guardado com quem conferiu. Não muda a versão do Livro. */
+router.post("/daily-book/:id/conferir", requireAuth, requireOrganization, requireRole("ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"), async (req, res) => {
+  const id = req.params.id as string;
+  const actorId = req.user!.sub;
+  try {
+    const book = await getDailyBookOrFail(id, res);
+    if (!book) return;
+    if (book.status === "EXECUTED" || book.status === "CANCELLED") {
+      res.status(409).json({ error: "ESTADO_INVALIDO", message: "Este Livro já foi executado ou cancelado: não há mais o que conferir." });
+      return;
+    }
+    if (!(await requireDailyBookOperate(book, req.user!, res))) return;
+    const retrato = retratoDoElenco(await resolveLiveTree(book));
+    const agora = new Date();
+    await db.transaction(async (tx) => {
+      await tx.update(dailyBooksTable).set({ conferredBy: actorId, conferredAt: agora, conferredFingerprint: retrato }).where(eq(dailyBooksTable.id, id));
+      await writeDailyBookAudit(id, actorId, "conferido",
+        { conferido: false, antesPor: book.conferredBy ?? null },
+        { conferido: true, conferidoEm: agora.toISOString() }, tx);
+    });
+    res.json({ conferencia: { conferido: true, em: agora, porId: actorId } });
+  } catch (err) {
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível marcar o Livro como conferido. Tente de novo." });
+  }
+});
+
+/** Tira a marca de conferido (quem marcou sem querer, ou quer conferir de novo). Também não muda a versão do Livro. */
+router.delete("/daily-book/:id/conferir", requireAuth, requireOrganization, requireRole("ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"), async (req, res) => {
+  const id = req.params.id as string;
+  const actorId = req.user!.sub;
+  try {
+    const book = await getDailyBookOrFail(id, res);
+    if (!book) return;
+    if (book.status === "EXECUTED" || book.status === "CANCELLED") {
+      res.status(409).json({ error: "ESTADO_INVALIDO", message: "Este Livro já foi executado ou cancelado: a conferência não muda mais." });
+      return;
+    }
+    if (!(await requireDailyBookOperate(book, req.user!, res))) return;
+    if (!book.conferredBy) { res.json({ conferencia: { conferido: false } }); return; }
+    await db.transaction(async (tx) => {
+      await tx.update(dailyBooksTable).set({ conferredBy: null, conferredAt: null, conferredFingerprint: null }).where(eq(dailyBooksTable.id, id));
+      await writeDailyBookAudit(id, actorId, "conferencia_desfeita",
+        { conferido: true, conferidoPor: book.conferredBy },
+        { conferido: false }, tx);
+    });
+    res.json({ conferencia: { conferido: false } });
+  } catch (err) {
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível desfazer a conferência. Tente de novo." });
   }
 });
 
@@ -2102,9 +2285,14 @@ router.get("/daily-book/:id", requireAuth, requireOrganization, async (req, res)
       ? (snapshotScenes as typeof liveTree)
       : liveTree;
     const currentSnapshot: VersionedSnapshot = { scenes: liveTree };
+    // Conferência só aparece para quem opera o Livro (e a Direção, que lê): o Elenco não vê "conferido".
+    const { conferredFingerprint: _retrato, conferredBy: _porId, conferredAt: _em, ...livroSemRetrato } = book;
+    const conferencia = ctx.seesLive ? conferenciaDoLivro(book, retratoDoElenco(liveTree)) : null;
+    const conferidoPor = conferencia?.porId ? (await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, conferencia.porId)).limit(1))[0]?.name ?? null : null;
     res.json({
       dailyBook: {
-        ...book,
+        ...livroSemRetrato,
+        conferencia: conferencia ? { conferido: conferencia.conferido, por: conferencia.conferido ? conferidoPor : null, em: conferencia.conferido ? conferencia.em : null, caiu: conferencia.caiu ? { por: conferidoPor, em: conferencia.em } : null } : null,
         operationId: ctx.operationId,
         operationName: ctx.operationName,
         eventTitle: ctx.eventTitle,
@@ -2291,6 +2479,8 @@ router.patch("/daily-book/:id/assignments/:assignmentId", requireAuth, requireOr
       return;
     }
     const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id) };
+    // Quem conferiu e troca alguém ele mesmo continua com o Livro conferido; troca de outra pessoa derruba a marca sozinha.
+    const retratoAntes = book.conferredBy === actorId && book.conferredFingerprint ? retratoDoElenco(await resolveLiveTree(book)) : null;
     const updated = await mutateDailyBook(id, expectedVersion, async (tx) => {
       const [next] = await tx
         .update(dailyBookAssignmentsTable)
@@ -2301,8 +2491,9 @@ router.patch("/daily-book/:id/assignments/:assignmentId", requireAuth, requireOr
         .returning();
       if (!next) throw new VersionedResourceNotFoundError("Alocação");
       return next;
-    }, async (tx, _claimedBook, next) => {
+    }, async (tx, claimedBook, next) => {
       const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id, tx) };
+      await manterConferenciaDeQuemMexeu(tx, claimedBook, retratoAntes);
       await marcarEscalaAlteradaPeloLivro(tx as unknown as typeof db, id, actorId, "troca de pessoa");
       // Supervisão que troca pessoa de OUTRA área: fica visível quem mexeu e a Supervisão dela é avisada (um aviso por troca).
       const { day: diaDoLivro, scale: escalaDoLivro } = await escalaDoDiaDoLivro(id, tx as unknown as typeof db);
@@ -2389,6 +2580,7 @@ export async function ajustarPessoaNoLivro(
   }
   if (!alvo.length) return false;
   const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(book.id, exec) };
+  const retratoAntes = book.conferredBy === input.actorId && book.conferredFingerprint ? retratoDoElenco(await resolveLiveTree(book, exec)) : null;
   const aplicar = async (tx: typeof db) => {
     for (const a of alvo) {
       // Ajuste pela Escala é mexida à mão: a vaga vira exceção do dia e para de ser recalculada
@@ -2401,6 +2593,7 @@ export async function ajustarPessoaNoLivro(
   };
   const auditar = async (tx: typeof db) => {
     const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(book.id, tx) };
+    await manterConferenciaDeQuemMexeu(tx, book, retratoAntes);
     await writeDailyBookAudit(book.id, input.actorId, "assignment_swap",
       { version: book.version, snapshot: beforeSnapshot, userId: input.userId, origem: "ajuste na Escala" },
       { version: book.version + 1, snapshot: afterSnapshot, userId: input.userId, action: input.action, assignmentIds: alvo.map((a) => a.id) }, tx);

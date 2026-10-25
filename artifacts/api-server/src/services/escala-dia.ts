@@ -61,6 +61,8 @@ export type BlocoDia = {
   showBookId: string | null;
   dailyBookId: string | null;
   dailyBookStatus: string | null;
+  /** Tipo do show do Livro (COMPLETE, STRUCTURED, CHARACTERS_ONLY…): a Escala mostra "personagem → pessoa" só nos de personagens. */
+  showTipo?: string | null;
   blocoId: string | null;
   allocationId: string | null;
   /** Quando a mesma atividade manual vale para várias pessoas, todas as entradas do bloco. */
@@ -291,7 +293,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
 
   // Livros do Dia dos shows deste local nesta data (cancelado não convoca ninguém).
   const livros = await db.select({
-    id: dailyBooksTable.id, status: dailyBooksTable.status, showBookId: dailyBooksTable.showBookId, sessionId: dailyBooksTable.sessionId, showTitle: showBooksTable.title,
+    id: dailyBooksTable.id, status: dailyBooksTable.status, showBookId: dailyBooksTable.showBookId, sessionId: dailyBooksTable.sessionId, showTitle: showBooksTable.title, showType: showBooksTable.type,
     startTime: agendaEventsTable.startTime, endTime: agendaEventsTable.endTime,
   }).from(dailyBooksTable)
     .innerJoin(agendaEventsTable, eq(dailyBooksTable.agendaEventId, agendaEventsTable.id))
@@ -328,7 +330,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     blocos.push({
       ...base, key: `p:${bloco.id}`, rotulo: bloco.rotulo, inicio, fim: hhmm(bloco.fim), origem: "programacao", regra: bloco.regra,
       pessoaIds, vazio, sinal, blocoId: bloco.id, showBookId: bloco.showBookId,
-      dailyBookId: livro?.id ?? null, dailyBookStatus: livro?.status ?? null,
+      dailyBookId: livro?.id ?? null, dailyBookStatus: livro?.status ?? null, showTipo: livro?.showType ?? null,
       ...(livro ? { vagas: vagas.get(livro.id) ?? [] } : {}),
     });
   }
@@ -343,7 +345,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
       blocos.push({
         ...base, key: `l:${livro.id}:${h.inicio}`, rotulo: `${livro.showTitle ?? "SHOW"}${livro.sessionId ? ` · ${h.inicio}` : ""}`.toLocaleUpperCase("pt-BR"), inicio: h.inicio, fim: h.fim,
         origem: "livro", regra: "livro", pessoaIds, vazio: pessoaIds.length === 0, sinal: pessoaIds.length ? null : "Livro do Dia sem ninguém escalado",
-        showBookId: livro.showBookId, dailyBookId: livro.id, dailyBookStatus: livro.status, vagas: vagas.get(livro.id) ?? [],
+        showBookId: livro.showBookId, dailyBookId: livro.id, dailyBookStatus: livro.status, showTipo: livro.showType, vagas: vagas.get(livro.id) ?? [],
       });
     }
   }

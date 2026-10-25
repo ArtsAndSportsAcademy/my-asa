@@ -35,6 +35,11 @@ export const dailyBooksTable = pgTable("daily_books", {
   executedBy: uuid("executed_by").references(() => usersTable.id),
   cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
   cancelledBy: uuid("cancelled_by").references(() => usersTable.id),
+  // 0083: quem conferiu quem faz cada papel, quando, e o retrato do elenco naquela hora. A marca só vale enquanto o elenco
+  // do Livro for igual ao retrato; outra pessoa mexendo em quem faz o quê derruba a marca (ver `conferenciaDoLivro`).
+  conferredBy: uuid("conferred_by").references(() => usersTable.id),
+  conferredAt: timestamp("conferred_at", { withTimezone: true }),
+  conferredFingerprint: text("conferred_fingerprint"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
