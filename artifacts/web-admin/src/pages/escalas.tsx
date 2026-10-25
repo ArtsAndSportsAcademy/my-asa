@@ -1,4 +1,4 @@
-﻿import { type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { X } from "lucide-react";
 import { ApiError, customFetch } from "@workspace/api-client-react";
@@ -8,6 +8,12 @@ import {
   addDays, loadSampleEscala, loadSampleProgramacoes, sampleAreasSupervisionadas, sampleDia, sampleLocais, samplePessoas,
   sampleShowsDoLocal, saveSampleEscala, saveSampleProgramacoes, todayISO, vocabularioDoLocal, type SampleEscalaState, type SampleProgramacao,
 } from "@/lib/review-escala";
+import { AtencaoDoDia, type ConflitoDaPessoa, type GrupoDeConflito } from "@/components/escala/atencao-do-dia";
+import { BlocoMenu } from "@/components/escala/bloco-menu";
+import { GradePessoa } from "@/components/escala/grade-pessoa";
+import { ResumoDoDia, trabalhaNoDia } from "@/components/escala/resumo-do-dia";
+import { TIPOS, ehExcecao, faixa, textoDoBloco, tipoDoBloco, toneDoTipo } from "@/components/escala/tipos";
+import "@/components/escala/escala-tokens.css";
 import "./shows.css"; // a janela do Ajustar usa .shows-dialog: sem isto ela não rola e o rodapé some quando a Escala abre direto
 import "./escalas.css";
 
@@ -82,20 +88,11 @@ const minutes = (t: string) => { const [h, m] = t.split(":").map(Number); return
 const durLabel = (a: string, b: string | null) => { if (!b) return ""; const d = minutes(b) - minutes(a); return d >= 60 ? `${Math.floor(d / 60)}h${d % 60 ? String(d % 60).padStart(2, "0") : ""}` : `${d} min`; };
 const initials = (name: string) => name.normalize("NFD").replace(/[̀-ͯ]/g, "").split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 const plural = (n: number, um: string, muitos: string) => `${n} ${n === 1 ? um : muitos}`;
-const faixa = (b: { inicio: string; fim: string | null }) => b.fim ? `${b.inicio}–${b.fim}` : b.inicio;
 
-/** Tom do bloco pelo vocabulário da escala: show pelo Livro; refeição, treino/ensaio, recesso, no show. */
+/** Cor do bloco: vem do tipo (show pelo Livro, almoço, treino, ensaio…), com contraste forte. O nome do tipo continua escrito no bloco. */
 function toneOf(b: { rotulo: string; regra: Regra | null }): Tone {
-  const r = b.rotulo.toLocaleUpperCase("pt-BR");
-  if (b.regra === "livro") return T.show;
-  if (r.startsWith("ALMOÇO")) return T.refeicao;
-  if (r.startsWith("RECESSO")) return T.ferias;
-  if (r.startsWith("NO SHOW")) return T.ausente;
-  if (/^(TREINO|ENSAIO|AULA|ACROBACIA|FISIO)/.test(r)) return T.aula;
-  return T.prep;
+  return toneDoTipo(tipoDoBloco(b));
 }
-/** Nome na célula: bloco de show leva a hora ("MUSICAL 12:30") — vocabulário da escala, não nome de show. */
-const textoDoBloco = (b: { rotulo: string; inicio: string; regra: Regra | null }) => b.regra === "livro" && !/\d{1,2}(:|h)\d{0,2}/i.test(b.rotulo) ? `${b.rotulo} ${b.inicio}` : b.rotulo; // "Musical 15h" já traz a hora
 const FOLGA: Record<string, { label: string; tone: Tone }> = {
   DAY_OFF: { label: "Folga", tone: T.ausente }, RECESSO: { label: "Recesso", tone: T.ferias }, NO_SHOW: { label: "No show", tone: T.ausente },
   AFASTAMENTO: { label: "Afastamento", tone: T.ferias }, RESTRICAO: { label: "Restrição", tone: T.ausente }, OUTRO: { label: "Fora", tone: T.ferias },
@@ -378,7 +375,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
   const carregandoTela = loading || (!isMem && !review && !locaisProntos);
   const status = carregandoTela && !dia ? "carregando…" : error && !dia ? "não carregou" : statusLabel(dia);
   const S = STATUS[isMem ? (carregandoTela && !minha ? "carregando…" : error && !minha ? "não carregou" : minha?.publicada ? "publicada" : "sem escala") : status];
-  const dateBar = <div className="esc-pad" style={css("display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:14px 20px 12px;background:#fff;border-bottom:1px solid var(--asa-border-soft);position:relative")}>
+  const dateBar = <div className="esc-pad" style={css("display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:14px 20px 12px;background:#fff;position:relative;" + (isMem ? "border-bottom:1px solid var(--asa-border-soft);" : ""))}>
     <div style={css("display:flex;align-items:center;gap:4px")}>
       <button type="button" className="esc-hit" aria-label="Dia anterior" onClick={() => { setDate(addDays(date, -1)); setCal(false); }} style={css("width:30px;height:30px;border-radius:9px;border:1px solid var(--asa-line);background:#fff;color:var(--asa-label);font-size:13px;cursor:pointer")}>‹</button>
       <button type="button" className="esc-hit" aria-label="Próximo dia" onClick={() => { setDate(addDays(date, 1)); setCal(false); }} style={css("width:30px;height:30px;border-radius:9px;border:1px solid var(--asa-line);background:#fff;color:var(--asa-label);font-size:13px;cursor:pointer")}>›</button>
@@ -392,7 +389,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       <div style={css("display:flex;align-items:center;gap:9px;font-size:12px;color:var(--asa-label);flex-wrap:wrap")}>
         <span>{operationLabel}</span>
         <span>·</span>
-        <span>{isMem ? (carregandoTela && !minha ? "carregando…" : error && !minha ? "não carregou" : minha?.publicada ? plural(meusBlocos.length, "bloco seu", "blocos seus") : "ainda não publicada") : dia ? `${dia.pessoas.filter((p) => p.folga).length} fora o dia todo · ${dia.pessoas.filter((p) => !p.folga).length} no local · ${plural(dia.blocos.filter((b) => b.vazio).length, "bloco vazio", "blocos vazios")}` : "—"}</span>
+        <span>{isMem ? (carregandoTela && !minha ? "carregando…" : error && !minha ? "não carregou" : minha?.publicada ? plural(meusBlocos.length, "bloco seu", "blocos seus") : "ainda não publicada") : dia ? plural(dia.pessoas.filter((p) => !p.folga).length, "pessoa no dia", "pessoas no dia") : "—"}</span>
       </div>
     </div>
     <span style={css("flex:1")}/>
@@ -403,6 +400,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       <button type="button" className="esc-hit" aria-expanded={cal} onClick={() => setCal((v) => !v)} style={css(cal ? pillOn : pillOff)}>Calendário</button>
     </div>
     {!isMem && !review && localId && <a className="esc-hit" href={`/imprimir?local=${encodeURIComponent(localId)}&data=${date}`} target="_blank" rel="noreferrer" style={css("flex:none;white-space:nowrap;border:1px solid var(--asa-line);background:#fff;color:var(--asa-ink-medium);border-radius:999px;padding:6px 13px;font-size:12px;font-weight:700;font-family:Manrope,sans-serif;text-decoration:none")}>Imprimir o dia</a>}
+    {isAdm && tab === "escala" && dia?.escala && <button type="button" className="esc-hit" disabled={saving} onClick={() => setManual({ bloco: null })} style={css(btn("primary") + "min-height:44px;white-space:nowrap")}>+ Atividade só de hoje</button>}
     {cal && <Calendario date={date} onPick={(d) => { setDate(d); setCal(false); }}/>}
   </div>;
 
@@ -436,7 +434,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
 
     {regrasAbertas && isAdm && localId && <RegrasDoLocalDialog localId={localId} localNome={locais.find((l) => l.id === localId)?.name ?? "este local"} onClose={() => setRegrasAbertas(false)}/>}
     {gerarMesAberto && isAdm && <GerarMesDialog locais={locais} localInicial={localId} review={review} onClose={() => setGerarMesAberto(false)} onGerou={() => setRefresh((n) => n + 1)}/>}
-    <Rodape role={role} tab={tab} onMinha={tab === "minha"} dia={dia} minha={minha} areasMinhas={areasMinhas} saving={saving} busy={busy} onGerar={gerarDia} onGerarMes={() => setGerarMesAberto(true)} onRegras={review ? undefined : () => setRegrasAbertas(true)} onPronta={marcarPronta} onPublicar={publicar} onManual={() => setManual({ bloco: null })}/>
+    <Rodape role={role} tab={tab} onMinha={tab === "minha"} dia={dia} minha={minha} areasMinhas={areasMinhas} saving={saving} busy={busy} onGerar={gerarDia} onGerarMes={() => setGerarMesAberto(true)} onRegras={review ? undefined : () => setRegrasAbertas(true)} onPronta={marcarPronta} onPublicar={publicar}/>
   </section>;
 }
 
@@ -488,24 +486,38 @@ function useTelefone() {
 function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemoveManual, onEditManual, onFolgaResolvida }: { dia: Dia; canEdit: boolean; editableAreaIds: string[] | null; onHorario: (bloco: Bloco, pessoaId: string, horario: { inicio: string; fim: string | null; motivo?: string } | null) => Promise<string | null>; onAdjust: (bloco: Bloco, mudancas: Mudanca[], motivo?: string) => Promise<void>; onRemoveManual?: (allocationIds: string[]) => Promise<void>; onEditManual?: (bloco: Bloco) => void; onFolgaResolvida?: (userId: string) => Promise<void> }) {
   const [view, setView] = useState<"pessoa" | "atividade">(() => typeof window !== "undefined" && window.matchMedia?.("(max-width: 640px)").matches ? "atividade" : "pessoa");
   const [team, setTeam] = useState("todos");
-  const [zoom, setZoom] = useState(100);
+  const [busca, setBusca] = useState("");
+  const [soExcecoes, setSoExcecoes] = useState(false);
+  const [selecionada, setSelecionada] = useState<string | null>(null);
+  const [menu, setMenu] = useState<{ bloco: Bloco; pessoa: Pessoa; rect: DOMRect } | null>(null);
+  const [desfazer, setDesfazer] = useState<{ texto: string; acao: () => Promise<void> } | null>(null);
   const [ajustando, setAjustando] = useState<Bloco | null>(null);
-  const [mudandoHorario, setMudandoHorario] = useState<{ pessoaId: string; nome: string; bloco: Bloco; outro: Bloco } | null>(null);
+  const [mudandoHorario, setMudandoHorario] = useState<{ pessoaId: string; nome: string; bloco: Bloco; outro: Bloco | null } | null>(null);
   const [confirmarGrade, setConfirmarGrade] = useState<{ titulo: string; texto: string; acao: string; onSim: () => void } | null>(null);
   const [tirando, setTirando] = useState("");
   const telefone = useTelefone();
-  const cols =dia.pessoas.filter((p) => team === "todos" || p.areaId === team);
-  const vazios = dia.blocos.filter((b) => b.vazio);
+  const blocosDe = useCallback((pid: string) => dia.blocos.filter((b) => b.pessoaIds.includes(pid)), [dia.blocos]);
+  const trabalham = useMemo(() => dia.pessoas.filter((p) => trabalhaNoDia(p, blocosDe)), [dia.pessoas, blocosDe]);
+  const cols = trabalham.filter((p) => team === "todos" || p.areaId === team);
+  const vazios = dia.blocos.filter((b) => b.vazio && b.regra !== "ninguem");
   const faixas = useMemo(() => {
     const seen = new Map<string, { inicio: string; fim: string | null; blocos: Bloco[] }>();
     for (const b of dia.blocos) { const k = faixa(b); const cur = seen.get(k) ?? { inicio: b.inicio, fim: b.fim, blocos: [] }; cur.blocos.push(b); seen.set(k, cur); }
     return [...seen.values()].sort((a, b) => a.inicio.localeCompare(b.inicio) || (a.fim ?? "").localeCompare(b.fim ?? ""));
   }, [dia.blocos]);
-  const blocosDe = (pid: string) => dia.blocos.filter((b) => b.pessoaIds.includes(pid));
   const personName = (id: string) => dia.pessoas.find((p) => p.id === id)?.name ?? id;
+  const motivoDaFolga = (p: Pessoa) => (p.folga ? (FOLGA[p.folga] ?? FOLGA.OUTRO).label : "Fora");
+  const termo = busca.trim().toLocaleLowerCase("pt-BR");
+  const achadas = termo ? dia.pessoas.filter((p) => p.name.toLocaleLowerCase("pt-BR").includes(termo)) : [];
+  const buscaIds = termo ? new Set(achadas.map((p) => p.id)) : null;
+  const achadasFora = achadas.filter((p) => !trabalhaNoDia(p, blocosDe));
+  const podeMexer = (p: Pessoa) => canEdit && (editableAreaIds === null || (p.areaId !== null && editableAreaIds.includes(p.areaId)));
+  const frasePorQueNao = (p: Pessoa) => canEdit
+    ? `${p.name} é da área ${p.areaName ?? "sem área"}. Só a Supervisão dessa área ou a Administração ajusta.`
+    : "A escala só é ajustada pela Administração ou pela Supervisão da área. A Direção, o Elenco e quem não cuida desta área só leem.";
   // Mesma pessoa em dois blocos que se cruzam: a escala avisa, não bloqueia (regra de conflito).
   const conflitos = useMemo(() => {
-    const out: { pessoa: string; pessoaId: string; areaId: string | null; a: Bloco; b: Bloco }[] = [];
+    const out: ConflitoDaPessoa[] = [];
     for (const p of dia.pessoas) {
       const list = dia.blocos.filter((b) => b.pessoaIds.includes(p.id)).sort((x, y) => x.inicio.localeCompare(y.inicio));
       for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
@@ -517,12 +529,22 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
     return out;
   }, [dia]);
   const emConflito = new Set(conflitos.flatMap((c) => [`${c.pessoa}|${c.a.key}`, `${c.pessoa}|${c.b.key}`]));
+  const temChoque = (p: Pessoa, b: Bloco) => emConflito.has(`${p.name}|${b.key}`);
   // Um cartão por par de blocos que se cruzam (ALMOÇO × MUSICAL), com as pessoas dentro — não um por pessoa.
   const gruposDeConflito = useMemo(() => {
-    const porPar = new Map<string, { a: Bloco; b: Bloco; pessoas: typeof conflitos }>();
+    const porPar = new Map<string, GrupoDeConflito>();
     for (const c of conflitos) { const k = `${c.a.key}|${c.b.key}`; const g = porPar.get(k) ?? { a: c.a, b: c.b, pessoas: [] }; g.pessoas.push(c); porPar.set(k, g); }
     return [...porPar.values()].sort((x, y) => x.a.inicio.localeCompare(y.a.inicio) || y.pessoas.length - x.pessoas.length);
   }, [conflitos]);
+
+  const tirarDoBloco = async (bloco: Bloco, pessoa: Pessoa) => {
+    setTirando(`${pessoa.id}|${bloco.key}`);
+    try {
+      await onAdjust(bloco, [{ userId: pessoa.id, action: "REMOVER" }]);
+      setDesfazer({ texto: `${pessoa.name} saiu de ${textoDoBloco(bloco)}.`, acao: () => onAdjust(bloco, [{ userId: pessoa.id, action: "ADICIONAR" }]) });
+    } finally { setTirando(""); }
+  };
+  useEffect(() => { if (!desfazer) return; const id = window.setTimeout(() => setDesfazer(null), 9000); return () => window.clearTimeout(id); }, [desfazer]);
 
   const blockEl = (b: Bloco, extra = "", semHora = false) => {
     const tone = toneOf(b);
@@ -532,166 +554,78 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
       {!semHora && b.fim && b.regra !== "livro" && <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;color:" + tone.fg + ";opacity:.75;margin-left:auto;")}>{faixa(b)}</span>}
     </>;
     return b.dailyBookId
-      ? <Link key={b.key} href="/livro-do-dia" title="Abrir no Livro do Dia" className="esc-bloco-link" style={css(blockStyle(tone, "cursor:pointer;text-decoration:none;" + extra))}>{inner}</Link>
+      ? <Link key={b.key} href={`/livro-do-dia?data=${dia.date}&livro=${b.dailyBookId}`} title="Abrir no Livro do Dia" className="esc-bloco-link" style={css(blockStyle(tone, "cursor:pointer;text-decoration:none;" + extra))}>{inner}</Link>
       : <div key={b.key} style={css(blockStyle(tone, extra))}>{inner}</div>;
   };
 
+  const pessoaSelecionada = selecionada ? dia.pessoas.find((p) => p.id === selecionada) ?? null : null;
+  const irParaAtencao = () => { window.dispatchEvent(new Event("ge-abrir-atencao")); window.setTimeout(() => document.getElementById("atencao-do-dia")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60); };
+  const botaoDeVisao = (ativo: boolean) => "border-radius:8px;padding:8px 14px;font-size:12px;cursor:pointer;font-family:Manrope,sans-serif;border:none;" + (ativo ? "background:#fff;color:var(--asa-ink-dark);font-weight:700;box-shadow:0 1px 3px rgba(40,20,90,.14);" : "background:none;color:var(--asa-label);font-weight:600;");
+  const etiquetaDaVisao = telefone ? { pessoa: "Por pessoa", atividade: "Por atividade" } : { pessoa: "Por pessoa", atividade: "Por atividade" };
+
   return <div style={css("display:flex;flex-direction:column;gap:12px")}>
+    <ResumoDoDia pessoas={dia.pessoas} blocos={dia.blocos} blocosDe={blocosDe} pessoasComChoque={new Set(conflitos.map((c) => c.pessoaId)).size} motivoDaFolga={motivoDaFolga} soExcecoes={soExcecoes} onSoExcecoes={setSoExcecoes} onIrParaAtencao={irParaAtencao}/>
+
+    <AtencaoDoDia dia={dia} vazios={vazios} grupos={gruposDeConflito} canEdit={canEdit} editableAreaIds={editableAreaIds} tirando={tirando}
+      onTirar={(bloco, pessoaId) => { const pessoa = dia.pessoas.find((p) => p.id === pessoaId); return pessoa ? tirarDoBloco(bloco, pessoa) : Promise.resolve(); }}
+      onMudarHorario={(pessoaId, nome, bloco, outro) => setMudandoHorario({ pessoaId, nome, bloco, outro })}
+      onVoltarHorario={(bloco, pessoaId) => void onHorario({ ...bloco, key: bloco.horarioDela!.chaveOriginal }, pessoaId, null)}
+      onAjustarVazio={setAjustando} onFolgaResolvida={onFolgaResolvida}/>
+
     <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:9px")}>
       <div style={css("display:flex;align-items:center;gap:3px;border:1px solid var(--asa-line);border-radius:10px;padding:3px;background:var(--asa-fade)")}>
-        {([["pessoa", "Por pessoa"], ["atividade", "Por atividade"]] as const).map(([key, label]) => <button key={key} type="button" className="esc-hit" aria-pressed={view === key} onClick={() => setView(key)}
-          style={css("border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:Manrope,sans-serif;border:none;" + (view === key ? "background:#fff;color:var(--asa-ink-dark);font-weight:700;box-shadow:0 1px 3px rgba(40,20,90,.14);" : "background:none;color:var(--asa-label);font-weight:600;"))}>{label}</button>)}
+        {(["pessoa", "atividade"] as const).map((key) => <button key={key} type="button" className="esc-hit" aria-pressed={view === key} onClick={() => setView(key)} style={css(botaoDeVisao(view === key))}>{etiquetaDaVisao[key]}</button>)}
       </div>
-      <span style={css("width:1px;height:20px;background:var(--asa-line)")}/>
-      {[{ id: "todos", name: "Todos os grupos" }, ...dia.areas].map((a) => <button key={a.id} type="button" className="esc-hit" aria-pressed={team === a.id} onClick={() => setTeam(a.id)}
-        style={css("border-radius:999px;padding:5px 11px;font-size:12px;cursor:pointer;font-family:Manrope,sans-serif;" + (team === a.id ? "border:1px solid var(--asa-ink-dark);background:var(--asa-ink-dark);color:#fff;font-weight:700;" : "border:1px solid var(--asa-line);background:#fff;color:var(--asa-label);font-weight:600;"))}>{a.name}</button>)}
+      <input type="search" value={busca} onChange={(e) => { setBusca(e.target.value); const unico = e.target.value.trim() ? trabalham.filter((p) => p.name.toLocaleLowerCase("pt-BR").includes(e.target.value.trim().toLocaleLowerCase("pt-BR"))) : []; if (unico.length === 1) setSelecionada(unico[0]!.id); }} placeholder="Buscar pessoa" aria-label="Buscar pessoa na escala"
+        style={css("flex:1 1 180px;min-width:140px;min-height:44px;border:1px solid var(--asa-line);border-radius:999px;padding:0 16px;font:600 13px Manrope,sans-serif;color:var(--asa-ink-dark);background:#fff")}/>
+      {dia.areas.length > 1 && <div style={css("display:flex;flex-wrap:wrap;gap:6px")}>
+        {[{ id: "todos", name: "Todos os grupos" }, ...dia.areas].map((a) => <button key={a.id} type="button" className="esc-hit" aria-pressed={team === a.id} onClick={() => setTeam(a.id)}
+          style={css("border-radius:999px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:Manrope,sans-serif;" + (team === a.id ? "border:1px solid var(--asa-ink-dark);background:var(--asa-ink-dark);color:#fff;font-weight:700;" : "border:1px solid var(--asa-line);background:#fff;color:var(--asa-label);font-weight:600;"))}>{a.name}</button>)}
+      </div>}
       <span style={css("flex:1")}/>
-      <span style={css("font-size:12px;color:var(--asa-label)")}>{`${cols.length} de ${dia.pessoas.length} pessoas · ${dia.location.name}`}</span>
-      <span className="esc-hide-sm" style={css("width:1px;height:20px;background:var(--asa-line)")}/>
-      <div className="esc-hide-sm" style={css("display:flex;align-items:center;gap:6px")}>
-        <button type="button" className="esc-hit" aria-label="Diminuir" onClick={() => setZoom((z) => Math.max(40, z - 15))} style={css("flex:none;width:26px;height:26px;border-radius:8px;border:1px solid var(--asa-line);background:#fff;color:var(--asa-ink-muted);font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center")}>−</button>
-        <div style={css("display:flex;align-items:center;gap:2px;border:1px solid var(--asa-line);border-radius:10px;padding:3px;background:var(--asa-fade)")}>
-          {[100, 85, 70, 55, 40].map((z) => <button key={z} type="button" className="esc-hit" onClick={() => setZoom(z)} style={css("flex:none;height:26px;padding:0 9px;border-radius:8px;border:none;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;background:" + (zoom === z ? "var(--asa-ink-dark)" : "transparent") + ";color:" + (zoom === z ? "#fff" : "var(--asa-label)"))}>{z}%</button>)}
-        </div>
-        <button type="button" className="esc-hit" aria-label="Aumentar" onClick={() => setZoom((z) => Math.min(100, z + 15))} style={css("flex:none;width:26px;height:26px;border-radius:8px;border:1px solid var(--asa-line);background:#fff;color:var(--asa-ink-muted);font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center")}>+</button>
-        <span style={css("flex:none;white-space:nowrap;font-size:12px;color:var(--asa-label)")}>{zoom === 100 ? "escala em tamanho real" : zoom >= 75 ? "cabe mais gente na tela" : "visão geral do dia inteiro"}</span>
-      </div>
+      <span style={css("font-size:12px;color:var(--asa-label)")}>{`${cols.length} de ${trabalham.length} pessoas · ${dia.location.name}`}</span>
     </div>
 
-    {vazios.length > 0 && <details className="esc-vazios" style={css("background:var(--asa-late-bg);border:1px solid var(--asa-amber-streak);border-radius:12px;padding:10px 14px;")}>
-      <summary style={css("display:flex;align-items:center;gap:11px;cursor:pointer;list-style:none;min-height:30px")}>
-        <img src="/asa/aviso-importante.webp" alt="" style={css("width:30px;height:30px;object-fit:contain;flex:none")}/>
-        <span style={css("font-size:12.5px;font-weight:700;color:var(--asa-amber-mid);flex:1")}>{plural(vazios.length, "bloco sem ninguém", "blocos sem ninguém")}</span>
-        <span className="esc-vazios-ver" style={css("font-size:12px;font-weight:700;color:var(--asa-amber-mid)")}>ver quais</span>
-      </summary>
-      <ul style={css("margin:10px 0 2px;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px")}>
-        {vazios.map((b) => <li key={b.key} style={css("display:flex;align-items:center;gap:10px;font-size:12px;color:var(--asa-amber-brown)")}>
-          <span style={css("font-family:'JetBrains Mono',monospace;font-weight:700;width:96px;flex:none")}>{faixa(b)}</span>
-          <span style={css("flex:1;min-width:0")}>{textoDoBloco(b)}</span>
-          {canEdit && b.regra !== "ninguem" && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setAjustando(b)}>Ajustar</button>}
-        </li>)}
-      </ul>
-    </details>}
+    {achadasFora.map((p) => <div key={`fora-${p.id}`} role="status" style={css("font-size:12.5px;color:var(--asa-ink-medium);background:var(--asa-fade);border:1px solid var(--asa-line);border-radius:12px;padding:9px 13px")}>{`${p.name} está de ${motivoDaFolga(p).toLocaleLowerCase("pt-BR")} hoje e não aparece na grade.`}</div>)}
+    {termo && !achadas.length && <div role="status" style={css("font-size:12.5px;color:var(--asa-label);padding:2px 4px")}>{`Ninguém com "${busca.trim()}" no nome.`}</div>}
 
-    {conflitos.length > 0 && <div style={css("display:flex;flex-direction:column;gap:9px;background:#fff;border:1px solid var(--asa-rose-surface);border-radius:14px;padding:13px 15px;")}>
-      <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:10px")}>
-        <img src="/asa/aviso-importante.webp" alt="" style={css("width:28px;height:28px;object-fit:contain;flex:none")}/>
-        <span style={css("flex:none;font-family:Outfit,sans-serif;font-size:15px;font-weight:600;color:var(--asa-rose-fg)")}>Mesma pessoa em dois lugares</span>
-        <span style={css("font-size:12px;color:var(--asa-label)")}>{`${plural(new Set(conflitos.map((c) => c.pessoaId)).size, "pessoa em duas coisas", "pessoas em duas coisas")} ao mesmo tempo · eu aviso, quem decide é a supervisão da atividade · alerta — não bloqueia a publicação`}</span>
-      </div>
-      {gruposDeConflito.map((g) => {
-        const ini = g.a.inicio > g.b.inicio ? g.a.inicio : g.b.inicio;
-        const fim = [g.a.fim ?? g.a.inicio, g.b.fim ?? g.b.inicio].sort()[0];
-        const tiraveis = [g.a, g.b].filter((bloco) => bloco.regra !== "livro" && !bloco.horarioDela);
-        const mudaveis = [g.a, g.b].filter((bloco) => bloco.regra !== "livro" && bloco.origem !== "livro" && bloco.origem !== "solicitacao");
-        return <div key={`${g.a.key}-${g.b.key}`} style={css("display:flex;flex-direction:column;gap:8px;border:1px solid var(--asa-rose-faint);background:var(--asa-rose-paper);border-radius:12px;padding:11px 13px")}>
-          <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:9px")}>
-            <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--asa-rose-fg)")}>{fim > ini ? `${ini}–${fim}` : ini}</span>
-            <span style={css("font-size:13px;font-weight:700;color:var(--asa-ink-dark)")}>{`${textoDoBloco(g.a)}  ×  ${textoDoBloco(g.b)}`}</span>
-            <span style={css("font-size:12px;color:var(--asa-label)")}>{plural(g.pessoas.length, "pessoa", "pessoas")}</span>
-          </div>
-          <span style={css("font-size:12px;color:var(--asa-label);line-height:1.45;text-wrap:pretty")}>{g.a.regra === "livro" || g.b.regra === "livro" ? "O show tem prioridade, mas não decide sozinho: quem responde pela atividade escolhe de qual a pessoa sai. Tirar do show é no Livro do Dia." : "Duas coisas ao mesmo tempo e nenhuma tem prioridade. Quem responde pela atividade escolhe de qual a pessoa sai."}</span>
-          <div style={css("display:flex;flex-wrap:wrap;gap:6px")}>
-            {g.pessoas.map((c) => {
-              const pode = canEdit && (editableAreaIds === null || (c.areaId !== null && editableAreaIds.includes(c.areaId)));
-              return <span key={c.pessoaId} style={css("display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;border:1px solid var(--asa-rose-muted);background:#fff;border-radius:16px;padding:3px 4px 3px 10px;font-size:12px;font-weight:700;color:var(--asa-ink-dark)")}>
-                {c.pessoa}
-                {pode && tiraveis.map((bloco) => <button key={bloco.key} type="button" className="esc-cell-adjust esc-hit" aria-label={`Tirar ${c.pessoa} de ${textoDoBloco(bloco)}`} disabled={tirando === `${c.pessoaId}|${bloco.key}`} onClick={async () => { setTirando(`${c.pessoaId}|${bloco.key}`); try { await onAdjust(bloco, [{ userId: c.pessoaId, action: "REMOVER" }]); } finally { setTirando(""); } }}>
-                  {tirando === `${c.pessoaId}|${bloco.key}` ? "Tirando…" : `Tirar de ${textoDoBloco(bloco)}`}
-                </button>)}
-                {pode && mudaveis.map((bloco) => <button key={`h-${bloco.key}`} type="button" className="esc-cell-adjust esc-hit" aria-label={`Mudar o horário de ${textoDoBloco(bloco)} só para ${c.pessoa}`} onClick={() => setMudandoHorario({ pessoaId: c.pessoaId, nome: c.pessoa, bloco, outro: bloco === g.a ? g.b : g.a })}>{`Mudar horário de ${textoDoBloco(bloco)}`}</button>)}
-                {pode && [g.a, g.b].filter((bloco) => bloco.horarioDela).map((bloco) => <button key={`v-${bloco.key}`} type="button" className="esc-cell-adjust esc-hit" aria-label={`Voltar ${c.pessoa} ao horário normal de ${textoDoBloco(bloco)}`} onClick={() => void onHorario({ ...bloco, key: bloco.horarioDela!.chaveOriginal }, c.pessoaId, null)}>{`Voltar ao horário normal de ${textoDoBloco(bloco)}`}</button>)}
-              </span>;
-            })}
-          </div>
-        </div>;
-      })}
+    {view === "pessoa" && !telefone && <div className="ge-legenda" aria-label="Cores por tipo de atividade">
+      {TIPOS.map((t) => <span key={t.key} style={{ "--bg": `var(--esc-t-${t.key}-bg)`, "--fg": `var(--esc-t-${t.key}-fg)` } as CSSProperties}>{t.label}</span>)}
+      <span className="ge-leg-estado"><i style={{ boxShadow: "inset 0 0 0 2px var(--esc-choque)" }}/>choque de horário</span>
+      <span className="ge-leg-estado"><i style={{ boxShadow: "inset 0 0 0 2px var(--esc-excecao)" }}/>exceção</span>
     </div>}
 
-    {dia.pessoas.filter((p) => p.chamadaNaFolga && !p.chamadaNaFolga.decidida).map((p) => <div key={`folga-${p.id}`} style={css("display:flex;flex-wrap:wrap;align-items:center;gap:11px;background:var(--asa-late-bg);border:1px solid var(--asa-amber-stripe);border-radius:14px;padding:12px 15px;")}>
-      <img src="/asa/aviso-importante.webp" alt="" style={css("width:28px;height:28px;object-fit:contain;flex:none")}/>
-      <span style={css("font-size:12px;color:var(--asa-amber-dark);line-height:1.5;flex:1;min-width:220px;text-wrap:pretty")}>{`${p.name} está de folga hoje e foi chamada mesmo assim${p.chamadaNaFolga?.motivo ? ` — ${p.chamadaNaFolga.motivo}` : ""}. Falta decidir a folga dela: remarcar para outro dia ou deixar como está.`}</span>
-      <Link href="/folgas" className="esc-hit" style={css(btn("ghost") + ";text-decoration:none")}>Abrir Folgas</Link>
-      {canEdit && onFolgaResolvida && <button type="button" className="esc-hit" onClick={() => void onFolgaResolvida(p.id)} style={css(btn("primary"))}>Já resolvi</button>}
-    </div>)}
-
-    {dia.escala?.alteradaDesde && <div style={css("display:flex;align-items:flex-start;gap:12px;background:var(--asa-amber-pale);border:1px solid var(--asa-amber-stripe);border-radius:14px;padding:13px 15px;")}>
-      <img src="/asa/aviso-importante.webp" alt="" style={css("width:30px;height:30px;object-fit:contain;flex:none")}/>
-      <span style={css("font-size:12px;color:var(--asa-amber-dark);line-height:1.5;flex:1;text-wrap:pretty")}>{`Esta escala mudou depois de publicada (${hhmm(dia.escala.alteradaDesde)}): pode ter sido uma troca, o Livro do Dia ou uma atividade nova. Aqui você já vê como está; quem faz continua com a versão publicada até você republicar.`}</span>
-    </div>}
-
-    {!dia.programacao && <div style={css("padding:16px;text-align:center;font-size:12.5px;color:var(--asa-label);background:#fff;border:1px dashed var(--asa-line-soft);border-radius:12px")}>{`${dia.location.name} não tem Programação vigente para ${shortDate(dia.date)} — a grade mostra só os Livros do Dia e as entradas manuais.`}</div>}
-
-    <div style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top left", width: `${10000 / zoom}%` }}>
-      {view === "pessoa" && telefone ? <ul className="esc-cartoes" aria-label="Escala por pessoa">
-        {cols.map((p) => {
-          const away = p.folga ? FOLGA[p.folga] ?? FOLGA.OUTRO : null;
-          const lista = blocosDe(p.id).sort((a, b) => a.inicio.localeCompare(b.inicio) || (a.fim ?? "").localeCompare(b.fim ?? ""));
-          const pode = canEdit && (editableAreaIds === null || (p.areaId !== null && editableAreaIds.includes(p.areaId)));
-          return <li key={p.id} className="esc-cartao">
-            <header className="esc-cartao-topo" style={{ background: away ? away.tone.bg : "var(--asa-bg-tinted)" }}>
-              <span aria-hidden="true" style={css("width:30px;height:30px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#fff;" + (away ? "background:var(--asa-lavender-muted);" : "background:linear-gradient(135deg,var(--asa-violet),var(--asa-indigo));"))}>{initials(p.name)}</span>
-              <div style={css("display:flex;flex-direction:column;gap:1px;min-width:0")}>
-                <strong style={css("font-size:13.5px;color:var(--asa-ink-dark);overflow-wrap:anywhere")}>{p.name}</strong>
-                <span style={css("font-size:12px;" + (away ? "font-weight:700;color:" + away.tone.fg : "color:var(--asa-label)"))}>{away ? `${away.label} — dia todo` : `${p.areaName ?? "sem área"} · ${plural(lista.length, "bloco", "blocos")}`}</span>
+    {view === "pessoa" && telefone ? <ul className="esc-cartoes" aria-label="Escala por pessoa">
+      {cols.filter((p) => !buscaIds || buscaIds.has(p.id)).map((p) => {
+        const lista = blocosDe(p.id).sort((a, b) => a.inicio.localeCompare(b.inicio) || (a.fim ?? "").localeCompare(b.fim ?? ""));
+        const pode = podeMexer(p);
+        return <li key={p.id} className="esc-cartao">
+          <header className="esc-cartao-topo" style={{ background: "var(--asa-bg-tinted)" }}>
+            <span aria-hidden="true" style={css("width:30px;height:30px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--asa-violet),var(--asa-indigo));")}>{initials(p.name)}</span>
+            <div style={css("display:flex;flex-direction:column;gap:1px;min-width:0")}>
+              <strong style={css("font-size:13.5px;color:var(--asa-ink-dark);overflow-wrap:anywhere")}>{p.name}</strong>
+              <span style={css("font-size:12px;color:var(--asa-label)")}>{`${p.areaName ?? "sem área"} · ${plural(lista.length, "bloco", "blocos")}`}{p.chamadaNaFolga ? " · chamado na folga" : ""}</span>
+            </div>
+          </header>
+          {lista.length ? <ul className="esc-cartao-blocos">
+            {lista.filter((b) => !soExcecoes || ehExcecao(b) || temChoque(p, b)).map((b) => <li key={b.key} className="esc-cartao-bloco">
+              <span className="esc-cartao-hora">{b.fim && b.regra !== "livro" ? <>{b.inicio}<small>{b.fim}</small></> : b.inicio}</span>
+              <div style={css("flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px")}>
+                {blockEl(b, "white-space:normal;max-width:100%;" + (temChoque(p, b) ? "box-shadow:inset 0 0 0 2px var(--esc-choque);" : ehExcecao(b) ? "box-shadow:inset 0 0 0 2px var(--esc-excecao);" : ""), true)}
+                {temChoque(p, b) && <span style={css("font-size:12px;font-weight:700;color:var(--esc-choque)")}>Cruza com outro bloco dela</span>}
+                {b.horarioDela && <span style={css("font-size:12px;color:var(--asa-label)")}>{`Horário só desta pessoa · era ${faixa(b.horarioDela)}`}</span>}
+                {pode && b.horarioDela && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => void onHorario({ ...b, key: b.horarioDela!.chaveOriginal }, p.id, null)} aria-label={`Voltar ${p.name} ao horário normal de ${textoDoBloco(b)}`}>Voltar ao normal</button>}
+                {!b.horarioDela && b.regra !== "ninguem" && <button type="button" className="esc-cell-adjust esc-hit" style={{ minHeight: 44 }} onClick={(e) => setMenu({ bloco: b, pessoa: p, rect: e.currentTarget.getBoundingClientRect() })} aria-label={`Ações de ${textoDoBloco(b)} para ${p.name}`}>Mexer</button>}
               </div>
-            </header>
-            {!away && (lista.length ? <ul className="esc-cartao-blocos">
-              {lista.map((b) => <li key={b.key} className="esc-cartao-bloco">
-                <span className="esc-cartao-hora">{b.fim && b.regra !== "livro" ? <>{b.inicio}<small>{b.fim}</small></> : b.inicio}</span>
-                <div style={css("flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px")}>
-                  {blockEl(b, "white-space:normal;max-width:100%;" + (emConflito.has(`${p.name}|${b.key}`) ? "box-shadow:0 0 0 1.5px var(--asa-ausente-fg) inset;" : ""), true)}
-                  {emConflito.has(`${p.name}|${b.key}`) && <span style={css("font-size:12px;font-weight:700;color:var(--asa-ausente-fg)")}>Cruza com outro bloco dela</span>}
-                  {b.horarioDela && <span style={css("font-size:12px;color:var(--asa-label)")}>{`Horário só desta pessoa · era ${faixa(b.horarioDela)}`}</span>}
-                  {pode && b.horarioDela && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => void onHorario({ ...b, key: b.horarioDela!.chaveOriginal }, p.id, null)} aria-label={`Voltar ${p.name} ao horário normal de ${textoDoBloco(b)}`}>Voltar ao normal</button>}
-                  {pode && !b.horarioDela && b.regra !== "ninguem" && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setAjustando(b)} aria-label={`Ajustar ${textoDoBloco(b)}`}>Ajustar</button>}
-                </div>
-              </li>)}
-            </ul> : <p className="esc-cartao-vazio">Sem blocos neste dia.</p>)}
-          </li>;
-        })}
-        {!cols.length && <li className="esc-cartao-vazio">{team === "todos" ? "Ninguém no elenco deste local." : "Ninguém deste grupo neste local."}</li>}
-      </ul> : view === "pessoa" ? <div className="esc-scroll" tabIndex={0} style={css("border:1px solid var(--asa-line-soft);border-radius:12px;overflow:auto;background:#fff;")}>
-        <table style={css("border-collapse:separate;border-spacing:0;width:100%;font-size:12.5px")}>
-          <thead><tr>
-            <th style={css("position:sticky;left:0;z-index:2;width:118px;min-width:118px;" + MONO_TH)}>Horário</th>
-            {cols.map((p) => {
-              const away = p.folga ? FOLGA[p.folga] ?? FOLGA.OUTRO : null;
-              const n = blocosDe(p.id).length;
-              return <th key={p.id} style={css("text-align:left;background:" + (away ? away.tone.bg : "var(--asa-bg-tinted)") + ";border-bottom:1px solid var(--asa-line-soft);border-right:1px solid var(--asa-lavender-surface);padding:8px 10px;min-width:132px;font-weight:600;")}>
-                <div style={css("display:flex;align-items:center;gap:7px")}>
-                  <span style={css("width:24px;height:24px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#fff;" + (away ? "background:var(--asa-lavender-muted);" : "background:linear-gradient(135deg,var(--asa-violet),var(--asa-indigo));"))}>{initials(p.name)}</span>
-                  <div style={css("display:flex;flex-direction:column;gap:1px;min-width:0")}>
-                    <span style={css("font-size:12.5px;font-weight:700;color:var(--asa-ink-dark)")}>{p.name}</span>
-                    <span style={css("font-size:12px;font-weight:600;" + (away ? "color:" + away.tone.fg + ";" : "color:var(--asa-label);font-weight:500;"))}>{away ? `${away.label.toLocaleLowerCase("pt-BR")} o dia todo` : `${p.areaName ?? "sem área"} · ${plural(n, "bloco", "blocos")}`}</span>
-                  </div>
-                </div>
-              </th>;
-            })}
-          </tr></thead>
-          <tbody>
-            {faixas.map((f, ri) => {
-              const vazio = f.blocos.filter((b) => b.vazio);
-              return <tr key={faixa(f)}>
-                <td style={css("position:sticky;left:0;z-index:1;background:var(--asa-card-faint);border-right:1px solid var(--asa-line-soft);border-bottom:1px solid var(--asa-purple-airy);padding:7px 11px;vertical-align:middle;")}>
-                  <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:" + (vazio.length ? "var(--asa-vaga-fg)" : "var(--asa-ink-medium)"))}>{faixa(f)}</span>
-                </td>
-                {cols.map((p) => {
-                  const away = p.folga ? FOLGA[p.folga] ?? FOLGA.OUTRO : null;
-                  if (away) return <td key={p.id} style={css("position:relative;border-bottom:1px solid " + (ri === faixas.length - 1 ? "var(--asa-purple-airy)" : "transparent") + ";border-right:1px solid var(--asa-purple-lift);padding:0 6px;vertical-align:middle;min-width:138px;background:repeating-linear-gradient(135deg," + away.tone.bg + "," + away.tone.bg + " 7px,#ffffff 7px,#ffffff 14px);")}>
-                    {ri === 0 && <div style={css("display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:" + away.tone.fg + ";background:" + away.tone.bg + ";border:1px solid " + away.tone.bd + ";border-radius:7px;padding:6px 4px;white-space:nowrap;")}>{`${away.label} — dia todo`}</div>}
-                  </td>;
-                  const list = f.blocos.filter((b) => b.pessoaIds.includes(p.id));
-                  return <td key={p.id} style={css("position:relative;border-bottom:1px solid var(--asa-purple-airy);border-right:1px solid var(--asa-purple-lift);padding:5px 6px;vertical-align:middle;min-width:138px;")}>
-                    {list.length ? <div style={css("display:flex;flex-direction:column;gap:3px;")}>{list.map((b) => blockEl(b, emConflito.has(`${p.name}|${b.key}`) ? "box-shadow:0 0 0 1.5px var(--asa-ausente-fg) inset;" : ""))}</div> : <span style={css("display:block;padding:6px 9px;font-size:12px;color:var(--asa-muted-chip);")}>—</span>}
-                  </td>;
-                })}
-              </tr>;
-            })}
-            {!faixas.length && <tr><td colSpan={cols.length + 1} style={css("padding:16px;text-align:center;font-size:12.5px;color:var(--asa-label)")}>Nenhum bloco neste dia.</td></tr>}
-          </tbody>
-        </table>
-      </div> : <div style={css("border:1px solid var(--asa-line-soft);border-radius:12px;overflow:hidden;background:#fff;")}>
+            </li>)}
+          </ul> : <p className="esc-cartao-vazio">Sem blocos neste dia.</p>}
+        </li>;
+      })}
+      {!cols.length && <li className="esc-cartao-vazio">{team === "todos" ? "Ninguém trabalha neste dia." : "Ninguém deste grupo trabalha neste dia."}</li>}
+    </ul> : view === "pessoa"
+      ? <GradePessoa colunas={cols} blocosDe={blocosDe} temChoque={temChoque} soExcecoes={soExcecoes} busca={buscaIds} selecionada={selecionada}
+          onEscolherPessoa={(id) => setSelecionada((atual) => (atual === id ? null : id))} onTocarBloco={(bloco, pessoa, el) => setMenu({ bloco, pessoa, rect: el.getBoundingClientRect() })}/>
+      : <div style={css("border:1px solid var(--asa-line-soft);border-radius:12px;overflow:hidden;background:#fff;")}>
         <table style={css("border-collapse:separate;border-spacing:0;width:100%;font-size:12.5px")}>
           <thead><tr>
             <th style={css(MONO_TH)}>Horário</th>
@@ -700,8 +634,8 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
           </tr></thead>
           <tbody>
             {faixas.flatMap((f) => f.blocos.map((b, gi) => {
-              const tone = toneOf(b);
               const who = b.pessoaIds.filter((id) => team === "todos" || dia.pessoas.find((p) => p.id === id)?.areaId === team);
+              const todoOElenco = who.length >= Math.max(8, Math.ceil(trabalham.length * 0.9));
               return <tr key={b.key}>
                 <td style={css("border-right:1px solid var(--asa-line-soft);border-bottom:1px solid var(--asa-purple-airy);padding:7px 11px;vertical-align:middle;background:var(--asa-card-faint);width:130px;")}>
                   {gi === 0 && <div style={css("display:flex;flex-direction:column;gap:1px")}><span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--asa-ink-medium)")}>{faixa(f)}</span></div>}
@@ -709,12 +643,17 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
                 <td style={css("border-bottom:1px solid var(--asa-purple-airy);border-right:1px solid var(--asa-purple-lift);padding:6px 9px;vertical-align:middle;width:210px;")}>{blockEl(b, "display:inline-flex;")}</td>
                 <td style={css("border-bottom:1px solid var(--asa-purple-airy);padding:6px 9px;vertical-align:middle;")}>
                   <div style={css("display:flex;flex-wrap:wrap;gap:5px;align-items:center")}>
-                    {who.map((id) => <span key={id} style={css("display:inline-flex;align-items:center;gap:5px;border:1px solid var(--asa-line);background:#fff;border-radius:999px;padding:3px 10px 3px 4px;font-size:12px;font-weight:600;color:var(--asa-ink-medium);")}>
-                      <span style={css("width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--asa-violet),var(--asa-indigo));")}>{initials(personName(id))}</span>
-                      <span>{personName(id)}</span>
-                    </span>)}
+                    {todoOElenco
+                      ? <details style={css("font-size:12px;color:var(--asa-ink-medium)")}>
+                        <summary style={css("cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:8px;min-height:44px;font-weight:700")}><span style={css("border:1px solid var(--asa-line);background:var(--asa-fade);border-radius:999px;padding:4px 12px")}>{`Todo o elenco do dia (${who.length})`}</span><span style={css("color:var(--asa-purple)")}>ver nomes</span></summary>
+                        <div style={css("display:flex;flex-wrap:wrap;gap:5px;padding:4px 0 8px")}>{who.map((id) => <span key={id} className="ge-pilula">{personName(id)}</span>)}</div>
+                      </details>
+                      : who.map((id) => <span key={id} style={css("display:inline-flex;align-items:center;gap:5px;border:1px solid var(--asa-line);background:#fff;border-radius:999px;padding:3px 10px 3px 4px;font-size:12px;font-weight:600;color:var(--asa-ink-medium);")}>
+                        <span style={css("width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--asa-violet),var(--asa-indigo));")}>{initials(personName(id))[0]}</span>
+                        <span>{personName(id)}</span>
+                      </span>)}
                     {b.regra !== "ninguem" && (b.vazio ? <span style={css("display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;background:var(--asa-vaga-bg);color:var(--asa-vaga-fg);border:1px dashed var(--asa-vaga-bd);")}>sem ninguém · defina quem entra</span>
-                      : <span style={css("font-size:12px;color:var(--asa-label);margin-left:2px")}>{plural(who.length, "pessoa", "pessoas")}</span>)}
+                      : !todoOElenco && <span style={css("font-size:12px;color:var(--asa-label);margin-left:2px")}>{plural(who.length, "pessoa", "pessoas")}</span>)}
                     {b.horarioDela && <span style={css("font-size:12px;color:var(--asa-label)")}>{`Horário só desta pessoa · era ${faixa(b.horarioDela)}`}</span>}
                     {canEdit && b.horarioDela && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => void onHorario({ ...b, key: b.horarioDela!.chaveOriginal }, b.pessoaIds[0]!, null)}>Voltar ao normal</button>}
                     {canEdit && !b.horarioDela && b.regra !== "ninguem" && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setAjustando(b)}>Ajustar</button>}
@@ -724,15 +663,39 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
                 </td>
               </tr>;
             }))}
+            {!faixas.length && <tr><td colSpan={3} style={css("padding:16px;text-align:center;font-size:12.5px;color:var(--asa-label)")}>Nenhum bloco neste dia.</td></tr>}
           </tbody>
         </table>
       </div>}
-    </div>
+
+    {pessoaSelecionada && <section style={css("display:flex;flex-direction:column;gap:8px;background:#fff;border:1px solid var(--asa-line);border-radius:14px;padding:12px 14px")} aria-label={`Dia de ${pessoaSelecionada.name}`}>
+      <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:8px")}>
+        <h3 style={css("margin:0;font:600 15px Outfit,sans-serif;color:var(--asa-ink-dark);flex:1;min-width:140px")}>{`Dia de ${pessoaSelecionada.name}`}</h3>
+        <button type="button" className="esc-cell-adjust esc-hit" style={{ minHeight: 44 }} onClick={() => setSelecionada(null)}>Fechar</button>
+      </div>
+      {blocosDe(pessoaSelecionada.id).sort((a, b) => a.inicio.localeCompare(b.inicio)).map((b) => <div key={b.key} style={css("display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600")}>
+        <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;min-width:96px;color:var(--asa-label)")}>{faixa(b)}</span>
+        <span style={css(blockStyle(toneOf(b)))}>{textoDoBloco(b)}</span>
+        {temChoque(pessoaSelecionada, b) && <span style={css("font-size:12px;color:var(--esc-choque);font-weight:700")}>choque</span>}
+      </div>)}
+      {!blocosDe(pessoaSelecionada.id).length && <span style={css("font-size:12.5px;color:var(--asa-label)")}>Sem atividades neste dia.</span>}
+    </section>}
+
     <div style={css("height:16px")}/>
+    {desfazer && <div className="ge-desfazer" role="status"><span>{desfazer.texto}</span><button type="button" onClick={() => { const { acao } = desfazer; setDesfazer(null); void acao().catch(() => undefined); }}>Desfazer</button></div>}
+    {menu && <BlocoMenu bloco={menu.bloco} pessoa={menu.pessoa} ancora={menu.rect} data={dia.date} temChoque={temChoque(menu.pessoa, menu.bloco)} excecao={ehExcecao(menu.bloco)} pode={podeMexer(menu.pessoa)} motivoSemPoder={frasePorQueNao(menu.pessoa)} ocupado={tirando !== ""}
+      onFechar={() => setMenu(null)}
+      onTirar={() => { const { bloco, pessoa } = menu; setMenu(null); void tirarDoBloco(bloco, pessoa); }}
+      onMudarHorario={() => { const { bloco, pessoa } = menu; const par = conflitos.find((c) => c.pessoaId === pessoa.id && (c.a.key === bloco.key || c.b.key === bloco.key)); setMenu(null); setMudandoHorario({ pessoaId: pessoa.id, nome: pessoa.name, bloco, outro: par ? (par.a.key === bloco.key ? par.b : par.a) : null }); }}
+      onAjustar={() => { const { bloco } = menu; setMenu(null); setAjustando(bloco); }}/>}
     {confirmarGrade && <ConfirmDialog {...confirmarGrade} onClose={() => setConfirmarGrade(null)}/>}
     {mudandoHorario && <HorarioDialog nome={mudandoHorario.nome} bloco={mudandoHorario.bloco} outro={mudandoHorario.outro} onClose={() => setMudandoHorario(null)} onSalvar={async (horario) => {
       const erro = await onHorario(mudandoHorario.bloco.horarioDela ? { ...mudandoHorario.bloco, key: mudandoHorario.bloco.horarioDela.chaveOriginal } : mudandoHorario.bloco, mudandoHorario.pessoaId, horario);
-      if (!erro) setMudandoHorario(null);
+      if (!erro) {
+        const { nome, bloco, pessoaId } = mudandoHorario;
+        setMudandoHorario(null);
+        setDesfazer({ texto: `Horário de ${nome} em ${textoDoBloco(bloco)} mudado só para ela.`, acao: async () => { await onHorario(bloco.horarioDela ? { ...bloco, key: bloco.horarioDela.chaveOriginal } : bloco, pessoaId, null); } });
+      }
       return erro;
     }}/>}
     {ajustando && <AjusteCelulaDialog bloco={ajustando} pessoas={dia.pessoas} editableAreaIds={editableAreaIds} onClose={() => setAjustando(null)} onAdjust={async (mudancas, motivo) => {
@@ -808,10 +771,10 @@ export function sugerirHorario(mover: { inicio: string; fim: string | null }, ou
   return { inicio: deMinutos(inicio), fim: deMinutos(fim), aviso: outroSemFim ? "A outra atividade não tem hora de fim cadastrada: contei 30 minutos. Confira." : null };
 }
 
-function HorarioDialog({ nome, bloco, outro, onClose, onSalvar }: { nome: string; bloco: Bloco; outro: Bloco; onClose: () => void; onSalvar: (horario: { inicio: string; fim: string | null; motivo?: string }) => Promise<string | null> }) {
+function HorarioDialog({ nome, bloco, outro, onClose, onSalvar }: { nome: string; bloco: Bloco; outro: Bloco | null; onClose: () => void; onSalvar: (horario: { inicio: string; fim: string | null; motivo?: string }) => Promise<string | null> }) {
   useFecharComEsc(onClose);
   const normal = bloco.horarioDela ? { inicio: bloco.horarioDela.inicio, fim: bloco.horarioDela.fim } : { inicio: bloco.inicio, fim: bloco.fim };
-  const sugestao = sugerirHorario(normal, outro);
+  const sugestao = outro ? sugerirHorario(normal, outro) : { inicio: normal.inicio, fim: normal.fim, aviso: null as string | null };
   const [inicio, setInicio] = useState(sugestao.inicio);
   const [fim, setFim] = useState(sugestao.fim ?? "");
   const [motivo, setMotivo] = useState("");
@@ -826,10 +789,12 @@ function HorarioDialog({ nome, bloco, outro, onClose, onSalvar }: { nome: string
   return <div className="shows-dialog-backdrop" role="presentation"><div className="shows-dialog" role="dialog" aria-modal="true" aria-label={`Mudar o horário de ${textoDoBloco(bloco)} só para ${nome}`}>
     <header className="shows-dialog-header"><div><h2>Mudar o horário só desta pessoa</h2><p>{`${nome} · ${textoDoBloco(bloco)}`}</p></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
     <div className="shows-dialog-content" style={css("display:flex;flex-direction:column;gap:12px")}>
-      <p style={css("margin:0;font-size:12.5px;line-height:1.5;color:var(--asa-ink-muted)")}>{`${nome} está em ${textoDoBloco(bloco)} (${faixa(normal)}) e em ${textoDoBloco(outro)} (${faixa(outro)}) ao mesmo tempo. Dá para mudar só o horário de ${textoDoBloco(bloco)} para essa pessoa, sem tirar ninguém e sem mexer nos outros. Vale só para este dia; a Programação não muda.`}</p>
-      <div style={css("border:1px solid var(--asa-lavender);background:var(--asa-purple-dawn);border-radius:11px;padding:10px 12px;font-size:12px;line-height:1.5;color:var(--asa-ink-dark)")}>
+      <p style={css("margin:0;font-size:12.5px;line-height:1.5;color:var(--asa-ink-muted)")}>{outro
+        ? `${nome} está em ${textoDoBloco(bloco)} (${faixa(normal)}) e em ${textoDoBloco(outro)} (${faixa(outro)}) ao mesmo tempo. Dá para mudar só o horário de ${textoDoBloco(bloco)} para essa pessoa, sem tirar ninguém e sem mexer nos outros. Vale só para este dia; a Programação não muda.`
+        : `${nome} faz ${textoDoBloco(bloco)} (${faixa(normal)}). Dá para mudar só o horário dela, sem mexer nos outros. É uma exceção só dela e vale só para este dia; a Programação não muda.`}</p>
+      {outro && <div style={css("border:1px solid var(--asa-lavender);background:var(--asa-purple-dawn);border-radius:11px;padding:10px 12px;font-size:12px;line-height:1.5;color:var(--asa-ink-dark)")}>
         <strong>{`Sugestão: ${faixa(sugestao)}`}</strong> — logo depois de {textoDoBloco(outro)}.{sugestao.aviso ? ` ${sugestao.aviso}` : ""}
-      </div>
+      </div>}
       <div style={css("display:grid;grid-template-columns:1fr 1fr;gap:10px")}>
         <label style={css("display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--asa-label)")}>Começa às<input type="time" value={inicio} onChange={(e) => setInicio(e.target.value)} style={css(campo)}/></label>
         <label style={css("display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--asa-label)")}>Termina às<input type="time" value={fim} onChange={(e) => setFim(e.target.value)} style={css(campo)}/></label>
@@ -1039,7 +1004,7 @@ function lembrarLocal(list: { id: string }[]): string | undefined {
 }
 function guardarLocal(id: string) { try { localStorage.setItem(LOCAL_KEY, id); } catch { /* sem armazenamento */ } }
 
-function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, busy = "", onGerar, onGerarMes, onRegras, onPronta, onPublicar, onManual }: { role: Role; tab: string; onMinha?: boolean; dia: Dia | null; minha: Minha | null; areasMinhas: string[]; saving: boolean; busy?: string; onManual?: () => void; onGerar: () => void; onGerarMes?: () => void; onRegras?: () => void; onPronta: (areaIds: string[], pronta: boolean) => void; onPublicar: (republicar: boolean) => void }) {
+function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, busy = "", onGerar, onGerarMes, onRegras, onPronta, onPublicar }: { role: Role; tab: string; onMinha?: boolean; dia: Dia | null; minha: Minha | null; areasMinhas: string[]; saving: boolean; busy?: string; onGerar: () => void; onGerarMes?: () => void; onRegras?: () => void; onPronta: (areaIds: string[], pronta: boolean) => void; onPublicar: (republicar: boolean) => void }) {
   const isMem = role === "mem" || onMinha, isDir = role === "dir", isAdm = role === "adm";
   let note = "";
   const actions: ReactNode[] = [];
@@ -1068,8 +1033,6 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, b
     // Show que entrou na Programação depois da geração fica sem Livro: dá para gerar o que falta.
     const semLivro = dia.escala ? dia.blocos.filter((b) => b.regra === "livro" && !b.dailyBookId).length : 0;
     if (tab === "escala" && isAdm && semLivro > 0) actions.push(<button key="gerar-faltam" type="button" className="esc-hit" disabled={saving} onClick={onGerar} style={css(btn("primary"))}>{busy === "gerar" ? "Gerando…" : `Gerar ${semLivro === 1 ? "o Livro que falta" : `os ${semLivro} Livros que faltam`}`}</button>);
-    // Atividade que só existe hoje (prova de figurino, reunião de última hora): não mexe no molde da Programação.
-    if (tab === "escala" && isAdm && dia.escala && onManual) apoio.push({ key: "manual", label: "Atividade só de hoje", onClick: onManual, disabled: saving });
     if (tab === "escala" && !isDir && !published) {
       // Quem cuida de mais de uma área marca todas de uma vez.
       const minhasPendentes = areasMinhas.map((id) => dia.areas.find((a) => a.id === id)).filter((a): a is Area => Boolean(a) && !a!.pronta);
@@ -1086,8 +1049,8 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, b
   }
   const areas = !isMem && tab === "escala" && dia ? dia.areas : [];
   const principais = new Set(["generate", "gerar-faltam", "todas", "pub", "repub", "confirmar", ...areasMinhas]);
-  return <footer className="esc-pad" style={css("display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 20px;border-top:1px solid var(--asa-border-soft);background:#fff")}>
-    {areas.length > 0 && <div style={css("display:flex;flex-wrap:wrap;gap:6px;width:100%")}>
+  return <footer className="esc-pad ge-barra" style={css("display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 20px;border-top:1px solid var(--asa-border-soft);")}>
+    {areas.length > 0 && <div className="ge-areas" style={css("display:flex;flex-wrap:wrap;gap:6px;width:100%")}>
       {areas.map((a) => {
         const chip = "display:inline-flex;align-items:center;gap:6px;flex:none;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;padding:3px 9px;border-radius:999px;background:" + (a.pronta ? "var(--asa-teal-pale)" : "var(--asa-amber-paper)") + ";color:" + (a.pronta ? "var(--asa-teal-dark)" : "var(--asa-badge-fg)");
         const label = `${a.name} · ${a.pronta ? `pronta${a.pronta.por ? ` (${a.pronta.por})` : ""}` : "falta"}`;
