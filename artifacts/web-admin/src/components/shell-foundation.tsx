@@ -217,7 +217,7 @@ export default function ShellFoundation() {
     <main>
       <AvisoSemConexao/>
       <header className={`asa-header${active.href === "/livro-do-dia" || active.href === "/escalas" ? " ldd-shell-header" : ""}`}>
-        <div className="asa-header-title">{!mobile && <button type="button" className="asa-menu-toggle" onClick={toggleMenu} aria-pressed={menuHidden} aria-label={menuHidden ? "Mostrar o menu" : "Esconder o menu"} title={menuHidden ? "Mostrar o menu" : "Esconder o menu para trabalhar com mais espaço"}>{menuHidden ? <PanelLeftOpen size={18}/> : <PanelLeftClose size={18}/>}</button>}<div><h1>{location === "/solicitacoes" ? "Solicitações" : itemLabel(active, role)}</h1><p className="asa-header-date">{todayLabel()}{active.href === "/shows" && " · Livro do Show, origem do Livro do Dia"}</p></div></div>
+        <div className="asa-header-title">{!mobile && <button type="button" className="asa-menu-toggle" onClick={toggleMenu} aria-pressed={menuHidden} aria-label={menuHidden ? "Mostrar o menu" : "Esconder o menu"} title={menuHidden ? "Mostrar o menu" : "Esconder o menu para trabalhar com mais espaço"}>{menuHidden ? <PanelLeftOpen size={18}/> : <PanelLeftClose size={18}/>}</button>}<div><h1>{location === "/solicitacoes" ? "Solicitações" : itemLabel(active, role)}</h1><p className="asa-header-date">{active.href === "/livro-do-dia" || active.href === "/escalas" ? `Hoje é ${todayLabel()}` : todayLabel()}{active.href === "/shows" && " · Livro do Show, origem do Livro do Dia"}</p></div></div>
         {active.href === "/livro-do-dia" || active.href === "/escalas" ? headerExtra : null}
         {!mobile && <NotificationBell enabled={isAuthenticated}/>}
       </header>
