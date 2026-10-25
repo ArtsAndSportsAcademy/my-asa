@@ -55,7 +55,7 @@ Cada etapa deixa a tela usável e é entregue sozinha.
   atividades. Os tipos são **por local**: só a Administração cria, renomeia e desativa (tipo usado nunca é apagado). O tipo é
   escolhido na Programação; onde ninguém escolheu, o app continua adivinhando pelo nome.
 - **Altura proporcional à duração**, linhas de horário alinhadas e colunas estreitas, para o dia caber na tela.
-- **Quem está de folga sai da grade** e aparece só numa listinha **"Folgas de hoje"** no alto. Só aparecem as pessoas que
+- **Quem não trabalha no dia sai da grade** (folga, recesso, afastamento) e aparece só numa linha compacta no alto, "Não trabalham hoje (3): …, ver todos", que abre a lista por motivo. A busca de pessoa responde mesmo para quem está fora, e quem foi chamado de propósito na folga entra na grade com o motivo escrito. Só aparecem as pessoas que
   trabalham naquele dia.
 - **Show é um bloco comum** ("Show Patinação 14:00") em cada pessoa chamada, sem cenas nem posições. Os detalhes ficam no Livro.
 - **Resumo no topo**: "38 escaladas · 2 de folga · 1 choque · 3 exceções · 0 sem atividade", cada número abre a lista.
@@ -116,8 +116,22 @@ as atividades e as pessoas que continuam disponíveis, e mostra quem ficou de fo
 ### Ajuste de texto, depois da aprovação
 
 Na Programação, "Todo mundo do local" passa a se chamar **"Todas as áreas"**, porque as pessoas não têm local. A regra não muda.
-A Programação da semana continua como é hoje; só ganha o campo "Tipo" da atividade.
+A Programação da semana continua; ganha o campo "Tipo" da atividade, um botão "+ Bloco" de verdade, e fica mais enxuta: o que acontece no mesmo horário aparece **lado a lado em uma linha só**, em vez de uma linha por bloco.
 
+## Ideias para depois (já combinadas, sem pressa)
+
+- **O imprevisto do dia.** Folga e recesso já são conhecidos (a grade de folgas sai no fim do mês). O que sobra é alguém que passa mal ou
+  precisa sair no meio do dia. Vai existir **uma ação só**, "Saiu / não vem a partir de [hora]", que tira a pessoa do resto do dia, mostra
+  antes quem cobre cada show (a reserva do grupo) e o que fica sem ninguém, avisa quem precisa saber e grava o motivo. Tem desfazer.
+- **Gerar a semana e ver o equilíbrio.** Gerar a semana inteira de uma vez (como já existe para o mês) e uma visão "Semana", só de leitura,
+  mostrando quantos shows de elenco limitado cada pessoa faz, para ninguém ficar sobrecarregado enquanto outra faz quase nada. Show de
+  **elenco todo do show** (como a Patinação) não conta. Cada show terá um interruptor "Conta para o equilíbrio", que vale até alguém
+  mudar e **só a partir do dia da mudança** (o que passou não muda).
+- **Relatório do mês** (quanto cada pessoa fez), depois de um mês real de uso.
+
+Perguntas novas para a Babi: **11.** Quais shows contam como "elenco limitado" no Snowland (Boas-vindas, Teatro, Musical e Montanha, e a
+Patinação não)? **12.** No imprevisto do dia, além da Administração e da Supervisão da área, quem mais deve ser avisado (por exemplo, o
+responsável de cada show afetado)? **13.** O que o relatório do mês precisa responder?
 ## Como a tela deve ser sentida (padrão Apple Design)
 
 - **Responde na hora.** O botão reage no instante do toque. Todo toque tem pelo menos 44 px e nenhum texto fica abaixo de 12 px.
