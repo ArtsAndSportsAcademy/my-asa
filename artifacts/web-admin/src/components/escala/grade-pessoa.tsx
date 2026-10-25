@@ -63,6 +63,18 @@ export function GradePessoa({ colunas, blocosDe, temChoque, mexidoPor, soExcecoe
     return { porColuna, ini, fim };
   }, [colunas, blocosDe]);
 
+  // Só o primeiro nome cabe na coluna; quando duas pessoas começam igual, entra a inicial (ou o número) do resto do nome.
+  const nomeCurto = useMemo(() => {
+    const primeiros = new Map<string, number>();
+    for (const p of colunas) { const f = p.name.split(" ")[0]; primeiros.set(f, (primeiros.get(f) ?? 0) + 1); }
+    return (p: Pessoa) => {
+      const [f, ...resto] = p.name.split(" ");
+      if ((primeiros.get(f) ?? 0) < 2 || !resto.length) return f;
+      const segundo = resto[0];
+      return /^\d+$/.test(segundo) ? `${f} ${segundo}` : `${f} ${segundo[0]}.`;
+    };
+  }, [colunas]);
+
   if (!dados) return <div className="ge-wrap"><p className="ge-vazio">Nenhum bloco neste dia.</p></div>;
   const { porColuna, ini, fim } = dados;
   const altura = (fim - ini) * PX;
@@ -77,7 +89,7 @@ export function GradePessoa({ colunas, blocosDe, temChoque, mexidoPor, soExcecoe
       {porColuna.map(({ pessoa, blocos }) => {
         const choque = blocos.some((b) => temChoque(pessoa, b));
         return <button key={pessoa.id} type="button" className="ge-head" aria-pressed={selecionada === pessoa.id} title={pessoa.name} onClick={() => onEscolherPessoa(pessoa.id)}>
-          <strong>{pessoa.name.split(" ")[0]}</strong>
+          <strong>{nomeCurto(pessoa)}</strong>
           <small>{pessoa.areaName ?? "sem área"}</small>
           {choque && <span className="ge-aviso ge-aviso-choque">choque</span>}
           {pessoa.chamadaNaFolga && <span className="ge-aviso ge-aviso-folga">chamado na folga</span>}

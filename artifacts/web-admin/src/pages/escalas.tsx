@@ -476,7 +476,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       </div>}
       {carregandoTela && !error && !dia && !minha && <div aria-busy="true" style={css("padding:16px;text-align:center;font-size:12.5px;color:var(--asa-label);background:#fff;border:1px dashed var(--asa-line-soft);border-radius:12px")}>Montando a escala…</div>}
       {showMinha && minha && <MinhaEscala minha={minha} date={date} onHoje={() => setDate(todayISO())} onConfirm={confirmarEscala} saving={saving}/>}
-      {!isMem && tab === "escala" && dia && <EscalaGrid dia={dia} canEdit={isAdm || areasMinhas.length > 0} editableAreaIds={isAdm ? null : areasMinhas} onAdjust={ajustarCelulaEmLote} onHorario={mudarHorario} onRemoveManual={isAdm ? removerEntradaManual : undefined} onEditManual={isAdm ? ((b) => setManual({ bloco: b })) : undefined} onFolgaResolvida={folgaResolvida} saiu={saiuApi}/>} 
+      {!isMem && tab === "escala" && dia && <EscalaGrid dia={dia} canEdit={isAdm || areasMinhas.length > 0} editableAreaIds={null} onAdjust={ajustarCelulaEmLote} onHorario={mudarHorario} onRemoveManual={isAdm ? removerEntradaManual : undefined} onEditManual={isAdm ? ((b) => setManual({ bloco: b })) : undefined} onFolgaResolvida={folgaResolvida} saiu={saiuApi}/>} 
       {!isMem && tab === "prog" && localId && <ProgramacaoTab review={review} localId={localId} localName={operationLabel} date={date} dia={dia} canEdit={Boolean(local?.podeEditar)} onChanged={() => setRefresh((n) => n + 1)}/>}
     </div>
 
@@ -702,7 +702,7 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
       ? <GradePessoa colunas={cols} blocosDe={blocosDe} temChoque={temChoque} mexidoPor={mexidoPor} soExcecoes={soExcecoes} busca={buscaIds} selecionada={selecionada}
           onEscolherPessoa={(id) => setSelecionada((atual) => (atual === id ? null : id))} onTocarBloco={(bloco, pessoa, el) => setMenu({ bloco, pessoa, rect: el.getBoundingClientRect() })}/>
       : <div style={css("border:1px solid var(--asa-line-soft);border-radius:12px;overflow:hidden;background:#fff;")}>
-        <table style={css("border-collapse:separate;border-spacing:0;width:100%;font-size:12.5px")}>
+        <table className="esc-tab-atividade" style={css("border-collapse:separate;border-spacing:0;width:100%;font-size:12.5px")}>
           <thead><tr>
             <th style={css(MONO_TH)}>Horário</th>
             <th style={css(MONO_TH)}>Atividade</th>

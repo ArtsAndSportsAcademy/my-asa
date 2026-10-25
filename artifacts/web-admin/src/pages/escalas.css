@@ -13,6 +13,11 @@
 @media(max-width:720px){
   .esc-hit::after{width:max(100%,48px);height:max(100%,48px)}
   .esc-pad{padding-left:16px!important;padding-right:16px!important}
+  /* "Por atividade" no telefone: cada linha vira um cartão (hora, atividade, quem faz), em vez de cortar a coluna "Quem faz". */
+  .esc-tab-atividade thead{display:none}
+  .esc-tab-atividade,.esc-tab-atividade tbody,.esc-tab-atividade tr,.esc-tab-atividade td{display:block;width:100%!important;box-sizing:border-box}
+  .esc-tab-atividade tr{border-bottom:1px solid var(--asa-line-soft)}
+  .esc-tab-atividade td{border-right:0!important;border-bottom:0!important}
 }
 
 /* Aviso de blocos vazios: uma frase; a lista abre ao tocar. */
