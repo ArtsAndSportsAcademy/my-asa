@@ -15,6 +15,7 @@ import { ResumoDoDia, trabalhaNoDia } from "@/components/escala/resumo-do-dia";
 import { TIPOS, ehExcecao, faixa, textoDoBloco, tipoDoBloco, toneDoTipo } from "@/components/escala/tipos";
 import "@/components/escala/escala-tokens.css";
 import { diaQueAEscalaAbre, type ViradaDoDia } from "@/lib/dia-da-escala";
+import { SaiuDialog, type PreviaDaSaida, type SaiuApi } from "@/components/escala/saiu-dialog";
 import "./shows.css"; // a janela do Ajustar usa .shows-dialog: sem isto ela não rola e o rodapé some quando a Escala abre direto
 import "./escalas.css";
 
@@ -380,6 +381,24 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
     } catch (err) { setError(errMsg(err, "Não consegui confirmar a escala.")); } finally { setSaving(false); }
   };
 
+  // "Saiu ou não vem a partir de [hora]": prévia, gravar e desfazer. Em modo amostra a prévia sai do que está na tela e nada é gravado.
+  const saiuApi: SaiuApi | undefined = isMem || !localId ? undefined : {
+    simular: async (userId, aPartirDe) => review
+      ? previaDeAmostra(dia, userId, aPartirDe)
+      : customFetch<PreviaDaSaida>("/api/escalas/dia/saiu", { method: "POST", body: JSON.stringify({ locationId: localId, date, userId, aPartirDe, simular: true }) }),
+    gravar: async (userId, aPartirDe, motivo, tipo) => {
+      if (review) return { saiuId: "amostra" };
+      const r = await customFetch<{ saiuId: string }>("/api/escalas/dia/saiu", { method: "POST", body: JSON.stringify({ locationId: localId, date, userId, aPartirDe, motivo, tipo }) });
+      setRefresh((n) => n + 1);
+      return r;
+    },
+    desfazer: async (saiuId) => {
+      if (review) return;
+      const r = await customFetch<{ naoDevolvidas?: string[] }>("/api/escalas/dia/saiu/desfazer", { method: "POST", body: JSON.stringify({ locationId: localId, date, saiuId }) });
+      setRefresh((n) => n + 1);
+      return r;
+    },
+  };
   const carregandoTela = loading || (!isMem && !review && !locaisProntos);
   const status = carregandoTela && !dia ? "carregando…" : error && !dia ? "não carregou" : statusLabel(dia);
   const S = STATUS[isMem ? (carregandoTela && !minha ? "carregando…" : error && !minha ? "não carregou" : minha?.publicada ? "publicada" : "sem escala") : status];
@@ -438,7 +457,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       </div>}
       {carregandoTela && !error && !dia && !minha && <div aria-busy="true" style={css("padding:16px;text-align:center;font-size:12.5px;color:var(--asa-label);background:#fff;border:1px dashed var(--asa-line-soft);border-radius:12px")}>Montando a escala…</div>}
       {showMinha && minha && <MinhaEscala minha={minha} date={date} onHoje={() => setDate(todayISO())} onConfirm={confirmarEscala} saving={saving}/>}
-      {!isMem && tab === "escala" && dia && <EscalaGrid dia={dia} canEdit={isAdm || areasMinhas.length > 0} editableAreaIds={isAdm ? null : areasMinhas} onAdjust={ajustarCelulaEmLote} onHorario={mudarHorario} onRemoveManual={isAdm ? removerEntradaManual : undefined} onEditManual={isAdm ? ((b) => setManual({ bloco: b })) : undefined} onFolgaResolvida={folgaResolvida}/>} 
+      {!isMem && tab === "escala" && dia && <EscalaGrid dia={dia} canEdit={isAdm || areasMinhas.length > 0} editableAreaIds={isAdm ? null : areasMinhas} onAdjust={ajustarCelulaEmLote} onHorario={mudarHorario} onRemoveManual={isAdm ? removerEntradaManual : undefined} onEditManual={isAdm ? ((b) => setManual({ bloco: b })) : undefined} onFolgaResolvida={folgaResolvida} saiu={saiuApi}/>} 
       {!isMem && tab === "prog" && localId && <ProgramacaoTab review={review} localId={localId} localName={operationLabel} date={date} dia={dia} canEdit={Boolean(local?.podeEditar)} onChanged={() => setRefresh((n) => n + 1)}/>}
     </div>
 
@@ -451,6 +470,16 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
   </section>;
 }
 
+/** Só no modo amostra: o que a prévia de "saiu a partir de" mostraria para a pessoa, calculado do que já está na tela. */
+function previaDeAmostra(dia: Dia | null, userId: string, aPartirDe: string): PreviaDaSaida {
+  const atividades = (dia?.blocos ?? []).filter((b) => b.pessoaIds.includes(userId)).flatMap((b): PreviaDaSaida["atividades"] => {
+    const show = b.regra === "livro";
+    if (b.inicio >= aPartirDe) return [{ key: b.key, rotulo: textoDoBloco(b), inicio: b.inicio, fim: b.fim, acao: show ? "SAI_DO_SHOW" : "SAI" }];
+    if (b.fim && b.fim > aPartirDe) return [{ key: b.key, rotulo: textoDoBloco(b), inicio: b.inicio, fim: b.fim, acao: show ? "SAI_DO_SHOW" : "TERMINA_MAIS_CEDO", novoFim: show ? undefined : aPartirDe }];
+    return [];
+  });
+  return { atividades, shows: [], semNinguem: atividades.filter((a) => a.acao === "SAI_DO_SHOW").length };
+}
 /* ---------- calendário (mês da data escolhida) ---------- */
 function Calendario({ date, onPick }: { date: string; onPick: (d: string) => void }) {
   const { y, m } = partsOf(date);
@@ -496,7 +525,7 @@ function useTelefone() {
 }
 
 /* ---------- aba Escala: grade pessoas × horários ---------- */
-function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemoveManual, onEditManual, onFolgaResolvida }: { dia: Dia; canEdit: boolean; editableAreaIds: string[] | null; onHorario: (bloco: Bloco, pessoaId: string, horario: { inicio: string; fim: string | null; motivo?: string } | null) => Promise<string | null>; onAdjust: (bloco: Bloco, mudancas: Mudanca[], motivo?: string) => Promise<void>; onRemoveManual?: (allocationIds: string[]) => Promise<void>; onEditManual?: (bloco: Bloco) => void; onFolgaResolvida?: (userId: string) => Promise<void> }) {
+function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemoveManual, onEditManual, onFolgaResolvida, saiu }: { saiu?: SaiuApi; dia: Dia; canEdit: boolean; editableAreaIds: string[] | null; onHorario: (bloco: Bloco, pessoaId: string, horario: { inicio: string; fim: string | null; motivo?: string } | null) => Promise<string | null>; onAdjust: (bloco: Bloco, mudancas: Mudanca[], motivo?: string) => Promise<void>; onRemoveManual?: (allocationIds: string[]) => Promise<void>; onEditManual?: (bloco: Bloco) => void; onFolgaResolvida?: (userId: string) => Promise<void> }) {
   const [view, setView] = useState<"pessoa" | "atividade">(() => typeof window !== "undefined" && window.matchMedia?.("(max-width: 640px)").matches ? "atividade" : "pessoa");
   const [team, setTeam] = useState("todos");
   const [busca, setBusca] = useState("");
@@ -508,6 +537,7 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
   const [mudandoHorario, setMudandoHorario] = useState<{ pessoaId: string; nome: string; bloco: Bloco; outro: Bloco | null } | null>(null);
   const [confirmarGrade, setConfirmarGrade] = useState<{ titulo: string; texto: string; acao: string; onSim: () => void } | null>(null);
   const [tirando, setTirando] = useState("");
+  const [saindo, setSaindo] = useState<{ pessoa: Pessoa; aPartirDe: string } | null>(null);
   const telefone = useTelefone();
   const blocosDe = useCallback((pid: string) => dia.blocos.filter((b) => b.pessoaIds.includes(pid)), [dia.blocos]);
   const trabalham = useMemo(() => dia.pessoas.filter((p) => trabalhaNoDia(p, blocosDe)), [dia.pessoas, blocosDe]);
@@ -684,6 +714,7 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
     {pessoaSelecionada && <section style={css("display:flex;flex-direction:column;gap:8px;background:#fff;border:1px solid var(--asa-line);border-radius:14px;padding:12px 14px")} aria-label={`Dia de ${pessoaSelecionada.name}`}>
       <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:8px")}>
         <h3 style={css("margin:0;font:600 15px Outfit,sans-serif;color:var(--asa-ink-dark);flex:1;min-width:140px")}>{`Dia de ${pessoaSelecionada.name}`}</h3>
+        {saiu && podeMexer(pessoaSelecionada) && <button type="button" className="esc-cell-adjust esc-hit" style={{ minHeight: 44 }} onClick={() => setSaindo({ pessoa: pessoaSelecionada, aPartirDe: blocosDe(pessoaSelecionada.id).sort((a, b) => a.inicio.localeCompare(b.inicio))[0]?.inicio ?? "12:00" })}>Saiu ou não vem…</button>}
         <button type="button" className="esc-cell-adjust esc-hit" style={{ minHeight: 44 }} onClick={() => setSelecionada(null)}>Fechar</button>
       </div>
       {blocosDe(pessoaSelecionada.id).sort((a, b) => a.inicio.localeCompare(b.inicio)).map((b) => <div key={b.key} style={css("display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600")}>
@@ -700,7 +731,10 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
       onFechar={() => setMenu(null)}
       onTirar={() => { const { bloco, pessoa } = menu; setMenu(null); void tirarDoBloco(bloco, pessoa); }}
       onMudarHorario={() => { const { bloco, pessoa } = menu; const par = conflitos.find((c) => c.pessoaId === pessoa.id && (c.a.key === bloco.key || c.b.key === bloco.key)); setMenu(null); setMudandoHorario({ pessoaId: pessoa.id, nome: pessoa.name, bloco, outro: par ? (par.a.key === bloco.key ? par.b : par.a) : null }); }}
-      onAjustar={() => { const { bloco } = menu; setMenu(null); setAjustando(bloco); }}/>}
+      onAjustar={() => { const { bloco } = menu; setMenu(null); setAjustando(bloco); }}
+      onSaiu={saiu && podeMexer(menu.pessoa) ? () => { const { bloco, pessoa } = menu; setMenu(null); setSaindo({ pessoa, aPartirDe: bloco.inicio }); } : undefined}/>}
+    {saindo && saiu && <SaiuDialog pessoa={saindo.pessoa} inicialAPartirDe={saindo.aPartirDe} api={saiu} onClose={() => setSaindo(null)}
+      onFeito={(saiuId, texto) => { setSaindo(null); setDesfazer({ texto, acao: async () => { await saiu.desfazer(saiuId); } }); }}/>}
     {confirmarGrade && <ConfirmDialog {...confirmarGrade} onClose={() => setConfirmarGrade(null)}/>}
     {mudandoHorario && <HorarioDialog nome={mudandoHorario.nome} bloco={mudandoHorario.bloco} outro={mudandoHorario.outro} onClose={() => setMudandoHorario(null)} onSalvar={async (horario) => {
       const erro = await onHorario(mudandoHorario.bloco.horarioDela ? { ...mudandoHorario.bloco, key: mudandoHorario.bloco.horarioDela.chaveOriginal } : mudandoHorario.bloco, mudandoHorario.pessoaId, horario);
