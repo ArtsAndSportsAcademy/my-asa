@@ -813,7 +813,9 @@ router.patch("/show-books/:id/keyframes/:keyframeId", requireAuth, requireOrgani
       if (typeof order === "number") changes.order = order;
       if (type !== undefined) changes.type = type as KeyframeType | null;
       if (moment !== undefined) changes.moment = typeof moment === "string" && moment.trim() ? moment.trim() : null;
-      if (markerPositions !== undefined) changes.markerPositions = markerPositions;
+      // Junta com o que já estava guardado: quem arrasta um círculo manda só a posição dele (e uma tela aberta há tempo manda um mapa velho),
+      // e substituir o mapa inteiro apagava a formação dos outros círculos.
+      if (markerPositions !== undefined) changes.markerPositions = { ...((owned.keyframe.markerPositions as Record<string, unknown> | null) ?? {}), ...(markerPositions as Record<string, unknown>) };
       const [updated] = await tx.update(showBookKeyframesTable).set(changes as any).where(eq(showBookKeyframesTable.id, keyframeId)).returning();
       const version = await bumpVersion(showBookId, "CONFIG", reason, req.user!.sub, req.requestId, req.correlationId, tx);
       await writeHistoryEvent({
