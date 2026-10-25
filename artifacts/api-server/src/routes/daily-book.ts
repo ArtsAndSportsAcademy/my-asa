@@ -2509,8 +2509,9 @@ router.patch("/daily-book/:id/assignments/:assignmentId", requireAuth, requireOr
             entityType: "scale", entityId: escalaDoLivro.id, actorId, actorType: "HUMAN", operationId: diaDoLivro.operationId, orgId: req.user!.organizationId,
             beforeState: null, afterState: { assignmentId, de: before.userId, para: userId ?? null }, metadata: mex,
           }, tx as any);
-          await coleta.avisar(tx as unknown as typeof db, escalaDoLivro);
         }
+        // Sempre avisa: além da mexida em pessoa de outra área, é aqui que a marca de "pronta" da área mexida cai (Escala em rascunho).
+        await coleta.avisar(tx as unknown as typeof db, escalaDoLivro);
       }
       await writeDailyBookAudit(id, actorId, "assignment_swap",
         { version: book.version, snapshot: beforeSnapshot, assignmentId, userId: before?.userId ?? null, status: before?.status ?? null },

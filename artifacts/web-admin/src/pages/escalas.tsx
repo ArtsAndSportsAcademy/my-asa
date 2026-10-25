@@ -20,6 +20,7 @@ import { diaQueAEscalaAbre, type ViradaDoDia } from "@/lib/dia-da-escala";
 import { SaiuDialog, type PreviaDaSaida, type SaiuApi } from "@/components/escala/saiu-dialog";
 import { AtividadeLoteDialog } from "@/components/escala/atividade-lote-dialog";
 import { LivrosDoDia } from "@/components/escala/livros-do-dia";
+import { PublicarDialog } from "@/components/escala/publicar-dialog";
 import { ShowLinha } from "@/components/escala/show-linha";
 import "./shows.css"; // a janela do Ajustar usa .shows-dialog: sem isto ela não rola e o rodapé some quando a Escala abre direto
 import "./escalas.css";
@@ -36,7 +37,7 @@ type VagaDoLivro = { assignmentId: string; personagem: string; userId: string | 
 /** Uma mexida no bloco; com `assignmentId`, vale para aquele personagem e não para "a primeira vaga aberta". */
 type Mudanca = { userId: string; action: "ADICIONAR" | "REMOVER"; assignmentId?: string };
 export type Pessoa = { id: string; name: string; areaId: string | null; areaName: string | null; folga: string | null; chamadaNaFolga?: { motivo: string | null; decidida: boolean } };
-type Area = { id: string; name: string; supervisores: { id: string; name: string }[]; pronta: { por: string | null; em: string } | null };
+type Area = { id: string; name: string; supervisores: { id: string; name: string }[]; pronta: { por: string | null; em: string } | null; prontaTirada?: { por: string | null; em: string } | null };
 /** Alguém de outra área mexeu na escala desta pessoa: quem mexeu e o quê, para a Supervisão da pessoa ver. */
 export type Mexida = { pessoaId: string; pessoaNome: string; pessoaAreaNome: string | null; porId: string; porNome: string; porAreaNome: string | null; em: string; texto: string };
 export type Dia = { date: string; location: { id: string; name: string }; escala: { id: string; status: string; version: number; publishedAt: string | null; alteradaDesde: string | null } | null; programacao: { id: string; nome: string; vigenciaInicio: string; vigenciaFim: string } | null; areas: Area[]; pessoas: Pessoa[]; blocos: Bloco[]; mexidas?: Mexida[]; tipos?: TipoDoLocal[] };
@@ -132,6 +133,8 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
   const [manual, setManual] = useState<{ bloco: Bloco | null } | null>(null);
   const [regrasAbertas, setRegrasAbertas] = useState(false);
   const [gerarMesAberto, setGerarMesAberto] = useState(false);
+  // Publicar e republicar pedem confirmação: a janela diz quantas pessoas são avisadas, quais Livros saem juntos e o que ainda pede atenção.
+  const [confirmandoPublicacao, setConfirmandoPublicacao] = useState<{ republicar: boolean } | null>(null);
   const [dia, setDia] = useState<Dia | null>(null);
   const [minha, setMinha] = useState<Minha | null>(null);
   const [areasMinhas, setAreasMinhas] = useState<string[]>([]);
@@ -274,7 +277,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       if (review) {
         const cur = loadSampleEscala(localId, date)!;
         const faltam = dia.areas.filter((a) => !a.pronta).map((a) => a.name);
-        if (!republicar && faltam.length) { setError(`Faltam áreas marcarem como pronta: ${faltam.join(", ")}.`); return; }
+        if (!republicar && faltam.length) { setError(`Faltam enviar a parte: ${faltam.join(", ")}.`); return; }
         saveSampleEscala(localId, date, { ...cur, status: republicar ? "REPUBLISHED" : "PUBLISHED", version: cur.version + 1, publishedAt: new Date().toISOString(), alteradaDesde: null });
       } else {
         await customFetch(`/api/escalas/${dia.escala.id}/${republicar ? "republicar" : "publicar"}`, { method: "POST", body: JSON.stringify({ expectedVersion: dia.escala.version }) });
@@ -491,7 +494,9 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
 
     {regrasAbertas && isAdm && localId && <RegrasDoLocalDialog localId={localId} localNome={locais.find((l) => l.id === localId)?.name ?? "este local"} onClose={() => setRegrasAbertas(false)}/>}
     {gerarMesAberto && isAdm && <GerarMesDialog locais={locais} localInicial={localId} review={review} onClose={() => setGerarMesAberto(false)} onGerou={() => setRefresh((n) => n + 1)}/>}
-    <Rodape role={role} tab={tab} onMinha={tab === "minha"} dia={dia} minha={minha} areasMinhas={areasMinhas} saving={saving} busy={busy} onGerar={gerarDia} onGerarMes={() => setGerarMesAberto(true)} onRegras={review ? undefined : () => setRegrasAbertas(true)} onPronta={marcarPronta} onPublicar={publicar}/>
+    <Rodape role={role} tab={tab} onMinha={tab === "minha"} dia={dia} minha={minha} areasMinhas={areasMinhas} saving={saving} busy={busy} onGerar={gerarDia} onGerarMes={() => setGerarMesAberto(true)} onRegras={review ? undefined : () => setRegrasAbertas(true)} onPronta={marcarPronta} onPublicar={(republicar) => setConfirmandoPublicacao({ republicar })}/>
+    {confirmandoPublicacao && dia && <PublicarDialog dia={dia} dataLonga={`${WEEKDAY_LONG[weekdayOf(date)]}, ${fullDate(date)}`} republicar={confirmandoPublicacao.republicar} review={review} ocupado={busy === "publicar"} onClose={() => setConfirmandoPublicacao(null)}
+      onConfirmar={() => { const { republicar } = confirmandoPublicacao; setConfirmandoPublicacao(null); void publicar(republicar); }}/>}
   </section>;
 }
 
@@ -1116,7 +1121,7 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, b
     else if (!dia.escala) note = "Gere o dia para criar a Escala e os Livros dos Shows programados como rascunho.";
     else if (dia.escala.alteradaDesde) note = "Mudou depois de publicada · quem faz só recebe a mudança quando você republicar";
     else if (published) note = `Publicada${dia.escala.publishedAt ? ` às ${hhmm(dia.escala.publishedAt)}` : ""} · ${dia.areas.length} ${dia.areas.length === 1 ? "área" : "áreas"} · a mesma escalação está no Livro do Dia`;
-    else note = `Rascunho · ${prontas.length} de ${dia.areas.length} áreas prontas${faltam.length ? ` · falta ${faltam.map((a) => a.name).join(", ")}` : ""} · publica a Administração`;
+    else note = `Rascunho · ${prontas.length} de ${dia.areas.length} ${dia.areas.length === 1 ? "parte enviada" : "partes enviadas"}${faltam.length ? ` · falta ${faltam.map((a) => a.name).join(", ")}` : ""}${faltam.filter((a) => a.prontaTirada).map((a) => ` · ${a.name}: marca tirada por ${a.prontaTirada!.por ?? "alguém"} às ${hhmm(a.prontaTirada!.em)}`).join("")} · publica a Administração`;
     // O mês inteiro de uma vez, em rascunho: a Administração confere depois e publica dia a dia.
     if (tab === "escala" && isAdm && onRegras) apoio.push({ key: "regras", label: "Regras do local", onClick: onRegras, disabled: saving });
     if (tab === "escala" && isAdm && onGerarMes) apoio.push({ key: "gerar-mes", label: "Gerar o mês", onClick: onGerarMes, disabled: saving });
@@ -1127,14 +1132,14 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, b
     if (tab === "escala" && !isDir && !published) {
       // Quem cuida de mais de uma área marca todas de uma vez.
       const minhasPendentes = areasMinhas.map((id) => dia.areas.find((a) => a.id === id)).filter((a): a is Area => Boolean(a) && !a!.pronta);
-      if (minhasPendentes.length > 1) actions.push(<button key="todas" type="button" className="esc-hit" disabled={saving} onClick={() => onPronta(minhasPendentes.map((a) => a.id), true)} style={css(btn("primary"))}>{busy === "pronta:todas" ? "Salvando…" : `Marcar minhas ${minhasPendentes.length} áreas como prontas`}</button>);
+      if (minhasPendentes.length > 1) actions.push(<button key="todas" type="button" className="esc-hit" disabled={saving} onClick={() => onPronta(minhasPendentes.map((a) => a.id), true)} style={css(btn("primary"))}>{busy === "pronta:todas" ? "Enviando…" : `Enviar minhas ${minhasPendentes.length} partes`}</button>);
       for (const areaId of areasMinhas) {
         const area = dia.areas.find((a) => a.id === areaId);
         if (!area) continue;
-        actions.push(<button key={areaId} type="button" className="esc-hit" disabled={saving} onClick={() => onPronta([areaId], !area.pronta)} style={css(btn(area.pronta ? "ghost" : "primary"))}>{busy === `pronta:${areaId}` ? "Salvando…" : area.pronta ? `Desmarcar ${area.name}` : `Marcar ${area.name} como pronta`}</button>);
+        actions.push(<button key={areaId} type="button" className="esc-hit" disabled={saving} onClick={() => onPronta([areaId], !area.pronta)} style={css(btn(area.pronta ? "ghost" : "primary"))}>{busy === `pronta:${areaId}` ? (area.pronta ? "Voltando…" : "Enviando…") : area.pronta ? `Voltar a editar · ${area.name}` : `Enviar minha parte · ${area.name}`}</button>);
       }
       if (isAdm && dia.escala) actions.push(<button key="pub" type="button" className="esc-hit" disabled={saving || faltam.length > 0} title={faltam.length ? `Faltam: ${faltam.map((a) => a.name).join(", ")}` : undefined} onClick={() => onPublicar(false)}
-        style={css(faltam.length ? "border-radius:999px;padding:9px 17px;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;border:none;background:var(--asa-line);color:var(--asa-label);cursor:default" : btn("primary"))}>{faltam.length ? `Publicar · faltam ${faltam.length} ${faltam.length === 1 ? "área pronta" : "áreas prontas"}` : busy === "publicar" ? "Publicando…" : `Publicar a escala de ${WEEKDAY_LONG[weekdayOf(dia.date)]!.split("-")[0]} e os Livros`}</button>);
+        style={css(faltam.length ? "border-radius:999px;padding:9px 17px;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;border:none;background:var(--asa-line);color:var(--asa-label);cursor:default" : btn("primary"))}>{faltam.length ? `Publicar · ${faltam.length === 1 ? "falta 1 parte" : `faltam ${faltam.length} partes`}` : busy === "publicar" ? "Publicando…" : `Publicar a escala de ${WEEKDAY_LONG[weekdayOf(dia.date)]!.split("-")[0]} e os Livros`}</button>);
     }
     if (tab === "escala" && isAdm && dia.escala?.alteradaDesde) actions.push(<button key="repub" type="button" className="esc-hit" disabled={saving} onClick={() => onPublicar(true)} style={css(btn("primary"))}>{busy === "publicar" ? "Republicando…" : "Republicar conjunto"}</button>);
   }
@@ -1144,10 +1149,10 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, b
     {areas.length > 0 && <div className="ge-areas" style={css("display:flex;flex-wrap:wrap;gap:6px;width:100%")}>
       {areas.map((a) => {
         const chip = "display:inline-flex;align-items:center;gap:6px;flex:none;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;padding:3px 9px;border-radius:999px;background:" + (a.pronta ? "var(--asa-teal-pale)" : "var(--asa-amber-paper)") + ";color:" + (a.pronta ? "var(--asa-teal-dark)" : "var(--asa-badge-fg)");
-        const label = `${a.name} · ${a.pronta ? `pronta${a.pronta.por ? ` (${a.pronta.por})` : ""}` : "falta"}`;
+        const label = `${a.name} · ${a.pronta ? `enviada${a.pronta.por ? ` (${a.pronta.por})` : ""}` : a.prontaTirada ? "voltou a ser editada" : "falta enviar"}`;
         // Administração pode marcar qualquer área (ex.: Produção, cuja supervisão não fica num local só).
         return isAdm && dia && (!dia.escala || dia.escala.status === "DRAFT")
-          ? <button key={a.id} type="button" className="esc-hit" disabled={saving} aria-pressed={Boolean(a.pronta)} title={a.pronta ? "Desmarcar" : "Marcar como pronta"} onClick={() => onPronta([a.id], !a.pronta)} style={css(chip + ";border:none;cursor:pointer;font-family:Manrope,sans-serif")}>{label}</button>
+          ? <button key={a.id} type="button" className="esc-hit" disabled={saving} aria-pressed={Boolean(a.pronta)} title={a.pronta ? "Voltar a editar" : "Marcar como enviada"} onClick={() => onPronta([a.id], !a.pronta)} style={css(chip + ";border:none;cursor:pointer;font-family:Manrope,sans-serif")}>{label}</button>
           : <span key={a.id} style={css(chip)}>{label}</span>;
       })}
     </div>}

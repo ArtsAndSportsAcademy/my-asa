@@ -33,7 +33,7 @@ import {
 import { fraseDeRecusaPorPerfil, requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
 import { operationalDate } from "../lib/operational-date.js";
-import { avisarRepublicacaoPendente, comoPublicada, convocacaoPorPessoa, escalaPublicada, findEscalaDoDia, montarEscalaDoDia, operationForLocation, pessoasAfetadas, tiposDoLocal } from "../services/escala-dia.js";
+import { avisarRepublicacaoPendente, avisarTodasAsAreasEnviaram, comoPublicada, convocacaoPorPessoa, escalaPublicada, findEscalaDoDia, montarEscalaDoDia, operationForLocation, pessoasAfetadas, tiposDoLocal } from "../services/escala-dia.js";
 import { FRASE_NOME_DE_TIPO, TIPOS_PRONTOS, nomeDeTipoEmUso, nomeDeTipoValido, recusaDoTipo } from "../services/escala-tipos.js";
 import { ultimoRetratoFolgas } from "../services/folgas-publicadas.js";
 import { FRASE_LOCAL_SEM_OPERACAO, descartarMes, descartaveisDoMes, gerarDiaDoLocal, gerarMes, restaurarDescarte, resumoDoMes, validarMes } from "../services/escala-mes.js";
@@ -842,7 +842,7 @@ router.post("/escalas/dia/pronta", requireAuth, requireOrganization, async (req,
   const location = await locationInOrg(locationId, actor.organizationId);
   if (!location) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
   const mine = await supervisedAreas(actor, locationId);
-  if (actor.role !== "ADMIN" && !mine.includes(areaId)) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Você marca como pronta só a parte da sua área" }); return; }
+  if (actor.role !== "ADMIN" && !mine.includes(areaId)) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Você envia só a parte da sua área" }); return; }
   try {
     let scale = await findEscalaDoDia(locationId, date);
     if (scale && scale.status !== "DRAFT") { res.status(409).json({ error: "ESCALA_JA_PUBLICADA", message: "A escala deste dia já foi publicada." }); return; }
@@ -862,15 +862,21 @@ router.post("/escalas/dia/pronta", requireAuth, requireOrganization, async (req,
       if (!pronta && current) await tx.update(escalaAreasProntasTable).set({ active: false, unmarkedBy: actor.sub, unmarkedAt: new Date() }).where(eq(escalaAreasProntasTable.id, current.id));
       if (pronta !== Boolean(current)) {
         await writeHistoryEvent({
-          category: "SCALE", action: pronta ? "escala.area_pronta" : "escala.area_desmarcada", title: pronta ? "Área marcada como pronta" : "Área desmarcada",
-          narrative: `${pronta ? "Marcou" : "Desmarcou"} a parte da área como pronta na Escala de ${location.name} (${date}).`,
+          category: "SCALE", action: pronta ? "escala.area_pronta" : "escala.area_desmarcada", title: pronta ? "Parte da área enviada" : "Parte da área voltou a ser editada",
+          narrative: `${pronta ? "Enviou" : "Voltou a editar"} a parte da área na Escala de ${location.name} (${date}).`,
           entityType: "scale", entityId: scale.id, actorId: actor.sub, operationId, orgId: actor.organizationId,
           beforeState: { areaId, pronta: Boolean(current) }, afterState: { areaId, pronta },
         }, tx as unknown as HistoryExecutor);
       }
       return scale;
     });
-    res.json({ dia: await diaParaTela(actor.organizationId, locationId, date), scaleId: result.id });
+    const diaDepois = await diaParaTela(actor.organizationId, locationId, date);
+    // A última área enviou a parte: a Administração é avisada de que a escala está pronta para publicar.
+    if (pronta && diaDepois && diaDepois.areas.length > 0 && diaDepois.areas.every((area) => area.pronta)) {
+      const desde = diaDepois.areas.reduce((m, area) => (area.pronta && area.pronta.em > m ? area.pronta.em : m), new Date(0));
+      await avisarTodasAsAreasEnviaram(db, result, location.name, desde, actor.sub);
+    }
+    res.json({ dia: diaDepois, scaleId: result.id });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "ERRO_INTERNO", message: "Erro ao marcar a área. Tente de novo." });
@@ -892,7 +898,7 @@ export async function publicarOuRepublicar(req: any, res: any, republicar: boole
   const dia = await montarEscalaDoDia(actor.organizationId, scale.locationId, scale.periodStart);
   if (!republicar) {
     const faltam = (dia?.areas ?? []).filter((a) => !a.pronta).map((a) => a.name);
-    if (faltam.length) { res.status(409).json({ error: "AREAS_PENDENTES", message: `Faltam áreas marcarem como pronta: ${faltam.join(", ")}.`, faltam }); return; }
+    if (faltam.length) { res.status(409).json({ error: "AREAS_PENDENTES", message: `Faltam enviar a parte: ${faltam.join(", ")}.`, faltam }); return; }
   }
   const now = new Date();
   const convocacao = dia ? convocacaoPorPessoa(dia) : {};

@@ -80,6 +80,8 @@
 
 /* ---------- barra de ação fixa ---------- */
 .ge-barra{position:sticky;bottom:0;z-index:20;background:rgba(255,255,255,.86)!important;-webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%)}
+/* botões de ação do rodapé (gerar, enviar a parte, publicar): sempre com 44 px de altura para o toque */
+.ge-barra>div button.esc-hit{min-height:44px}
 @media(max-width:720px){.ge-barra{bottom:calc(64px + env(safe-area-inset-bottom,0px));padding:8px 14px!important}.ge-barra .ge-areas{display:none!important}}
 
 /* ---------- menu do bloco e desfazer ---------- */
@@ -161,3 +163,16 @@
 .ge-tipos-arquivados>summary{cursor:pointer;list-style:none;min-height:44px;display:flex;align-items:center;font-size:12.5px;font-weight:700;color:var(--asa-label)}
 .ge-tipos-arquivados>summary::-webkit-details-marker{display:none}
 .ge-tipos-arquivados[open]>summary{margin-bottom:4px}
+
+/* ---------- confirmação de publicar ---------- */
+.ge-publicar{display:flex;flex-direction:column;gap:10px}
+.ge-publicar p{margin:0;font-size:12.5px;line-height:1.5;color:var(--asa-ink-medium)}
+.ge-publicar-lead{font-size:13.5px!important;font-weight:600;color:var(--asa-ink-dark)!important}
+.ge-publicar-avisos{display:flex;flex-direction:column;gap:6px;padding:11px 13px;border:1px solid #f0d79b;border-radius:12px;background:#fff6e0}
+.ge-publicar-avisos[data-ok="true"]{border-color:#9fd5b3;background:#e7f6ec}
+.ge-publicar-avisos h3{margin:0;font:600 13px Outfit,sans-serif;color:var(--asa-ink-dark)}
+.ge-publicar-avisos p{overflow-wrap:anywhere}
+/* a janela de publicar tem botões de texto longo: no celular o rodapé quebra em linhas e a janela não passa da largura da tela */
+.ge-publicar-dialog .shows-dialog-footer{flex-wrap:wrap}
+.ge-publicar-dialog .shows-dialog-footer button{flex:1 1 140px;min-width:0;white-space:normal;line-height:1.25}
+.ge-publicar-dialog .shows-dialog-footer .shows-primary{min-width:0}

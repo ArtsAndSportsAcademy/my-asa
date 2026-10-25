@@ -86,7 +86,7 @@ export type EscalaDia = {
   location: { id: string; name: string };
   escala: { id: string; status: string; version: number; publishedAt: Date | null; alteradaDesde: Date | null } | null;
   programacao: { id: string; nome: string; vigenciaInicio: string; vigenciaFim: string } | null;
-  areas: { id: string; name: string; supervisores: { id: string; name: string }[]; pronta: { por: string | null; em: Date } | null }[];
+  areas: { id: string; name: string; supervisores: { id: string; name: string }[]; pronta: { por: string | null; em: Date } | null; /** A parte já foi enviada e a marca saiu depois: quem tirou e quando (a tela explica por que a área voltou a faltar). */ prontaTirada?: { por: string | null; em: Date } | null }[];
   pessoas: { id: string; name: string; areaId: string | null; areaName: string | null; folga: string | null; chamadaNaFolga?: { motivo: string | null; decidida: boolean } }[];
   blocos: BlocoDia[];
   /** Os tipos de atividade do local (inclusive os arquivados, que ainda pintam o que já os usa). Vazio = o local ainda não tem lista. */
@@ -164,6 +164,32 @@ const porExtenso = (iso: string) => { const [, m, d] = iso.split("-").map(Number
  * publicação para cada pessoa: a chave de repetição usa a hora da última publicação, então mudanças
  * seguidas não viram fila de avisos, e depois de republicar volta a avisar.
  */
+/**
+ * A última área acabou de enviar a parte: a Administração é avisada (um aviso por conjunto de marcas) de que a escala está pronta para
+ * publicar. Quem enviou não recebe o próprio aviso.
+ */
+export async function avisarTodasAsAreasEnviaram(
+  executor: Exec,
+  scale: { id: string; operationId: string; locationId: string | null; periodStart: string },
+  nomeDoLocal: string,
+  desde: Date,
+  actorId: string,
+) {
+  const admins = await executor.selectDistinct({ id: usersTable.id }).from(usersTable)
+    .innerJoin(userRolesTable, eq(userRolesTable.userId, usersTable.id))
+    .where(and(eq(userRolesTable.operationId, scale.operationId), eq(userRolesTable.role, "ADMIN"), eq(userRolesTable.active, true), eq(usersTable.status, "ACTIVE")));
+  const quando = porExtenso(scale.periodStart);
+  for (const admin of admins) {
+    if (admin.id === actorId) continue;
+    await enqueueNotification(executor as unknown as Parameters<typeof enqueueNotification>[0], {
+      userId: admin.id, type: "escala.todas_as_areas_enviaram", category: "schedule", priority: "NORMAL",
+      title: `Todas as áreas enviaram a parte de ${quando}`,
+      message: `${nomeDoLocal}: a escala de ${quando} está pronta para publicar. Confira os Livros do dia e publique.`,
+      entityType: "scale", entityId: scale.id, actionUrl: `${APP_ROUTES.escalas}?data=${scale.periodStart}${scale.locationId ? `&local=${scale.locationId}` : ""}`,
+    }, new Date(), { deduplicationKey: `escala-toda-pronta:${scale.id}:${desde.getTime()}:${admin.id}` });
+  }
+}
+
 export async function avisarRepublicacaoPendente(
   executor: Exec,
   scale: { id: string; operationId: string; locationId: string | null; periodStart: string; publishedAt: Date | null; republishedAt: Date | null },
@@ -277,11 +303,16 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
 
   const areaIds = [...new Set([...people.map((p) => p.areaId), ...supervisors.map((s) => s.areaId)].filter((id): id is string => Boolean(id)))];
   const personIds = people.map((p) => p.id);
-  const [areas, prontas, folgas] = await Promise.all([
+  const [areas, prontas, tiradas, folgas] = await Promise.all([
     areaIds.length ? db.select({ id: areasTable.id, name: areasTable.name }).from(areasTable).where(and(inArray(areasTable.id, areaIds), eq(areasTable.active, true))).orderBy(asc(areasTable.name)) : Promise.resolve([]),
     scale ? db.select({ areaId: escalaAreasProntasTable.areaId, markedBy: usersTable.name, markedAt: escalaAreasProntasTable.markedAt }).from(escalaAreasProntasTable)
       .leftJoin(usersTable, eq(escalaAreasProntasTable.markedBy, usersTable.id))
       .where(and(eq(escalaAreasProntasTable.scaleId, scale.id), eq(escalaAreasProntasTable.active, true))) : Promise.resolve([] as { areaId: string; markedBy: string | null; markedAt: Date }[]),
+    // Marcas que já saíram: a mais recente de cada área diz quem a tirou (a tela mostra "voltou a ser editada por …").
+    scale ? db.select({ areaId: escalaAreasProntasTable.areaId, unmarkedBy: usersTable.name, unmarkedAt: escalaAreasProntasTable.unmarkedAt }).from(escalaAreasProntasTable)
+      .leftJoin(usersTable, eq(escalaAreasProntasTable.unmarkedBy, usersTable.id))
+      .where(and(eq(escalaAreasProntasTable.scaleId, scale.id), eq(escalaAreasProntasTable.active, false), isNotNull(escalaAreasProntasTable.unmarkedAt)))
+      .orderBy(desc(escalaAreasProntasTable.unmarkedAt)) : Promise.resolve([] as { areaId: string; unmarkedBy: string | null; unmarkedAt: Date | null }[]),
     personIds.length ? db.select({ userId: folgasTable.userId, type: folgasTable.type }).from(folgasTable).where(and(
       inArray(folgasTable.userId, personIds), eq(folgasTable.status, "ACTIVE"), lte(folgasTable.startDate, date), gte(folgasTable.endDate, date),
     )) : Promise.resolve([]),
@@ -473,7 +504,8 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     programacao: programacao ? { id: programacao.id, nome: programacao.nome, vigenciaInicio: programacao.vigenciaInicio, vigenciaFim: programacao.vigenciaFim } : null,
     areas: areasDoLocal.map((a) => {
       const pronta = prontas.find((p) => p.areaId === a.id);
-      return { id: a.id, name: a.name, supervisores: supervisors.filter((s) => s.areaId === a.id).map((s) => ({ id: s.id, name: s.name })), pronta: pronta ? { por: pronta.markedBy, em: pronta.markedAt } : null };
+      const tirada = pronta ? undefined : tiradas.find((t) => t.areaId === a.id);
+      return { id: a.id, name: a.name, supervisores: supervisors.filter((s) => s.areaId === a.id).map((s) => ({ id: s.id, name: s.name })), pronta: pronta ? { por: pronta.markedBy, em: pronta.markedAt } : null, prontaTirada: tirada?.unmarkedAt ? { por: tirada.unmarkedBy, em: tirada.unmarkedAt } : null };
     }),
     pessoas: people.map((p) => {
       const chamada = chamadasNaFolga.get(p.id);

@@ -5,10 +5,15 @@
  * 1. o evento do Registro leva, no `metadata`, quem mexeu, a área de quem mexeu, a pessoa, a área dela e o que foi feito;
  * 2. `GET /escalas/dia` devolve `dia.mexidas` (lista do dia, derivada desses eventos);
  * 3. UM aviso no sino por acontecimento (por pedido, não por clique nem por pessoa) para a Supervisão da área da pessoa.
+ *
+ * Etapa 7 (25/10/2026): enquanto a Escala é rascunho, a Supervisão "envia a parte da área" (marca de pronta). Se OUTRA pessoa mexe numa pessoa
+ * dessa área depois, a marca cai sozinha e a Supervisão da área é avisada (junto do aviso acima, quando for o mesmo acontecimento, para não
+ * chegarem dois). Quem supervisiona a área e mexe nela ele mesmo continua com a parte enviada: viu o que fez.
  */
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import { areaLocalSupervisorsTable, areasTable, db, historyEventsTable, locationsTable, usersTable } from "@workspace/db";
+import { areaLocalSupervisorsTable, areasTable, db, escalaAreasProntasTable, historyEventsTable, locationsTable, usersTable } from "@workspace/db";
+import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
 import { enqueueNotification } from "./undo.js";
 import { APP_ROUTES } from "../lib/app-routes.js";
 
@@ -34,11 +39,13 @@ type Item = { pessoaId: string; pessoaNome: string; pessoaAreaNome: string | nul
  * Um pedido (um clique, ou um lote) = uma coleta. Cada pessoa tocada passa por `registrar` (devolve o que vai no `metadata` do evento do Registro)
  * e, no fim, `avisar` manda UM aviso por Supervisão afetada. A Administração nunca é "mexida de outra área".
  */
-export async function novaColeta(actor: { sub: string; role: string }, locationId: string, date: string) {
+export async function novaColeta(actor: { sub: string; role: string; organizationId?: string | null }, locationId: string, date: string) {
   const ehSupervisao = SUPERVISOR.includes(actor.role);
   const minhasAreas = ehSupervisao ? new Set(await areasQueSupervisiona(actor.sub, locationId)) : new Set<string>();
   const acontecimento = randomUUID();
   const itens: Item[] = [];
+  /** Toda pessoa tocada neste pedido (de qualquer área): é o que derruba a marca de "pronta" da área dela. */
+  const tocadas: { areaId: string; pessoaNome: string; texto: string }[] = [];
   const naoCruzadas: (string | null)[] = [];
   const nomesDeArea = new Map<string, string | null>();
   let ator: { nome: string; areaNome: string | null } | null = null;
@@ -57,6 +64,36 @@ export async function novaColeta(actor: { sub: string; role: string }, locationI
   };
   const cruzada = (p: PessoaDaMexida) => ehSupervisao && (!p.areaId || !minhasAreas.has(p.areaId));
 
+  /**
+   * A Escala ainda é rascunho e a área da pessoa tocada já tinha enviado a parte? A marca cai (com Registro) e devolve as áreas que caíram.
+   * Não cai quando quem mexeu supervisiona aquela área neste local.
+   */
+  const derrubarProntas = async (executor: Exec, scale: { id: string; status: string; operationId?: string }): Promise<Map<string, string>> => {
+    const caiu = new Map<string, string>();
+    if (scale.status !== "DRAFT" || !tocadas.length) return caiu;
+    const alvo = [...new Set(tocadas.map((t) => t.areaId))].filter((id) => !minhasAreas.has(id));
+    if (!alvo.length) return caiu;
+    const prontas = await executor.select().from(escalaAreasProntasTable).where(and(
+      eq(escalaAreasProntasTable.scaleId, scale.id), inArray(escalaAreasProntasTable.areaId, alvo), eq(escalaAreasProntasTable.active, true),
+    ));
+    if (!prontas.length) return caiu;
+    const a = await dadosDoAtor();
+    for (const pronta of prontas) {
+      await executor.update(escalaAreasProntasTable).set({ active: false, unmarkedBy: actor.sub, unmarkedAt: new Date() }).where(eq(escalaAreasProntasTable.id, pronta.id));
+      const nome = (await nomeDaArea(pronta.areaId)) ?? "a área";
+      caiu.set(pronta.areaId, nome);
+      const dela = tocadas.filter((t) => t.areaId === pronta.areaId);
+      await writeHistoryEvent({
+        category: "SCALE", action: "escala.area_pronta_caiu", title: "Parte enviada de uma área voltou a ser editada",
+        narrative: `A marca de pronta de ${nome} saiu porque ${a.nome} mexeu na escala depois: ${dela.slice(0, 3).map((t) => t.texto).join("; ")}${dela.length > 3 ? ` e mais ${dela.length - 3}` : ""}.`,
+        entityType: "scale", entityId: scale.id, actorId: actor.sub, operationId: scale.operationId, orgId: actor.organizationId ?? undefined,
+        beforeState: { areaId: pronta.areaId, pronta: true }, afterState: { areaId: pronta.areaId, pronta: false },
+        metadata: { prontaCaiu: true, areaId: pronta.areaId, porId: actor.sub, porNome: a.nome },
+      }, executor as unknown as HistoryExecutor);
+    }
+    return caiu;
+  };
+
   return {
     /** A pessoa é de outra área que quem mexeu NÃO supervisiona neste local? */
     cruzada,
@@ -64,6 +101,7 @@ export async function novaColeta(actor: { sub: string; role: string }, locationI
     async registrar(escalaId: string, lista: { pessoa: PessoaDaMexida; texto: string }[]): Promise<Record<string, unknown>> {
       const novos: Item[] = [];
       for (const { pessoa, texto } of lista) {
+        if (pessoa.areaId) tocadas.push({ areaId: pessoa.areaId, pessoaNome: pessoa.name, texto });
         if (!cruzada(pessoa)) { naoCruzadas.push(pessoa.areaId); continue; }
         novos.push({ pessoaId: pessoa.id, pessoaNome: pessoa.name, pessoaAreaNome: await nomeDaArea(pessoa.areaId), areaId: pessoa.areaId, texto });
       }
@@ -77,20 +115,36 @@ export async function novaColeta(actor: { sub: string; role: string }, locationI
       if (!itens.length) return {};
       return naoCruzadas.length ? { areaIds: naoCruzadas } : { soAdministracao: true };
     },
-    /** UM aviso por Supervisão da área mexida (nunca para quem mexeu), por acontecimento. */
-    async avisar(executor: Exec, scale: { id: string; locationId: string | null; periodStart: string; status: string }) {
-      if (!itens.length || !scale.locationId) return;
+    /**
+     * Derruba a marca de pronta das áreas tocadas (Escala em rascunho) e manda UM aviso por Supervisão afetada (nunca para quem mexeu), por
+     * acontecimento: quem é da área mexida e também teve a marca derrubada recebe tudo numa mensagem só.
+     */
+    async avisar(executor: Exec, scale: { id: string; locationId: string | null; periodStart: string; status: string; operationId?: string }) {
+      if (!scale.locationId) return;
+      const caiu = await derrubarProntas(executor, scale);
       const areas = [...new Set(itens.map((i) => i.areaId).filter((id): id is string => Boolean(id)))];
-      if (!areas.length) return;
-      const linhas = await executor.selectDistinct({ supervisorId: areaLocalSupervisorsTable.supervisorId, areaId: areaLocalSupervisorsTable.areaId }).from(areaLocalSupervisorsTable)
-        .innerJoin(usersTable, eq(usersTable.id, areaLocalSupervisorsTable.supervisorId))
-        .where(and(eq(areaLocalSupervisorsTable.locationId, scale.locationId), eq(areaLocalSupervisorsTable.active, true), eq(usersTable.status, "ACTIVE"), inArray(areaLocalSupervisorsTable.areaId, areas)));
-      const porSupervisor = new Map<string, Set<string>>();
-      for (const l of linhas) { if (l.supervisorId === actor.sub) continue; porSupervisor.set(l.supervisorId, new Set([...(porSupervisor.get(l.supervisorId) ?? []), l.areaId])); }
-      if (!porSupervisor.size) return;
+      const areasCaidas = [...caiu.keys()];
+      if (!areas.length && !areasCaidas.length) return;
+      const supervisoresDe = async (areaIds: string[]) => {
+        const porSup = new Map<string, Set<string>>();
+        if (!areaIds.length) return porSup;
+        const linhas = await executor.selectDistinct({ supervisorId: areaLocalSupervisorsTable.supervisorId, areaId: areaLocalSupervisorsTable.areaId }).from(areaLocalSupervisorsTable)
+          .innerJoin(usersTable, eq(usersTable.id, areaLocalSupervisorsTable.supervisorId))
+          .where(and(eq(areaLocalSupervisorsTable.locationId, scale.locationId!), eq(areaLocalSupervisorsTable.active, true), eq(usersTable.status, "ACTIVE"), inArray(areaLocalSupervisorsTable.areaId, areaIds)));
+        for (const l of linhas) { if (l.supervisorId === actor.sub) continue; porSup.set(l.supervisorId, new Set([...(porSup.get(l.supervisorId) ?? []), l.areaId])); }
+        return porSup;
+      };
+      const porSupervisor = await supervisoresDe(areas);
+      const porSupervisorCaida = await supervisoresDe(areasCaidas);
+      if (!porSupervisor.size && !porSupervisorCaida.size) return;
       const [local] = await executor.select({ name: locationsTable.name }).from(locationsTable).where(eq(locationsTable.id, scale.locationId)).limit(1);
       const a = await dadosDoAtor();
       const publicada = scale.status === "PUBLISHED" || scale.status === "REPUBLISHED";
+      const frasePronta = (supervisorId: string) => {
+        const nomes = [...(porSupervisorCaida.get(supervisorId) ?? [])].map((id) => caiu.get(id)).filter(Boolean);
+        return nomes.length ? ` A parte enviada de ${nomes.join(" e ")} voltou a ser editada: confira e envie de novo.` : "";
+      };
+      const url = `${APP_ROUTES.escalas}?data=${scale.periodStart}&local=${scale.locationId}`;
       for (const [supervisorId, deles] of porSupervisor) {
         const dele = itens.filter((i) => i.areaId && deles.has(i.areaId));
         const unico = dele.length === 1 ? dele[0]! : null;
@@ -98,10 +152,22 @@ export async function novaColeta(actor: { sub: string; role: string }, locationI
           userId: supervisorId, type: "escala.mexeram_na_sua_area", category: "schedule", priority: "NORMAL",
           title: unico ? `${a.nome} mexeu na escala de ${unico.pessoaNome}` : `${a.nome} mexeu na escala de ${dele.length} pessoas da sua área`,
           message: unico
-            ? `${local?.name ?? "Escala do dia"} · ${dataPorExtenso(scale.periodStart)}: ${a.nome}${a.areaNome ? ` (${a.areaNome})` : ""} ${unico.texto}.${publicada ? " A escala já publicada pede republicação." : ""}`
-            : `${local?.name ?? "Escala do dia"} · ${dataPorExtenso(scale.periodStart)}: ${a.nome}${a.areaNome ? ` (${a.areaNome})` : ""} mexeu em ${dele.slice(0, 4).map((i) => `${i.pessoaNome} (${i.texto})`).join("; ")}${dele.length > 4 ? ` e mais ${dele.length - 4}` : ""}.${publicada ? " A escala já publicada pede republicação." : ""}`,
-          entityType: "scale", entityId: scale.id, actionUrl: `${APP_ROUTES.escalas}?data=${scale.periodStart}&local=${scale.locationId}`,
+            ? `${local?.name ?? "Escala do dia"} · ${dataPorExtenso(scale.periodStart)}: ${a.nome}${a.areaNome ? ` (${a.areaNome})` : ""} ${unico.texto}.${publicada ? " A escala já publicada pede republicação." : ""}${frasePronta(supervisorId)}`
+            : `${local?.name ?? "Escala do dia"} · ${dataPorExtenso(scale.periodStart)}: ${a.nome}${a.areaNome ? ` (${a.areaNome})` : ""} mexeu em ${dele.slice(0, 4).map((i) => `${i.pessoaNome} (${i.texto})`).join("; ")}${dele.length > 4 ? ` e mais ${dele.length - 4}` : ""}.${publicada ? " A escala já publicada pede republicação." : ""}${frasePronta(supervisorId)}`,
+          entityType: "scale", entityId: scale.id, actionUrl: url,
         }, new Date(), { deduplicationKey: `escala-mexida:${acontecimento}:${supervisorId}` });
+      }
+      // Supervisão cuja área teve a marca derrubada por alguém da própria área (ex.: a Administração): aviso só da marca.
+      for (const [supervisorId, deles] of porSupervisorCaida) {
+        if (porSupervisor.has(supervisorId)) continue;
+        const nomes = [...deles].map((id) => caiu.get(id)).filter(Boolean);
+        const toques = tocadas.filter((t) => deles.has(t.areaId));
+        await enqueueNotification(executor as unknown as Parameters<typeof enqueueNotification>[0], {
+          userId: supervisorId, type: "escala.parte_voltou_a_editar", category: "schedule", priority: "IMPORTANT",
+          title: `A parte enviada de ${nomes.join(" e ")} voltou a ser editada`,
+          message: `${local?.name ?? "Escala do dia"} · ${dataPorExtenso(scale.periodStart)}: ${a.nome} mexeu em ${toques.slice(0, 3).map((t) => `${t.pessoaNome} (${t.texto})`).join("; ")}${toques.length > 3 ? ` e mais ${toques.length - 3}` : ""}. Confira e envie a parte de novo.`,
+          entityType: "scale", entityId: scale.id, actionUrl: url,
+        }, new Date(), { deduplicationKey: `escala-parte-voltou:${acontecimento}:${supervisorId}` });
       }
     },
   };
