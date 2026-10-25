@@ -44,6 +44,8 @@ export type GradePessoaProps = {
   colunas: Pessoa[];
   blocosDe: (pessoaId: string) => Bloco[];
   temChoque: (pessoa: Pessoa, bloco: Bloco) => boolean;
+  /** Nome de quem mexeu por último na pessoa (outra Supervisão), ou null. */
+  mexidoPor?: (pessoaId: string) => string | null;
   soExcecoes: boolean;
   busca: Set<string> | null;
   selecionada: string | null;
@@ -51,7 +53,7 @@ export type GradePessoaProps = {
   onTocarBloco: (bloco: Bloco, pessoa: Pessoa, elemento: HTMLElement) => void;
 };
 
-export function GradePessoa({ colunas, blocosDe, temChoque, soExcecoes, busca, selecionada, onEscolherPessoa, onTocarBloco }: GradePessoaProps) {
+export function GradePessoa({ colunas, blocosDe, temChoque, mexidoPor, soExcecoes, busca, selecionada, onEscolherPessoa, onTocarBloco }: GradePessoaProps) {
   const dados = useMemo(() => {
     const porColuna = colunas.map((p) => { const blocos = blocosDe(p.id); return { pessoa: p, blocos, lanes: lanesDe(blocos) }; });
     const todos = porColuna.flatMap((c) => c.blocos);
@@ -79,6 +81,7 @@ export function GradePessoa({ colunas, blocosDe, temChoque, soExcecoes, busca, s
           <small>{pessoa.areaName ?? "sem área"}</small>
           {choque && <span className="ge-aviso ge-aviso-choque">choque</span>}
           {pessoa.chamadaNaFolga && <span className="ge-aviso ge-aviso-folga">chamado na folga</span>}
+          {mexidoPor?.(pessoa.id) && <span className="ge-aviso ge-aviso-mexida">{`ajustado por ${mexidoPor(pessoa.id)!.split(" ")[0]}`}</span>}
         </button>;
       })}
       <div className="ge-axis" aria-hidden="true">{horas.map((t) => <i key={t} style={{ top: (t - ini) * PX }}>{horaDe(t)}</i>)}</div>

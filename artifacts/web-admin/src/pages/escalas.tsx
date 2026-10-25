@@ -33,7 +33,9 @@ type VagaDoLivro = { assignmentId: string; personagem: string; userId: string | 
 type Mudanca = { userId: string; action: "ADICIONAR" | "REMOVER"; assignmentId?: string };
 export type Pessoa = { id: string; name: string; areaId: string | null; areaName: string | null; folga: string | null; chamadaNaFolga?: { motivo: string | null; decidida: boolean } };
 type Area = { id: string; name: string; supervisores: { id: string; name: string }[]; pronta: { por: string | null; em: string } | null };
-export type Dia = { date: string; location: { id: string; name: string }; escala: { id: string; status: string; version: number; publishedAt: string | null; alteradaDesde: string | null } | null; programacao: { id: string; nome: string; vigenciaInicio: string; vigenciaFim: string } | null; areas: Area[]; pessoas: Pessoa[]; blocos: Bloco[] };
+/** Alguém de outra área mexeu na escala desta pessoa: quem mexeu e o quê, para a Supervisão da pessoa ver. */
+export type Mexida = { pessoaId: string; pessoaNome: string; pessoaAreaNome: string | null; porId: string; porNome: string; porAreaNome: string | null; em: string; texto: string };
+export type Dia = { date: string; location: { id: string; name: string }; escala: { id: string; status: string; version: number; publishedAt: string | null; alteradaDesde: string | null } | null; programacao: { id: string; nome: string; vigenciaInicio: string; vigenciaFim: string } | null; areas: Area[]; pessoas: Pessoa[]; blocos: Bloco[]; mexidas?: Mexida[] };
 type Local = { id: string; name: string; podeEditar: boolean; areasSupervisionadas: string[]; viradaDoDia?: ViradaDoDia };
 type ProgBloco = SampleProgramacao["blocos"][number];
 type Programacao = { id: string; locationId: string; nome: string; vigenciaInicio: string; vigenciaFim: string; active?: boolean; blocos: ProgBloco[] };
@@ -186,7 +188,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
         if (!localId) return;
         if (review) {
           const d = sampleDia(localId, date) as Dia;
-          if (!cancelled) { setDia(d); setAreasMinhas(role === "sup" ? sampleAreasSupervisionadas(me, localId) : []); }
+          if (!cancelled) { setDia({ ...d, mexidas: mexidasDeAmostra(d) }); setAreasMinhas(role === "sup" ? sampleAreasSupervisionadas(me, localId) : []); }
           return;
         }
         const r = await customFetch<{ dia: Dia; areasSupervisionadas: string[] }>(`/api/escalas/dia?locationId=${localId}&date=${date}`);
@@ -489,6 +491,16 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
   </section>;
 }
 
+/** Só no modo amostra: uma mexida de exemplo (de uma Supervisão em pessoa de outra área) para ver como a tela mostra "quem mexeu". */
+function mexidasDeAmostra(d: Dia): Mexida[] {
+  const pessoa = d.pessoas.find((p) => !p.folga && p.areaId);
+  const outra = d.areas.find((a) => a.id !== pessoa?.areaId && a.supervisores.length);
+  const sup = outra?.supervisores[0];
+  const bloco = pessoa ? d.blocos.find((b) => b.pessoaIds.includes(pessoa.id) && b.regra !== "livro") : undefined;
+  if (!pessoa || !outra || !sup || !bloco) return [];
+  return [{ pessoaId: pessoa.id, pessoaNome: pessoa.name, pessoaAreaNome: pessoa.areaName, porId: sup.id, porNome: sup.name, porAreaNome: outra.name, em: new Date().toISOString(), texto: `tirou de ${textoDoBloco(bloco)}` }];
+}
+
 /** Só no modo amostra: o que a prévia de "saiu a partir de" mostraria para a pessoa, calculado do que já está na tela. */
 function previaDeAmostra(dia: Dia | null, userId: string, aPartirDe: string): PreviaDaSaida {
   const atividades = (dia?.blocos ?? []).filter((b) => b.pessoaIds.includes(userId)).flatMap((b): PreviaDaSaida["atividades"] => {
@@ -592,6 +604,8 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
   }, [dia]);
   const emConflito = new Set(conflitos.flatMap((c) => [`${c.pessoa}|${c.a.key}`, `${c.pessoa}|${c.b.key}`]));
   const temChoque = (p: Pessoa, b: Bloco) => emConflito.has(`${p.name}|${b.key}`);
+  // Quem mexeu por último em cada pessoa (Supervisão de outra área): aparece na coluna dela.
+  const mexidoPor = (pessoaId: string) => dia.mexidas?.find((m) => m.pessoaId === pessoaId)?.porNome ?? null;
   // Um cartão por par de blocos que se cruzam (ALMOÇO × MUSICAL), com as pessoas dentro — não um por pessoa.
   const gruposDeConflito = useMemo(() => {
     const porPar = new Map<string, GrupoDeConflito>();
@@ -666,7 +680,7 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
             <span aria-hidden="true" style={css("width:30px;height:30px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--asa-violet),var(--asa-indigo));")}>{initials(p.name)}</span>
             <div style={css("display:flex;flex-direction:column;gap:1px;min-width:0")}>
               <strong style={css("font-size:13.5px;color:var(--asa-ink-dark);overflow-wrap:anywhere")}>{p.name}</strong>
-              <span style={css("font-size:12px;color:var(--asa-label)")}>{`${p.areaName ?? "sem área"} · ${plural(lista.length, "bloco", "blocos")}`}{p.chamadaNaFolga ? " · chamado na folga" : ""}</span>
+              <span style={css("font-size:12px;color:var(--asa-label)")}>{`${p.areaName ?? "sem área"} · ${plural(lista.length, "bloco", "blocos")}`}{p.chamadaNaFolga ? " · chamado na folga" : ""}{mexidoPor(p.id) ? ` · ajustado por ${mexidoPor(p.id)}` : ""}</span>
             </div>
           </header>
           {lista.length ? <ul className="esc-cartao-blocos">
@@ -685,7 +699,7 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
       })}
       {!cols.length && <li className="esc-cartao-vazio">{team === "todos" ? "Ninguém trabalha neste dia." : "Ninguém deste grupo trabalha neste dia."}</li>}
     </ul> : view === "pessoa"
-      ? <GradePessoa colunas={cols} blocosDe={blocosDe} temChoque={temChoque} soExcecoes={soExcecoes} busca={buscaIds} selecionada={selecionada}
+      ? <GradePessoa colunas={cols} blocosDe={blocosDe} temChoque={temChoque} mexidoPor={mexidoPor} soExcecoes={soExcecoes} busca={buscaIds} selecionada={selecionada}
           onEscolherPessoa={(id) => setSelecionada((atual) => (atual === id ? null : id))} onTocarBloco={(bloco, pessoa, el) => setMenu({ bloco, pessoa, rect: el.getBoundingClientRect() })}/>
       : <div style={css("border:1px solid var(--asa-line-soft);border-radius:12px;overflow:hidden;background:#fff;")}>
         <table style={css("border-collapse:separate;border-spacing:0;width:100%;font-size:12.5px")}>

@@ -31,7 +31,8 @@ export function AtencaoDoDia({ dia, vazios, grupos, canEdit, editableAreaIds, ti
   const chamadas = dia.pessoas.filter((p) => p.chamadaNaFolga && !p.chamadaNaFolga.decidida);
   const alterada = dia.escala?.alteradaDesde ?? null;
   const semProgramacao = !dia.programacao;
-  const total = (vazios.length ? 1 : 0) + grupos.length + chamadas.length + (alterada ? 1 : 0) + (semProgramacao ? 1 : 0);
+  const mexidas = dia.mexidas ?? [];
+  const total = (mexidas.length ? 1 : 0) + (vazios.length ? 1 : 0) + grupos.length + chamadas.length + (alterada ? 1 : 0) + (semProgramacao ? 1 : 0);
   const [aberto, setAberto] = useState(false);
   useEffect(() => { const abrir = () => setAberto(true); window.addEventListener("ge-abrir-atencao", abrir); return () => window.removeEventListener("ge-abrir-atencao", abrir); }, []);
   if (!total) return null;
@@ -39,6 +40,7 @@ export function AtencaoDoDia({ dia, vazios, grupos, canEdit, editableAreaIds, ti
     vazios.length ? plural(vazios.length, "bloco sem ninguém", "blocos sem ninguém") : "",
     grupos.length ? plural(new Set(grupos.flatMap((g) => g.pessoas.map((c) => c.pessoaId))).size, "pessoa em dois lugares", "pessoas em dois lugares") : "",
     chamadas.length ? plural(chamadas.length, "chamada na folga", "chamadas na folga") : "",
+    mexidas.length ? plural(mexidas.length, "mexida de outra área", "mexidas de outras áreas") : "",
     alterada ? "mudou depois de publicada" : "",
     semProgramacao ? "sem Programação" : "",
   ].filter(Boolean).join(" · ");
@@ -51,6 +53,16 @@ export function AtencaoDoDia({ dia, vazios, grupos, canEdit, editableAreaIds, ti
       <span style={css("flex:1;min-width:0;font-size:12.5px;color:var(--asa-amber-dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap")}>{resumo}</span>
       <span style={css("flex:none;font-size:12px;font-weight:700;color:var(--asa-amber-mid)")}>{aberto ? "fechar" : "ver"}</span>
     </summary>
+
+    {mexidas.length > 0 && <div style={css("display:flex;flex-direction:column;gap:6px;background:#fff;border:1px solid var(--asa-line-soft);border-radius:12px;padding:10px 13px;")}>
+      <span style={css("font-family:Outfit,sans-serif;font-size:14px;font-weight:600;color:var(--asa-ink-dark)")}>Mexeram em pessoas de outra área</span>
+      <ul style={css("margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px")}>
+        {mexidas.map((m, i) => <li key={`${m.pessoaId}-${m.em}-${i}`} style={css("font-size:12.5px;line-height:1.45;color:var(--asa-ink-medium)")}>
+          <strong style={css("color:var(--asa-ink-dark)")}>{m.porNome}</strong>{m.porAreaNome ? ` (${m.porAreaNome})` : ""} {m.texto} · {m.pessoaNome}{m.pessoaAreaNome ? ` (${m.pessoaAreaNome})` : ""} · {hhmm(m.em)}
+        </li>)}
+      </ul>
+      <span style={css("font-size:12px;color:var(--asa-label)")}>A Supervisão da área da pessoa vê quem mexeu. Não precisa de motivo.</span>
+    </div>}
 
     {vazios.length > 0 && <details className="esc-vazios" style={css("background:var(--asa-late-bg);border:1px solid var(--asa-amber-streak);border-radius:12px;padding:6px 12px;")}>
       <summary style={css("display:flex;align-items:center;gap:11px;cursor:pointer;list-style:none;min-height:44px")}>
