@@ -36,6 +36,7 @@ import { enqueueNotification } from "../services/undo.js";
 import { avisarExcecaoDeRegra, codigoDaExcecao, frasesDasRegras, verificarRegrasDeEscala } from "../services/regras-de-escala.js";
 import { APP_ROUTES } from "../lib/app-routes.js";
 import { VersionConflictError } from "../lib/versioning.js";
+import { viradaDoLocal } from "../lib/virada-do-dia.js";
 
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const DIAS_DA_SEMANA = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
@@ -76,10 +77,11 @@ const weekdayOf = (date: string) => new Date(`${date}T12:00:00Z`).getUTCDay();
 
 router.get("/escalas/locais", requireAuth, requireOrganization, async (req, res) => {
   const actor = req.user! as Actor;
-  const all = await db.select({ id: locationsTable.id, name: locationsTable.name }).from(locationsTable)
+  const all = await db.select({ id: locationsTable.id, name: locationsTable.name, escalaAbreAmanhaAPartir: locationsTable.escalaAbreAmanhaAPartir, escalaVoltaAHojeAPartir: locationsTable.escalaVoltaAHojeAPartir }).from(locationsTable)
     .where(and(eq(locationsTable.organizationId, actor.organizationId), eq(locationsTable.closed, false))).orderBy(asc(locationsTable.name));
   const visible = [];
-  for (const location of all) if (await canReadLocal(actor, location.id)) visible.push({ ...location, podeEditar: await canManageLocal(actor, location.id), areasSupervisionadas: await supervisedAreas(actor, location.id) });
+  // `viradaDoDia`: a hora em que a Escala deste local passa a abrir no dia seguinte e a hora em que volta a abrir em hoje.
+  for (const { escalaAbreAmanhaAPartir, escalaVoltaAHojeAPartir, ...location } of all) if (await canReadLocal(actor, location.id)) visible.push({ ...location, viradaDoDia: viradaDoLocal({ escalaAbreAmanhaAPartir, escalaVoltaAHojeAPartir }), podeEditar: await canManageLocal(actor, location.id), areasSupervisionadas: await supervisedAreas(actor, location.id) });
   res.json({ locais: visible });
 });
 

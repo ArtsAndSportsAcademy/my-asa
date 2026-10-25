@@ -17,6 +17,7 @@ import { listAreaLocalScopes } from "../services/area-local-scope.js";
 import { listReadableLocations } from "../services/location-directory.js";
 import { isUniqueViolation } from "../lib/erro-de-banco.js";
 import { exigirUuidNosParametros } from "../lib/uuid.js";
+import { VIRADA_PADRAO, fraseDaViradaInvalida, viradaDoLocal } from "../lib/virada-do-dia.js";
 
 const router: IRouter = Router();
 exigirUuidNosParametros(router, { id: "Registro não encontrado.", locationId: "Local não encontrado.", operationId: "Operação não encontrada." });
@@ -153,7 +154,37 @@ router.get("/locations", requireAuth, requireOrganization, async (req, res) => {
         .where(and(inArray(operationLocationsTable.locationId, locations.map((location) => location.id)), eq(operationLocationsTable.active, true), eq(operationsTable.organizationId, req.user!.organizationId)))
     : [];
   const operacaoDoLocal = new Map(vinculos.map((vinculo) => [vinculo.locationId, vinculo.operationName]));
-  res.json({ locations: locations.map((location) => ({ ...location, operationName: operacaoDoLocal.get(location.id) ?? null })) });
+  res.json({ locations: locations.map((location) => ({ ...location, viradaDoDia: viradaDoLocal(location), operationName: operacaoDoLocal.get(location.id) ?? null })) });
+});
+
+/** Qual dia a Escala mostra ao abrir (a partir de que horas abre no dia seguinte e a partir de que horas volta a hoje). Só a Administração muda. */
+router.put("/locations/:id/virada-do-dia", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
+  const before = await locationInOrg(req.params.id as string, req.user!.organizationId);
+  if (!before) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
+  const voltarAoPadrao = req.body?.padrao === true;
+  const abre = voltarAoPadrao ? VIRADA_PADRAO.abreAmanhaAPartirDe : req.body?.abreAmanhaAPartirDe;
+  const volta = voltarAoPadrao ? VIRADA_PADRAO.voltaAHojeAPartirDe : req.body?.voltaAHojeAPartirDe;
+  const invalida = fraseDaViradaInvalida(abre, volta);
+  if (invalida) { res.status(400).json(invalida); return; }
+  const antes = viradaDoLocal(before);
+  if (antes.abreAmanhaAPartirDe === abre && antes.voltaAHojeAPartirDe === volta) { res.json({ viradaDoDia: antes, alterado: false }); return; }
+  try {
+    const depois = await db.transaction(async (tx) => {
+      const [next] = await tx.update(locationsTable).set({ escalaAbreAmanhaAPartir: abre as string, escalaVoltaAHojeAPartir: volta as string, updatedAt: new Date() }).where(eq(locationsTable.id, before.id)).returning();
+      if (!next) throw new Error("Local não encontrado");
+      const novo = viradaDoLocal(next);
+      await writeEntityHistory(req, {
+        category: "OPERATIONAL_CHANGE", action: "location.virada_do_dia_alterada", title: "Dia que a Escala abre alterado",
+        narrative: `${before.name}: a Escala passa a abrir no dia seguinte a partir das ${novo.abreAmanhaAPartirDe} (era ${antes.abreAmanhaAPartirDe}) e a voltar a abrir em hoje a partir das ${novo.voltaAHojeAPartirDe} (era ${antes.voltaAHojeAPartirDe}).${voltarAoPadrao ? " Voltou ao padrão." : ""}`,
+        entityType: "location", entityId: next.id, actorId: req.user!.sub, orgId: req.user!.organizationId, beforeState: antes, afterState: novo,
+      }, tx as any);
+      return novo;
+    });
+    res.json({ viradaDoDia: depois, alterado: true });
+  } catch {
+    // Falha de banco ou de rede: nada foi alterado, e a frase diz isso (não é erro de quem digitou).
+    res.status(500).json({ error: "INTERNAL_ERROR", message: "Não consegui salvar agora. Nada foi alterado; tente de novo." });
+  }
 });
 
 router.post("/locations", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {

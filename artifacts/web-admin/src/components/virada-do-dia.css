@@ -1,0 +1,27 @@
+/* Janela "Qual dia a Escala mostra ao abrir" (Locais). Reaproveita .cad-dialog e .cad-form do cadastro; aqui só o que é desta janela. */
+.vd-dialog{max-width:520px}
+.vd-local{margin:-4px 0 10px;font:700 12px 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:#6b6482}
+.vd-form{gap:12px}
+.vd-explica{margin:0;font-size:13px;line-height:1.55;color:#4a4361}
+.vd-frase{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;font-size:14px;color:#1b1630}
+.vd-hora{display:inline-flex;align-items:center;gap:2px;white-space:nowrap}
+.cad-form.vd-form .vd-frase label{display:inline;font-size:14px;font-weight:600}
+.cad-form.vd-form .vd-frase input[type="time"]{width:auto;min-height:44px;min-width:112px;border:1px solid #d9d2ea;border-radius:10px;padding:8px 10px;font:600 15px 'JetBrains Mono',monospace;color:#1b1630;background:#fff}
+.vd-exemplo{margin:0;padding:11px 13px;border-radius:12px;background:#f3ebff;border:1px solid #d8c8fb;font-size:13px;line-height:1.55;color:#2f1a6b}
+.vd-exemplo.vd-aviso-erro{background:#fdecef;border-color:#f1b9c4;color:#8a1830}
+.vd-nota{margin:0;font-size:12px;line-height:1.5;color:#6b6482}
+/* Rodapé: Cancelar e Salvar sempre à vista, também no telefone com o teclado aberto. */
+.cad-form .vd-rodape{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.vd-espaco{flex:1 1 0;min-width:0}
+.vd-rodape button{min-height:44px}
+.vd-padrao{border:1px solid #d9d2ea;border-radius:11px;background:#fff;padding:8px 12px;color:#5b5473;font:700 12px Manrope,sans-serif;cursor:pointer}
+.vd-padrao:disabled{opacity:.5;cursor:not-allowed}
+.vd-rodape button[type="button"]:not(.vd-padrao){border:1px solid #d9d2ea;border-radius:11px;background:#fff;padding:8px 14px;color:#5b5473;font:700 12px Manrope,sans-serif;cursor:pointer}
+@media(max-width:720px){
+  .vd-rodape{gap:8px}
+  .vd-padrao{flex:1 1 100%;order:-1}
+  .vd-espaco{display:none}
+  .vd-rodape button[type="button"]:not(.vd-padrao),.vd-rodape .cad-primary{flex:1 1 0}
+}
+/* Linha de leitura no cartão do local (Administração e Direção). */
+.vd-linha{display:block}

@@ -14,6 +14,10 @@ export const locationsTable = pgTable("locations", {
   closeTime: text("close_time").notNull().default("22:00"),
   closed: boolean("closed").notNull().default(false),
   closedReason: text("closed_reason"),
+  /** Qual dia a Escala mostra ao abrir: a partir desta hora (HH:MM) abre no dia seguinte... */
+  escalaAbreAmanhaAPartir: text("escala_abre_amanha_a_partir").notNull().default("18:00"),
+  /** ...e a partir desta hora (HH:MM) da manhã volta a abrir em hoje. */
+  escalaVoltaAHojeAPartir: text("escala_volta_a_hoje_a_partir").notNull().default("05:00"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
