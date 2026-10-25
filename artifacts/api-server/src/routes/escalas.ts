@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 15 Escalas — Escala do dia (uma por local e dia) e Programação (molde do local).
  *
  * Quem faz o quê (07-o-que-falta.md, "15 Escalas — decisões"):
@@ -12,6 +12,7 @@ import { and, asc, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import {
   areaLocalSupervisorsTable,
   db,
+  dailyBookAssignmentsTable,
   dailyBooksTable,
   historyEventsTable,
   escalaAreasProntasTable,
@@ -26,7 +27,7 @@ import {
   usersTable,
   type RegraBloco,
 } from "@workspace/db";
-import { requireAuth, requireOrganization } from "../middlewares/auth.js";
+import { fraseDeRecusaPorPerfil, requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
 import { operationalDate } from "../lib/operational-date.js";
 import { avisarRepublicacaoPendente, comoPublicada, convocacaoPorPessoa, escalaPublicada, findEscalaDoDia, montarEscalaDoDia, operationForLocation, pessoasAfetadas } from "../services/escala-dia.js";
@@ -376,6 +377,236 @@ router.post("/escalas/dia/horario", requireAuth, requireOrganization, async (req
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "ERRO_INTERNO", message: "Não consegui mudar o horário agora. Nada foi alterado; tente de novo." });
+  }
+});
+
+/**
+ * "Saiu / não vem a partir de HH:MM" (Etapa 2, 24/10/2026): alguém passa mal ou precisa ir embora no meio do dia. Em vez de tirar a pessoa bloco por
+ * bloco, uma ação só tira dela o resto do dia: o que começa a partir da hora sai; o que está em andamento (e não é show) termina mais cedo só para
+ * ela; show sai pelo Livro do Dia (a vaga dela abre e aparece como "sem ninguém", quem confere decide quem cobre). Com `simular: true` só devolve a
+ * prévia. Gravando, é UMA transação, UM evento no Registro (`escala.saiu_no_dia`, com o motivo) e UM aviso por acontecimento (quando a escala já foi
+ * publicada, o mesmo aviso de "há o que republicar"). Dá para desfazer logo depois (`/escalas/dia/saiu/desfazer`).
+ */
+type BlocoDoDia = NonNullable<Awaited<ReturnType<typeof montarEscalaDoDia>>>["blocos"][number];
+const emMinutos = (hora: string) => Number(hora.slice(0, 2)) * 60 + Number(hora.slice(3, 5));
+const TIPOS_DE_SAIDA = ["DOENCA", "EMERGENCIA", "OUTRO"] as const;
+type PassoDaSaida = { acao: "SAI" | "TERMINA_MAIS_CEDO" | "SAI_DO_SHOW"; bloco: BlocoDoDia; sourceKey: string };
+type ErroDaSaida = { ok: false; status: number; body: Record<string, unknown> };
+
+async function planejarSaida(actor: Actor, { locationId, date, userId, corte }: { locationId: string; date: string; userId: string; corte: string }) {
+  const location = await locationInOrg(locationId, actor.organizationId);
+  if (!location) return { ok: false, status: 404, body: { error: "NAO_ENCONTRADO", message: "Local não encontrado." } } satisfies ErroDaSaida;
+  if (!(await canManageLocal(actor, locationId))) {
+    return { ok: false, status: 403, body: { error: "ACESSO_NEGADO", message: `${fraseDeRecusaPorPerfil(["ADMIN", "SUPERVISOR_A"], actor.role)} Tirar alguém do resto do dia é da Administração ou da Supervisão da área da pessoa.` } } satisfies ErroDaSaida;
+  }
+  const [pessoa] = await db.select({ id: usersTable.id, areaId: usersTable.areaId, name: usersTable.name }).from(usersTable)
+    .where(and(eq(usersTable.id, userId), eq(usersTable.organizationId, actor.organizationId))).limit(1);
+  if (!pessoa) return { ok: false, status: 404, body: { error: "NAO_ENCONTRADO", message: "Pessoa não encontrada." } } satisfies ErroDaSaida;
+  if (actor.role !== "ADMIN" && (!pessoa.areaId || !(await supervisedAreas(actor, locationId)).includes(pessoa.areaId))) {
+    return { ok: false, status: 403, body: { error: "ACESSO_NEGADO", message: `Supervisão tira do dia só pessoas da própria área. ${pessoa.name} não é de uma área que você supervisiona neste local; fale com a Administração ou com quem supervisiona essa área.` } } satisfies ErroDaSaida;
+  }
+  const dia = await montarEscalaDoDia(actor.organizationId, locationId, date);
+  const naEscala = dia?.pessoas.find((p) => p.id === userId);
+  if (!dia || !naEscala) return { ok: false, status: 409, body: { error: "PESSOA_FORA_DO_DIA", message: `${pessoa.name} não faz parte da escala deste dia neste local.` } } satisfies ErroDaSaida;
+  if (naEscala.folga && !naEscala.chamadaNaFolga) {
+    return { ok: false, status: 409, body: { error: "PESSOA_DE_FOLGA", message: `${pessoa.name} está de folga neste dia e não está na escala; não há o que tirar.` } } satisfies ErroDaSaida;
+  }
+  const limite = emMinutos(corte);
+  const passos: PassoDaSaida[] = [];
+  for (const bloco of dia.blocos) {
+    if (!bloco.pessoaIds.includes(userId)) continue;
+    const inicio = emMinutos(bloco.inicio), fim = bloco.fim ? emMinutos(bloco.fim) : inicio + 30;
+    if (fim <= limite) continue; // já terminou antes da hora: não muda
+    const sourceKey = bloco.horarioDela?.chaveOriginal ?? bloco.key;
+    const ehShow = bloco.regra === "livro" || bloco.origem === "livro" || Boolean(bloco.dailyBookId);
+    if (ehShow) passos.push({ acao: "SAI_DO_SHOW", bloco, sourceKey });
+    else if (inicio >= limite) passos.push({ acao: "SAI", bloco, sourceKey });
+    else if (bloco.origem === "programacao") passos.push({ acao: "TERMINA_MAIS_CEDO", bloco, sourceKey });
+    else passos.push({ acao: "SAI", bloco, sourceKey });
+  }
+  if (!passos.length) {
+    return { ok: false, status: 409, body: { error: "NADA_A_TIRAR", message: `${pessoa.name} não tem nada marcado a partir das ${corte}: o que ela faz hoje já termina antes dessa hora.` } } satisfies ErroDaSaida;
+  }
+  const scaleAntes = await findEscalaDoDia(locationId, date);
+  const operationId = scaleAntes?.operationId ?? await operationForLocation(locationId);
+  if (!operationId) return { ok: false, status: 409, body: { error: "LOCAL_SEM_OPERACAO", message: "Este local ainda não está ligado a uma operação." } } satisfies ErroDaSaida;
+  return { ok: true as const, location, pessoa, dia, passos, scaleAntes, operationId };
+}
+
+/** O que a prévia (e a resposta) mostram: quais atividades saem e quais posições de show ficam abertas. */
+function resumoDaSaida(passos: PassoDaSaida[], userId: string, corte: string) {
+  const shows = passos.filter((p) => p.acao === "SAI_DO_SHOW").map((p) => ({
+    rotulo: p.bloco.rotulo, dailyBookId: p.bloco.dailyBookId,
+    cobertura: (p.bloco.vagas ?? []).filter((v) => v.userId === userId).map((v) => ({ assignmentId: v.assignmentId, personagem: v.personagem, cobertoPor: null as string | null })),
+  }));
+  return {
+    aPartirDe: corte,
+    atividades: passos.map((p) => ({ key: p.bloco.key, rotulo: p.bloco.rotulo, inicio: p.bloco.inicio, fim: p.bloco.fim, acao: p.acao, ...(p.acao === "TERMINA_MAIS_CEDO" ? { novoFim: corte } : {}) })),
+    shows,
+    semNinguem: shows.reduce((n, s) => n + s.cobertura.length, 0),
+  };
+}
+
+router.post("/escalas/dia/saiu", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  const { locationId, date, userId, aPartirDe, motivo, tipo, simular } = req.body ?? {};
+  if (typeof locationId !== "string" || typeof date !== "string" || !DATE.test(date) || typeof userId !== "string" || !userId) {
+    res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "locationId, date e userId são obrigatórios." }); return;
+  }
+  if (typeof aPartirDe !== "string" || !HORA.test(aPartirDe)) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "Escolha a partir de que horas a pessoa sai (formato 14:30)." }); return; }
+  const previa = simular === true;
+  const porque = typeof motivo === "string" ? motivo.trim() : "";
+  if (!previa && porque.length < 3) { res.status(400).json({ error: "MOTIVO_OBRIGATORIO", message: "Escreva o motivo (por exemplo: passou mal). Ele fica no Registro e vai no aviso." }); return; }
+  if (tipo !== undefined && tipo !== null && !TIPOS_DE_SAIDA.includes(tipo)) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "O tipo precisa ser DOENCA, EMERGENCIA ou OUTRO." }); return; }
+  try {
+    const plano = await planejarSaida(actor, { locationId, date, userId, corte: aPartirDe });
+    if (!plano.ok) { res.status(plano.status).json(plano.body); return; }
+    const { location, pessoa, passos, scaleAntes, operationId } = plano;
+    const resumo = resumoDaSaida(passos, userId, aPartirDe);
+    if (previa) { res.json({ simulado: true, pessoa: { id: pessoa.id, name: pessoa.name }, ...resumo }); return; }
+
+    const depoisDoCommit: (() => void)[] = [];
+    type Registro = { tipo: "REMOVER" | "HORARIO"; ajusteId: string; sourceKey: string; anteriorId: string | null; horarioAnteriorId?: string | null } | { tipo: "VAGA"; dailyBookId: string; assignmentId: string; sourceKey: string };
+    const registros: Registro[] = [];
+    const resultado = await db.transaction(async (tx) => {
+      let scale = scaleAntes ?? null;
+      if (!scale) {
+        const [created] = await tx.insert(scalesTable).values({
+          operationId, locationId, title: `Escala do dia · ${location.name} · ${date}`, periodStart: date, periodEnd: date,
+          status: "DRAFT", generatedAt: new Date(), generatedBy: actor.sub, createdBy: actor.sub,
+        }).returning();
+        scale = created!;
+        await writeHistoryEvent({ category: "SCALE", action: "escala.criada", title: "Escala do dia criada", narrative: `Escala de ${location.name} para ${date} criada.`, entityType: "scale", entityId: scale.id, actorId: actor.sub, operationId, orgId: actor.organizationId, afterState: { scale } }, tx as unknown as HistoryExecutor);
+      }
+      const ativo = (sourceKey: string) => tx.select().from(escalaBlocoAjustesTable).where(and(
+        eq(escalaBlocoAjustesTable.scaleId, scale!.id), eq(escalaBlocoAjustesTable.sourceKey, sourceKey), eq(escalaBlocoAjustesTable.userId, userId), eq(escalaBlocoAjustesTable.active, true),
+      )).limit(1).then((r) => r[0] ?? null);
+      const encerrar = (id: string) => tx.update(escalaBlocoAjustesTable).set({ active: false, endedBy: actor.sub, endedAt: new Date() }).where(eq(escalaBlocoAjustesTable.id, id));
+      for (const passo of passos) {
+        const { bloco, sourceKey } = passo;
+        if (passo.acao === "TERMINA_MAIS_CEDO") {
+          const chave = `h:${sourceKey}`;
+          const anterior = await ativo(chave);
+          if (anterior) await encerrar(anterior.id);
+          const [novo] = await tx.insert(escalaBlocoAjustesTable).values({ scaleId: scale.id, sourceKey: chave, userId, action: "HORARIO", newStart: bloco.inicio, newEnd: aPartirDe, createdBy: actor.sub, motivo: porque }).returning();
+          registros.push({ tipo: "HORARIO", ajusteId: novo!.id, sourceKey: chave, anteriorId: anterior?.id ?? null });
+          continue;
+        }
+        let viaLivro = false;
+        if (bloco.dailyBookId) {
+          const vagasDela = (bloco.vagas ?? []).filter((v) => v.userId === userId);
+          if (vagasDela.length) {
+            for (const vaga of vagasDela) {
+              if (await ajustarPessoaNoLivro({ dailyBookId: bloco.dailyBookId, userId, action: "REMOVER", actorId: actor.sub, assignmentId: vaga.assignmentId }, { tx: tx as unknown as typeof db, depoisDoCommit })) {
+                viaLivro = true;
+                registros.push({ tipo: "VAGA", dailyBookId: bloco.dailyBookId, assignmentId: vaga.assignmentId, sourceKey });
+              }
+            }
+          } else viaLivro = await ajustarPessoaNoLivro({ dailyBookId: bloco.dailyBookId, userId, action: "REMOVER", actorId: actor.sub }, { tx: tx as unknown as typeof db, depoisDoCommit });
+        }
+        if (viaLivro) continue;
+        const anterior = await ativo(sourceKey);
+        if (anterior?.action === "REMOVER") continue;
+        if (anterior) await encerrar(anterior.id);
+        let horarioAnteriorId: string | null = null;
+        if (bloco.horarioDela) { const h = await ativo(`h:${sourceKey}`); if (h) { await encerrar(h.id); horarioAnteriorId = h.id; } }
+        const [novo] = await tx.insert(escalaBlocoAjustesTable).values({ scaleId: scale.id, sourceKey, userId, action: "REMOVER", createdBy: actor.sub, motivo: porque }).returning();
+        registros.push({ tipo: "REMOVER", ajusteId: novo!.id, sourceKey, anteriorId: anterior?.id ?? null, horarioAnteriorId });
+      }
+      const publicada = escalaPublicada(scale.status);
+      if (publicada) scale = (await tx.update(scalesTable).set({ alteradaDesde: scale.alteradaDesde ?? new Date(), updatedAt: new Date(), version: scale.version + 1 }).where(eq(scalesTable.id, scale.id)).returning())[0]!;
+      const quantas = resumo.atividades.length;
+      const saiuId = await writeHistoryEvent({
+        category: "SCALE", action: "escala.saiu_no_dia", title: "Pessoa saiu no meio do dia",
+        narrative: `${pessoa.name} saiu ou não vem a partir das ${aPartirDe} em ${date}: ${quantas} ${quantas === 1 ? "atividade" : "atividades"} tirada${quantas === 1 ? "" : "s"} dela${resumo.semNinguem ? `, ${resumo.semNinguem} ${resumo.semNinguem === 1 ? "posição de show ficou sem ninguém" : "posições de show ficaram sem ninguém"}` : ""}. Motivo: ${porque}.`,
+        entityType: "scale", entityId: scale.id, actorId: actor.sub, operationId, orgId: actor.organizationId,
+        beforeState: { pessoaId: userId, atividades: resumo.atividades.map((a) => ({ key: a.key, rotulo: a.rotulo, inicio: a.inicio, fim: a.fim })) },
+        afterState: { pessoaId: userId, aPartirDe, acoes: resumo.atividades, shows: resumo.shows, registros },
+        metadata: { reason: porque, tipo: tipo ?? "OUTRO", aPartirDe, pessoaId: userId },
+      }, tx as unknown as HistoryExecutor);
+      if (publicada) {
+        await avisarRepublicacaoPendente(tx as unknown as Parameters<typeof avisarRepublicacaoPendente>[0], scale,
+          `${pessoa.name} saiu ou não vem a partir das ${aPartirDe} (${porque})`, { areaIds: [pessoa.areaId] });
+      }
+      return { saiuId, scale };
+    });
+    for (const emitir of depoisDoCommit) { try { emitir(); } catch (err) { console.error(err); } }
+    res.json({ saiuId: resultado.saiuId, pessoa: { id: pessoa.id, name: pessoa.name }, ...resumo, dia: await montarEscalaDoDia(actor.organizationId, locationId, date) });
+  } catch (err) {
+    console.error(err);
+    const conflito = err instanceof VersionConflictError;
+    res.status(conflito ? 409 : 500).json({
+      error: conflito ? "LIVRO_MUDOU" : "ERRO_INTERNO",
+      message: conflito ? "O Livro do Dia mudou enquanto você ajustava. Nada foi gravado; confira a tela e tente de novo." : "Não consegui tirar a pessoa do resto do dia. Nada foi gravado; tente de novo.",
+      nadaFoiGravado: true,
+    });
+  }
+});
+
+/** Desfaz o último "saiu" apontado por `saiuId` (o id devolvido ao gravar): devolve a pessoa às atividades e horários de antes. Vaga de show que outra pessoa já ocupou não é tomada de volta. */
+router.post("/escalas/dia/saiu/desfazer", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  const { locationId, date, saiuId } = req.body ?? {};
+  if (typeof locationId !== "string" || typeof date !== "string" || !DATE.test(date) || typeof saiuId !== "string" || !saiuId) {
+    res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "locationId, date e saiuId são obrigatórios." }); return;
+  }
+  try {
+    const location = await locationInOrg(locationId, actor.organizationId);
+    if (!location) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
+    if (!(await canManageLocal(actor, locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: `${fraseDeRecusaPorPerfil(["ADMIN", "SUPERVISOR_A"], actor.role)} Desfazer a saída de alguém é da Administração ou da Supervisão da área da pessoa.` }); return; }
+    const scale = await findEscalaDoDia(locationId, date);
+    const [evento] = scale ? await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.id, saiuId), eq(historyEventsTable.entityId, scale.id), eq(historyEventsTable.action, "escala.saiu_no_dia"))).limit(1) : [];
+    if (!scale || !evento) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Não achei essa saída neste dia. Atualize a tela." }); return; }
+    const estado = (evento.afterState ?? {}) as { pessoaId?: string; aPartirDe?: string; registros?: { tipo: string; ajusteId?: string; anteriorId?: string | null; horarioAnteriorId?: string | null; dailyBookId?: string; assignmentId?: string }[] };
+    const userId = estado.pessoaId ?? "";
+    const [pessoa] = await db.select({ id: usersTable.id, areaId: usersTable.areaId, name: usersTable.name }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    if (!pessoa) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Pessoa não encontrada." }); return; }
+    if (actor.role !== "ADMIN" && (!pessoa.areaId || !(await supervisedAreas(actor, locationId)).includes(pessoa.areaId))) {
+      res.status(403).json({ error: "ACESSO_NEGADO", message: `Supervisão desfaz só saídas de pessoas da própria área. ${pessoa.name} não é de uma área que você supervisiona neste local.` }); return;
+    }
+    const [jaDesfeito] = await db.select({ id: historyEventsTable.id }).from(historyEventsTable).where(and(
+      eq(historyEventsTable.entityId, scale.id), eq(historyEventsTable.action, "escala.saiu_desfeito"), sql`${historyEventsTable.metadata}->>'saiuId' = ${saiuId}`,
+    )).limit(1);
+    if (jaDesfeito) { res.status(409).json({ error: "JA_DESFEITO", message: `A saída de ${pessoa.name} já foi desfeita.` }); return; }
+
+    const depoisDoCommit: (() => void)[] = [];
+    const naoDevolvidas: string[] = [];
+    const operationId = scale.operationId;
+    const resultado = await db.transaction(async (tx) => {
+      for (const r of estado.registros ?? []) {
+        if ((r.tipo === "REMOVER" || r.tipo === "HORARIO") && r.ajusteId) {
+          await tx.update(escalaBlocoAjustesTable).set({ active: false, endedBy: actor.sub, endedAt: new Date() }).where(and(eq(escalaBlocoAjustesTable.id, r.ajusteId), eq(escalaBlocoAjustesTable.active, true)));
+          for (const volta of [r.anteriorId, r.horarioAnteriorId]) {
+            if (volta) await tx.update(escalaBlocoAjustesTable).set({ active: true, endedBy: null, endedAt: null }).where(eq(escalaBlocoAjustesTable.id, volta));
+          }
+        } else if (r.tipo === "VAGA" && r.dailyBookId && r.assignmentId) {
+          const [vaga] = await tx.select({ userId: dailyBookAssignmentsTable.userId }).from(dailyBookAssignmentsTable).where(eq(dailyBookAssignmentsTable.id, r.assignmentId)).limit(1);
+          if (vaga && vaga.userId === null) {
+            if (!(await ajustarPessoaNoLivro({ dailyBookId: r.dailyBookId, userId, action: "ADICIONAR", actorId: actor.sub, assignmentId: r.assignmentId }, { tx: tx as unknown as typeof db, depoisDoCommit }))) naoDevolvidas.push(r.assignmentId);
+          } else naoDevolvidas.push(r.assignmentId);
+        }
+      }
+      let atual = scale;
+      const publicada = escalaPublicada(atual.status);
+      if (publicada) atual = (await tx.update(scalesTable).set({ alteradaDesde: atual.alteradaDesde ?? new Date(), updatedAt: new Date(), version: atual.version + 1 }).where(eq(scalesTable.id, atual.id)).returning())[0]!;
+      await writeHistoryEvent({
+        category: "SCALE", action: "escala.saiu_desfeito", title: "Saída no meio do dia desfeita",
+        narrative: `A saída de ${pessoa.name} a partir das ${estado.aPartirDe ?? "?"} em ${date} foi desfeita.${naoDevolvidas.length ? ` ${naoDevolvidas.length === 1 ? "Uma posição de show já tinha outra pessoa e continuou como estava" : `${naoDevolvidas.length} posições de show já tinham outra pessoa e continuaram como estavam`}.` : ""}`,
+        entityType: "scale", entityId: atual.id, actorId: actor.sub, operationId, orgId: actor.organizationId,
+        beforeState: { saiuId }, afterState: { pessoaId: userId, naoDevolvidas }, metadata: { saiuId, pessoaId: userId },
+      }, tx as unknown as HistoryExecutor);
+      if (publicada) {
+        await avisarRepublicacaoPendente(tx as unknown as Parameters<typeof avisarRepublicacaoPendente>[0], atual, `${pessoa.name} voltou ao dia (a saída foi desfeita)`, { areaIds: [pessoa.areaId] });
+      }
+      return atual;
+    });
+    void resultado;
+    for (const emitir of depoisDoCommit) { try { emitir(); } catch (err) { console.error(err); } }
+    res.json({ desfeito: true, naoDevolvidas, dia: await montarEscalaDoDia(actor.organizationId, locationId, date) });
+  } catch (err) {
+    console.error(err);
+    const conflito = err instanceof VersionConflictError;
+    res.status(conflito ? 409 : 500).json({ error: conflito ? "LIVRO_MUDOU" : "ERRO_INTERNO", message: conflito ? "O Livro do Dia mudou enquanto você desfazia. Nada foi gravado; tente de novo." : "Não consegui desfazer a saída. Nada foi gravado; tente de novo.", nadaFoiGravado: true });
   }
 });
 
