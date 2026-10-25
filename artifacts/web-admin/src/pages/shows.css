@@ -579,3 +579,24 @@
 .official-book.v2 .official-scenes::-webkit-scrollbar-track,.official-book.v2 .official-keyframe-scroll::-webkit-scrollbar-track,.official-book.v2 .official-panel::-webkit-scrollbar-track,.official-book.v2 .official-column::-webkit-scrollbar-track{background:transparent}
 .official-book.v2 .official-scenes::-webkit-scrollbar-thumb,.official-book.v2 .official-keyframe-scroll::-webkit-scrollbar-thumb,.official-book.v2 .official-panel::-webkit-scrollbar-thumb,.official-book.v2 .official-column::-webkit-scrollbar-thumb{background:#bfa8f5;border-radius:999px}
 .official-book.v2 .official-scenes::-webkit-scrollbar-thumb:hover,.official-book.v2 .official-keyframe-scroll::-webkit-scrollbar-thumb:hover{background:#6c2bf2}
+
+/* Tela do show mais enxuta (24/10/2026, depois de ver com os dados reais): tamanhos menores e a lista de personagens alinhada à esquerda.
+   O texto do personagem ficava solto no meio porque, com os botões de subir e descer à esquerda, só o primeiro bloco da linha esticava. */
+.show-mode .vaga-row>div{flex:1 1 auto;min-width:0;text-align:left}
+.show-mode .show-mode-head{grid-template-columns:88px minmax(0,1fr);padding:18px 20px;row-gap:14px}
+.show-mode .show-mode-head .show-cover{width:88px;height:88px;border-radius:18px;font-size:34px}
+.show-mode .show-mode-head h2{font-size:26px;margin:6px 0 2px}
+.show-mode .show-mode-head .show-mode-actions{padding-top:12px}
+.show-mode .show-panel,.show-mode .show-hero,.show-mode .show-book-hero{padding:18px 20px}
+.show-mode .show-hero>header h3,.show-mode .show-book-hero h3{font:600 20px Outfit;letter-spacing:-.015em}
+.show-mode .show-hero>header p{font-size:14px}
+.show-mode .show-hero .character-summary-row{padding:12px 2px}
+.show-mode .show-hero .character-summary-row strong{font:600 15px Outfit}
+.show-mode .show-hero .character-summary-row small{font-size:13px}
+.show-mode .show-book-hero p{font-size:14px}
+.show-mode .show-book-open{min-height:48px;padding:0 22px;font-size:15px}
+@media (pointer:fine){
+  .show-mode .character-summary-row>span.vaga-order{flex-direction:row;gap:4px}
+  .show-mode .vaga-order .icon-button,.show-mode .vaga-actions .icon-button{width:34px;height:34px}
+  .show-mode .show-mode-actions button{min-height:38px}
+}
