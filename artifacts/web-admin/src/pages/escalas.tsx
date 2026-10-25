@@ -1166,7 +1166,7 @@ function MinhaEscalaLocal({ minha, date, onHoje, onConfirm, saving }: { minha: M
         </span>
       </>;
       const rowStyle = "display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;background:#fff;border:1px solid var(--asa-line);border-radius:13px;padding:13px 16px;text-decoration:none;color:inherit;" + (livro ? "cursor:pointer;" : "");
-      return livro ? <Link key={b.key} href="/livro-do-dia" style={css(rowStyle)}>{row}</Link> : <div key={b.key} style={css(rowStyle)}>{row}</div>;
+      return livro ? <Link key={b.key} href={`/livro-do-dia?data=${date}${b.dailyBookId ? `&livro=${b.dailyBookId}` : ""}`} style={css(rowStyle)}>{row}</Link> : <div key={b.key} style={css(rowStyle)}>{row}</div>;
     })}
   </div>;
 }
