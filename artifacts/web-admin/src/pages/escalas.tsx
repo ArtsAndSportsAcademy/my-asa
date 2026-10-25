@@ -413,7 +413,12 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
   </div>;
 
   return <section className="esc-root" style={css("position:relative;flex:1;display:flex;flex-direction:column;background:var(--asa-bg-page);min-width:0;min-height:calc(100vh - 48px)")}>
-    {dateBar}
+    {tab === "prog" && !isMem
+      ? <div className="esc-pad" style={css("display:flex;align-items:baseline;gap:10px;padding:14px 20px 4px;background:#fff")}>
+        <span style={css("font-family:Outfit,sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.02em")}>Programação da semana</span>
+        <span style={css("font-size:13px;color:var(--asa-ink-muted)")}>{operationLabel}</span>
+      </div>
+      : dateBar}
     {!isMem && <div className="esc-tabs esc-pad" role="tablist" style={css("display:flex;align-items:center;padding:0 20px;border-bottom:1px solid var(--asa-border-soft);background:#fff;")}>
       {([["escala", "Escala do dia"], ["prog", "Programação"], ["minha", "Minha escala"]] as const).map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={tab === key} className="esc-hit" onClick={() => setTab(key)}
         style={css("border:none;background:none;cursor:pointer;font-family:Manrope,sans-serif;font-size:13px;padding:11px 2px 10px;margin-right:22px;white-space:nowrap;" + (tab === key ? "font-weight:700;color:var(--asa-ink-dark);box-shadow:inset 0 -2px 0 0 var(--asa-purple);" : "font-weight:600;color:var(--asa-label);"))}>{label}</button>)}
@@ -1168,6 +1173,8 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
   const prog = vivos.find((p) => p.id === progId) ?? vivos.find((p) => estadoDe(p) === "vigente") ?? vivos[0];
   const blocosDia = (prog?.blocos ?? []).filter((b) => b.weekday === wd && b.active).sort((a, b) => a.inicio.localeCompare(b.inicio) || a.order - b.order);
   const bloco = blocosDia.find((b) => b.id === sel) ?? blocosDia[0];
+  // Mesmo horário, uma linha só: o que acontece junto aparece lado a lado.
+  const horariosDoDia = blocosDia.reduce<{ faixa: string; blocos: ProgBloco[] }[]>((acc, b) => { const g = acc.find((x) => x.faixa === faixa(b)); if (g) g.blocos.push(b); else acc.push({ faixa: faixa(b), blocos: [b] }); return acc; }, []);
   // Tirar do molde não apaga: o bloco fica guardado e pode voltar.
   const tiradosDoDia = (prog?.blocos ?? []).filter((b) => b.weekday === wd && !b.active).sort((a, b) => a.inicio.localeCompare(b.inicio));
   const areaName = (id: string) => areas.find((a) => a.id === id)?.name ?? id;
@@ -1335,40 +1342,28 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
       <div style={css("display:flex;align-items:center;gap:6px;flex-wrap:wrap")}>
         {WEEKDAYS.map(([w, label]) => <button key={w} type="button" className="esc-hit" aria-pressed={wd === w} onClick={() => { if (w !== wd) semPerder(() => { setWd(w); setSel(""); }); }}
           style={css("border-radius:9px;padding:7px 15px;font-size:12px;cursor:pointer;font-family:Manrope,sans-serif;" + (wd === w ? "border:1px solid var(--asa-ink-dark);background:var(--asa-ink-dark);color:#fff;font-weight:700;" : "border:1px solid var(--asa-line);background:#fff;color:var(--asa-label);font-weight:600;"))}>{label}</button>)}
+        <span style={css("flex:1;min-width:8px")}/>
+        {canEdit && <button type="button" className="esc-hit" onClick={() => setDialog("bloco")} style={css(btn("primary") + "min-height:44px;white-space:nowrap")}>+ Bloco</button>}
       </div>
 
-      <div className="esc-scroll" tabIndex={0} style={css("border:1px solid var(--asa-line-soft);border-radius:12px;overflow:auto;background:#fff;max-width:900px")}>
-        <table style={css("border-collapse:separate;border-spacing:0;width:100%;font-size:12.5px")}>
-          <thead><tr>
-            <th style={css("width:132px;" + MONO_TH)}>Horário</th>
-            <th style={css(MONO_TH)}>Atividade</th>
-            <th style={css("width:270px;" + MONO_TH.replace("border-right:1px solid var(--asa-line-soft);", ""))}>Quem entra</th>
-          </tr></thead>
-          <tbody>
-            {blocosDia.map((b) => {
+      <div role="list" aria-label={`Blocos de ${WEEKDAY_LONG[wd]}`} style={css("display:flex;flex-direction:column;border:1px solid var(--asa-line-soft);border-radius:12px;background:#fff;max-width:900px;overflow:hidden")}>
+        {horariosDoDia.map((g, i) => <div key={g.faixa} role="listitem" style={css("display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px 14px;padding:10px 12px;" + (i ? "border-top:1px solid var(--asa-purple-airy);" : ""))}>
+          <span style={css("flex:none;width:96px;padding-top:12px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--asa-ink-medium)")}>{g.faixa}</span>
+          <div style={css("flex:1 1 220px;min-width:0;display:flex;flex-wrap:wrap;gap:8px")}>
+            {g.blocos.map((b) => {
               const t = toneOf(b), selected = b.id === bloco?.id;
-              const tone = b.regra === "livro" ? "livro" : (b.regra === "ninguem" || (b.regra === "pessoas" && !b.pessoaIds.length)) ? "vazio" : "regra";
               const n = resolved(b).length;
-              return <tr key={b.id} onClick={() => { if (b.id !== bloco?.id) semPerder(() => setSel(b.id)); }} style={{ cursor: "pointer" }}>
-                <td style={css("border-right:1px solid var(--asa-line-soft);border-bottom:1px solid var(--asa-purple-airy);padding:8px 12px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--asa-ink-medium);background:" + (selected ? "var(--asa-session-active)" : "var(--asa-card-faint)") + ";")}>{faixa(b)}</td>
-                <td style={css("border-bottom:1px solid var(--asa-purple-airy);border-right:1px solid var(--asa-purple-airy);padding:5px 8px;background:" + (selected ? "var(--asa-purple-mist)" : "transparent") + ";")}>
-                  <span style={css("display:inline-block;border-radius:7px;padding:6px 10px;font-size:12px;font-weight:600;background:" + t.bg + ";color:" + t.fg + ";border:1px solid " + t.bd + ";")}>{textoDoBloco(b)}</span>
-                </td>
-                <td style={css("border-bottom:1px solid var(--asa-purple-airy);padding:6px 12px;background:" + (selected ? "var(--asa-purple-mist)" : "transparent") + ";")}>
-                  <span style={css("display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" + (tone === "livro" ? "background:var(--asa-teal-glow);color:var(--asa-teal-medium);border:1px solid var(--asa-teal-border);" : tone === "vazio" ? "background:var(--asa-refeicao-bg);color:var(--asa-label);border:1px dashed var(--asa-line-soft);" : "background:var(--asa-chip-on);color:var(--asa-purple);border:1px solid var(--asa-show-bd);"))}>
-                    {tone === "livro" && <span style={css("flex:none;font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.7;")}>fixo</span>}
-                    <span>{resumo(b)}</span>
-                  </span>
-                  <span style={css("display:block;margin-top:3px;font-size:12px;color:var(--asa-label);")}>{b.regra === "livro" ? "o elenco do Livro do Dia" : b.regra === "ninguem" ? "nenhuma pessoa entra" : n ? plural(n, "pessoa", "pessoas") : "fica vazio e sinalizado na escala"}</span>
-                </td>
-              </tr>;
+              const quemTexto = b.regra === "livro" ? "o elenco do Livro do Dia" : b.regra === "ninguem" ? "nenhuma pessoa entra" : n ? `${resumo(b)} · ${plural(n, "pessoa", "pessoas")}` : "fica vazio e sinalizado na escala";
+              return <button key={b.id} type="button" className="esc-hit" aria-pressed={selected} onClick={() => { if (b.id !== bloco?.id) semPerder(() => { setSel(b.id); window.setTimeout(() => document.getElementById("esc-bloco-painel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80); }); }}
+                style={css("flex:1 1 190px;max-width:340px;min-height:44px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border-radius:10px;padding:8px 11px;cursor:pointer;font-family:Manrope,sans-serif;background:" + t.bg + ";color:" + t.fg + ";border:" + (selected ? "2px solid var(--asa-ink-dark)" : "1px solid " + t.bd) + ";")}>
+                <span style={css("font-size:12.5px;font-weight:700;line-height:1.25;overflow-wrap:anywhere")}>{textoDoBloco(b)}</span>
+                <span style={css("font-size:12px;font-weight:600;line-height:1.3;opacity:.9;overflow-wrap:anywhere")}>{quemTexto}</span>
+              </button>;
             })}
-            {canEdit && <tr><td colSpan={3} onClick={() => setDialog("bloco")} style={css("padding:9px 12px;font-size:12px;color:var(--asa-label);cursor:pointer")}>+ bloco</td></tr>}
-            {!blocosDia.length && !canEdit && <tr><td colSpan={3} style={css("padding:16px;text-align:center;font-size:12.5px;color:var(--asa-label)")}>Nenhum bloco neste dia da semana.</td></tr>}
-          </tbody>
-        </table>
+          </div>
+        </div>)}
+        {!blocosDia.length && <div style={css("padding:16px;text-align:center;font-size:12.5px;color:var(--asa-label)")}>{`Nenhum bloco em ${WEEKDAY_LONG[wd]}.${canEdit ? " Use + Bloco para criar o primeiro." : ""}`}</div>}
       </div>
-
       {tiradosDoDia.length > 0 && <details style={css("background:#fff;border:1px dashed var(--asa-line-soft);border-radius:12px;padding:9px 13px;max-width:900px")}>
         <summary style={css("cursor:pointer;list-style:none;font-size:12px;font-weight:700;color:var(--asa-label)")}>{`${plural(tiradosDoDia.length, "bloco tirado do molde", "blocos tirados do molde")} em ${WEEKDAY_LONG[wd]}s · ver`}</summary>
         <ul style={css("margin:9px 0 2px;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px")}>
@@ -1380,7 +1375,7 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
         </ul>
       </details>}
 
-      {bloco && <div style={css("display:flex;flex-direction:column;gap:13px;background:#fff;border:1px solid var(--asa-line-soft);border-radius:14px;padding:15px 17px;max-width:900px;")}>
+      {bloco && <div id="esc-bloco-painel" style={css("display:flex;flex-direction:column;gap:13px;background:#fff;border:1px solid var(--asa-line-soft);border-radius:14px;padding:15px 17px;max-width:900px;scroll-margin-top:12px")}>
         <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:10px")}>
           <span style={css("font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--asa-ink-medium)")}>{faixa(bloco)}</span>
           <span style={css("font-family:Outfit,sans-serif;font-size:16px;font-weight:600")}>{textoDoBloco(bloco)}</span>
@@ -1391,15 +1386,15 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
         {canEdit && <div style={css("display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;border-top:1px solid var(--asa-book-fade);padding-top:12px")}>
           <label style={css("display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:700;color:var(--asa-label)")}>Atividade
             <input value={valorDe("rotulo")} onChange={(e) => mudarCampo("rotulo", e.target.value)} maxLength={80}
-              style={css("border:1px solid var(--asa-line-soft);border-radius:9px;padding:6px 9px;font:600 12.5px Manrope,sans-serif;color:var(--asa-ink-dark);min-width:190px")}/>
+              style={css("border:1px solid var(--asa-line-soft);border-radius:9px;padding:6px 9px;min-height:44px;box-sizing:border-box;font:600 12.5px Manrope,sans-serif;color:var(--asa-ink-dark);min-width:190px")}/>
           </label>
           <label style={css("display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:700;color:var(--asa-label)")}>Início
             <input type="time" value={valorDe("inicio")} onChange={(e) => mudarCampo("inicio", e.target.value)}
-              style={css("border:1px solid var(--asa-line-soft);border-radius:9px;padding:6px 9px;font:600 12.5px Manrope,sans-serif;color:var(--asa-ink-dark)")}/>
+              style={css("border:1px solid var(--asa-line-soft);border-radius:9px;padding:6px 9px;min-height:44px;box-sizing:border-box;font:600 12.5px Manrope,sans-serif;color:var(--asa-ink-dark)")}/>
           </label>
           <label style={css("display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:700;color:var(--asa-label)")}>Fim (opcional)
             <input type="time" value={valorDe("fim") ?? ""} onChange={(e) => mudarCampo("fim", e.target.value || null)}
-              style={css("border:1px solid var(--asa-line-soft);border-radius:9px;padding:6px 9px;font:600 12.5px Manrope,sans-serif;color:var(--asa-ink-dark)")}/>
+              style={css("border:1px solid var(--asa-line-soft);border-radius:9px;padding:6px 9px;min-height:44px;box-sizing:border-box;font:600 12.5px Manrope,sans-serif;color:var(--asa-ink-dark)")}/>
           </label>
           <span style={css("font-size:12px;color:var(--asa-label);flex:1;min-width:140px")}>Só vale depois de “Salvar alterações”, e muda apenas os dias que ainda não foram publicados.</span>
         </div>}
