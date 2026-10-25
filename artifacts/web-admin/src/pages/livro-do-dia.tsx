@@ -1,4 +1,4 @@
-﻿import { type CSSProperties, type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { ApiError, customFetch } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -276,7 +276,9 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
   const me = review ? REVIEW_PERSON[role] : ((user as { displayName?: string } | null)?.displayName ?? user?.name ?? "");
   const [tab, setTab] = useState<Tab>("hoje");
   // Quem prepara o dia seguinte precisa abrir o livro de amanhã, como já faz na Escala.
-  const [date, setDate] = useState(todayISO());
+  // Um atalho (a Escala, o Meu Dia) pode pedir o dia e o show: ?data=AAAA-MM-DD&livro=<id>. Sem pedido, abre hoje, como sempre.
+  const [date, setDate] = useState(() => { const p = new URLSearchParams(window.location.search).get("data"); return p && /^\d{4}-\d{2}-\d{2}$/.test(p) ? p : todayISO(); });
+  const livroPedido = useRef(new URLSearchParams(window.location.search).get("livro"));
   const [books, setBooks] = useState<DailyBook[]>([]);
   const [loading, setLoading] = useState(true);
   const [opening, setOpening] = useState(false);
@@ -420,13 +422,21 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
   useEffect(() => {
     if (loading) return;
     if (!todayBooks.length) { setBook(null); setBookId(""); return; }
+    // O atalho pediu um show: abre esse. Se ele não está neste dia, abre o de sempre e diz por quê.
+    const pedido = livroPedido.current;
+    let aviso = "";
+    if (pedido) {
+      livroPedido.current = null;
+      if (todayBooks.some((b) => b.id === pedido)) { void open(pedido); return; }
+      aviso = "Não achei esse Livro do Dia neste dia. Ele pode ter sido cancelado ou ser de outro dia. Mostrei o de agora.";
+    }
     // Abre o show que ainda não terminou (o de agora, ou o próximo). Às 18h não faz sentido
     // abrir o das 10h já executado; se o dia todo acabou, fica no último.
     if (!todayBooks.some((b) => b.id === bookId)) {
       const agora = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date());
       const fimDe = (b: DailyBook) => { const viva = (b.sessionBlocks ?? []).filter((s: SessionBlockView) => !s.isRemoved); return time(viva[viva.length - 1]?.endTime) || time(viva[viva.length - 1]?.startTime) || "23:59"; };
       const emAberto = todayBooks.find((b) => fimDe(b) >= agora);
-      void open((emAberto ?? todayBooks[todayBooks.length - 1]!).id);
+      void open((emAberto ?? todayBooks[todayBooks.length - 1]!).id).then(() => { if (aviso) setError(aviso); });
     }
   }, [loading, todayBooks]);
 
