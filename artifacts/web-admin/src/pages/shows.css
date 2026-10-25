@@ -243,3 +243,339 @@
 .official-reservas header strong{font-size:12px}
 .official-reservas li b{font-size:12px}
 .reserva-escolhidas span b{font-size:12px}
+
+/* Pastas e linhas de show (24/10/2026): a lista do local vira pastas que abrem e fecham, com uma linha por show. Alvos de toque de 44 px. */
+.show-folders{display:grid;gap:10px}
+.show-folder{border:1px solid var(--asa-line);border-radius:14px;background:#fff;overflow:hidden}
+.show-folder-head{width:100%;min-height:48px;display:flex;align-items:center;gap:9px;padding:0 14px;border:0;background:var(--asa-bg-tinted);color:var(--asa-ink);font:inherit;cursor:pointer;text-align:left}
+.show-folder-head strong{font:600 15px Outfit;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.show-folder-head small{color:var(--asa-ink-muted);font-size:12px}
+.show-folder-head:focus-visible,.show-row-open:focus-visible,.show-row-star:focus-visible,.show-folder-change:focus-visible{outline:2px solid var(--asa-purple);outline-offset:-2px}
+.show-folder-chevron{transition:transform .2s cubic-bezier(.2,.8,.2,1);color:var(--asa-ink-muted)}
+.show-folder.closed .show-folder-chevron{transform:rotate(-90deg)}
+.show-rows{display:grid}
+.show-folder .show-rows{border-top:1px solid var(--asa-line)}
+.shows-shelf>section>.show-rows{border:1px solid var(--asa-line);border-radius:14px;background:#fff;overflow:hidden}
+.show-row{position:relative;display:flex;align-items:stretch;border-top:1px solid var(--asa-border-faint)}
+.show-row:first-child{border-top:0}
+.show-row-open{flex:1;min-width:0;min-height:64px;display:flex;align-items:center;gap:12px;padding:10px 6px 10px 14px;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.show-row-open:hover{background:var(--asa-purple-faint)}
+.show-row-open:active{background:var(--asa-purple-muted)}
+.show-row-cover{flex:none;width:40px;height:40px;display:grid;place-items:center;border-radius:11px;background:linear-gradient(135deg,#6c2bf2,#2f6df2);color:#fff;font:600 17px Outfit}
+.show-row-body{flex:1;min-width:0;display:grid;gap:2px}
+.show-row-body strong{font:600 15px Outfit;color:var(--asa-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.show-row-body small{color:var(--asa-ink-muted);font-size:12px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.show-row-arrow{flex:none;color:var(--asa-label)}
+.show-row-star{flex:none;width:48px;display:grid;place-items:center;border:0;background:transparent;color:var(--asa-label);cursor:pointer}
+.show-row-star.active{color:#d97706}
+.show-row-star:hover{color:var(--asa-purple)}
+.folder-suggestions{display:flex;flex-wrap:wrap;gap:8px}
+.folder-suggestions button{min-height:44px;padding:0 14px;border:1px solid var(--asa-line-soft);border-radius:999px;background:#fff;color:var(--asa-ink);font:inherit;font-size:13px;cursor:pointer}
+.folder-suggestions button.active{border-color:var(--asa-purple);background:var(--asa-purple-surface);color:var(--asa-purple-dark)}
+.show-folder-line{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.show-folder-change{min-height:44px;padding:0 6px;border:0;background:transparent;color:var(--asa-purple);font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+/* Histórico recolhido: uma linha até a pessoa pedir. */
+.show-history-fold>summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:44px;cursor:pointer}
+.show-history-fold>summary::-webkit-details-marker{display:none}
+.show-history-fold>summary>span{flex:1;min-width:0}
+.show-history-fold>summary h3{margin:0;font:600 15px Outfit}
+.show-history-fold>summary p{margin:2px 0 0;color:var(--asa-ink-muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.show-history-chevron{transition:transform .2s cubic-bezier(.2,.8,.2,1);color:var(--asa-ink-muted)}
+.show-history-fold[open] .show-history-chevron{transform:rotate(180deg)}
+.show-history-list{max-height:320px;overflow:auto;margin-top:8px}
+@media (prefers-reduced-motion:reduce){.show-folder-chevron,.show-history-chevron{transition:none}}
+@media (max-width:720px){.show-row-open{padding-left:12px;gap:10px}.show-row-arrow{display:none}}
+
+/* Livro oficial em três áreas (24/10/2026): cenas à esquerda, mapa no centro com os controles sempre à vista, grupos e vagas da cena aberta à direita.
+   Só vale dentro de .official-book.v2; as regras antigas acima continuam servindo ao resto. No celular viram duas abas (Mapa, Grupos e vagas). */
+.official-mobile-tabs{display:none}
+.official-book.v2 .official-column h2{font:600 15px Outfit;margin:0}
+.official-book.v2 .official-column header p{margin:2px 0 0;color:var(--asa-ink-muted);font-size:12px}
+.official-book.v2 .official-panel{padding:16px;background:#fcfbfe;border-left:1px solid #ece6f5}
+.official-book.v2 .official-panel>header{padding-bottom:10px;border-bottom:1px solid #ece6f5;margin-bottom:12px}
+.official-book.v2 .official-panel .official-slot-groups{margin:0;padding:0}
+.official-book.v2 .official-stage-top{background:#fff}
+@media (min-width:1101px){
+  .official-book.v2 .official-book-grid{grid-template-columns:248px minmax(0,1fr) 340px!important;height:calc(100dvh - 190px)!important;min-height:560px!important;max-height:none!important}
+  .official-book.v2 .official-book-grid.structure-hidden{grid-template-columns:minmax(0,1fr)!important}
+  .official-book.v2 .official-book-grid.structure-hidden>.official-panel{display:none}
+  .official-book.v2 .official-book-grid>.official-stage{grid-column:auto!important}
+  .official-book.v2 .official-column{min-height:0;overflow:auto;scrollbar-gutter:stable}
+  .official-book.v2 .official-stage{display:flex;flex-direction:column;overflow:auto!important;padding:0 22px 16px!important}
+  .official-book.v2 .official-stage-top{position:sticky;top:0;z-index:5;padding-top:14px;border-bottom:1px solid #eee9f5;margin-bottom:10px}
+  .official-book.v2 .official-stage-top .official-zone-controls{border-top:1px solid #eee9f5}
+  .official-book.v2 .stage-map{--stage-map-w:min(760px,max(380px,calc((100dvh - 470px) * var(--stage-ratio,1))))}
+  .official-book.v2 .official-structure .official-scenes{margin-top:12px}
+}
+@media (max-width:1100px){
+  .official-book.v2 .official-mobile-tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:12px;background:var(--asa-bg-tinted)}
+  .official-book.v2 .official-mobile-tabs button{min-height:44px;border:0;border-radius:9px;background:transparent;color:var(--asa-ink-muted);font:600 14px Outfit;cursor:pointer}
+  .official-book.v2 .official-mobile-tabs button.active{background:#fff;color:var(--asa-purple-dark);box-shadow:0 1px 3px rgba(40,20,90,.14)}
+  .official-book.v2 .official-book-grid{grid-template-columns:minmax(0,1fr)!important}
+  .official-book.v2 .official-book-grid.tab-mapa>.official-panel,.official-book.v2 .official-book-grid.tab-grupos>.official-stage{display:none}
+  /* Lista de cenas em faixa que rola para o lado, para não ocupar a tela inteira. */
+  .official-book.v2 .official-structure{padding:12px 12px 8px}
+  .official-book.v2 .official-structure>header{display:none}
+  .official-book.v2 .official-scenes{display:flex;gap:8px;margin:0;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x proximity}
+  .official-book.v2 .official-scenes>li{flex:none;scroll-snap-align:start}
+  .official-book.v2 .official-scenes>li>button{min-width:150px;min-height:56px;border-color:#e6e1f2;background:#fff}
+  .official-book.v2 .official-scenes>li>button.active{border-color:var(--asa-purple);background:var(--asa-purple-surface)}
+  .official-book.v2 .official-add-scene{margin-top:4px}
+  .official-book.v2 .official-stage-top{background:transparent}
+  .official-book.v2 .official-panel{border-left:0;border-top:1px solid #ece6f5}
+}
+@media (prefers-reduced-motion:no-preference){.official-book.v2 .official-mobile-tabs button{transition:background-color .15s ease,color .15s ease,box-shadow .15s ease}}
+/* Barra do mapa compacta no computador: o título, o formato do palco e as zonas cabem em poucas linhas, para sobrar chão para o mapa. */
+@media (min-width:1101px) and (pointer:fine){
+  .official-book.v2 .official-stage-top .official-active-head{padding:0 0 8px;flex-wrap:wrap;gap:6px 12px}
+  .official-book.v2 .official-stage-top .official-active-head h2{font:600 17px Outfit}
+  .official-book.v2 .official-stage-top .official-active-head p{margin:1px 0 0}
+  .official-book.v2 .official-stage-top .official-map-controls{padding:6px 0;flex-wrap:wrap;gap:6px 12px}
+  .official-book.v2 .official-stage-top .official-stage-presets button,.official-book.v2 .official-stage-top .official-zone-controls button,.official-book.v2 .official-stage-top .official-role-chips button{min-height:34px}
+  .official-book.v2 .official-stage-top .official-zone-controls{padding:6px 0;gap:6px}
+}
+
+/* ───────── Livro oficial, acabamento (24/10/2026) ─────────
+   Menos caixas e linhas, mais espaço e hierarquia: o mapa é a página; cenas e grupos são painéis claros nas laterais; a barra do mapa é um vidro leve.
+   Tudo escopado em .official-book.v2. Alvos de toque seguem com 44 px no celular. */
+.official-book.v2{--lv-ink:#1b1630;--lv-muted:#6b6482;--lv-tint:#f5f3fb;--lv-line:#eeeaf6;--lv-accent:#6c2bf2;--lv-card:0 1px 2px rgba(27,22,48,.04),0 14px 34px -18px rgba(27,22,48,.22);gap:16px}
+/* barra de cima: sem caixa */
+.official-book.v2 .official-publication-bar{border:0;background:transparent;padding:4px 2px;gap:12px}
+.official-book.v2 .official-version strong{font:600 22px Outfit;letter-spacing:-.015em}
+.official-book.v2 .official-version span,.official-book.v2 .official-version small{border-radius:999px;padding:3px 10px;background:var(--lv-tint);color:var(--lv-muted);font:600 12px Manrope,system-ui,sans-serif}
+.official-book.v2 .official-version span{background:#e3f4f1;color:#0a6f68}
+.official-book.v2 .official-save{color:var(--lv-muted)}
+.official-book.v2 .official-actions .shows-secondary{border:0;background:transparent;color:var(--lv-accent);font-weight:600;box-shadow:none;min-height:44px}
+.official-book.v2 .official-actions .shows-secondary:hover{background:var(--lv-tint)}
+/* grade: painéis flutuantes */
+.official-book.v2 .official-book-grid{border:0!important;background:transparent!important;gap:16px;overflow:visible!important;border-radius:0!important}
+.official-book.v2 .official-column{border:0!important;border-radius:22px;background:#fff;box-shadow:var(--lv-card)}
+.official-book.v2 .official-structure,.official-book.v2 .official-panel{background:#fff!important;padding:18px 14px}
+.official-book.v2 .official-stage{padding-left:24px!important;padding-right:24px!important}
+.official-book.v2 .official-column>header,.official-book.v2 .official-panel>header{padding:0 6px 10px;border:0;margin:0}
+.official-book.v2 .official-column h2{font:600 20px Outfit;letter-spacing:-.015em;color:var(--lv-ink)}
+.official-book.v2 .official-column header p{color:var(--lv-muted);font-size:13px}
+/* cenas */
+.official-book.v2 .official-scenes{gap:2px;margin-top:6px}
+.official-book.v2 .official-scenes>li>button{border:0!important;border-radius:14px;min-height:56px;padding:8px 10px;transition:background-color .18s ease}
+.official-book.v2 .official-scenes>li>button:hover{background:var(--lv-tint)}
+.official-book.v2 .official-scenes>li>button.active{background:#f1eafe}
+.official-book.v2 .official-scenes>li>button>b{width:30px;height:30px;border-radius:50%;background:var(--lv-tint);color:var(--lv-muted);font:600 12px Manrope,system-ui,sans-serif}
+.official-book.v2 .official-scenes>li>button.active>b{background:var(--lv-accent);color:#fff}
+.official-book.v2 .official-scenes strong{font:600 14px Outfit;color:var(--lv-ink)}
+.official-book.v2 .official-scenes small{color:var(--lv-muted);font-size:12px}
+.official-book.v2 .official-add-scene{width:100%;margin-top:8px;border:0;background:transparent;color:var(--lv-accent);font-weight:600;min-height:44px}
+.official-book.v2 .official-add-scene:hover{background:var(--lv-tint)}
+/* barra do mapa: vidro */
+.official-book.v2 .official-stage-top{background:rgba(255,255,255,.82);backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);border-bottom:1px solid var(--lv-line);margin:0 -24px 14px;padding:16px 24px 8px}
+.official-book.v2 .official-stage-top .official-zone-controls,.official-book.v2 .official-stage-top .official-map-controls{border:0}
+.official-book.v2 .official-active-head h2{font:600 24px Outfit;letter-spacing:-.02em}
+.official-book.v2 .official-role-chips span{background:var(--lv-tint);color:var(--lv-muted);border-radius:999px}
+.official-book.v2 .official-role-chips button{border:0;background:var(--lv-tint);color:var(--lv-accent);border-radius:999px;font:600 13px Manrope,system-ui,sans-serif;padding:0 12px}
+.official-book.v2 .official-map-controls strong{font:600 13px Manrope,system-ui,sans-serif;text-transform:none;letter-spacing:0;color:var(--lv-ink)}
+.official-book.v2 .official-map-controls span{color:var(--lv-muted)}
+/* formato do palco = controle segmentado */
+.official-book.v2 .official-stage-presets{gap:2px;padding:3px;border-radius:12px;background:var(--lv-tint)}
+.official-book.v2 .official-stage-presets button{border:0!important;border-radius:9px;background:transparent;color:var(--lv-muted);font:600 13px Manrope,system-ui,sans-serif;transition:background-color .18s ease,color .18s ease,box-shadow .18s ease}
+.official-book.v2 .official-stage-presets button.active{background:#fff;color:var(--lv-accent);box-shadow:0 1px 3px rgba(27,22,48,.16)}
+.official-book.v2 .official-stage-presets button:disabled{opacity:1;cursor:default}
+/* zonas = pílulas discretas */
+.official-book.v2 .official-zone-controls{gap:6px}
+.official-book.v2 .official-zone-controls>span{font:600 12px Manrope,system-ui,sans-serif;text-transform:none;letter-spacing:0;color:var(--lv-muted)}
+.official-book.v2 .official-zone-controls button{border:0;border-radius:999px;background:#efe9fb;color:#5b23c9;font:600 12px Manrope,system-ui,sans-serif;padding:0 12px}
+.official-book.v2 .official-zone-controls button.off{background:var(--lv-tint);color:#9b94b0;text-decoration:none}
+.official-book.v2 .official-zone-controls .official-reset-zones{margin-left:auto;background:transparent;color:var(--lv-accent)}
+/* mapa */
+.official-book.v2 .stage-map{border:0;border-radius:20px;background:#f7f5fc;box-shadow:inset 0 0 0 1px rgba(27,22,48,.05)}
+/* quadros-chave */
+.official-book.v2 .official-keyframe-strip{border-top:0;margin-top:18px}
+.official-book.v2 .official-keyframe-strip>header strong{font:600 15px Outfit}
+.official-book.v2 .official-keyframe-strip>header span{color:var(--lv-muted)}
+.official-book.v2 .official-keyframe{border:0!important;border-radius:16px;background:var(--lv-tint);box-shadow:none;transition:box-shadow .18s ease,background-color .18s ease}
+.official-book.v2 .official-keyframe.active{background:#fff;box-shadow:0 0 0 2px var(--lv-accent),0 10px 22px -14px rgba(108,43,242,.5)}
+.official-book.v2 .official-add-keyframe{border:1.5px dashed #d9cff2!important;border-radius:16px;background:transparent;color:var(--lv-accent);font-weight:600}
+/* painel de grupos: linhas, não caixas */
+.official-book.v2 .official-slot-groups{gap:22px}
+.official-book.v2 .official-slot-group{gap:2px}
+.official-book.v2 .official-slot-group>header{padding:0 6px 6px}
+.official-book.v2 .official-slot-group h3{font:600 15px Outfit;letter-spacing:-.005em;text-transform:none;color:var(--lv-ink)}
+.official-book.v2 .official-group-actions{opacity:.55;transition:opacity .15s ease}
+.official-book.v2 .official-slot-group:hover .official-group-actions,.official-book.v2 .official-group-actions:focus-within{opacity:1}
+.official-book.v2 .official-add-slot{border-radius:999px;background:var(--lv-tint);padding:0 12px;font-weight:600}
+.official-book.v2 .official-slot{border:0!important;background:transparent;border-radius:12px;padding:8px 8px;min-height:52px;box-shadow:none;transition:background-color .15s ease}
+.official-book.v2 .official-slot:hover{background:var(--lv-tint)}
+.official-book.v2 .official-slot.active{background:#f1eafe;box-shadow:none}
+.official-book.v2 .official-slot>b{background:transparent;color:var(--lv-muted);font:600 12px 'JetBrains Mono',monospace;min-width:44px}
+.official-book.v2 .official-slot.active>b{color:var(--lv-accent)}
+.official-book.v2 .official-slot strong{font:600 14px Outfit;color:var(--lv-ink)}
+.official-book.v2 .official-slot small{color:var(--lv-muted);font-size:13px}
+.official-book.v2 .official-slot>em{background:transparent;color:#9b94b0;font:500 12px Manrope,system-ui,sans-serif}
+.official-book.v2 .official-slot.official-role-slot>em{color:#c2508f}
+/* reservas: uma linha de apoio, sem moldura tracejada */
+.official-book.v2 .official-reservas{border:0!important;background:var(--lv-tint);border-radius:14px;padding:12px 14px;margin-top:6px}
+.official-book.v2 .official-reservas header strong{font:600 13px Outfit;text-transform:none;letter-spacing:0;color:var(--lv-ink)}
+.official-book.v2 .official-reservas header button{border:0;background:transparent;color:var(--lv-accent);font-weight:600;min-height:44px}
+.official-book.v2 .official-reservas p{color:var(--lv-muted);font-size:13px;margin:0}
+.official-book.v2 .official-add-group{width:100%;border:1.5px dashed #d9cff2;border-radius:14px;background:transparent;color:var(--lv-accent);font-weight:600;min-height:48px}
+.official-book.v2 .official-no-groups{color:var(--lv-muted);font-size:13px;padding:0 6px}
+/* celular: abas fixas e mapa à vontade */
+@media (max-width:1100px){
+  .official-book.v2 .official-column{border-radius:20px}
+  .official-book.v2 .official-stage{padding-left:14px!important;padding-right:14px!important}
+  .official-book.v2 .official-stage-top{margin:0 -14px 10px;padding:12px 14px 6px;position:static;backdrop-filter:none;background:transparent}
+  .official-book.v2 .official-mobile-tabs{position:sticky;top:8px;z-index:30;background:rgba(245,243,251,.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 6px 18px -10px rgba(27,22,48,.3)}
+}
+@media (prefers-reduced-motion:reduce){.official-book.v2 *{transition:none!important}}
+
+/* ───────── Lista e tela do show, acabamento (24/10/2026) ─────────
+   Mesmo vocabulário do Livro oficial: painéis claros com sombra suave em vez de caixas com borda, títulos em frases, ações de texto. */
+.shows-page{--lv-ink:#1b1630;--lv-muted:#6b6482;--lv-tint:#f5f3fb;--lv-line:#eeeaf6;--lv-accent:#6c2bf2;--lv-card:0 1px 2px rgba(27,22,48,.04),0 14px 34px -18px rgba(27,22,48,.22)}
+/* lista */
+.shows-page .shows-shelf>section>header{margin:26px 2px 10px}
+.shows-page .shows-shelf h2{font:600 22px Outfit;letter-spacing:-.015em;color:var(--lv-ink)}
+.shows-page .shows-shelf>section>header small{color:var(--lv-muted);font-size:13px}
+.shows-page .show-folder,.shows-page .shows-shelf>section>.show-rows{border:0;border-radius:22px;box-shadow:var(--lv-card)}
+.shows-page .show-folders{gap:14px}
+.shows-page .show-folder-head{background:#fff;min-height:52px;padding:0 18px}
+.shows-page .show-folder-head strong{font:600 16px Outfit;letter-spacing:-.005em}
+.shows-page .show-folder-head svg{color:var(--lv-muted)}
+.shows-page .show-folder .show-rows{border-top:1px solid var(--lv-line)}
+.shows-page .show-row{border-top:1px solid var(--lv-line)}
+.shows-page .show-row-open{min-height:68px;padding:10px 6px 10px 18px;transition:background-color .15s ease}
+.shows-page .show-row-open:hover{background:var(--lv-tint)}
+.shows-page .show-row-body strong{font:600 16px Outfit}
+.shows-page .show-row-body small{font-size:13px;color:var(--lv-muted)}
+.shows-page .show-row-cover{border-radius:50%}
+/* tela do show */
+.show-mode{--lv-ink:#1b1630;--lv-muted:#6b6482;--lv-tint:#f5f3fb;--lv-line:#eeeaf6;--lv-accent:#6c2bf2;--lv-card:0 1px 2px rgba(27,22,48,.04),0 14px 34px -18px rgba(27,22,48,.22);gap:18px}
+.show-mode .show-mode-head{border:0;border-radius:24px;box-shadow:var(--lv-card);padding:22px}
+.show-mode .show-mode-head h2{font:600 30px Outfit;letter-spacing:-.02em;color:var(--lv-ink);margin:8px 0}
+.show-mode .show-mode-head p{color:var(--lv-muted);font-size:14px}
+.show-mode .show-mode-head .show-cover{border-radius:20px}
+.show-mode .show-mode-actions .shows-secondary{border:0;background:var(--lv-tint);color:var(--lv-ink);font-weight:600}
+.show-mode .show-mode-actions .shows-secondary:hover{background:#ece7f8}
+.show-mode .show-panel{border:0;border-radius:22px;box-shadow:var(--lv-card);padding:22px}
+.show-mode .show-panel>header{border:0}
+.show-mode .show-panel>header h3{font:600 18px Outfit;letter-spacing:-.01em;color:var(--lv-ink)}
+.show-mode .show-panel>header p{color:var(--lv-muted);font-size:13px}
+.show-mode .show-panel>header svg{color:var(--lv-accent)}
+.show-mode .show-panel>header .shows-secondary{border:0;background:var(--lv-tint);color:var(--lv-accent);font-weight:600;border-radius:999px}
+.show-mode .character-summary-row{border-top:1px solid var(--lv-line)}
+.show-mode .show-info dt{color:var(--lv-muted)}
+.show-mode .show-history-fold>summary h3{font:600 16px Outfit}
+.show-mode .show-folder-line{color:var(--lv-muted)}
+@media (prefers-reduced-motion:reduce){.shows-page .show-row-open{transition:none}}
+/* Cabeçalho do show: capa e texto numa linha, ações embaixo, para o nome respirar em vez de quebrar em coluna estreita. */
+.show-mode .show-mode-head{grid-template-columns:132px minmax(0,1fr);row-gap:18px}
+.show-mode .show-mode-head .show-mode-actions{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-start;padding-top:16px;border-top:1px solid var(--lv-line)}
+.show-mode .show-mode-head .show-mode-actions .shows-primary{order:-1}
+@media (max-width:720px){.show-mode .show-mode-head{grid-template-columns:96px minmax(0,1fr)}.show-mode .show-mode-head h2{font-size:24px}.show-mode .show-mode-head .show-mode-actions button{flex:1 1 auto;min-height:44px;justify-content:center}}
+/* Links do Drive logo abaixo do cartão do show (pasta, vídeo, música, texto): cartões lado a lado, a ação de editar só aparece quando a pessoa chega perto. */
+.show-mode .show-drive{padding:18px 22px 20px}
+.show-mode .show-drive>header{margin-bottom:8px}
+.show-mode .show-drive>header p{display:none}
+.show-mode .show-drive .drive-links.editable,.show-mode .show-drive .drive-links{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.show-mode .show-drive .drive-link-row{display:grid;grid-template-columns:1fr;gap:0;border:0;border-radius:16px;background:var(--lv-tint);padding:2px 4px 4px;transition:background-color .15s ease}
+.show-mode .show-drive .drive-link-row:hover{background:#ece7f8}
+.show-mode .show-drive .drive-links a,.show-mode .show-drive .drive-link-row>a{min-height:56px;border-top:0;padding:10px 10px 6px}
+.show-mode .show-drive .drive-kind{border-radius:999px;padding:3px 9px;background:#e3f4f1;color:#0a6f68;font:600 12px Manrope,system-ui,sans-serif;text-transform:none}
+.show-mode .show-drive .drive-link-row strong{font:600 14px Outfit;color:var(--lv-ink)}
+.show-mode .show-drive .drive-link-row small{color:var(--lv-muted)}
+.show-mode .show-drive .drive-link-actions{justify-content:flex-end;opacity:.5;transition:opacity .15s ease}
+.show-mode .show-drive .drive-link-row:hover .drive-link-actions,.show-mode .show-drive .drive-link-row:focus-within .drive-link-actions{opacity:1}
+@media (hover:none){.show-mode .show-drive .drive-link-actions{opacity:1}}
+@media (max-width:720px){.show-mode .show-drive .drive-links.editable,.show-mode .show-drive .drive-links{grid-template-columns:1fr}}
+.show-mode .show-drive .drive-kind::first-letter{text-transform:uppercase}
+/* Observações dentro de Informações gerais. */
+.show-mode .show-info-notes{margin-top:14px;padding-top:14px;border-top:1px solid var(--lv-line)}
+.show-mode .show-info-notes h4{margin:0 0 4px;font:600 13px Manrope,system-ui,sans-serif;color:var(--lv-muted)}
+.show-mode .show-info-notes p{margin:0;font-size:14px;line-height:1.5;color:var(--lv-ink);white-space:pre-line}
+
+/* O miolo do show (24/10/2026): o que o show é vem primeiro e grande. Completo e Só formação: o Livro oficial. Só personagens: a lista de personagens. Links, sessões e informações viram apoio. */
+.show-mode .show-responsible{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;margin-top:6px;font-size:15px;color:var(--lv-ink)}
+.show-mode .show-responsible strong{font-weight:600}
+.show-mode .show-responsible svg{color:var(--lv-muted)}
+.show-mode .show-responsible .show-place{color:var(--lv-muted);font-size:14px}
+.show-mode .show-responsible .show-place::before{content:"·";margin-right:10px}
+.show-mode .show-book-hero{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:28px 30px}
+.show-mode .show-book-hero-text{min-width:0;display:grid;gap:8px}
+.show-mode .show-book-kicker{display:inline-flex;align-items:center;gap:7px;color:var(--lv-muted);font:600 13px Manrope,system-ui,sans-serif}
+.show-mode .show-book-hero h3{margin:0;font:600 26px Outfit;letter-spacing:-.02em;color:var(--lv-ink)}
+.show-mode .show-book-hero p{margin:0;max-width:56ch;color:var(--lv-muted);font-size:15px;line-height:1.5}
+.show-mode .show-book-scenes{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 0;padding:0;list-style:none}
+.show-mode .show-book-scenes li{display:inline-flex;align-items:center;gap:7px;padding:5px 12px 5px 6px;border-radius:999px;background:var(--lv-tint);color:var(--lv-ink);font-size:13px}
+.show-mode .show-book-scenes li b{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#fff;color:var(--lv-muted);font:600 11px Manrope,system-ui,sans-serif}
+.show-mode .show-book-scenes li.more{padding:5px 12px;color:var(--lv-muted)}
+.show-mode .show-book-open{flex:none;min-height:56px;padding:0 26px;font-size:16px;border-radius:999px}
+.show-mode .show-hero{padding:26px 30px}
+.show-mode .show-hero>header h3{font:600 26px Outfit;letter-spacing:-.02em}
+.show-mode .show-hero>header p{font-size:15px}
+.show-mode .show-hero .character-summary-row{padding-top:16px;padding-bottom:16px}
+.show-mode .show-hero .character-summary-row strong{font:600 17px Outfit}
+.show-mode .show-hero .character-summary-row small{font-size:14px}
+.show-mode .show-drive{padding:16px 22px 18px}
+@media (max-width:720px){
+  .show-mode .show-book-hero{flex-direction:column;align-items:stretch;padding:22px 20px}
+  .show-mode .show-book-open{width:100%;justify-content:center}
+  .show-mode .show-hero{padding:22px 18px}
+  .show-mode .show-hero>header h3,.show-mode .show-book-hero h3{font-size:22px}
+}
+
+/* Livro oficial em duas áreas no computador (24/10/2026): as cenas viram uma faixa em cima, e o mapa e o painel de grupos dividem o resto. Três colunas lado a lado espremiam o mapa. */
+@media (min-width:1101px){
+  .official-book.v2 .official-book-grid{grid-template-columns:minmax(0,1fr) 340px!important;grid-template-rows:auto minmax(0,1fr)}
+  .official-book.v2 .official-book-grid.structure-hidden{grid-template-columns:minmax(0,1fr)!important}
+  .official-book.v2 .official-book-grid>.official-structure{grid-column:1 / -1;grid-row:1;display:flex!important;align-items:center;gap:10px;padding:10px 14px;overflow:visible;min-height:0}
+  .official-book.v2 .official-book-grid>.official-structure>header{display:none}
+  .official-book.v2 .official-book-grid>.official-structure .official-scenes{display:flex;flex:1 1 auto;min-width:0;gap:6px;margin:0;overflow-x:auto;padding:2px 0;scrollbar-width:thin}
+  .official-book.v2 .official-book-grid>.official-structure .official-scenes>li{flex:none}
+  .official-book.v2 .official-book-grid>.official-structure .official-scenes>li>button{min-width:156px;min-height:48px;padding:6px 12px 6px 8px}
+  .official-book.v2 .official-book-grid>.official-structure .official-add-scene{flex:none;width:auto;margin:0;padding:0 14px;white-space:nowrap}
+  .official-book.v2 .official-book-grid>.official-stage{grid-row:2;grid-column:1}
+  .official-book.v2 .official-book-grid>.official-panel{grid-row:2;grid-column:2}
+  .official-book.v2 .official-book-grid.structure-hidden>.official-stage{grid-column:1}
+  .official-book.v2 .stage-map{--stage-map-w:min(820px,max(420px,calc((100dvh - 420px) * var(--stage-ratio,1))))}
+}
+
+/* Menu do grupo (⋯): um botão no lugar de três. */
+.official-book.v2 .official-group-actions{display:flex;align-items:center;gap:4px;opacity:1}
+.official-book.v2 .group-menu{position:relative;display:inline-flex}
+.official-book.v2 .group-menu-trigger{width:44px;height:44px;display:grid;place-items:center;border:0;border-radius:50%;background:transparent;color:var(--lv-muted);cursor:pointer}
+.official-book.v2 .group-menu-trigger:hover,.official-book.v2 .group-menu-trigger[aria-expanded="true"]{background:var(--lv-tint);color:var(--lv-ink)}
+.official-book.v2 .group-menu-pop{position:absolute;right:0;top:calc(100% + 4px);z-index:40;min-width:210px;padding:6px;border-radius:14px;background:#fff;box-shadow:0 0 0 1px rgba(27,22,48,.06),0 18px 40px -12px rgba(27,22,48,.3)}
+.official-book.v2 .group-menu-pop button{width:100%;min-height:44px;display:flex;align-items:center;gap:10px;padding:0 12px;border:0;border-radius:10px;background:transparent;color:var(--lv-ink);font:500 14px Manrope,system-ui,sans-serif;text-align:left;cursor:pointer}
+.official-book.v2 .group-menu-pop button:hover{background:var(--lv-tint)}
+.official-book.v2 .group-menu-pop button.danger{color:#b42318}
+.official-book.v2 .group-menu-pop i{width:15px;height:15px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 1px rgba(27,22,48,.15)}
+@media (prefers-reduced-motion:no-preference){.official-book.v2 .group-menu-pop{animation:group-menu-in .14s cubic-bezier(.2,.8,.2,1);transform-origin:top right}@keyframes group-menu-in{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}}
+
+/* O mapa abre inteiro (24/10/2026): quem rola é a página, não uma caixa dentro da página. A barra do mapa fica presa no alto e o painel de grupos acompanha. */
+@media (min-width:1101px){
+  .official-book.v2 .official-book-grid{height:auto!important;min-height:0!important;max-height:none!important}
+  .official-book.v2 .official-book-grid>.official-stage{overflow:visible!important;min-height:0}
+  .official-book.v2 .official-book-grid>.official-stage .official-stage-top{top:0}
+  .official-book.v2 .official-book-grid>.official-panel{align-self:start;position:sticky;top:12px;max-height:calc(100dvh - 24px);overflow:auto}
+  .official-book.v2 .stage-map{--stage-map-w:min(860px,max(420px,calc((100dvh - 250px) * var(--stage-ratio,1))))}
+}
+
+/* Zonas: botões de ligar e desligar o nome da zona no mapa. Desligada = contorno com "+", ligada = preenchida com "✓", para ficar claro que dá para tocar. */
+.official-book.v2 .official-zone-controls button[aria-pressed]{min-height:36px;border:1.5px dashed #cdbdf2!important;background:transparent!important;color:#6c2bf2!important;text-decoration:none!important}
+.official-book.v2 .official-zone-controls button[aria-pressed]::before{content:"+ ";font-weight:700}
+.official-book.v2 .official-zone-controls button[aria-pressed="true"]{border:1.5px solid #6c2bf2!important;background:#6c2bf2!important;color:#fff!important}
+.official-book.v2 .official-zone-controls button[aria-pressed="true"]::before{content:"✓ "}
+.official-book.v2 .official-zone-controls>span{color:var(--lv-ink);font-weight:600}
+@media (max-width:1100px),(pointer:coarse){.official-book.v2 .official-zone-controls button[aria-pressed]{min-height:44px}}
+
+/* Rodapé das janelas: nada de cinza. Fundo lilás bem claro do tema e "Cancelar" na cor de destaque. */
+.shows-dialog-footer{background:#f6f3fd!important;border-top:1px solid #e6dffa!important}
+.shows-dialog-footer .shows-secondary{background:#fff;border:1.5px solid #cdbdf2;color:#5b23c9;font-weight:600}
+.shows-dialog-footer .shows-secondary:hover{background:#efe9fb}
+.shows-dialog-footer .shows-primary{background:#6c2bf2;color:#fff}
+.shows-dialog-footer .shows-primary:hover{background:#5b23c9}
+
+/* Barras de rolagem do Livro oficial (faixa de cenas, faixa de momentos e painéis): finas e na cor do tema, em vez do cinza do navegador. */
+.official-book.v2 .official-scenes,.official-book.v2 .official-keyframe-scroll,.official-book.v2 .official-panel,.official-book.v2 .official-column{scrollbar-width:thin;scrollbar-color:#bfa8f5 transparent}
+.official-book.v2 .official-scenes::-webkit-scrollbar,.official-book.v2 .official-keyframe-scroll::-webkit-scrollbar,.official-book.v2 .official-panel::-webkit-scrollbar,.official-book.v2 .official-column::-webkit-scrollbar{height:8px;width:8px}
+.official-book.v2 .official-scenes::-webkit-scrollbar-track,.official-book.v2 .official-keyframe-scroll::-webkit-scrollbar-track,.official-book.v2 .official-panel::-webkit-scrollbar-track,.official-book.v2 .official-column::-webkit-scrollbar-track{background:transparent}
+.official-book.v2 .official-scenes::-webkit-scrollbar-thumb,.official-book.v2 .official-keyframe-scroll::-webkit-scrollbar-thumb,.official-book.v2 .official-panel::-webkit-scrollbar-thumb,.official-book.v2 .official-column::-webkit-scrollbar-thumb{background:#bfa8f5;border-radius:999px}
+.official-book.v2 .official-scenes::-webkit-scrollbar-thumb:hover,.official-book.v2 .official-keyframe-scroll::-webkit-scrollbar-thumb:hover{background:#6c2bf2}

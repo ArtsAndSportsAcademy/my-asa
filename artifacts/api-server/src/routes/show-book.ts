@@ -312,6 +312,9 @@ router.post("/show-books", requireAuth, requireOrganization, async (req, res) =>
     res.status(400).json({ error: "title é obrigatório" });
     return;
   }
+  // Pasta opcional já na criação (0081): mesma regra da rota de mover de pasta.
+  const pastaNova = typeof req.body.folder === "string" ? req.body.folder.trim().replace(/\s+/g, " ") : "";
+  if (pastaNova.length > 60) { res.status(400).json({ error: "BAD_REQUEST", message: "O nome da pasta pode ter até 60 letras." }); return; }
   // Formato do palco do show inteiro (0074). Sem informar, o show nasce "sem mapa".
   if (stageFormat !== undefined && !isStageFormat(stageFormat)) { res.status(400).json({ error: "Formato de palco inválido", message: "Escolha L, retangular, quadrado ou sem mapa." }); return; }
   if (!["COMPLETE", "CHARACTERS_ONLY", "SIMPLE"].includes(type ?? "COMPLETE")) {
@@ -339,7 +342,7 @@ router.post("/show-books", requireAuth, requireOrganization, async (req, res) =>
       const book = await db.transaction(async (tx) => {
         const [created] = await tx.insert(showBooksTable).values({
           operationId: legacyOperationId, locationId: null, title: title.trim(), description: description ?? null,
-          type: type ?? "COMPLETE", usesCharacters: usesCharacters === true, stageFormat: stageFormat ?? "NONE", version: 1, status: "DRAFT", createdBy: userId,
+          type: type ?? "COMPLETE", usesCharacters: usesCharacters === true, stageFormat: stageFormat ?? "NONE", folder: pastaNova || null, version: 1, status: "DRAFT", createdBy: userId,
         }).returning();
         await writeHistoryEvent({
           category: "OPERATIONAL_CHANGE", action: "show_book.created", title: "Show criado",
@@ -394,6 +397,7 @@ router.post("/show-books", requireAuth, requireOrganization, async (req, res) =>
           type: type ?? "COMPLETE",
           usesCharacters: usesCharacters === true,
           stageFormat: stageFormat ?? "NONE",
+          folder: pastaNova || null,
           version: 1,
           status: "DRAFT",
           createdBy: userId,
@@ -518,6 +522,36 @@ router.patch("/show-books/:id", requireAuth, requireOrganization, async (req, re
     res.json({ showBook: updated });
   } catch (err) {
     res.status(500).json({ error: "Erro ao atualizar livro" });
+  }
+});
+
+// Pasta do show (0081): só organiza a lista de shows dentro do local. Não mexe no livro, então não troca a versão dele;
+// entra no Registro com de onde saiu e para onde foi, e desfazer é mover de volta (ou mandar pasta vazia = "Sem pasta").
+router.patch("/show-books/:id/pasta", requireAuth, requireOrganization, async (req, res) => {
+  const id = req.params.id as string;
+  const raw = req.body?.folder;
+  if (raw !== null && raw !== undefined && typeof raw !== "string") { res.status(400).json({ error: "BAD_REQUEST", message: "O nome da pasta precisa ser um texto. Para tirar o show da pasta, deixe o nome vazio." }); return; }
+  const folder = typeof raw === "string" ? raw.trim().replace(/\s+/g, " ") : "";
+  if (folder.length > 60) { res.status(400).json({ error: "BAD_REQUEST", message: "O nome da pasta pode ter até 60 letras." }); return; }
+  try {
+    const book = await requireShowManage(req, res);
+    if (!book) return;
+    const antes = (book as any).folder ?? null;
+    const depois = folder || null;
+    if (antes === depois) { res.json({ showBook: book }); return; }
+    const updated = await db.transaction(async (tx) => {
+      const [next] = await tx.update(showBooksTable).set({ folder: depois, updatedAt: new Date() } as any).where(eq(showBooksTable.id, id)).returning();
+      await writeHistoryEvent({
+        category: "OPERATIONAL_CHANGE", action: "show_book.folder_changed", title: "Show movido de pasta",
+        narrative: `Show ${book.title}: pasta de ${antes ? `"${antes}"` : "Sem pasta"} para ${depois ? `"${depois}"` : "Sem pasta"}.`,
+        entityType: "show_book", entityId: id, actorId: req.user!.sub, operationId: book.operationId, orgId: req.user!.organizationId,
+        beforeState: { folder: antes }, afterState: { folder: depois },
+      }, tx as any);
+      return next;
+    });
+    res.json({ showBook: updated });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao mover o show de pasta" });
   }
 });
 

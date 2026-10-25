@@ -43,6 +43,8 @@ export const showBooksTable = pgTable("show_books", {
   responsibleId: uuid("responsible_id").references(() => usersTable.id),
   // Formato do palco do show inteiro (0074): L, RET, QUAD ou NONE (sem mapa). Sem ele o mapa e as formações não aparecem.
   stageFormat: text("stage_format").$type<"L" | "RET" | "QUAD" | "NONE">().notNull().default("NONE"),
+  // Pasta livre dentro do local (0081), ex.: "Natal 2026". Null = "Sem pasta". Só organiza a lista; não muda nada do show.
+  folder: text("folder"),
   createdBy: uuid("created_by").notNull().references(() => usersTable.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
