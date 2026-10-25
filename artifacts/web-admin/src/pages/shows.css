@@ -600,3 +600,8 @@
   .show-mode .vaga-order .icon-button,.show-mode .vaga-actions .icon-button{width:34px;height:34px}
   .show-mode .show-mode-actions button{min-height:38px}
 }
+
+/* Editar o momento: lápis no canto de cima à esquerda do cartão (o X de remover fica à direita). */
+.official-book.v2 .official-edit-keyframe{position:absolute;z-index:3;top:6px;left:6px;width:34px;height:34px;display:grid;place-items:center;border:0;border-radius:50%;background:rgba(255,255,255,.92);color:var(--lv-accent);box-shadow:0 1px 4px rgba(27,22,48,.2);cursor:pointer}
+.official-book.v2 .official-edit-keyframe:hover{background:#fff;color:#5b23c9}
+@media (max-width:1100px),(pointer:coarse){.official-book.v2 .official-edit-keyframe{width:44px;height:44px;top:2px;left:2px}}
