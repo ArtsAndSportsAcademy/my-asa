@@ -3,7 +3,7 @@ import type { CSSProperties } from "react";
 import { Link } from "wouter";
 import type { Bloco, Pessoa } from "@/pages/escalas";
 import { useFecharComEsc } from "@/lib/fechar-com-esc";
-import { faixa, nomeDoTipo, textoDoBloco, tipoDoBloco } from "./tipos";
+import { faixa, resolverTipo, textoDoBloco, type TipoDoLocal } from "./tipos";
 import "./escala-tokens.css";
 
 export type BlocoMenuProps = {
@@ -13,6 +13,8 @@ export type BlocoMenuProps = {
   data: string;
   temChoque: boolean;
   excecao: boolean;
+  /** Tipos de atividade do local (dão o nome do tipo do bloco). */
+  tipos?: TipoDoLocal[];
   /** Quem pode mexer: a Administração em qualquer área, a Supervisão só na área dela. */
   pode: boolean;
   /** Frase da recusa (diz quem pode); vazia quando pode. */
@@ -27,7 +29,7 @@ export type BlocoMenuProps = {
 };
 
 /** Menu junto do bloco tocado. No celular sobe de baixo, sempre com "Fechar" à vista. */
-export function BlocoMenu({ bloco, pessoa, ancora, data, temChoque, excecao, pode, motivoSemPoder, ocupado, onFechar, onTirar, onMudarHorario, onAjustar, onSaiu }: BlocoMenuProps) {
+export function BlocoMenu({ bloco, pessoa, ancora, data, temChoque, excecao, tipos, pode, motivoSemPoder, ocupado, onFechar, onTirar, onMudarHorario, onAjustar, onSaiu }: BlocoMenuProps) {
   useFecharComEsc(onFechar);
   const raiz = useRef<HTMLDivElement>(null);
   useEffect(() => { raiz.current?.querySelector<HTMLElement>("button:not([disabled]),a")?.focus(); }, []);
@@ -44,7 +46,7 @@ export function BlocoMenu({ bloco, pessoa, ancora, data, temChoque, excecao, pod
     <div ref={raiz} className="ge-menu" role="menu" aria-label={`Ações de ${textoDoBloco(bloco)} para ${pessoa.name}`} style={posicao}>
       <div className="ge-menu-topo">
         <b>{`${pessoa.name} · ${textoDoBloco(bloco)}`}</b>
-        {`${faixa(bloco)} · ${nomeDoTipo(tipoDoBloco(bloco))}`}
+        {`${faixa(bloco)} · ${resolverTipo(bloco, tipos).nome}`}
         {temChoque && <span style={{ display: "block", color: "var(--esc-choque)", fontWeight: 700 }}>Choque de horário com outra atividade dela</span>}
         {excecao && <span style={{ display: "block", color: "var(--esc-excecao)", fontWeight: 700 }}>Exceção ao padrão do dia</span>}
       </div>

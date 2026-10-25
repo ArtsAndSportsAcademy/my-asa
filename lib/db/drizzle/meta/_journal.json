@@ -319,6 +319,7 @@
     {"idx":80,"version":"7","when":1793152800000,"tag":"0080_horario_so_da_pessoa","breakpoints":true},
     {"idx":81,"version":"7","when":1793239200000,"tag":"0081_pasta_do_show","breakpoints":true},
     {"idx":82,"version":"7","when":1793325600000,"tag":"0082_virada_do_dia","breakpoints":true},
-    {"idx":83,"version":"7","when":1793412000000,"tag":"0083_livro_conferido","breakpoints":true}
+    {"idx":83,"version":"7","when":1793412000000,"tag":"0083_livro_conferido","breakpoints":true},
+    {"idx":84,"version":"7","when":1793498400000,"tag":"0084_tipos_de_atividade","breakpoints":true}
   ]
 }

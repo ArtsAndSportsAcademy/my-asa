@@ -24,6 +24,7 @@ import {
   db,
   escalaAreasProntasTable,
   escalaBlocoAjustesTable,
+  escalaTiposTable,
   folgasTable,
   historyEventsTable,
   locationsTable,
@@ -63,6 +64,8 @@ export type BlocoDia = {
   dailyBookStatus: string | null;
   /** Tipo do show do Livro (COMPLETE, STRUCTURED, CHARACTERS_ONLY…): a Escala mostra "personagem → pessoa" só nos de personagens. */
   showTipo?: string | null;
+  /** Tipo de atividade escolhido na Programação ou na atividade só de hoje (0084); vazio = a tela adivinha pelo nome. */
+  tipoId?: string | null;
   blocoId: string | null;
   allocationId: string | null;
   /** Quando a mesma atividade manual vale para várias pessoas, todas as entradas do bloco. */
@@ -75,6 +78,9 @@ export type BlocoDia = {
 
 export type VagaDoLivro = { assignmentId: string; personagem: string; userId: string | null };
 
+/** Tipo de atividade do local, como a Escala o recebe. `chave` diz de qual dos sete tipos prontos ele nasceu; `active: false` = arquivado. */
+export type TipoDoLocal = { id: string; nome: string; cor: string; chave: string | null; ordem: number; active: boolean };
+
 export type EscalaDia = {
   date: string;
   location: { id: string; name: string };
@@ -83,7 +89,15 @@ export type EscalaDia = {
   areas: { id: string; name: string; supervisores: { id: string; name: string }[]; pronta: { por: string | null; em: Date } | null }[];
   pessoas: { id: string; name: string; areaId: string | null; areaName: string | null; folga: string | null; chamadaNaFolga?: { motivo: string | null; decidida: boolean } }[];
   blocos: BlocoDia[];
+  /** Os tipos de atividade do local (inclusive os arquivados, que ainda pintam o que já os usa). Vazio = o local ainda não tem lista. */
+  tipos?: TipoDoLocal[];
 };
+
+/** Os tipos de atividade de um local, na ordem da lista. */
+export async function tiposDoLocal(locationId: string, executor: Exec = db): Promise<TipoDoLocal[]> {
+  return executor.select({ id: escalaTiposTable.id, nome: escalaTiposTable.nome, cor: escalaTiposTable.cor, chave: escalaTiposTable.chave, ordem: escalaTiposTable.ordem, active: escalaTiposTable.active })
+    .from(escalaTiposTable).where(eq(escalaTiposTable.locationId, locationId)).orderBy(asc(escalaTiposTable.ordem), asc(escalaTiposTable.nome));
+}
 
 const hhmm = (value: string | null | undefined) => value ? value.slice(0, 5) : null;
 const weekdayOf = (date: string) => new Date(`${date}T12:00:00Z`).getUTCDay();
@@ -329,7 +343,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     if (vazio && !sinal) sinal = bloco.regra === "pessoas" && bloco.pessoaIds.length === 0 ? "Sem regra de quem entra — fica vazio até alguém decidir" : "Ninguém disponível para a regra deste bloco hoje";
     blocos.push({
       ...base, key: `p:${bloco.id}`, rotulo: bloco.rotulo, inicio, fim: hhmm(bloco.fim), origem: "programacao", regra: bloco.regra,
-      pessoaIds, vazio, sinal, blocoId: bloco.id, showBookId: bloco.showBookId,
+      pessoaIds, vazio, sinal, blocoId: bloco.id, showBookId: bloco.showBookId, tipoId: bloco.tipoId ?? null,
       dailyBookId: livro?.id ?? null, dailyBookStatus: livro?.status ?? null, showTipo: livro?.showType ?? null,
       ...(livro ? { vagas: vagas.get(livro.id) ?? [] } : {}),
     });
@@ -371,12 +385,12 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     ));
     // A mesma atividade criada para várias pessoas é um bloco só na grade: agrupa por
     // rótulo e horário, na ordem em que foi criada.
-    const grupos = new Map<string, { label: string; inicio: string; fim: string | null; ids: string[]; pessoaIds: string[] }>();
+    const grupos = new Map<string, { label: string; inicio: string; fim: string | null; ids: string[]; pessoaIds: string[]; tipoId: string | null }>();
     for (const m of manuais) {
       if (!m.manualLabel || !m.startTime) continue;
       const inicio = hhmm(m.startTime)!, fim = hhmm(m.endTime);
       const chave = `${m.manualLabel}|${inicio}|${fim ?? ""}`;
-      const grupo = grupos.get(chave) ?? { label: m.manualLabel, inicio, fim, ids: [], pessoaIds: [] };
+      const grupo = grupos.get(chave) ?? { label: m.manualLabel, inicio, fim, ids: [], pessoaIds: [], tipoId: m.tipoId ?? null };
       grupo.ids.push(m.id);
       if (m.userId && present.has(m.userId) && !grupo.pessoaIds.includes(m.userId)) grupo.pessoaIds.push(m.userId);
       grupos.set(chave, grupo);
@@ -385,7 +399,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
       blocos.push({
         ...base, key: `m:${g.ids[0]}`, rotulo: g.label, inicio: g.inicio, fim: g.fim, origem: "manual", regra: "pessoas",
         pessoaIds: g.pessoaIds, vazio: g.pessoaIds.length === 0, sinal: g.pessoaIds.length ? null : "Entrada manual sem ninguém",
-        allocationId: g.ids[0]!, allocationIds: g.ids,
+        allocationId: g.ids[0]!, allocationIds: g.ids, tipoId: g.tipoId,
       });
     }
   }
@@ -434,7 +448,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
       blocos.push({
         ...base, key: `h:${original.key}:${h.userId}`, rotulo: original.rotulo, inicio: h.newStart, fim: h.newEnd ?? null, origem: original.origem, regra: "pessoas",
         pessoaIds: [h.userId], vazio: false, sinal: `Horário só desta pessoa: era ${original.inicio}${original.fim ? `–${original.fim}` : ""}`,
-        horarioDela: { chaveOriginal: original.key, inicio: original.inicio, fim: original.fim },
+        horarioDela: { chaveOriginal: original.key, inicio: original.inicio, fim: original.fim }, tipoId: original.tipoId ?? null,
       });
     }
     for (const bloco of blocos) {
@@ -470,6 +484,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
       };
     }),
     blocos,
+    tipos: await tiposDoLocal(locationId),
   };
 }
 

@@ -34,9 +34,37 @@ export const programacoesTable = pgTable("programacoes", {
 export const REGRAS_BLOCO = ["todos", "ninguem", "area", "grupo", "pessoas", "livro"] as const;
 export type RegraBloco = typeof REGRAS_BLOCO[number];
 
+/** As cores que um tipo de atividade pode ter: lista fixa de 15 (cada uma tem fundo, texto e borda com contraste de leitura, e o nome do tipo vem sempre escrito). As 7 primeiras são as dos tipos prontos. */
+export const CORES_DE_TIPO = ["gelo", "ensaio", "show", "inter", "prod", "pausa", "outra", "coral", "magenta", "oliva", "marrom", "lima", "grafite", "dourado", "rubi"] as const;
+export type CorDeTipo = typeof CORES_DE_TIPO[number];
+
+/**
+ * Tipos de atividade de um local (0084): "Treinos no gelo", "Shows e teatro"… Cada local começa com os sete da planilha de papel
+ * (`chave` guarda de qual dos sete o tipo nasceu; é o que o palpite pelo nome usa, mesmo depois de renomeado). Só a Administração cria,
+ * renomeia e arquiva. Tipo nunca é apagado: arquivar só o tira da lista de escolha (dá para desarquivar), e o que já usa continua mostrando.
+ */
+export const escalaTiposTable = pgTable("escala_tipos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizationsTable.id),
+  locationId: uuid("location_id").notNull().references(() => locationsTable.id),
+  nome: text("nome").notNull(),
+  cor: text("cor").$type<CorDeTipo>().notNull(),
+  chave: text("chave").$type<CorDeTipo>(),
+  ordem: integer("ordem").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  check("escala_tipos_cor_ck", sql`${table.cor} IN ('gelo','ensaio','show','inter','prod','pausa','outra','coral','magenta','oliva','marrom','lima','grafite','dourado','rubi')`),
+  uniqueIndex("escala_tipos_local_chave_uq").on(table.locationId, table.chave).where(sql`${table.chave} IS NOT NULL`),
+  uniqueIndex("escala_tipos_local_nome_uq").on(table.locationId, sql`lower(${table.nome})`).where(sql`${table.active}`),
+]);
+
 export const programacaoBlocosTable = pgTable("programacao_blocos", {
   id: uuid("id").primaryKey().defaultRandom(),
   programacaoId: uuid("programacao_id").notNull().references(() => programacoesTable.id),
+  // 0084: o tipo escolhido na Programação. Vazio = o app adivinha pelo nome, como sempre fez.
+  tipoId: uuid("tipo_id").references(() => escalaTiposTable.id),
   // 0 = domingo … 6 = sábado
   weekday: integer("weekday").notNull(),
   inicio: time("inicio").notNull(),

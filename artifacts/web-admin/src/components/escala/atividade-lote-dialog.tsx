@@ -3,7 +3,8 @@ import { X } from "lucide-react";
 import { css } from "@/lib/dc-style";
 import { useFecharComEsc } from "@/lib/fechar-com-esc";
 import type { Bloco, Pessoa } from "@/pages/escalas";
-import { fimEmMinutos, minutosDe, textoDoBloco } from "./tipos";
+import { fimEmMinutos, minutosDe, textoDoBloco, type TipoDoLocal } from "./tipos";
+import { TipoSelect } from "./tipo-select";
 import "./escala-tokens.css";
 
 const plural = (n: number, um: string, muitos: string) => `${n} ${n === 1 ? um : muitos}`;
@@ -19,15 +20,18 @@ export type AtividadeLoteProps = {
   areasQueSupervisiona: string[] | null;
   saving: boolean;
   onClose: () => void;
-  onSubmit: (v: { pessoaIds: string[]; rotulo: string; inicio: string; fim: string }) => Promise<void>;
+  onSubmit: (v: { pessoaIds: string[]; rotulo: string; inicio: string; fim: string; tipoId: string | null }) => Promise<void>;
+  /** Tipos de atividade do local: o tipo escolhido dá a cor da atividade na Escala (sem escolha, a tela adivinha pelo nome). */
+  tipos: TipoDoLocal[];
 };
 
 /** Uma atividade que só existe neste dia, para várias pessoas de uma vez: marcar por área, ou pessoa por pessoa, e conferir a prévia antes de gravar. */
-export function AtividadeLoteDialog({ pessoas, areas, blocos, areasQueSupervisiona, saving, onClose, onSubmit }: AtividadeLoteProps) {
+export function AtividadeLoteDialog({ tipos, pessoas, areas, blocos, areasQueSupervisiona, saving, onClose, onSubmit }: AtividadeLoteProps) {
   useFecharComEsc(onClose);
   const [escolhidas, setEscolhidas] = useState<string[]>([]);
   const [busca, setBusca] = useState("");
   const [rotulo, setRotulo] = useState("");
+  const [tipoId, setTipoId] = useState<string | null>(null);
   const [inicio, setInicio] = useState("");
   const [fim, setFim] = useState("");
   const [erro, setErro] = useState("");
@@ -59,7 +63,7 @@ export function AtividadeLoteDialog({ pessoas, areas, blocos, areasQueSupervisio
     e.preventDefault();
     if (!pronto || saving) return;
     setErro("");
-    try { await onSubmit({ pessoaIds: escolhidas, rotulo: rotulo.trim(), inicio, fim }); } catch { setErro("Não consegui pôr a atividade no dia. Nada foi alterado; tente de novo."); }
+    try { await onSubmit({ pessoaIds: escolhidas, rotulo: rotulo.trim(), inicio, fim, tipoId }); } catch { setErro("Não consegui pôr a atividade no dia. Nada foi alterado; tente de novo."); }
   };
   const campo = "width:100%;box-sizing:border-box;min-height:44px;border:1px solid var(--asa-line-soft);border-radius:10px;padding:8px 12px;font:600 13px Manrope,sans-serif;color:var(--asa-ink-dark)";
   const atalho = (ativo: boolean) => "min-height:44px;border-radius:999px;padding:6px 13px;font-size:12px;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap;" + (ativo ? "border:1px solid var(--asa-ink-dark);background:var(--asa-ink-dark);color:#fff;font-weight:700;" : "border:1px solid var(--asa-line);background:#fff;color:var(--asa-ink-medium);font-weight:600;");
@@ -94,6 +98,7 @@ export function AtividadeLoteDialog({ pessoas, areas, blocos, areasQueSupervisio
       <label>O que é<input value={rotulo} onChange={(e) => setRotulo(e.target.value)} placeholder="Prova de figurino" maxLength={60} required/></label>
       <label>Começa às<input type="time" value={inicio} onChange={(e) => setInicio(e.target.value)} required/></label>
       <label>Termina às (opcional)<input type="time" value={fim} onChange={(e) => setFim(e.target.value)}/></label>
+      <label>Tipo (dá a cor na Escala)<TipoSelect tipos={tipos} value={tipoId} onChange={setTipoId}/></label>
       {fim !== "" && HORA.test(inicio) && fim <= inicio && <span role="alert" style={css("font-size:12px;color:var(--asa-ausente-fg)")}>O fim precisa ser depois do início.</span>}
       {parecShow && <span style={css("font-size:12px;color:var(--asa-label);line-height:1.45")}>Show é do Livro do Dia: quem faz cada posição é decidido lá. Aqui entra só atividade que não é show.</span>}
 

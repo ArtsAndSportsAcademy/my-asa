@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lte, desc, isNotNull, inArray, or, isNull, ne } from "drizzle-orm";
 import { avisarRepublicacaoPendente, escalaPublicada } from "../services/escala-dia.js";
+import { recusaDoTipo } from "../services/escala-tipos.js";
 import { db } from "@workspace/db";
 import {
   scalesTable,
@@ -982,6 +983,8 @@ router.post("/scales/:id/entries", requireAuth, requireOrganization, async (req,
   const userId = user.sub;
   let expectedVersion: number | null = null;
   const { memberId, memberIds, date, label, startTime, endTime, notes } = req.body;
+  // Tipo da atividade (0084): opcional; vazio = a tela adivinha pelo nome.
+  const tipoId: string | null = typeof req.body?.tipoId === "string" && req.body.tipoId ? req.body.tipoId : null;
   // Uma atividade pode valer para várias pessoas de uma vez (`memberIds`); `memberId` continua
   // valendo para uma só, e as duas formas gravam uma entrada por pessoa na mesma versão da Escala.
   const quem: string[] = [...new Set([...(Array.isArray(memberIds) ? memberIds : []), ...(memberId ? [memberId] : [])]
@@ -1005,6 +1008,10 @@ router.post("/scales/:id/entries", requireAuth, requireOrganization, async (req,
       res.status(403).json({ error: "ACESSO_NEGADO", message: recusaDaEscalaDoDia(user.role) });
       return;
     }
+    if (tipoId) {
+      const recusaTipo = await recusaDoTipo(tipoId, scale.locationId);
+      if (recusaTipo) { res.status(400).json({ error: "TIPO_INVALIDO", message: recusaTipo }); return; }
+    }
     expectedVersion = requireExpectedVersion(req, res, "a Escala");
     if (expectedVersion === null) return;
     const beforeSnapshot = await buildScaleVersionSnapshot(id);
@@ -1022,6 +1029,7 @@ router.post("/scales/:id/entries", requireAuth, requireOrganization, async (req,
           status: "MANUAL_OVERRIDE" as const,
           manualDate: date,
           manualLabel: label,
+          tipoId,
           startTime: startTime ?? null,
           endTime: endTime ?? null,
           notes: notes ?? null,
@@ -1146,7 +1154,10 @@ router.patch("/scales/:id/entries/:entryId", requireAuth, requireOrganization, a
     res.status(400).json({ error: "label, startTime (HH:MM) e endTime (HH:MM ou nulo) opcionais, mas válidos" });
     return;
   }
-  if (label === undefined && startTime === undefined && endTime === undefined) { res.status(400).json({ error: "nada para mudar" }); return; }
+  // `tipoId` ausente = não mexe; nulo ou vazio = tira o tipo escolhido (volta a adivinhar pelo nome).
+  const tipoEnviado = req.body?.tipoId !== undefined;
+  const tipoId: string | null = typeof req.body?.tipoId === "string" && req.body.tipoId ? req.body.tipoId : null;
+  if (label === undefined && startTime === undefined && endTime === undefined && !tipoEnviado) { res.status(400).json({ error: "nada para mudar" }); return; }
   let expectedVersion: number | null = null;
   try {
     const scale = await getScaleOrFail(id, user.organizationId, res);
@@ -1155,11 +1166,18 @@ router.patch("/scales/:id/entries/:entryId", requireAuth, requireOrganization, a
     if (!(await podeMexerNaEscalaDoDia(user, scale))) {
       res.status(403).json({ error: "ACESSO_NEGADO", message: recusaDaEscalaDoDia(user.role) }); return;
     }
+    if (tipoEnviado && tipoId) {
+      // Tipo arquivado só passa se a atividade já o tinha: corrigir o horário de uma atividade antiga não pode ser barrado.
+      const [atual] = await db.select({ tipoId: scaleAllocationsTable.tipoId }).from(scaleAllocationsTable).where(and(inArray(scaleAllocationsTable.id, alvos), eq(scaleAllocationsTable.scaleId, id))).limit(1);
+      const recusaTipo = await recusaDoTipo(tipoId, scale.locationId, atual?.tipoId ?? null);
+      if (recusaTipo) { res.status(400).json({ error: "TIPO_INVALIDO", message: recusaTipo }); return; }
+    }
     expectedVersion = requireExpectedVersion(req, res, "a Escala");
     if (expectedVersion === null) return;
     const beforeSnapshot = await buildScaleVersionSnapshot(id);
     const patch = {
       ...(label !== undefined ? { manualLabel: (label as string).trim() } : {}),
+      ...(tipoEnviado ? { tipoId } : {}),
       ...(startTime !== undefined ? { startTime: startTime as string } : {}),
       ...(endTime !== undefined ? { endTime: (endTime as string | null) } : {}),
       updatedAt: new Date(),
@@ -1511,6 +1529,7 @@ router.post("/scales/:id/duplicate-previous", requireAuth, requireOrganization, 
             status: "MANUAL_OVERRIDE" as const,
             manualDate: shiftOperationalDate(e.manualDate!, 7),
             manualLabel: e.manualLabel,
+            tipoId: e.tipoId,
             startTime: e.startTime,
             endTime: e.endTime,
             notes: e.notes,

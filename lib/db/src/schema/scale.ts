@@ -62,6 +62,8 @@ export const scaleAllocationsTable = pgTable("scale_allocations", {
   // Campos para entradas manuais (sem evento de agenda)
   manualDate: date("manual_date", { mode: "string" }),
   manualLabel: text("manual_label"),
+  // 0084: o tipo escolhido na atividade só de hoje (escala_tipos). Vazio = o app adivinha pelo nome.
+  tipoId: uuid("tipo_id"),
   startTime: text("start_time"),
   endTime: text("end_time"),
   active: boolean("active").notNull().default(true),

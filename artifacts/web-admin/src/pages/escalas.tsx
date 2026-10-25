@@ -12,7 +12,9 @@ import { AtencaoDoDia, type ConflitoDaPessoa, type GrupoDeConflito } from "@/com
 import { BlocoMenu } from "@/components/escala/bloco-menu";
 import { GradePessoa } from "@/components/escala/grade-pessoa";
 import { ResumoDoDia, trabalhaNoDia } from "@/components/escala/resumo-do-dia";
-import { TIPOS, ehExcecao, faixa, quandoDoDia, textoDoBloco, tipoDoBloco, toneDoTipo } from "@/components/escala/tipos";
+import { TIPOS, ehExcecao, faixa, quandoDoDia, resolverTipo, textoDoBloco, toneDoTipo, type TipoDoLocal } from "@/components/escala/tipos";
+import { TipoSelect } from "@/components/escala/tipo-select";
+import { TiposDialog } from "@/components/escala/tipos-dialog";
 import "@/components/escala/escala-tokens.css";
 import { diaQueAEscalaAbre, type ViradaDoDia } from "@/lib/dia-da-escala";
 import { SaiuDialog, type PreviaDaSaida, type SaiuApi } from "@/components/escala/saiu-dialog";
@@ -28,7 +30,7 @@ import "./escalas.css";
 
 type Role = "adm" | "dir" | "sup" | "mem";
 type Regra = "todos" | "ninguem" | "area" | "grupo" | "pessoas" | "livro";
-export type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; origem: "programacao" | "livro" | "manual" | "solicitacao"; regra: Regra | null; pessoaIds: string[]; vazio: boolean; sinal: string | null; showBookId: string | null; dailyBookId: string | null; dailyBookStatus: string | null; blocoId: string | null; allocationId?: string | null; allocationIds?: string[]; vagas?: VagaDoLivro[]; showTipo?: string | null; horarioDela?: { chaveOriginal: string; inicio: string; fim: string | null } };
+export type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; origem: "programacao" | "livro" | "manual" | "solicitacao"; regra: Regra | null; pessoaIds: string[]; vazio: boolean; sinal: string | null; showBookId: string | null; dailyBookId: string | null; dailyBookStatus: string | null; blocoId: string | null; allocationId?: string | null; allocationIds?: string[]; vagas?: VagaDoLivro[]; showTipo?: string | null; tipoId?: string | null; horarioDela?: { chaveOriginal: string; inicio: string; fim: string | null } };
 /** Personagem de um bloco que vem de Livro do Dia: quem o faz hoje (ou ninguém, se a vaga está aberta). */
 type VagaDoLivro = { assignmentId: string; personagem: string; userId: string | null };
 /** Uma mexida no bloco; com `assignmentId`, vale para aquele personagem e não para "a primeira vaga aberta". */
@@ -37,11 +39,11 @@ export type Pessoa = { id: string; name: string; areaId: string | null; areaName
 type Area = { id: string; name: string; supervisores: { id: string; name: string }[]; pronta: { por: string | null; em: string } | null };
 /** Alguém de outra área mexeu na escala desta pessoa: quem mexeu e o quê, para a Supervisão da pessoa ver. */
 export type Mexida = { pessoaId: string; pessoaNome: string; pessoaAreaNome: string | null; porId: string; porNome: string; porAreaNome: string | null; em: string; texto: string };
-export type Dia = { date: string; location: { id: string; name: string }; escala: { id: string; status: string; version: number; publishedAt: string | null; alteradaDesde: string | null } | null; programacao: { id: string; nome: string; vigenciaInicio: string; vigenciaFim: string } | null; areas: Area[]; pessoas: Pessoa[]; blocos: Bloco[]; mexidas?: Mexida[] };
+export type Dia = { date: string; location: { id: string; name: string }; escala: { id: string; status: string; version: number; publishedAt: string | null; alteradaDesde: string | null } | null; programacao: { id: string; nome: string; vigenciaInicio: string; vigenciaFim: string } | null; areas: Area[]; pessoas: Pessoa[]; blocos: Bloco[]; mexidas?: Mexida[]; tipos?: TipoDoLocal[] };
 type Local = { id: string; name: string; podeEditar: boolean; areasSupervisionadas: string[]; viradaDoDia?: ViradaDoDia };
-type ProgBloco = SampleProgramacao["blocos"][number];
+type ProgBloco = SampleProgramacao["blocos"][number] & { tipoId?: string | null };
 type Programacao = { id: string; locationId: string; nome: string; vigenciaInicio: string; vigenciaFim: string; active?: boolean; blocos: ProgBloco[] };
-type MinhaLocal = { location: { id: string; name: string }; publishedAt?: string | null; folga?: string | null; confirmada?: boolean; confirmedAt?: string | null; escalaId: string; escalaVersion: number; blocos: Omit<Bloco, "pessoaIds">[] };
+type MinhaLocal = { location: { id: string; name: string }; publishedAt?: string | null; folga?: string | null; confirmada?: boolean; confirmedAt?: string | null; escalaId: string; escalaVersion: number; blocos: Omit<Bloco, "pessoaIds">[]; tipos?: TipoDoLocal[] };
 type Minha = { date: string; publicada: boolean; escalas?: MinhaLocal[]; location?: { id: string; name: string } | null; publishedAt?: string | null; folga?: string | null; confirmada?: boolean; confirmedAt?: string | null; escalaId?: string | null; escalaVersion?: number | null; blocos?: Omit<Bloco, "pessoaIds">[] };
 
 /* ---------- valores do .dc.html ---------- */
@@ -97,8 +99,8 @@ const initials = (name: string) => name.normalize("NFD").replace(/[̀-ͯ]/g, "")
 const plural = (n: number, um: string, muitos: string) => `${n} ${n === 1 ? um : muitos}`;
 
 /** Cor do bloco: vem do tipo (show pelo Livro, almoço, treino, ensaio…), com contraste forte. O nome do tipo continua escrito no bloco. */
-function toneOf(b: { rotulo: string; regra: Regra | null }): Tone {
-  return toneDoTipo(tipoDoBloco(b));
+function toneOf(b: { rotulo: string; regra: Regra | null; tipoId?: string | null }, tipos?: TipoDoLocal[]): Tone {
+  return toneDoTipo(resolverTipo(b, tipos).cor);
 }
 const FOLGA: Record<string, { label: string; tone: Tone }> = {
   DAY_OFF: { label: "Folga", tone: T.ausente }, RECESSO: { label: "Recesso", tone: T.ferias }, NO_SHOW: { label: "No show", tone: T.ausente },
@@ -339,13 +341,13 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
     } catch (err) { setError(errMsg(err, "Não consegui ajustar esta célula.")); } finally { setSaving(false); }
   };
   /** Atividade só deste dia, fora da Programação: entra como entrada manual da própria Escala. */
-  const criarEntradaManual = async (v: { pessoaIds: string[]; rotulo: string; inicio: string; fim: string }) => {
+  const criarEntradaManual = async (v: { pessoaIds: string[]; rotulo: string; inicio: string; fim: string; tipoId?: string | null }) => {
     if (!dia?.escala) return;
     setSaving(true); setBusy("manual"); setError("");
     try {
       if (!review) {
         const r = await customFetch<{ entries?: { id: string }[] }>(`/api/scales/${dia.escala.id}/entries`, { method: "POST", headers: { "if-match": String(dia.escala.version) },
-          body: JSON.stringify({ memberIds: v.pessoaIds, date, label: v.rotulo, startTime: v.inicio, endTime: v.fim || null }) });
+          body: JSON.stringify({ memberIds: v.pessoaIds, date, label: v.rotulo, startTime: v.inicio, endTime: v.fim || null, tipoId: v.tipoId ?? null }) });
         const ids = (r.entries ?? []).map((e) => e.id);
         if (ids.length) setDesfazerLote({ texto: `${v.rotulo} entrou no dia para ${plural(v.pessoaIds.length, "pessoa", "pessoas")}.`, escalaId: dia.escala.id, ids });
       }
@@ -361,13 +363,13 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       setRefresh((n) => n + 1);
     } catch (err) { setError(errMsg(err, "Não consegui desfazer. A atividade continua no dia.")); setRefresh((n) => n + 1); }
   };
-  const editarEntradaManual = async (allocationIds: string[], v: { rotulo: string; inicio: string; fim: string }) => {
+  const editarEntradaManual = async (allocationIds: string[], v: { rotulo: string; inicio: string; fim: string; tipoId?: string | null }) => {
     if (!dia?.escala || !allocationIds.length) return;
     setSaving(true); setBusy("manual"); setError("");
     try {
       if (!review) {
         await customFetch(`/api/scales/${dia.escala.id}/entries/${allocationIds[0]}`, { method: "PATCH", headers: { "if-match": String(dia.escala.version) },
-          body: JSON.stringify({ entryIds: allocationIds, label: v.rotulo, startTime: v.inicio, endTime: v.fim || null }) });
+          body: JSON.stringify({ entryIds: allocationIds, label: v.rotulo, startTime: v.inicio, endTime: v.fim || null, tipoId: v.tipoId ?? null }) });
       }
       setManual(null); setRefresh((n) => n + 1);
     } catch (err) { setError(errMsg(err, "Não consegui mudar a atividade.")); } finally { setSaving(false); setBusy(""); }
@@ -482,9 +484,9 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       {!isMem && tab === "prog" && localId && <ProgramacaoTab review={review} localId={localId} localName={operationLabel} date={date} dia={dia} canEdit={Boolean(local?.podeEditar)} onChanged={() => setRefresh((n) => n + 1)}/>}
     </div>
 
-    {manual && dia && manual.bloco && <AtividadeDeHojeDialog pessoas={dia.pessoas} bloco={manual.bloco} saving={busy === "manual"} onClose={() => setManual(null)}
+    {manual && dia && manual.bloco && <AtividadeDeHojeDialog tipos={dia.tipos ?? []} pessoas={dia.pessoas} bloco={manual.bloco} saving={busy === "manual"} onClose={() => setManual(null)}
       onSubmit={async (v) => { const alvo = manual.bloco!; await editarEntradaManual(alvo.allocationIds?.length ? alvo.allocationIds : [alvo.allocationId!], v); }}/>}
-    {manual && dia && !manual.bloco && <AtividadeLoteDialog pessoas={dia.pessoas} areas={dia.areas} blocos={dia.blocos} areasQueSupervisiona={isAdm ? null : areasMinhas} saving={busy === "manual"} onClose={() => setManual(null)} onSubmit={criarEntradaManual}/>}
+    {manual && dia && !manual.bloco && <AtividadeLoteDialog tipos={dia.tipos ?? []} pessoas={dia.pessoas} areas={dia.areas} blocos={dia.blocos} areasQueSupervisiona={isAdm ? null : areasMinhas} saving={busy === "manual"} onClose={() => setManual(null)} onSubmit={criarEntradaManual}/>}
     {desfazerLote && <div className="ge-desfazer" role="status"><span>{desfazerLote.texto}</span><button type="button" onClick={() => void desfazerAtividade()}>Desfazer</button></div>}
 
     {regrasAbertas && isAdm && localId && <RegrasDoLocalDialog localId={localId} localNome={locais.find((l) => l.id === localId)?.name ?? "este local"} onClose={() => setRegrasAbertas(false)}/>}
@@ -626,7 +628,7 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
   useEffect(() => { if (!desfazer) return; const id = window.setTimeout(() => setDesfazer(null), 9000); return () => window.clearTimeout(id); }, [desfazer]);
 
   const blockEl = (b: Bloco, extra = "", semHora = false) => {
-    const tone = toneOf(b);
+    const tone = toneOf(b, dia.tipos);
     const inner = <>
       {b.dailyBookId && <span title={`Livro do Dia · ${b.dailyBookStatus ?? ""}`} style={css("width:6px;height:6px;border-radius:50%;flex:none;background:" + (b.dailyBookStatus === "DRAFT" ? "var(--asa-vaga-fg)" : "var(--asa-prep-fg)") + ";")}/>}
       <span style={css("overflow:hidden;text-overflow:ellipsis")}>{textoDoBloco(b)}</span>
@@ -637,6 +639,8 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
       : <div key={b.key} style={css(blockStyle(tone, extra))}>{inner}</div>;
   };
 
+  // Legenda de cores: os tipos do local (os arquivados só se ainda pintam algum bloco do dia); sem lista, os sete de fábrica.
+  const legenda = dia.tipos?.length ? dia.tipos.filter((t) => t.active || dia.blocos.some((b) => b.tipoId === t.id)) : TIPOS.map((t) => ({ id: t.key, nome: t.label, cor: t.key }));
   const pessoaSelecionada = selecionada ? dia.pessoas.find((p) => p.id === selecionada) ?? null : null;
   const irParaAtencao = () => { window.dispatchEvent(new Event("ge-abrir-atencao")); window.setTimeout(() => document.getElementById("atencao-do-dia")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60); };
   const botaoDeVisao = (ativo: boolean) => "border-radius:8px;padding:8px 14px;font-size:12px;cursor:pointer;font-family:Manrope,sans-serif;border:none;" + (ativo ? "background:#fff;color:var(--asa-ink-dark);font-weight:700;box-shadow:0 1px 3px rgba(40,20,90,.14);" : "background:none;color:var(--asa-label);font-weight:600;");
@@ -671,7 +675,7 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
     {termo && !achadas.length && <div role="status" style={css("font-size:12.5px;color:var(--asa-label);padding:2px 4px")}>{`Ninguém com "${busca.trim()}" no nome.`}</div>}
 
     {view === "pessoa" && !telefone && <div className="ge-legenda" aria-label="Cores por tipo de atividade">
-      {TIPOS.map((t) => <span key={t.key} style={{ "--bg": `var(--esc-t-${t.key}-bg)`, "--fg": `var(--esc-t-${t.key}-fg)` } as CSSProperties}>{t.label}</span>)}
+      {legenda.map((t) => <span key={t.id} style={{ "--bg": `var(--esc-t-${t.cor}-bg)`, "--fg": `var(--esc-t-${t.cor}-fg)` } as CSSProperties}>{t.nome}</span>)}
       <span className="ge-leg-estado"><i style={{ boxShadow: "inset 0 0 0 2px var(--esc-choque)" }}/>choque de horário</span>
       <span className="ge-leg-estado"><i style={{ boxShadow: "inset 0 0 0 2px var(--esc-excecao)" }}/>exceção</span>
     </div>}
@@ -704,7 +708,7 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
       })}
       {!cols.length && <li className="esc-cartao-vazio">{team === "todos" ? "Ninguém trabalha neste dia." : "Ninguém deste grupo trabalha neste dia."}</li>}
     </ul> : view === "pessoa"
-      ? <GradePessoa colunas={cols} blocosDe={blocosDe} temChoque={temChoque} mexidoPor={mexidoPor} soExcecoes={soExcecoes} busca={buscaIds} selecionada={selecionada}
+      ? <GradePessoa colunas={cols} blocosDe={blocosDe} temChoque={temChoque} tipos={dia.tipos} mexidoPor={mexidoPor} soExcecoes={soExcecoes} busca={buscaIds} selecionada={selecionada}
           onEscolherPessoa={(id) => setSelecionada((atual) => (atual === id ? null : id))} onTocarBloco={(bloco, pessoa, el) => setMenu({ bloco, pessoa, rect: el.getBoundingClientRect() })}/>
       : <div style={css("border:1px solid var(--asa-line-soft);border-radius:12px;overflow:hidden;background:#fff;")}>
         <table className="esc-tab-atividade" style={css("border-collapse:separate;border-spacing:0;width:100%;font-size:12.5px")}>
@@ -759,7 +763,7 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
       </div>
       {blocosDe(pessoaSelecionada.id).sort((a, b) => a.inicio.localeCompare(b.inicio)).map((b) => <div key={b.key} style={css("display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600")}>
         <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;min-width:96px;color:var(--asa-label)")}>{faixa(b)}</span>
-        <span style={css(blockStyle(toneOf(b)))}>{textoDoBloco(b)}</span>
+        <span style={css(blockStyle(toneOf(b, dia.tipos)))}>{textoDoBloco(b)}</span>
         {temChoque(pessoaSelecionada, b) && <span style={css("font-size:12px;color:var(--esc-choque);font-weight:700")}>choque</span>}
       </div>)}
       {!blocosDe(pessoaSelecionada.id).length && <span style={css("font-size:12.5px;color:var(--asa-label)")}>Sem atividades neste dia.</span>}
@@ -767,7 +771,7 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
 
     <div style={css("height:16px")}/>
     {desfazer && <div className="ge-desfazer" role="status"><span>{desfazer.texto}</span><button type="button" onClick={() => { const { acao } = desfazer; setDesfazer(null); void acao().catch(() => undefined); }}>Desfazer</button></div>}
-    {menu && <BlocoMenu bloco={menu.bloco} pessoa={menu.pessoa} ancora={menu.rect} data={dia.date} temChoque={temChoque(menu.pessoa, menu.bloco)} excecao={ehExcecao(menu.bloco)} pode={podeMexer(menu.pessoa)} motivoSemPoder={frasePorQueNao(menu.pessoa)} ocupado={tirando !== ""}
+    {menu && <BlocoMenu bloco={menu.bloco} pessoa={menu.pessoa} ancora={menu.rect} data={dia.date} temChoque={temChoque(menu.pessoa, menu.bloco)} excecao={ehExcecao(menu.bloco)} tipos={dia.tipos} pode={podeMexer(menu.pessoa)} motivoSemPoder={frasePorQueNao(menu.pessoa)} ocupado={tirando !== ""}
       onFechar={() => setMenu(null)}
       onTirar={() => { const { bloco, pessoa } = menu; setMenu(null); void tirarDoBloco(bloco, pessoa); }}
       onMudarHorario={() => { const { bloco, pessoa } = menu; const par = conflitos.find((c) => c.pessoaId === pessoa.id && (c.a.key === bloco.key || c.b.key === bloco.key)); setMenu(null); setMudandoHorario({ pessoaId: pessoa.id, nome: pessoa.name, bloco, outro: par ? (par.a.key === bloco.key ? par.b : par.a) : null }); }}
@@ -1187,7 +1191,7 @@ function MinhaEscalaLocal({ minha, date, onHoje, onConfirm, saving }: { minha: M
       <Link href="/solicitacoes" className="esc-hit" style={css(btn("ghost") + "text-decoration:none;")}>Pedir troca ou horário</Link>
     </div>}
     {minha.blocos.map((b) => {
-      const tone = toneOf(b);
+      const tone = toneOf(b, minha.tipos);
       const livro = Boolean(b.dailyBookId) && b.dailyBookStatus !== "DRAFT";
       const row = <>
         <div style={css("display:flex;flex-direction:column;gap:2px;width:104px;flex:none")}>
@@ -1214,7 +1218,7 @@ function MinhaEscalaLocal({ minha, date, onHoje, onConfirm, saving }: { minha: M
 /* ---------- aba Programação: o molde ---------- */
 
 /** Nome, para a pessoa, de cada campo do bloco que ela mudou (aparece no rodapé). */
-const ROTULO_DO_CAMPO: Record<string, string> = { rotulo: "a atividade", inicio: "o início", fim: "o fim", regra: "quem entra", areaIds: "as áreas", pessoaIds: "as pessoas" };
+const ROTULO_DO_CAMPO: Record<string, string> = { tipoId: "o tipo", rotulo: "a atividade", inicio: "o início", fim: "o fim", regra: "quem entra", areaIds: "as áreas", pessoaIds: "as pessoas" };
 const REGRA_LABEL: Record<Regra, string> = { todos: "Todo mundo do local", ninguem: "Sem participantes", area: "Por área", grupo: "Por grupo", pessoas: "Pessoas específicas", livro: "Show → Livro do Dia" };
 function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChanged }: { review: boolean; localId: string; localName: string; date: string; dia: Dia | null; canEdit: boolean; onChanged: () => void }) {
   const [list, setList] = useState<Programacao[]>([]);
@@ -1222,7 +1226,9 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
   const [wd, setWd] = useState(weekdayOf(date));
   const [sel, setSel] = useState("");
   const [shows, setShows] = useState<{ id: string; title: string }[]>([]);
-  const [dialog, setDialog] = useState<"molde" | "bloco" | "duplicar" | "vigencia" | null>(null);
+  const [tipos, setTipos] = useState<TipoDoLocal[]>([]);
+  const [podeEditarTipos, setPodeEditarTipos] = useState(false);
+  const [dialog, setDialog] = useState<"molde" | "bloco" | "duplicar" | "vigencia" | "tipos" | null>(null);
   const [confirmar, setConfirmar] = useState<{ titulo: string; texto: string; acao: string; onSim: () => void } | null>(null);
   const [error, setError] = useState("");
   const [tick, setTick] = useState(0);
@@ -1235,7 +1241,7 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
   useEffect(() => {
     setError("");
     if (review) { const l = loadSampleProgramacoes(localId) as Programacao[]; setList(l); setShows(sampleShowsDoLocal(localId)); return; }
-    customFetch<{ programacoes: Programacao[] }>(`/api/programacoes?locationId=${localId}`).then((r) => setList(r.programacoes.map((p) => ({ ...p, blocos: p.blocos.map((b) => ({ ...b, inicio: b.inicio.slice(0, 5), fim: b.fim ? b.fim.slice(0, 5) : null })) })))).catch(() => setError("Não consegui carregar a Programação."));
+    customFetch<{ programacoes: Programacao[]; tipos?: TipoDoLocal[]; podeEditarTipos?: boolean }>(`/api/programacoes?locationId=${localId}`).then((r) => { setTipos(r.tipos ?? []); setPodeEditarTipos(Boolean(r.podeEditarTipos)); setList(r.programacoes.map((p) => ({ ...p, blocos: p.blocos.map((b) => ({ ...b, inicio: b.inicio.slice(0, 5), fim: b.fim ? b.fim.slice(0, 5) : null })) }))); }).catch(() => setError("Não consegui carregar a Programação."));
     customFetch<{ showBooks: { id: string; title: string; locationId?: string | null }[] }>("/api/show-books").then((r) => setShows(r.showBooks.filter((s) => s.locationId === localId))).catch(() => setShows([]));
   }, [review, localId, tick]);
 
@@ -1406,6 +1412,7 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
         <span style={css("flex:none;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;padding:3px 9px;border-radius:999px;background:" + (estado === "vigente" ? "var(--asa-teal-pale)" : estado === "agendado" ? "var(--asa-purple-blossom)" : "var(--asa-refeicao-bg)") + ";color:" + (estado === "vigente" ? "var(--asa-teal-dark)" : estado === "agendado" ? "var(--asa-purple)" : "var(--asa-label)"))}>{estado}</span>
         <span style={css("flex:1;min-width:20px")}/>
         {canEdit && <div style={css("display:flex;flex-wrap:wrap;gap:7px")}>
+          {podeEditarTipos && !review && <button type="button" className="esc-cell-adjust esc-hit" style={{ minHeight: 44 }} onClick={() => setDialog("tipos")}>Tipos de atividade</button>}
           <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setDialog("vigencia")}>Mudar nome ou vigência</button>
           <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setDialog("duplicar")}>Duplicar molde</button>
           <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setConfirmar({ titulo: "Arquivar molde", texto: `"${prog.nome}" para de valer para os próximos dias e sai da lista de cima. Fica guardado em "arquivados" e dá para reativar quando quiser.`, acao: "Arquivar", onSim: () => void arquivarMolde(prog, false) })}>Arquivar molde</button>
@@ -1425,7 +1432,7 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
           <span style={css("flex:none;width:96px;padding-top:12px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--asa-ink-medium)")}>{g.faixa}</span>
           <div style={css("flex:1 1 220px;min-width:0;display:flex;flex-wrap:wrap;gap:8px")}>
             {g.blocos.map((b) => {
-              const t = toneOf(b), selected = b.id === bloco?.id;
+              const t = toneOf(b, tipos), selected = b.id === bloco?.id;
               const n = resolved(b).length;
               const quemTexto = b.regra === "livro" ? "o elenco do Livro do Dia" : b.regra === "ninguem" ? "nenhuma pessoa entra" : n ? `${resumo(b)} · ${plural(n, "pessoa", "pessoas")}` : "fica vazio e sinalizado na escala";
               return <button key={b.id} type="button" className="esc-hit" aria-pressed={selected} onClick={() => { if (b.id !== bloco?.id) semPerder(() => { setSel(b.id); window.setTimeout(() => document.getElementById("esc-bloco-painel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80); }); }}
@@ -1469,6 +1476,9 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
           <label style={css("display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:700;color:var(--asa-label)")}>Fim (opcional)
             <input type="time" value={valorDe("fim") ?? ""} onChange={(e) => mudarCampo("fim", e.target.value || null)}
               style={css("border:1px solid var(--asa-line-soft);border-radius:9px;padding:6px 9px;min-height:44px;box-sizing:border-box;font:600 12.5px Manrope,sans-serif;color:var(--asa-ink-dark)")}/>
+          </label>
+          <label style={css("display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:700;color:var(--asa-label)")}>Tipo
+            <TipoSelect tipos={tipos} value={valorDe("tipoId")} onChange={(id) => mudarCampo("tipoId", id)} style={css("border:1px solid var(--asa-line-soft);border-radius:9px;padding:6px 9px;min-height:44px;box-sizing:border-box;font:600 12.5px Manrope,sans-serif;color:var(--asa-ink-dark);min-width:190px;background:#fff")}/>
           </label>
           <span style={css("font-size:12px;color:var(--asa-label);flex:1;min-width:140px")}>Só vale depois de “Salvar alterações”, e muda apenas os dias que ainda não foram publicados.</span>
         </div>}
@@ -1520,7 +1530,8 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
       inicial={{ nome: `${prog.nome} (cópia)`, inicio: prog.vigenciaFim, fim: prog.vigenciaFim }} nota={`Copia os ${prog.blocos.filter((b) => b.active).length} blocos deste molde para a nova vigência. O molde atual não muda.`}/>}
     {dialog === "vigencia" && prog && <FormDialog title="Nome e vigência do molde" onClose={() => setDialog(null)} onSubmit={async (f) => { await mudarMolde(f.nome, f.inicio, f.fim); setDialog(null); }}
       inicial={{ nome: prog.nome, inicio: prog.vigenciaInicio, fim: prog.vigenciaFim }} nota="Vale para os dias que ainda não foram publicados."/>}
-    {dialog === "bloco" && <BlocoDialog weekday={wd} vocabulario={vocabularioDoLocal(review ? localId : localName.toLocaleLowerCase("pt-BR"))} areas={areas} shows={shows} onClose={() => setDialog(null)} onSubmit={async (v) => { await criarBloco(v); setDialog(null); }} pessoas={pessoas}/>}
+    {dialog === "tipos" && podeEditarTipos && <TiposDialog locationId={localId} locationName={localName} onClose={() => setDialog(null)} onChanged={() => { setTick((n) => n + 1); onChanged(); }}/>}
+    {dialog === "bloco" && <BlocoDialog tipos={tipos} weekday={wd} vocabulario={vocabularioDoLocal(review ? localId : localName.toLocaleLowerCase("pt-BR"))} areas={areas} shows={shows} onClose={() => setDialog(null)} onSubmit={async (v) => { await criarBloco(v); setDialog(null); }} pessoas={pessoas}/>}
   </div>;
 }
 
@@ -1545,13 +1556,14 @@ function FormDialog({ title, fields = CAMPOS_MOLDE, inicial, nota, onClose, onSu
   </div></div>;
 }
 
-function BlocoDialog({ weekday, vocabulario, areas, shows, pessoas, onClose, onSubmit }: { weekday: number; vocabulario: string[]; areas: Area[]; shows: { id: string; title: string }[]; pessoas: Pessoa[]; onClose: () => void; onSubmit: (v: Omit<ProgBloco, "id" | "programacaoId" | "order" | "active" | "grupoIds"> & { weekdays?: number[] }) => Promise<void> }) {
+function BlocoDialog({ tipos, weekday, vocabulario, areas, shows, pessoas, onClose, onSubmit }: { tipos: TipoDoLocal[]; weekday: number; vocabulario: string[]; areas: Area[]; shows: { id: string; title: string }[]; pessoas: Pessoa[]; onClose: () => void; onSubmit: (v: Omit<ProgBloco, "id" | "programacaoId" | "order" | "active" | "grupoIds"> & { weekdays?: number[] }) => Promise<void> }) {
   useFecharComEsc(onClose);
   const [rotulo, setRotulo] = useState("");
   const [inicio, setInicio] = useState("");
   const [fim, setFim] = useState("");
   const [regra, setRegra] = useState<Regra>("pessoas");
   const [showBookId, setShowBookId] = useState("");
+  const [tipoId, setTipoId] = useState<string | null>(null);
   const [areaIds, setAreaIds] = useState<string[]>([]);
   const [pessoaIds, setPessoaIds] = useState<string[]>([]);
   // A mesma atividade costuma repetir em vários dias; começa no dia aberto e você marca os outros.
@@ -1563,7 +1575,7 @@ function BlocoDialog({ weekday, vocabulario, areas, shows, pessoas, onClose, onS
     if (salvando) return;
     if (!dias.length) { setError("Escolha pelo menos um dia da semana."); return; }
     setSalvando(true); setError("");
-    try { await onSubmit({ weekday: dias[0]!, weekdays: dias, rotulo: rotulo.trim(), inicio, fim: fim || null, regra: regra as ProgBloco["regra"], showBookId: regra === "livro" ? showBookId || null : null, areaIds: regra === "area" ? areaIds : [], pessoaIds: regra === "pessoas" ? pessoaIds : [] }); }
+    try { await onSubmit({ weekday: dias[0]!, weekdays: dias, rotulo: rotulo.trim(), inicio, fim: fim || null, regra: regra as ProgBloco["regra"], showBookId: regra === "livro" ? showBookId || null : null, tipoId, areaIds: regra === "area" ? areaIds : [], pessoaIds: regra === "pessoas" ? pessoaIds : [] }); }
     catch (err) { setError(err instanceof ApiError && err.data && typeof (err.data as { error?: unknown }).error === "string" ? (err.data as { error: string }).error : "Não consegui criar o bloco."); }
     finally { setSalvando(false); }
   };
@@ -1581,6 +1593,7 @@ function BlocoDialog({ weekday, vocabulario, areas, shows, pessoas, onClose, onS
       <datalist id="esc-vocab">{vocabulario.map((v) => <option key={v} value={v}/>)}</datalist>
       <label>Início<input required type="time" value={inicio} onChange={(e) => setInicio(e.target.value)}/></label>
       <label>Fim (opcional)<input type="time" value={fim} onChange={(e) => setFim(e.target.value)}/></label>
+      <label>Tipo (dá a cor na Escala)<TipoSelect tipos={tipos} value={tipoId} onChange={setTipoId}/></label>
       <label>Quem entra<select value={regra} onChange={(e) => setRegra(e.target.value as Regra)}>{(["livro", "area", "todos", "pessoas", "ninguem"] as Regra[]).map((r) => <option key={r} value={r}>{REGRA_LABEL[r]}</option>)}</select></label>
       {regra === "livro" && <label>Show<select required value={showBookId} onChange={(e) => setShowBookId(e.target.value)}><option value="">Escolha o show</option>{shows.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}</select></label>}
       {regra === "area" && <fieldset style={css("border:none;padding:0;display:flex;flex-wrap:wrap;gap:7px")}>{areas.map((a) => { const on = areaIds.includes(a.id); return <button key={a.id} type="button" onClick={() => setAreaIds(on ? areaIds.filter((x) => x !== a.id) : [...areaIds, a.id])} style={css(on ? chipOn : chipOff)}>{a.name}</button>; })}</fieldset>}
@@ -1595,7 +1608,7 @@ function BlocoDialog({ weekday, vocabulario, areas, shows, pessoas, onClose, onS
 }
 
 /* ---------- atividade só de hoje (entrada manual da Escala) ---------- */
-function AtividadeDeHojeDialog({ pessoas, bloco, saving, onClose, onSubmit }: { pessoas: Pessoa[]; bloco: Bloco | null; saving: boolean; onClose: () => void; onSubmit: (v: { pessoaIds: string[]; rotulo: string; inicio: string; fim: string }) => Promise<void> }) {
+function AtividadeDeHojeDialog({ tipos, pessoas, bloco, saving, onClose, onSubmit }: { tipos: TipoDoLocal[]; pessoas: Pessoa[]; bloco: Bloco | null; saving: boolean; onClose: () => void; onSubmit: (v: { pessoaIds: string[]; rotulo: string; inicio: string; fim: string; tipoId: string | null }) => Promise<void> }) {
   useFecharComEsc(onClose);
   // Com `bloco`, o diálogo corrige a atividade que já existe: só o horário e o nome mudam.
   const corrigindo = Boolean(bloco);
@@ -1604,11 +1617,12 @@ function AtividadeDeHojeDialog({ pessoas, bloco, saving, onClose, onSubmit }: { 
   const [rotulo, setRotulo] = useState(bloco?.rotulo ?? "");
   const [inicio, setInicio] = useState(bloco?.inicio ?? "");
   const [fim, setFim] = useState(bloco?.fim ?? "");
+  const [tipoId, setTipoId] = useState<string | null>(bloco?.tipoId ?? null);
   const disponiveis = pessoas.filter((p) => !p.folga);
   const filtradas = disponiveis.filter((p) => `${p.name} ${p.areaName ?? ""}`.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR")));
   const marcar = (id: string) => setEscolhidas((atual) => atual.includes(id) ? atual.filter((v) => v !== id) : [...atual, id]);
   const pronto = Boolean(escolhidas.length && rotulo.trim() && /^([01]\d|2[0-3]):[0-5]\d$/.test(inicio));
-  const submit = (e: React.FormEvent) => { e.preventDefault(); if (pronto) void onSubmit({ pessoaIds: escolhidas, rotulo: rotulo.trim(), inicio, fim }); };
+  const submit = (e: React.FormEvent) => { e.preventDefault(); if (pronto) void onSubmit({ pessoaIds: escolhidas, rotulo: rotulo.trim(), inicio, fim, tipoId }); };
   return <div className="shows-dialog-backdrop"><div className="shows-dialog" role="dialog" aria-modal="true" aria-label="Atividade só deste dia">
     <header className="shows-dialog-header"><div><h2>{corrigindo ? "Mudar a atividade deste dia" : "Atividade só deste dia"}</h2><p>{corrigindo ? "Corrige o horário ou o nome para quem já está nela." : "Vale apenas neste dia — a Programação não muda."}</p></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
     <div className="shows-dialog-content"><form id="esc-manual" onSubmit={submit} className="shows-form">
@@ -1635,6 +1649,7 @@ function AtividadeDeHojeDialog({ pessoas, bloco, saving, onClose, onSubmit }: { 
       <label>O que é<input value={rotulo} onChange={(e) => setRotulo(e.target.value)} placeholder="Prova de figurino" maxLength={60} required/></label>
       <label>Começa às<input type="time" value={inicio} onChange={(e) => setInicio(e.target.value)} required/></label>
       <label>Termina às (opcional)<input type="time" value={fim} onChange={(e) => setFim(e.target.value)}/></label>
+      <label>Tipo (dá a cor na Escala)<TipoSelect tipos={tipos} value={tipoId} onChange={setTipoId}/></label>
     </form></div>
     <footer className="shows-dialog-footer">
       <button type="button" onClick={onClose} className="shows-secondary">Cancelar</button>

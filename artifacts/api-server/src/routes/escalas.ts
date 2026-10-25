@@ -18,6 +18,9 @@ import {
   escalaAreasProntasTable,
   escalaBlocoAjustesTable,
   escalaConfirmacoesTable,
+  escalaTiposTable,
+  CORES_DE_TIPO,
+  type CorDeTipo,
   locationsTable,
   programacaoBlocosTable,
   programacoesTable,
@@ -30,7 +33,8 @@ import {
 import { fraseDeRecusaPorPerfil, requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
 import { operationalDate } from "../lib/operational-date.js";
-import { avisarRepublicacaoPendente, comoPublicada, convocacaoPorPessoa, escalaPublicada, findEscalaDoDia, montarEscalaDoDia, operationForLocation, pessoasAfetadas } from "../services/escala-dia.js";
+import { avisarRepublicacaoPendente, comoPublicada, convocacaoPorPessoa, escalaPublicada, findEscalaDoDia, montarEscalaDoDia, operationForLocation, pessoasAfetadas, tiposDoLocal } from "../services/escala-dia.js";
+import { FRASE_NOME_DE_TIPO, TIPOS_PRONTOS, nomeDeTipoEmUso, nomeDeTipoValido, recusaDoTipo } from "../services/escala-tipos.js";
 import { ultimoRetratoFolgas } from "../services/folgas-publicadas.js";
 import { FRASE_LOCAL_SEM_OPERACAO, descartarMes, descartaveisDoMes, gerarDiaDoLocal, gerarMes, restaurarDescarte, resumoDoMes, validarMes } from "../services/escala-mes.js";
 import { enqueueNotification } from "../services/undo.js";
@@ -139,6 +143,8 @@ router.get("/escalas/minha", requireAuth, requireOrganization, async (req, res) 
         location: dia.location, publishedAt: dia.escala!.publishedAt ?? null, folga,
         escalaId: dia.escala!.id, escalaVersion: dia.escala!.version,
         confirmada: confirmacao?.version === dia.escala!.version, confirmedAt: confirmacao?.confirmedAt ?? null, blocos,
+        // Os tipos do local pintam e nomeiam cada bloco, igual à Escala de quem monta.
+        tipos: dia.tipos ?? [],
       };
     }));
     const escalas = porLocal.filter((e): e is NonNullable<typeof e> => e !== null);
@@ -962,9 +968,90 @@ export async function republicarEscalaPorChamada(actor: Actor, scaleId: string, 
 router.post("/escalas/:id/publicar", requireAuth, requireOrganization, (req, res) => void publicarOuRepublicar(req, res, false).catch((err) => { console.error(err); res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível publicar a escala. Tente de novo." }); }));
 router.post("/escalas/:id/republicar", requireAuth, requireOrganization, (req, res) => void publicarOuRepublicar(req, res, true).catch((err) => { console.error(err); res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível republicar a escala. Tente de novo." }); }));
 
+// ─── Tipos de atividade (0084) ───────────────────────────────────────────────
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const fraseSoAdministracao = (role: string) => `${fraseDeRecusaPorPerfil(["ADMIN"], role)} A lista de tipos de atividade é da Administração.`;
+const FRASE_TIPO_JA_EXISTE = "Já existe um tipo com este nome neste local. Escolha outro nome ou desarquive o que já existe.";
+
+/** Quem lê a lista de tipos do local: quem lê a Escala dele (a Supervisão escolhe tipo na Programação, mas só a Administração mexe na lista). */
+router.get("/escalas/tipos", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  const locationId = typeof req.query.locationId === "string" ? req.query.locationId : "";
+  if (!UUID.test(locationId) || !(await locationInOrg(locationId, actor.organizationId))) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
+  if (!(await canReadLocal(actor, locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Os tipos de atividade deste local não estão no seu acesso." }); return; }
+  res.json({ tipos: await tiposDoLocal(locationId), podeEditar: actor.role === "ADMIN" });
+});
+
+/** Cria um tipo novo, ou (com `padrao: true`) os sete tipos prontos que o local ainda não tem. Só a Administração. */
+router.post("/escalas/tipos", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  const { locationId, nome, cor, padrao } = (req.body ?? {}) as { locationId?: unknown; nome?: unknown; cor?: unknown; padrao?: unknown };
+  if (typeof locationId !== "string" || !UUID.test(locationId) || !(await locationInOrg(locationId, actor.organizationId))) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
+  if (actor.role !== "ADMIN") { res.status(403).json({ error: "ACESSO_NEGADO", message: fraseSoAdministracao(actor.role) }); return; }
+  const local = await locationInOrg(locationId, actor.organizationId);
+  if (padrao === true) {
+    const existentes = await tiposDoLocal(locationId);
+    const faltam = TIPOS_PRONTOS.filter((t) => !existentes.some((e) => e.chave === t.chave));
+    if (!faltam.length) { res.status(409).json({ error: "JA_EXISTE", message: "Este local já tem os sete tipos prontos." }); return; }
+    // Nome que já foi tomado por outro tipo ativo ganha "(pronto)" para não bater; a Administração renomeia depois.
+    const nomes: string[] = [];
+    for (const t of faltam) nomes.push((await nomeDeTipoEmUso(locationId, t.nome)) ? `${t.nome} (pronto)` : t.nome);
+    const maiorOrdem = existentes.reduce((m, e) => Math.max(m, e.ordem), 0);
+    const criados = await db.transaction(async (tx) => {
+      const rows = await tx.insert(escalaTiposTable).values(faltam.map((t, i) => ({ organizationId: actor.organizationId, locationId, nome: nomes[i]!, cor: t.chave, chave: t.chave, ordem: maiorOrdem + i + 1 }))).returning();
+      await writeHistoryEvent({ category: "SCALE", action: "tipo.padrao_criado", title: "Tipos de atividade prontos criados", narrative: `${rows.length} ${rows.length === 1 ? "tipo pronto criado" : "tipos prontos criados"} em ${local?.name ?? "um local"}.`, entityType: "local", entityId: locationId, actorId: actor.sub, orgId: actor.organizationId, afterState: { tipos: rows } }, tx as unknown as HistoryExecutor);
+      return rows;
+    });
+    res.status(201).json({ tipos: await tiposDoLocal(locationId), criados: criados.length });
+    return;
+  }
+  const nomeLimpo = nomeDeTipoValido(nome);
+  if (!nomeLimpo) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: FRASE_NOME_DE_TIPO }); return; }
+  if (!CORES_DE_TIPO.includes(cor as CorDeTipo)) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: `Escolha uma das cores da lista: ${CORES_DE_TIPO.join(", ")}.` }); return; }
+  if (await nomeDeTipoEmUso(locationId, nomeLimpo)) { res.status(409).json({ error: "NOME_EM_USO", message: FRASE_TIPO_JA_EXISTE }); return; }
+  const existentes = await tiposDoLocal(locationId);
+  const criado = await db.transaction(async (tx) => {
+    const [row] = await tx.insert(escalaTiposTable).values({ organizationId: actor.organizationId, locationId, nome: nomeLimpo, cor: cor as CorDeTipo, chave: null, ordem: existentes.reduce((m, e) => Math.max(m, e.ordem), 0) + 1 }).returning();
+    await writeHistoryEvent({ category: "SCALE", action: "tipo.criado", title: "Tipo de atividade criado", narrative: `Tipo "${row!.nome}" criado em ${local?.name ?? "um local"} (cor ${row!.cor}).`, entityType: "escala_tipo", entityId: row!.id, actorId: actor.sub, orgId: actor.organizationId, afterState: { tipo: row } }, tx as unknown as HistoryExecutor);
+    return row!;
+  });
+  res.status(201).json({ tipo: criado, tipos: await tiposDoLocal(locationId) });
+});
+
+/** Renomeia, muda a cor, arquiva ou desarquiva um tipo. Nada é apagado: o que já usa o tipo continua mostrando. Só a Administração. */
+router.patch("/escalas/tipos/:id", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  const id = req.params.id as string;
+  const [atual] = UUID.test(id) ? await db.select().from(escalaTiposTable).where(and(eq(escalaTiposTable.id, id), eq(escalaTiposTable.organizationId, actor.organizationId))).limit(1) : [];
+  if (!atual) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Tipo de atividade não encontrado." }); return; }
+  if (actor.role !== "ADMIN") { res.status(403).json({ error: "ACESSO_NEGADO", message: fraseSoAdministracao(actor.role) }); return; }
+  const { nome, cor, active } = (req.body ?? {}) as { nome?: unknown; cor?: unknown; active?: unknown };
+  const proximo = { nome: atual.nome, cor: atual.cor as string, active: atual.active };
+  if (nome !== undefined) { const limpo = nomeDeTipoValido(nome); if (!limpo) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: FRASE_NOME_DE_TIPO }); return; } proximo.nome = limpo; }
+  if (cor !== undefined) { if (!CORES_DE_TIPO.includes(cor as CorDeTipo)) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: `Escolha uma das cores da lista: ${CORES_DE_TIPO.join(", ")}.` }); return; } proximo.cor = cor as string; }
+  if (active !== undefined) { if (typeof active !== "boolean") { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "active precisa ser verdadeiro ou falso." }); return; } proximo.active = active; }
+  if (proximo.nome === atual.nome && proximo.cor === atual.cor && proximo.active === atual.active) { res.json({ tipo: atual, tipos: await tiposDoLocal(atual.locationId) }); return; }
+  // Nome único entre os ativos do local: vale ao renomear e também ao desarquivar (o nome pode ter sido tomado enquanto estava arquivado).
+  if (proximo.active && (await nomeDeTipoEmUso(atual.locationId, proximo.nome, atual.id))) { res.status(409).json({ error: "NOME_EM_USO", message: FRASE_TIPO_JA_EXISTE }); return; }
+  const arquivou = atual.active && !proximo.active, desarquivou = !atual.active && proximo.active;
+  const row = await db.transaction(async (tx) => {
+    const [novo] = await tx.update(escalaTiposTable).set({ nome: proximo.nome, cor: proximo.cor as CorDeTipo, active: proximo.active, updatedAt: new Date() }).where(eq(escalaTiposTable.id, atual.id)).returning();
+    const mudou = [proximo.nome !== atual.nome ? `nome de "${atual.nome}" para "${proximo.nome}"` : "", proximo.cor !== atual.cor ? `cor de ${atual.cor} para ${proximo.cor}` : ""].filter(Boolean).join("; ");
+    await writeHistoryEvent({
+      category: "SCALE", action: arquivou ? "tipo.arquivado" : desarquivou ? "tipo.desarquivado" : "tipo.alterado",
+      title: arquivou ? "Tipo de atividade arquivado" : desarquivou ? "Tipo de atividade desarquivado" : "Tipo de atividade alterado",
+      narrative: arquivou ? `Tipo "${atual.nome}" arquivado (sem exclusão).${mudou ? ` Também mudou: ${mudou}.` : ""}` : desarquivou ? `Tipo "${proximo.nome}" desarquivado.${mudou ? ` Também mudou: ${mudou}.` : ""}` : `Tipo "${atual.nome}": ${mudou}.`,
+      entityType: "escala_tipo", entityId: atual.id, actorId: actor.sub, orgId: actor.organizationId, beforeState: { tipo: atual }, afterState: { tipo: novo },
+    }, tx as unknown as HistoryExecutor);
+    return novo!;
+  });
+  res.json({ tipo: row, tipos: await tiposDoLocal(atual.locationId) });
+});
+
 // ─── Programação ─────────────────────────────────────────────────────────────
 
-type BlocoInput = { weekday?: unknown; inicio?: unknown; fim?: unknown; rotulo?: unknown; regra?: unknown; showBookId?: unknown; areaIds?: unknown; grupoIds?: unknown; pessoaIds?: unknown; order?: unknown; active?: unknown };
+type BlocoInput = { weekday?: unknown; inicio?: unknown; fim?: unknown; rotulo?: unknown; regra?: unknown; showBookId?: unknown; tipoId?: unknown; areaIds?: unknown; grupoIds?: unknown; pessoaIds?: unknown; order?: unknown; active?: unknown };
 const uuidList = (value: unknown) => Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
 /** Valida um bloco. `partial` aceita só os campos enviados (PATCH). */
 function parseBloco(body: BlocoInput, partial: boolean): { ok: true; value: Record<string, unknown> } | { ok: false; error: string } {
@@ -976,6 +1063,8 @@ function parseBloco(body: BlocoInput, partial: boolean): { ok: true; value: Reco
   if (body.rotulo !== undefined || !partial) { if (typeof body.rotulo !== "string" || !body.rotulo.trim()) return { ok: false, error: "rotulo é obrigatório" }; out.rotulo = body.rotulo.trim(); }
   if (body.regra !== undefined || !partial) { if (!REGRAS_BLOCO.includes(body.regra as RegraBloco)) return { ok: false, error: `regra: ${REGRAS_BLOCO.join(", ")}` }; out.regra = body.regra; }
   if (body.showBookId !== undefined) out.showBookId = typeof body.showBookId === "string" ? body.showBookId : null;
+  // Tipo de atividade (0084): vazio ou nulo tira o tipo escolhido e o app volta a adivinhar pelo nome. Quem confere se vale no local é a rota.
+  if (body.tipoId !== undefined) out.tipoId = typeof body.tipoId === "string" && body.tipoId ? body.tipoId : null;
   if (out.regra === "livro" && !out.showBookId && !partial) return { ok: false, error: "Escolha de qual show é este bloco do Livro." };
   if (body.areaIds !== undefined) out.areaIds = uuidList(body.areaIds);
   if (body.grupoIds !== undefined) out.grupoIds = uuidList(body.grupoIds);
@@ -999,7 +1088,7 @@ router.get("/programacoes", requireAuth, requireOrganization, async (req, res) =
   // Blocos tirados do molde continuam na resposta (active: false) para a tela poder devolvê-los.
   const blocos = programacoes.length ? await db.select().from(programacaoBlocosTable).where(inArray(programacaoBlocosTable.programacaoId, programacoes.map((p) => p.id)))
     .orderBy(asc(programacaoBlocosTable.weekday), asc(programacaoBlocosTable.inicio), asc(programacaoBlocosTable.order)) : [];
-  res.json({ programacoes: programacoes.map((p) => ({ ...p, blocos: blocos.filter((b) => b.programacaoId === p.id) })), podeEditar: await canManageLocal(actor, locationId) });
+  res.json({ programacoes: programacoes.map((p) => ({ ...p, blocos: blocos.filter((b) => b.programacaoId === p.id) })), podeEditar: await canManageLocal(actor, locationId), tipos: await tiposDoLocal(locationId), podeEditarTipos: actor.role === "ADMIN" });
 });
 
 router.post("/programacoes", requireAuth, requireOrganization, async (req, res) => {
@@ -1067,6 +1156,10 @@ router.post("/programacoes/:id/blocos", requireAuth, requireOrganization, async 
     const [show] = await db.select({ id: showBooksTable.id }).from(showBooksTable).where(eq(showBooksTable.id, parsed.value.showBookId)).limit(1);
     if (!show) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Show não encontrado." }); return; }
   }
+  if (typeof parsed.value.tipoId === "string") {
+    const recusaTipo = await recusaDoTipo(parsed.value.tipoId, programacao.locationId);
+    if (recusaTipo) { res.status(400).json({ error: "TIPO_INVALIDO", message: recusaTipo }); return; }
+  }
   const alvos = dias.length ? dias.sort((a, b) => a - b) : [parsed.value.weekday as number];
   const created = await db.transaction(async (tx) => {
     const rows = await tx.insert(programacaoBlocosTable).values(alvos.map((weekday) => ({
@@ -1095,6 +1188,11 @@ router.patch("/programacoes/:id/blocos/:blocoId", requireAuth, requireOrganizati
   if (versaoAberta !== undefined && versaoAberta !== current.updatedAt.getTime()) { res.status(409).json({ error: "VERSAO_MUDOU", message: MENSAGEM_BLOCO_MUDOU }); return; }
   const parsed = parseBloco(req.body ?? {}, true);
   if (!parsed.ok) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: parsed.error }); return; }
+  // Tipo arquivado só passa quando é o que o bloco já tinha: mexer no horário de um bloco antigo não pode esbarrar num tipo arquivado depois.
+  if (typeof parsed.value.tipoId === "string") {
+    const recusaTipo = await recusaDoTipo(parsed.value.tipoId, programacao.locationId, current.tipoId);
+    if (recusaTipo) { res.status(400).json({ error: "TIPO_INVALIDO", message: recusaTipo }); return; }
+  }
   const merged = { ...current, ...parsed.value } as typeof current;
   if (merged.regra === "livro" && !merged.showBookId) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "Escolha de qual show é este bloco do Livro.." }); return; }
   if (merged.fim && merged.fim.slice(0, 5) <= merged.inicio.slice(0, 5)) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "fim precisa ser depois do início." }); return; }

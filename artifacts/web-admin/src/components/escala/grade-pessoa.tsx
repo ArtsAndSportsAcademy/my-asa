@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { CSSProperties } from "react";
 import type { Bloco, Pessoa } from "@/pages/escalas";
-import { ehExcecao, faixa, fimEmMinutos, horaDe, minutosDe, nomeDoTipo, nomesCurtos, textoDoBloco, tipoDoBloco, toneDoTipo } from "./tipos";
+import { ehExcecao, faixa, fimEmMinutos, horaDe, minutosDe, nomesCurtos, resolverTipo, textoDoBloco, toneDoTipo, type TipoDoLocal } from "./tipos";
 import "./escala-tokens.css";
 
 /** Pixels por minuto: 20 minutos ficam com 26 px, o bastante para uma linha de texto de 12 px. */
@@ -38,12 +38,14 @@ function lanesDe(blocos: Bloco[]): Map<string, Faixa> {
 }
 
 /** Duas pessoas que fazem a mesma coisa no mesmo horário viram uma faixa só. */
-const chaveDaFaixa = (b: Bloco) => `${tipoDoBloco(b)}|${b.rotulo}|${b.inicio}|${b.fim ?? ""}|${b.regra ?? ""}|${b.showBookId ?? ""}`;
+const chaveDaFaixa = (b: Bloco) => `${b.tipoId ?? ""}|${b.rotulo}|${b.inicio}|${b.fim ?? ""}|${b.regra ?? ""}|${b.showBookId ?? ""}`;
 
 export type GradePessoaProps = {
   colunas: Pessoa[];
   blocosDe: (pessoaId: string) => Bloco[];
   temChoque: (pessoa: Pessoa, bloco: Bloco) => boolean;
+  /** Tipos de atividade do local: dão a cor e o nome de cada bloco (sem eles, valem os sete de fábrica). */
+  tipos?: TipoDoLocal[];
   /** Nome de quem mexeu por último na pessoa (outra Supervisão), ou null. */
   mexidoPor?: (pessoaId: string) => string | null;
   soExcecoes: boolean;
@@ -53,7 +55,7 @@ export type GradePessoaProps = {
   onTocarBloco: (bloco: Bloco, pessoa: Pessoa, elemento: HTMLElement) => void;
 };
 
-export function GradePessoa({ colunas, blocosDe, temChoque, mexidoPor, soExcecoes, busca, selecionada, onEscolherPessoa, onTocarBloco }: GradePessoaProps) {
+export function GradePessoa({ colunas, blocosDe, temChoque, tipos, mexidoPor, soExcecoes, busca, selecionada, onEscolherPessoa, onTocarBloco }: GradePessoaProps) {
   const dados = useMemo(() => {
     const porColuna = colunas.map((p) => { const blocos = blocosDe(p.id); return { pessoa: p, blocos, lanes: lanesDe(blocos) }; });
     const todos = porColuna.flatMap((c) => c.blocos);
@@ -94,8 +96,8 @@ export function GradePessoa({ colunas, blocosDe, temChoque, mexidoPor, soExcecoe
         return <div key={pessoa.id} className="ge-col" data-dim={busca ? !busca.has(pessoa.id) : false} style={{ backgroundSize: "100% var(--ge-hora)", backgroundPositionY: deslocamentoDasLinhas }}>
           {blocos.map((b) => {
             const faixaDoBloco = lanes.get(b.key) ?? { lane: 0, n: 1 };
-            const tipo = tipoDoBloco(b);
-            const tom = toneDoTipo(tipo);
+            const tipo = resolverTipo(b, tipos);
+            const tom = toneDoTipo(tipo.cor);
             const choque = temChoque(pessoa, b);
             const excecao = ehExcecao(b);
             const apagado = soExcecoes && !choque && !excecao;
@@ -107,7 +109,7 @@ export function GradePessoa({ colunas, blocosDe, temChoque, mexidoPor, soExcecoe
             const primeira = unica && !simples(anterior, b);
             let corrida = 1;
             if (primeira) { for (const c of seguintes) { if (simples(c, b)) corrida += 1; else break; } }
-            const nome = `${pessoa.name}: ${textoDoBloco(b)}, ${faixa(b)}, ${nomeDoTipo(tipo)}${choque ? ", choque de horário" : ""}${excecao ? ", exceção" : ""}`;
+            const nome = `${pessoa.name}: ${textoDoBloco(b)}, ${faixa(b)}, ${tipo.nome}${choque ? ", choque de horário" : ""}${excecao ? ", exceção" : ""}`;
             return <span key={b.key}>
               <button type="button" className="ge-bloco" data-choque={choque} data-excecao={excecao} data-apagado={apagado} style={posicao} aria-label={nome} onClick={(e) => onTocarBloco(b, pessoa, e.currentTarget)}/>
               {(primeira || faixaDoBloco.n > 1 || (unica === false && faixaDoBloco.n === 1)) && <span className="ge-rotulo" aria-hidden="true" data-apagado={apagado}
