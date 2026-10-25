@@ -4,41 +4,43 @@ Texto para conversa com a Babi. Nada disso foi feito ainda no app: é um plano p
 
 - `plano-escala-mais-facil-visual.html`: o plano com desenhos.
 - **`prototipo-escala-mais-facil.html`: um protótipo para clicar** (abre no navegador, no computador ou no celular). Nele dá
-  para trocar entre Supervisão, Administração e Elenco, resolver a folga de uma pessoa, mudar o horário só dela, preencher
-  em lote, enviar a parte, publicar tudo e ver o que o Elenco enxerga. Os dados e os nomes são de exemplo, e nada do app muda.
-  Vale clicar nele antes de responder às perguntas.
+  para trocar entre Supervisão, Administração e Elenco, ver a Escala por pessoa e por atividade, abrir um Livro do dia,
+  resolver uma vaga, mudar o horário só de uma pessoa, preencher em lote, enviar a parte, publicar tudo e ver o que o
+  Elenco enxerga. Os dados e os nomes são de exemplo, e nada do app muda. Vale clicar nele antes de responder às perguntas.
 
 ## O que NÃO muda (o conceito já está certo)
 
-- A Programação diz o que acontece no dia e, quando tem show, o **Livro do Dia nasce sozinho** a partir do Livro oficial.
-- A Escala do dia já tira de folga, recesso e afastamento. O Livro usa a Escala.
-- Quem decide cada vaga de show é o motor do Livro: titular, depois substituto da posição, depois reserva do grupo,
-  depois rodízio. A Escala só lê e mostra.
+- A Programação (a da semana, como é hoje) diz o que acontece no dia e, quando tem show, o **Livro do Dia nasce sozinho** a
+  partir do Livro oficial do show.
+- A Escala já tira de folga, recesso e afastamento. O Livro do Dia usa a Escala e **já se resolve sozinho**: titular, depois
+  substituto da posição, depois reserva do grupo.
+- O Livro é **do show inteiro**, não da pessoa. A pessoa só é chamada para o show e vê, no celular dela, "você foi chamada
+  para o show, você faz tal coisa".
 - Folga vence a escala: só entra quem foi chamado de propósito, com motivo escrito.
 - Tudo que se grava vai para o Registro. Remoção é sempre restaurável.
-- Não recriamos nada. Mudamos **o jeito de mexer**: menos cliques, menos esquecimento, mais clareza.
+- As duas visões que já existem ("Por pessoa" e "Por atividade") continuam.
+- Não recriamos nada. Mudamos **o jeito de mexer**: menos repetição, menos cliques e uma tela tão fácil de ler quanto a planilha.
 
 ## O problema, com 40 pessoas
 
-1. **Ler o dia é difícil.** A planilha de papel por pessoa funciona porque tem cor forte por tipo, linhas de horário
-   alinhadas e atividades iguais emendadas em faixas. A tela atual tem cores suaves, toda linha com a mesma altura, uma
-   coluna larga por pessoa (a tabela passa de 4.600 px) e o almoço repetido bloco a bloco. A visão "por atividade" ficou
-   ruim: os nomes se empilham e não dá para saber como está o dia de uma pessoa.
+1. **Ler o dia é difícil.** A planilha de papel por pessoa funciona porque tem cor forte por tipo, horários alinhados e
+   atividades iguais emendadas em faixas. A tela atual repete o mesmo bloco lado a lado, tem cores suaves, toda linha com a
+   mesma altura e uma coluna larga por pessoa (a tabela passa de 4.600 px). A visão "por atividade" empilha nomes.
 2. **Preencher é um clique por pessoa e por bloco.**
-3. **A folga é esquecida.** Quando alguém entra de folga, ela precisa ser achada em todos os lugares onde aparece (várias
-   cenas, vários shows) e trocada uma por uma. E a troca não é sempre pela mesma pessoa: quem cobre a Sofia nas Guardiãs
-   pode não ser quem cobre nas Cartas para Noel.
+3. **Conferir os shows é manual.** O Livro já tira a folga e coloca a reserva sozinho. O que dá trabalho é descobrir, entre
+   vários shows, **o que ele não conseguiu resolver** (vaga sem ninguém, troca de formação) e conferir o que mudou.
 
 ## Como o dia passa a andar (o fluxo)
 
+O dia que se prepara é quase sempre **o seguinte**: a escala e o Livro de terça são feitos e publicados na noite de segunda. A Administração define, por local, **a partir de que horas a Escala passa a abrir no dia seguinte** (por exemplo, 18:00) **e a partir de que horas volta a abrir em hoje** (por exemplo, 05:00). A tela diz em que dia está e o botão diz "Publicar a escala de terça".
+
 1. **Cada Supervisão preenche a sua parte** (a Administração preenche qualquer área). A Direção só lê.
-2. Terminou? **"Enviar minha parte"**: a área fica marcada como pronta (isso já existe hoje, entra no Registro).
-3. A Administração vê o local inteiro, uma linha por área, e **"Publicar tudo"**: publica a Escala e, em seguida, todos os
-   Livros do Dia do local.
+2. Confere os **Livros do dia** (cartões na Escala que abrem o Livro) e marca cada um como conferido.
+3. **"Enviar minha parte"**: a área fica marcada como pronta (isso já existe hoje, entra no Registro).
+4. A Administração vê o local inteiro, uma linha por área, e **"Publicar tudo"**: publica a Escala e todos os
+   Livros do dia (o sistema já faz isso hoje, na mesma operação). O botão passa a explicar o que vai acontecer e a pedir confirmação.
 
 - A Administração e a Supervisão veem o rascunho enquanto o dia é montado. **Só o Elenco vê apenas o publicado.**
-- Hoje o Livro só pode ser publicado depois da Escala, e um por um. "Publicar tudo" faz essa sequência sozinho, na mesma
-  ordem, e diz com frase clara se algum Livro não pôde ser publicado e por quê. A regra "Escala primeiro, Livro depois" não muda.
 - Mudança depois de publicado espera a republicação, e a Administração é avisada.
 
 ## As etapas
@@ -47,44 +49,62 @@ Cada etapa deixa a tela usável e é entregue sozinha.
 
 ### Etapa 1: ler o dia como a planilha
 
-- **"Por pessoa" vira a visão principal**; "Por atividade" fica como consulta.
-- **Cor forte por tipo**, sempre com o nome escrito (a cor ajuda, nunca é a única informação). Sete tipos prontos: treinos no
-  gelo, ensaios e preparação, shows e teatro, interações e personagens, produção e apoio, pausas e almoço, outras
-  atividades. Os tipos são **por local**: só a Administração cria, renomeia e desativa (tipo usado nunca é apagado). Escolhido
-  na Programação; onde ninguém escolheu, o app continua adivinhando pelo nome. Show tem sempre o tipo de show.
-- **Altura proporcional à duração**, linhas de horário alinhadas e **atividades iguais emendadas** em faixas.
-- **Colunas estreitas** e zoom que faz o dia caber na tela, sem rolar muito para os lados.
+- **Um bloco só por atividade**, emendado entre as pessoas que fazem a mesma coisa (um "Ensaio do show" largo, não vários
+  iguais lado a lado). **Cor forte por tipo**, sempre com o nome escrito (cor nunca é a única informação). Sete tipos prontos:
+  treinos no gelo, ensaios e preparação, shows e teatro, interações e personagens, produção e apoio, pausas e almoço, outras
+  atividades. Os tipos são **por local**: só a Administração cria, renomeia e desativa (tipo usado nunca é apagado). O tipo é
+  escolhido na Programação; onde ninguém escolheu, o app continua adivinhando pelo nome.
+- **Altura proporcional à duração**, linhas de horário alinhadas e colunas estreitas, para o dia caber na tela.
+- **Quem está de folga sai da grade** e aparece só numa listinha **"Folgas de hoje"** no alto. Só aparecem as pessoas que
+  trabalham naquele dia.
+- **Show é um bloco comum** ("Show Patinação 14:00") em cada pessoa chamada, sem cenas nem posições. Os detalhes ficam no Livro.
 - **Resumo no topo**: "38 escaladas · 2 de folga · 1 choque · 3 exceções · 0 sem atividade", cada número abre a lista.
-- **Quadro "Não trabalha hoje"**, **busca de pessoa** (ilumina só o dia dela), **filtro "só exceções e choques"** e aviso
-  informativo de tempo parado (sugestão: mais de 40 minutos; nunca bloqueia).
-- No bloco de show, cada pessoa aparece com o **personagem ou a posição** que faz, e quem cobre alguém aparece como
-  "cobre fulano (folga)". Show é só leitura na Escala, com o botão "Abrir Livro".
-- No celular, a visão por pessoa continua em cartões empilhados, com uma faixa do dia no topo para dar a ideia geral.
+- **Busca de pessoa** (ilumina só o dia dela), **filtro "só exceções e choques"**, aviso informativo de tempo parado
+  (sugestão: mais de 40 minutos; nunca bloqueia) e uma faixa com os momentos do dia.
+- **Estados explicados na tela:** contorno vermelho = choque de horário; contorno amarelo = exceção (por exemplo, a reserva
+  que entrou no lugar de alguém). Cada coluna com problema também traz o aviso escrito.
+- **"Por atividade"** passa a dizer "Todo o elenco do dia" em vez de uma lista enorme de nomes.
+- No celular, a visão por pessoa continua em cartões empilhados.
 
-### Etapa 2: resolver a folga em um clique
+### Etapa 2: os Livros do dia dentro da Escala (um lugar só para conferir)
 
-Painel **"Atenção do dia"** e **"Onde esta pessoa aparece hoje"**:
+**Não existe uma segunda tela do Livro.** O Livro do Dia que já existe no app continua sendo o lugar onde se vê e se mexe:
+nele se navega por outros dias e se "brinca" com o show. A Escala mostra **o que o dia vai virar** (hoje, amanhã…) e só liga as
+duas coisas:
 
-- Lista quem está de folga ou fora e ainda aparece em alguma atividade ou show, as vagas sem ninguém e os choques.
-- Para cada pessoa, **uma linha por lugar** (Guardiãs, Cartas para Noel, ensaio…), cada uma com a **sugestão de quem cobre aquele
-  lugar** (a reserva do grupo daquela posição). Aceitar todas de uma vez, ou mudar só uma.
-- Prévia antes de gravar e **desfazer**. Nos shows, a troca passa pelo motor do Livro, não por um atalho da Escala.
-- Choque na grade: "Tirar de…", "Mudar horário só desta pessoa", "Dividir" (com motivo, e deixando claro que é exceção só dela).
-  Show não muda de horário: a saída é tirar do show.
+- Na Escala, um cartão **"Livros do dia"** por show daquele dia, vindos da Programação: horário, tipo (completo ou só
+  personagens), quantas pessoas, **mudança** ("Pessoa M entrou no lugar de Pessoa S, de folga"), **vaga sem ninguém** e se já foi
+  **conferido**. É para bater o olho e saber onde olhar.
+- Tocar no cartão **abre o Livro do Dia que já existe, no dia e no show tocados** (e volta para a Escala). Serve para show
+  completo e para só personagens: a mesma tela, sem dois jeitos de fazer a mesma coisa.
+- **Sem ir e voltar.** Um botão **"Conferir os Livros do dia (2)"** abre o primeiro Livro que falta conferir. Ao apertar "Conferido", abre o próximo, e no último **volta sozinho para a Escala**. Se a pessoa tocar num cartão só, depois do "Conferido" também volta sozinho. Quem quer sair antes usa "Voltar para a Escala".
+- **Cada Supervisão vê e confere só os Livros dos shows sob a sua responsabilidade**; a Administração vê todos. A fila de conferência de cada pessoa só tem os shows dela.
+- O botão **"Conferido"** aparece no próprio Livro e no cartão da Escala, e quem conferiu fica no Registro.
+- O Livro já mostra "o que mudou desde que foi gerado" e "sem ninguém escalado hoje"; nada disso é refeito.
+- O "Atenção do dia" da Escala só **avisa e leva ao Livro**. Quem decide cada posição é sempre o Livro, nunca a Escala.
+- A Escala tem o seletor **Hoje / Amanhã** (e o calendário que já existe), e o Livro abre no mesmo dia que está sendo visto.
+- Choque de horário na grade: "Tirar de…", "Mudar horário só desta pessoa", "Dividir" (com motivo, deixando claro que é
+  exceção só dela). Show não muda de horário: a saída é tirar do show, pelo Livro.
 
+**O que muda no código (pequeno):** hoje o Livro do Dia sempre abre em hoje, e o atalho que a Escala já tem ("Abrir no Livro do
+Dia") abre o Livro de hoje mesmo quando se está vendo outro dia. O ajuste é ler `?data=` e `?livro=` do endereço ao abrir, em umas
+dez linhas. A tela do Livro é mexida por outras sessões, então esse ajuste só entra com autorização, em um commit só dele.
+
+**A conferir antes de construir (eu testo no banco de teste):** se alguém entra de folga **depois** de o Livro já ter sido
+gerado, o Livro troca sozinho ou continua com a pessoa? Se não trocar, o cartão avisa "folga marcada depois de gerado" e oferece
+o botão de gerar de novo que já existe.
 ### Etapa 3: preencher em lote
 
-- Marcar várias pessoas, ou um grupo que já existe na Programação, e aplicar a ação de uma vez.
+- Marcar várias pessoas, ou um grupo que já existe na Programação, e aplicar a atividade de uma vez.
 - **Prévia**: quem entra, quem fica de fora (folga ou outra área) e quais choques aparecem. **Desfazer última alteração.**
-- Não coloca ninguém em bloco de show: show é do Livro, e a prévia diz isso, com botão para abrir o Livro.
+- Não coloca ninguém em show: show é do Livro, e a janela diz isso.
 - A Supervisão só age em pessoas da própria área.
 
 ### Etapa 4: enviar a minha parte e publicar tudo
 
-- **Supervisão:** resumo só da própria área e o botão "Enviar minha parte". Com choque aberto, avisa antes.
-- **Administração:** resumo do local, **uma linha por área** ("Patinadores: pronta · Bailarinos: 1 choque aberto · Produção: não
-  enviada"), e o botão **"Publicar tudo"**, que mostra quantas áreas faltam.
-- Pendências do Livro (Livro não gerado, vaga sem titular) aparecem como aviso. Sugestão: avisam, mas não bloqueiam.
+- **Supervisão:** resumo só da própria área, Livros conferidos e o botão "Enviar minha parte". Com pendência aberta, avisa antes.
+- **Administração:** resumo do local, **uma linha por área**, e o botão **"Publicar tudo"**, que mostra quantas áreas faltam.
+- Pendências dos Livros (a conferir, vaga sem ninguém) aparecem como aviso. Sugestão: avisam, mas não bloqueiam.
 - Proposta: se alguém altera uma área já enviada, **a marca cai sozinha** e a Supervisão é avisada no sino, dizendo quem mudou o quê.
 - Se duas pessoas mexem no mesmo dia ao mesmo tempo, o app confere a versão ao salvar e avisa com uma frase clara.
 
@@ -96,32 +116,33 @@ as atividades e as pessoas que continuam disponíveis, e mostra quem ficou de fo
 ### Ajuste de texto, depois da aprovação
 
 Na Programação, "Todo mundo do local" passa a se chamar **"Todas as áreas"**, porque as pessoas não têm local. A regra não muda.
+A Programação da semana continua como é hoje; só ganha o campo "Tipo" da atividade.
 
 ## Como a tela deve ser sentida (padrão Apple Design)
-
-O jeito de mexer também importa, não só o que a tela mostra. Em todas as etapas valem estas regras:
 
 - **Responde na hora.** O botão reage no instante do toque. Todo toque tem pelo menos 44 px e nenhum texto fica abaixo de 12 px.
 - **Simples não é vazio.** O caminho comum vem primeiro (resumo, exceções, choques) e o resto fica um nível abaixo.
 - **Sempre dá para voltar.** Todo lote ou troca tem prévia antes e "Desfazer" depois. Só o que não tem volta pede confirmação.
 - **Cada coisa nasce de onde você tocou.** O menu do choque abre junto do bloco tocado. No celular, as janelas sobem de baixo e
   têm sempre o botão de confirmar e o de cancelar à vista.
-- **Mesma coisa, mesmo jeito.** A mesma cor quer dizer o mesmo tipo, sempre com o nome escrito. O botão "Enviar minha parte" é igual em toda área.
+- **Mesma coisa, mesmo jeito.** A mesma cor quer dizer o mesmo tipo, sempre com o nome escrito.
 - **A tela diz onde você está e o que falta.** Dia, local, área e pendências sempre à vista.
-- **Cabeçalho e resumo fixos e translúcidos**, com a escala rolando por baixo, sem perder a leitura.
-- **Quem pede menos movimento** no aparelho recebe transições simples, sem animação.
+- **Cabeçalho e resumo fixos e translúcidos**, com a escala rolando por baixo.
+- **Quem pede menos movimento** no aparelho recebe transições simples.
 
 ## Perguntas de regra para a Babi
 
 1. **Os sete tipos de atividade estão bons?** Falta algum? Exemplo: "Yeti" é interação ou show? A lista é por local e pode mudar.
 2. **"Todo o elenco do dia" vale para quem?** Sugestão: todas as pessoas com atividade no dia, sem folga, recesso e afastamento.
-3. **Aviso de tempo parado:** 40 minutos está bom? Será só um aviso.
+3. **Aviso de tempo parado:** 40 minutos está bom? Será só um aviso, nunca um bloqueio.
 4. **Quem pode preencher em lote?** Sugestão: Administração em qualquer área, Supervisão só na própria.
-5. **Área enviada e alguém mexe depois: a marca cai sozinha?** Sugestão: sim, com aviso no sino para a Supervisão.
+5. **Área enviada e alguém mexe depois: a marca cai sozinha?** Sugestão: sim, com aviso no sino para a Supervisão da área.
 6. **Rascunho: a Supervisão vê o de todas as áreas ou só o da própria?** Sugestão: de todas, para conferir choques. Edita só a própria.
-7. **"Publicar tudo" deve publicar a Escala e todos os Livros de uma vez?** Sugestão: sim, na ordem de hoje, avisando se algum Livro não pôde.
-8. **Livro não gerado ou com vaga vazia deve impedir a área de ser enviada?** Sugestão: só avisar, a Administração decide.
-9. **Copiar de outro dia:** copiar só quem continua disponível e mostrar quem ficou de fora?
+7. **"Publicar tudo":** isso já é assim hoje no sistema (publicar a Escala publica os Livros do dia juntos, e só com todas as áreas prontas). Vamos só deixar o botão explicar o que vai acontecer e pedir confirmação. Concorda?
+8. **Livro com vaga sem ninguém ou ainda não conferido impede a área de ser enviada?** Sugestão: só avisar, a Administração decide.
+9. **Quem confere cada Livro?** Sugestão: a Supervisão responsável pelo show (e a Administração, em qualquer um). Precisa confirmar: ''responsável pelo show'' é a Supervisão da área do show, ou há alguém indicado show a show? O 'Conferido' fica no próprio Livro e no cartão da Escala. Sugestão: a Supervisão da área do show ou a Administração, e quem conferiu fica no Registro.
+10. **Horário da virada:** a Administração escolhe, por local, a hora em que a Escala passa a abrir no dia seguinte e a hora em que volta a abrir em hoje. Os valores padrão sugeridos (18:00 e 05:00) servem?
+11. **Copiar de outro dia:** copiar só quem continua disponível e mostrar quem ficou de fora?
 
 ## Como vai ser feito
 

@@ -94,6 +94,7 @@ ul.chk li:last-child{border-bottom:0}
 <div class="sec">
   <span class="tag">O fluxo que a gente quer</span>
   <h2>Cada um preenche a sua parte, envia, e a Administração publica tudo</h2>
+  <p class="note">O dia que se prepara é quase sempre <b>o seguinte</b>: a escala e o Livro de terça são feitos e publicados na noite de segunda. A Administração define, por local, a partir de que horas a Escala passa a abrir no dia seguinte (por exemplo, 18:00) e a partir de que horas volta a abrir em hoje (por exemplo, 05:00). A tela diz em que dia está e o botão diz "Publicar a escala de terça".</p>
   <div class="flow">
     <div class="box"><h3>1. Preencher</h3><p class="note" style="margin:0">Cada Supervisão cuida da própria área. A Administração cuida de qualquer uma. A Direção só lê.</p></div>
     <div class="go">→</div>
@@ -113,7 +114,7 @@ ul.chk li:last-child{border-bottom:0}
     <li><span class="ic ok">✓</span>Quem ocupa cada vaga de show é decidido pelo Livro: titular, substituto, reserva do grupo, rodízio. A Escala só mostra.</li>
     <li><span class="ic ok">✓</span>Folga vence a escala, tudo vai para o Registro e remoção é sempre restaurável.</li>
   </ul>
-  <p class="note" style="margin-top:10px">Hoje o Livro só publica depois da Escala e um por um. "Publicar tudo" faz essa mesma sequência sozinho, na mesma ordem, e avisa com frase clara se algum Livro não pôde ser publicado.</p>
+  <p class="note" style="margin-top:10px">O sistema já publica a Escala e os Livros do dia juntos, na mesma operação, e só quando todas as áreas estão prontas. O botão "Publicar tudo" passa a explicar o que vai acontecer e a pedir confirmação.</p>
 </div>
 
 <div class="sec">
@@ -122,7 +123,7 @@ ul.chk li:last-child{border-bottom:0}
   <div class="grid2">
     <div class="mock"><div class="cap">1. Ler o dia</div><p style="font-size:14px;margin:0">A planilha de papel é fácil porque tem <b>cor forte</b>, <b>horários alinhados</b> e <b>faixas</b> de atividades iguais. A tela atual tem cores suaves, toda linha com a mesma altura e colunas largas: a tabela passa de 4.600 px. A visão "por atividade" empilha nomes e ninguém entende o dia de uma pessoa.</p></div>
     <div class="mock"><div class="cap">2. Preencher</div><p style="font-size:14px;margin:0">Hoje é um clique por pessoa e por bloco. Com 40 pessoas, é muito.</p></div>
-    <div class="mock"><div class="cap">3. A folga esquecida</div><p style="font-size:14px;margin:0">Quando alguém entra de folga, é preciso achá-la em todas as cenas e atividades e trocar uma por uma. E nem sempre a mesma pessoa cobre todos os lugares dela.</p></div>
+    <div class="mock"><div class="cap">3. Descobrir o que sobrou</div><p style="font-size:14px;margin:0">O Livro já tira a folga e coloca a reserva sozinho, e isso está certo. O que dá trabalho é descobrir, entre 40 pessoas e vários shows, o que ele não conseguiu resolver: vaga sem ninguém, choque, troca de formação.</p></div>
     <div class="mock"><div class="cap">O objetivo</div><p style="font-size:14px;margin:0">Preencher em poucos cliques, ver o dia de uma olhada e nunca esquecer ninguém.</p></div>
   </div>
 </div>
@@ -133,7 +134,7 @@ ul.chk li:last-child{border-bottom:0}
   <p>Cada etapa deixa a tela usável e pode ser entregue sozinha.</p>
   <div class="steps">
     <div class="step"><div class="n">1</div><h3>Ler o dia como a planilha</h3><small>Cor forte, altura pela duração, faixas, resumo e busca.</small></div>
-    <div class="step"><div class="n">2</div><h3>Resolver a folga em um clique</h3><small>"Onde esta pessoa aparece", com a reserva de cada lugar.</small></div>
+    <div class="step"><div class="n">2</div><h3>Livros do dia na Escala</h3><small>Cartões que abrem o Livro que já existe e confere.</small></div>
     <div class="step"><div class="n">3</div><h3>Preencher em lote</h3><small>Várias pessoas de uma vez, com prévia e desfazer.</small></div>
     <div class="step"><div class="n">4</div><h3>Enviar e publicar tudo</h3><small>Cada área envia. A Administração publica tudo.</small></div>
     <div class="step"><div class="n">5</div><h3>Copiar de outro dia</h3><small>Por último, com confirmação forte.</small></div>
@@ -150,11 +151,11 @@ ul.chk li:last-child{border-bottom:0}
       <div class="hr">08:40</div><div class="c2" style="grid-column:2/10">Ensaio do show · 08:40–10:00</div>
       <div class="hr">10:00</div><div class="c1" style="grid-column:2/7">Treino no gelo · 10:00–11:00</div><div class="c4" style="grid-column:7/9">Interação</div><div class="c5">Hotel</div>
       <div class="hr">11:00</div><div class="c6" style="grid-column:2/10">Almoço · 11:00–13:00</div>
-      <div class="hr">13:00</div><div class="c5" style="grid-column:2/6">Passagem · 13:00–13:30</div><div class="folga" style="grid-column:6/7">Folga</div><div class="c5" style="grid-column:7/10">Passagem</div>
-      <div class="hr">14:00</div><div class="c3" style="grid-column:2/6">Show · 14:00</div><div class="folga" style="grid-column:6/7">Folga</div><div class="c3 exc" style="grid-column:7/8">Show · cobre</div><div class="c3" style="grid-column:8/10">Show</div>
+      <div class="hr">13:00</div><div class="c5" style="grid-column:2/6">Passagem · 13:00–13:30</div><div class="c5" style="grid-column:6/7">Passagem</div><div class="c5" style="grid-column:7/10">Passagem</div>
+      <div class="hr">14:00</div><div class="c3" style="grid-column:2/6">Show · 14:00</div><div class="c5" style="grid-column:6/7">Passagem</div><div class="c3 exc" style="grid-column:7/8">Show · cobre</div><div class="c3" style="grid-column:8/10">Show</div>
       <div class="hr">15:00</div><div class="c7" style="grid-column:2/10">Celebração · 16:00</div>
     </div></div>
-    <p class="note" style="margin-top:8px">Quem tem o mesmo horário vira uma faixa só. A exceção (contorno amarelo) e a folga (listrado) saltam aos olhos. Colunas estreitas fazem o dia caber na tela.</p>
+    <p class="note" style="margin-top:8px">Quem tem o mesmo horário vira uma faixa só. A exceção (contorno amarelo) salta aos olhos. Colunas estreitas fazem o dia caber na tela. <b>Quem está de folga sai da grade</b> e aparece só numa listinha "Folgas de hoje" no alto: só aparecem as pessoas que trabalham naquele dia.</p>
   </div>
   <div class="grid2" style="margin-top:14px">
     <div class="mock">
@@ -190,20 +191,39 @@ ul.chk li:last-child{border-bottom:0}
       <p style="font-size:14px;margin:0">Quadro <b>Não trabalha hoje</b>, filtro <b>só exceções e choques</b> e um aviso <i>informativo</i> para quem fica mais de 40 min parado (nunca bloqueia).</p>
     </div>
   </div>
-  <div class="why"><b>No bloco de show,</b> cada pessoa aparece com o personagem ou a posição que faz, e quem cobre alguém aparece como "cobre fulano (folga)". Na Escala o show é só leitura, com o botão "Abrir Livro". <b>No celular</b> a visão continua em cartões por pessoa, com uma faixa do dia no topo.</div>
+  <div class="why"><b>O show é um bloco comum</b> na Escala ("Show Patinação 14:00"), sem cenas nem posições. Os detalhes ficam no <b>Livro do Dia</b> que já existe. <b>No celular</b> a visão continua em cartões por pessoa, com uma faixa do dia no topo.</div>
 </div>
 
 <div class="sec">
   <span class="tag">Etapa 2</span>
-  <h2>Resolver a folga em um clique</h2>
-  <p>Quando alguém entra de folga, o app mostra <b>todos os lugares onde ela aparece</b>, cada um com a sua sugestão de quem cobre. Nem sempre é a mesma pessoa.</p>
+  <h2>Os Livros do dia dentro da Escala</h2>
+  <p><b>Não existe uma segunda tela do Livro.</b> O Livro do Dia que já existe continua sendo o lugar onde se vê e se mexe (navegar por outros dias, brincar com o show). A Escala mostra <b>o que o dia vai virar</b> (hoje, amanhã) e só liga as duas coisas.</p>
   <div class="mock">
-    <div class="cap">Onde a Pessoa S aparece hoje · está de folga</div>
-    <div class="row"><span class="chip c3">Show 14:00 · As Guardiãs, Backstage Left 2</span><span>→ cobre: <b>Pessoa M</b> <span class="note">(reserva das patinadoras)</span></span></div>
-    <div class="row"><span class="chip c3">Show 14:00 · Cartas para Noel, Backstage Left 1</span><span>→ cobre: <b>Pessoa R</b> <span class="note">(reserva das patinadoras)</span></span></div>
-    <div class="row"><span class="chip c2">Ensaio 12:00</span><span>→ sem reserva: <b>escolher alguém</b></span></div>
-    <div style="margin-top:10px"><span class="btn">Mudar uma</span> <span class="btn p">Aceitar todas as sugestões</span></div>
-    <p class="note" style="margin-top:8px">Antes de gravar há uma prévia, e depois há "Desfazer". Nos shows, a troca passa pelo motor do Livro, o mesmo de hoje.</p>
+    <div class="cap">Na Escala: um cartão por show do dia · Hoje | Amanhã</div>
+    <div class="row"><span style="flex:1 1 180px"><b>Show Patinação</b><br><span class="note">14:00–16:00 · Show completo · 8 chamadas</span></span><span class="chip c5">1 mudança</span><span class="chip c3">1 vaga sem ninguém</span><span class="chip c6">A conferir</span><span class="btn p">Abrir o Livro</span></div>
+    <div class="row"><span style="flex:1 1 180px"><b>Teatro de Natal</b><br><span class="note">16:00–16:30 · Só personagens · 2 chamadas</span></span><span class="chip c4">Conferido ✓</span><span class="btn p">Abrir o Livro</span></div>
+  </div>
+  <div class="grid2" style="margin-top:14px">
+    <div class="mock">
+      <div class="cap">Tocar abre o Livro que já existe</div>
+      <ul class="chk">
+        <li><span class="ic ok">✓</span>Abre <b>no dia e no show</b> que você tocou e volta para a Escala.</li>
+        <li><span class="ic ok">✓</span>Serve para show completo e para só personagens: a mesma tela.</li>
+        <li><span class="ic ok">✓</span>O Livro já mostra "o que mudou" e "sem ninguém escalado hoje".</li>
+        <li><span class="ic ok">✓</span>O botão <b>Conferido</b> fica no próprio Livro e no cartão da Escala.</li>
+        <li><span class="ic ok">✓</span><b>Cada Supervisão vê e confere só os Livros dos shows sob a sua responsabilidade.</b> A Administração vê todos.</li>
+        <li><span class="ic ok">✓</span><b>Sem ir e voltar:</b> o botão "Conferir os Livros do dia (2)" abre o primeiro que falta. Ao apertar "Conferido", abre o próximo, e no último volta sozinho para a Escala.</li>
+      </ul>
+    </div>
+    <div class="mock">
+      <div class="cap">Na Escala, o "Atenção do dia" só avisa</div>
+      <ul class="chk">
+        <li><span class="ic b">×</span><span>Show Patinação: 1 vaga sem ninguém. A troca é feita no Livro. <span class="btn">Abrir o Livro</span></span></li>
+        <li><span class="ic b">×</span><span>Choque: Pessoa D, Treino no gelo e Yeti (10:00). <span class="btn">Ver</span></span></li>
+        <li><span class="ic w">!</span><span>Livros do dia a conferir: 1 de 2.</span></li>
+      </ul>
+      <p class="note" style="margin-top:8px">Quem decide cada posição é sempre o Livro, nunca a Escala.</p>
+    </div>
   </div>
   <div class="grid2" style="margin-top:14px">
     <div class="mock">
@@ -214,11 +234,12 @@ ul.chk li:last-child{border-bottom:0}
     <div class="mock">
       <div class="cap">Ao tocar, resolve ali mesmo</div>
       <div class="menu"><div>Tirar de uma das atividades</div><div>Mudar horário só desta pessoa</div><div>Dividir o horário</div></div>
-      <p class="note" style="margin-top:8px">Pede motivo e deixa claro que é exceção só dela. Show não muda de horário: a saída é tirar do show.</p>
+      <p class="note" style="margin-top:8px">Pede motivo e deixa claro que é exceção só dela. Show não muda de horário: a saída é tirar do show, pelo Livro.</p>
     </div>
   </div>
+  <div class="why"><b>O que muda no código (pequeno):</b> hoje o Livro do Dia sempre abre em hoje, e o atalho que a Escala já tem abre o Livro de hoje mesmo quando se vê outro dia. O ajuste é ler a data e o show do endereço ao abrir, em umas dez linhas. A tela do Livro é mexida por outras sessões, então esse ajuste só entra com autorização, em um commit só dele.</div>
+  <div class="why"><b>A conferir antes de construir (eu testo no banco de teste):</b> se alguém entra de folga <i>depois</i> de o Livro já ter sido gerado, o Livro troca sozinho ou continua com a pessoa? Se não trocar, o cartão avisa "folga marcada depois de gerado" e oferece o botão de gerar de novo que já existe.</div>
 </div>
-
 <div class="sec">
   <span class="tag">Etapa 3</span>
   <h2>Preencher em lote</h2>
@@ -307,9 +328,11 @@ ul.chk li:last-child{border-bottom:0}
   <div class="q"><b>4. Quem pode preencher em lote?</b><small>Sugestão: Administração em qualquer área, Supervisão só na própria.</small></div>
   <div class="q"><b>5. Área enviada e alguém mexe depois: a marca cai sozinha?</b><small>Sugestão: sim, com aviso no sino para a Supervisão da área.</small></div>
   <div class="q"><b>6. Rascunho: a Supervisão vê o de todas as áreas ou só o da própria?</b><small>Sugestão: de todas, para conferir choques. Ela edita só a própria. O Elenco vê apenas o publicado.</small></div>
-  <div class="q"><b>7. "Publicar tudo" publica a Escala e todos os Livros de uma vez?</b><small>Sugestão: sim, na ordem de hoje (Escala, depois Livros), avisando se algum Livro não pôde ser publicado.</small></div>
-  <div class="q"><b>8. Livro não gerado ou com vaga vazia impede a área de ser enviada?</b><small>Sugestão: só avisa, e a Administração decide.</small></div>
-  <div class="q"><b>9. Copiar de outro dia: copiar só quem continua disponível e mostrar quem ficou de fora?</b></div>
+  <div class="q"><b>7. "Publicar tudo"</b><small>Isso já é assim hoje no sistema: publicar a Escala publica os Livros do dia juntos, e só com todas as áreas prontas. Vamos só deixar o botão explicar o que vai acontecer e pedir confirmação. Concorda?</small></div>
+  <div class="q"><b>8. Livro com vaga sem ninguém ou ainda não conferido impede a área de ser enviada?</b><small>Sugestão: só avisa, e a Administração decide.</small></div>
+  <div class="q"><b>9. Quem confere cada Livro?</b><small>Sugestão: a Supervisão responsável pelo show (e a Administração, em qualquer um). Precisa confirmar: "responsável pelo show" é a Supervisão da área do show, ou há alguém indicado show a show? O "Conferido" fica no próprio Livro e no cartão da Escala, e quem conferiu fica no Registro.</small></div>
+  <div class="q"><b>10. Horário da virada</b><small>A Administração escolhe, por local, a hora em que a Escala passa a abrir no dia seguinte e a hora em que volta a abrir em hoje. Os valores padrão sugeridos (18:00 e 05:00) servem?</small></div>
+  <div class="q"><b>11. Copiar de outro dia: copiar só quem continua disponível e mostrar quem ficou de fora?</b></div>
 </div>
 
 <div class="sec">

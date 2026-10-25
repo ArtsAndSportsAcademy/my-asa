@@ -27,14 +27,15 @@ button{font:inherit;color:inherit;cursor:pointer}
 .top .in{max-width:1400px;margin:0 auto;padding:10px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 h1{font-size:20px;letter-spacing:-.01em;margin:0}
 .sub{color:var(--muted);font-size:13px}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:12px;padding:3px;background:var(--card);gap:2px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:12px;padding:3px;background:var(--card);gap:2px;flex-wrap:wrap}
 .seg button{border:0;background:none;min-height:44px;padding:0 14px;border-radius:9px;font-weight:600;font-size:14px;transition:transform .1s ease-out,background .15s}
 .seg button:active{transform:scale(.97)}
-.seg button[aria-pressed=true]{background:var(--purple);color:#fff}
+.seg button[aria-pressed=true],.seg button[aria-selected=true]{background:var(--purple);color:#fff}
+.tabs{margin:12px 0 4px}
+.badge{display:inline-block;min-width:22px;padding:0 6px;border-radius:999px;background:var(--bad);color:#fff;font-size:12px;font-weight:800;margin-left:6px;line-height:20px;text-align:center}
 .btn{min-height:44px;padding:0 18px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-weight:700;font-size:14px;transition:transform .1s ease-out,opacity .15s}
 .btn:active{transform:scale(.97)}
 .btn.p{background:var(--purple);border-color:var(--purple);color:#fff}
-.btn.d{background:var(--bad);border-color:var(--bad);color:#fff}
 .btn[disabled]{opacity:.5;cursor:not-allowed}
 .banner{margin:12px 0;background:var(--purple-soft);border-radius:12px;padding:10px 14px;font-size:14px}
 .stats{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
@@ -59,36 +60,62 @@ h1{font-size:20px;letter-spacing:-.01em;margin:0}
 .c4{background:var(--t4);color:var(--t4f)}.c5{background:var(--t5);color:var(--t5f)}.c6{background:var(--t6);color:var(--t6f)}.c7{background:var(--t7);color:var(--t7f)}
 .legend{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
 .legend span{border-radius:8px;padding:4px 9px;font-size:12px;font-weight:700}
+.how{display:flex;flex-wrap:wrap;gap:6px 14px;margin:4px 0 8px;font-size:13px;color:var(--muted)}
+.how span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:18px;height:18px;border-radius:5px;flex:none;background:var(--t2)}
+.sw.fo{background:repeating-linear-gradient(45deg,var(--t6),var(--t6) 3px,transparent 3px,transparent 6px)}
+.sw.ch{box-shadow:inset 0 0 0 2px var(--bad)}
+.sw.ex{box-shadow:inset 0 0 0 2px var(--warn)}
 /* grade */
 .gwrap{overflow-x:auto;border:1px solid var(--line);border-radius:16px;background:var(--card)}
-.grid{display:grid;grid-template-columns:50px repeat(12,minmax(64px,1fr));gap:2px;min-width:880px;padding:6px}
+.grid{display:grid;grid-template-columns:50px repeat(11,minmax(64px,1fr));gap:2px;min-width:800px;padding:6px}
 .hd{position:sticky;top:0;z-index:3;font-size:12px;font-weight:700;text-align:center;padding:6px 2px;min-height:44px;border:0;background:var(--card);border-radius:8px;line-height:1.2}
 .hd small{display:block;color:var(--muted);font-weight:600;font-size:12px}
 .hd.sel{background:var(--purple-soft);color:var(--purple)}
+.bd{display:block;margin-top:3px;border-radius:6px;padding:2px 4px;font-size:12px;font-weight:700;line-height:1.15}
+.bd.b{background:var(--bad-bg);color:var(--bad)}.bd.n{background:var(--t6);color:var(--t6f)}
 .axis{position:relative}
 .axis i{position:absolute;left:0;font-style:normal;font-size:12px;color:var(--muted);font-family:ui-monospace,Consolas,monospace;transform:translateY(-50%)}
 .col{position:relative;border-radius:8px;background:var(--bg);transition:opacity .2s}
 .col.folga{background:repeating-linear-gradient(45deg,var(--t6),var(--t6) 5px,transparent 5px,transparent 10px)}
 .col.dim{opacity:.28}
-.blk{position:absolute;border-radius:6px;border:0;padding:0;font-size:12px;font-weight:700;line-height:1.15;overflow:hidden;transition:transform .1s ease-out,opacity .2s,box-shadow .15s}
+.blk{position:absolute;border-radius:6px;border:0;padding:0;transition:transform .1s ease-out,opacity .2s}
 .blk:active{transform:scale(.97)}
 .blk:focus-visible{outline:3px solid var(--purple);outline-offset:1px;z-index:5}
 .blk.conf{box-shadow:inset 0 0 0 2px var(--bad)}
-.blk.pend{background-image:repeating-linear-gradient(135deg,transparent 0 6px,rgba(168,34,27,.28) 6px 8px);box-shadow:inset 0 0 0 2px var(--bad)}
 .blk.exc{box-shadow:inset 0 0 0 2px var(--warn)}
-.blk.faded{opacity:.15}
-.lab.faded{opacity:.15}
-.lab{position:absolute;z-index:2;pointer-events:none;display:flex;align-items:center;justify-content:center;text-align:center;padding:2px 3px;font-size:12px;font-weight:700;line-height:1.15;overflow:hidden;color:inherit}
+.blk.faded,.lab.faded{opacity:.15}
+.lab{position:absolute;z-index:2;pointer-events:none;display:flex;align-items:center;justify-content:center;text-align:center;padding:2px 3px;font-size:12px;font-weight:700;line-height:1.15;overflow:hidden}
 .fol{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--t6f);writing-mode:vertical-rl;letter-spacing:.1em}
+/* visão por atividade */
+.act{border:1px solid var(--line);border-radius:16px;background:var(--card);overflow:hidden}
+.act .ar{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-top:1px solid var(--line);flex-wrap:wrap}
+.act .ar:first-child{border-top:0}
+.act .tm{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--muted);min-width:96px;padding-top:6px}
+.act .who{flex:1 1 240px;font-size:14px;color:var(--muted)}
 /* cartões (celular) */
 .cards{display:none}
 .pc{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;margin:10px 0}
 .pc h3{margin:0 0 8px;font-size:16px;display:flex;justify-content:space-between;gap:8px}
 .chip{display:flex;gap:8px;align-items:center;width:100%;min-height:44px;border-radius:10px;border:0;padding:6px 10px;margin:4px 0;text-align:left;font-size:14px;font-weight:600}
 .chip .tm{font-family:ui-monospace,Consolas,monospace;font-size:12px;flex:none;opacity:.85}
-.chip.conf{box-shadow:inset 0 0 0 2px var(--bad)}.chip.pend{box-shadow:inset 0 0 0 2px var(--bad);background-image:repeating-linear-gradient(135deg,transparent 0 6px,rgba(168,34,27,.25) 6px 8px)}
+.chip.conf{box-shadow:inset 0 0 0 2px var(--bad)}
 .chip.exc{box-shadow:inset 0 0 0 2px var(--warn)}
 @media(max-width:760px){.gwrap{display:none}.cards{display:block}.hide-sm{display:none}}
+/* livros */
+.lv{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.lv .n{flex:1 1 220px}
+.lv h3{margin:0;font-size:17px}
+.pill{display:inline-block;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700;margin:2px 4px 2px 0}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}.pill.b{background:var(--bad-bg);color:var(--bad)}.pill.w{background:var(--warn-bg);color:var(--warn)}.pill.n{background:var(--t6);color:var(--t6f)}
+.cena{margin:10px 0}
+.cena h3{margin:0 0 4px;font-size:15px}
+.pos{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.pos .k{flex:0 0 150px;color:var(--muted)}
+.pos .v{flex:1 1 160px;font-weight:700}
+.pos.mud{background:var(--warn-bg);border-radius:10px;padding:8px 10px;margin:4px 0;border-top:0}
+.pos.vg{background:var(--bad-bg);border-radius:10px;padding:8px 10px;margin:4px 0;border-top:0}
+.back{border:0;background:none;color:var(--purple);font-weight:700;min-height:44px;padding:0;font-size:15px}
 /* barra de ação */
 .bar{position:fixed;left:0;right:0;bottom:0;z-index:25;background:var(--glass);backdrop-filter:blur(18px) saturate(180%);-webkit-backdrop-filter:blur(18px) saturate(180%);border-top:1px solid var(--line);padding:10px 14px calc(10px + env(safe-area-inset-bottom))}
 .bar .in{max-width:1400px;margin:0 auto;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
@@ -115,7 +142,7 @@ h1{font-size:20px;letter-spacing:-.01em;margin:0}
 .pop button small{display:block;font-weight:500;color:var(--muted);font-size:12px}
 .pop hr{border:0;border-top:1px solid var(--line);margin:4px 0}
 @media(max-width:760px){
-  .dlg{left:0;right:0;top:auto;bottom:0;width:100%;max-height:88vh;border-radius:20px 20px 0 0;transform:translateY(40px);}
+  .dlg{left:0;right:0;top:auto;bottom:0;width:100%;max-height:88vh;border-radius:20px 20px 0 0;transform:translateY(40px)}
   .layer.on .dlg{transform:translateY(0)}
   .dlg footer{border-radius:0}
   .pop{left:0!important;right:0;top:auto!important;bottom:0;max-width:none;border-radius:20px 20px 0 0;transform:translateY(40px);padding-bottom:calc(10px + env(safe-area-inset-bottom))}
@@ -136,13 +163,14 @@ h1{font-size:20px;letter-spacing:-.01em;margin:0}
 .empty b{display:block;color:var(--ink);font-size:18px;margin-bottom:6px}
 .tl .it{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:10px;margin:4px 0;font-size:14px;font-weight:600}
 .tl .it .tm{font-family:ui-monospace,Consolas,monospace;font-size:12px;min-width:92px}
+.call{background:var(--t3);color:var(--t3f);border-radius:14px;padding:12px 14px;margin:10px 0;font-size:15px}
 @media (prefers-reduced-motion:reduce){*{transition:opacity .15s!important}.dlg,.pop{transform:none!important}.dlg{left:50%;top:50%;transform:translate(-50%,-50%)!important}}
 @media (prefers-reduced-motion:reduce) and (max-width:760px){.dlg{left:0;top:auto;transform:none!important}}
 </style>
 </head>
 <body>
 <div class="top"><div class="in">
-  <div style="flex:1 1 220px"><h1>Escala do dia · Snowland</h1><div class="sub">Sábado, 24 de outubro · rascunho · protótipo com dados de exemplo</div></div>
+  <div style="flex:1 1 220px"><h1>Escala do dia · Snowland</h1><div class="sub" id="sub">Domingo, 25 de outubro (amanhã) · rascunho · protótipo com dados de exemplo</div></div>
   <div class="seg" role="group" aria-label="Ver como">
     <button data-role="sup" aria-pressed="true">Supervisão (Patinadores)</button>
     <button data-role="adm" aria-pressed="false">Administração</button>
@@ -161,18 +189,29 @@ const AREAS={pat:'Patinadores',bai:'Bailarinos',pro:'Produção',per:'Personagen
 const mm=s=>{const [h,m]=s.split(':').map(Number);return h*60+m};
 const hm=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let S, uid=0, hist=[], ui={role:'sup',filter:false,q:'',sel:null};
+const DIAS=['Sábado, 24 de outubro (hoje)','Domingo, 25 de outubro (amanhã)'];
+let S, uid=0, hist=[], ui={role:'sup',tab:'escala',day:1,view:'pessoa',filter:false,q:'',sel:null,livro:null};
 
 function fresh(){
   uid=0;
-  const P=[['A','pat'],['B','pat'],['C','pat'],['D','pat'],['S','pat'],['M','pat'],['R','pat'],['F','pat'],['X','bai'],['Y','bai'],['Z','pro'],['K','per']];
-  S={people:P.map(([id,area])=>({id,area,name:'Pessoa '+id,folga:false})),blocks:[],vagas:[],
-     areaStatus:{pat:'aberta',bai:'enviada',pro:'aberta',per:'enviada'},published:false};
+  const P=[['A','pat'],['B','pat'],['C','pat'],['D','pat'],['M','pat'],['R','pat'],['S','pat'],['F','pat'],['X','bai'],['Y','bai'],['Z','pro'],['K','per']];
+  S={people:P.map(([id,area])=>({id,area,name:'Pessoa '+id,folga:false})),blocks:[],
+     areaStatus:{pat:'aberta',bai:'enviada',pro:'aberta',per:'enviada'},published:false,
+     livros:[
+      {id:'pat',area:'pat',tipo:'completo',nome:'Show Patinação',s:mm('14:00'),e:mm('16:00'),conferido:false,cenas:[
+        {n:'Abertura',pos:[{k:'Centro 1',p:'A'},{k:'Centro 2',p:'C'}]},
+        {n:'As Guardiãs',pos:[{k:'Backstage Left 2',p:'M',tit:'S',mud:'Pessoa M entrou no lugar de Pessoa S (folga). O Livro escolheu a reserva do grupo.'}]},
+        {n:'Cartas para Noel',pos:[{k:'Backstage Left 1',p:null,tit:'S'},{k:'Bailarina 1',p:'X'},{k:'Bailarina 2',p:'Y'}]},
+        {n:'Boas-vindas',pos:[{k:'Personagem',p:'K'}]},
+        {n:'Final',pos:[{k:'Centro 1',p:'B'},{k:'Centro 2',p:'D'}]}]},
+      {id:'teat',area:'bai',tipo:'personagens',nome:'Teatro de Natal',s:mm('16:00'),e:mm('16:30'),conferido:false,cenas:[
+        {n:'Personagens',pos:[{k:'Narradora',p:'X'},{k:'Guardiã',p:'Y'},{k:'Mensageira',p:null,tit:'S'}]}]}
+     ]};
   S.people.find(p=>p.id==='F').folga=true;
-  S.people.find(p=>p.id==='S').folga=true; S.people.find(p=>p.id==='S').pend=true;
-  const add=(ids,s,e,type,label,x={})=>ids.forEach(p=>S.blocks.push({id:++uid,p,s:mm(s),e:mm(e),type,label,show:type==='show',...x}));
-  const work=['A','B','C','D','S','M','R','X','Y','Z','K'];
-  const pat=['A','B','C','D','S','M','R'];
+  S.people.find(p=>p.id==='S').folga=true;
+  const add=(ids,s,e,type,label,x={})=>ids.forEach(p=>S.blocks.push({id:++uid,p,s:mm(s),e:mm(e),type,label,...x}));
+  const work=['A','B','C','D','M','R','X','Y','Z','K'];
+  const pat=['A','B','C','D','M','R'];
   add(pat.concat(['X','Y','K']),'08:40','10:00','ensaio','Ensaio do show');
   add(pat,'10:00','11:00','gelo','Treino no gelo');
   add(['X','Y'],'10:00','11:00','ensaio','Ensaio de bailarinos');
@@ -180,102 +219,118 @@ function fresh(){
   add(['K'],'10:00','10:20','inter','Yeti',{exc:true}); add(['K'],'10:40','11:00','inter','Yeti',{exc:true});
   add(['D'],'10:00','10:20','inter','Yeti',{exc:true});
   add(work,'11:00','12:00','pausa','Almoço');
-  add(['A','B','C','D','S','M'],'12:00','13:00','ensaio','Ensaio de Natal');
+  add(['A','B','C','D','M'],'12:00','13:00','ensaio','Ensaio de Natal');
   add(['Z'],'12:00','14:00','prod','Preparação do show');
   add(work.filter(x=>x!=='Z'),'13:00','13:30','prod','Passagem do show');
-  add(['A','B','C','D','R'],'14:00','15:00','show','Show Patinação',{livro:'Show Patinação'});
-  add(['X','Y','K'],'14:00','15:00','show','Show Patinação',{livro:'Show Patinação'});
+  add(['A','B','C','D','X','Y','K'],'14:00','16:00','show','Show Patinação',{livro:'pat'});
+  add(['M'],'14:00','16:00','show','Show Patinação',{livro:'pat',exc:true});
+  add(['X','Y'],'16:00','16:30','show','Teatro de Natal',{livro:'teat'});
   add(['Z'],'14:00','15:00','prod','Apoio no show');
-  add(['S'],'14:00','15:00','show','As Guardiãs',{livro:'Show Natal',pos:'Backstage Left 2'});
-  add(['S'],'15:30','16:30','show','Cartas para Noel',{livro:'Show Natal',pos:'Backstage Left 1'});
-  add(['M'],'14:00','15:00','outra','Reserva do grupo',{reserva:true});
-  add(['R'],'15:30','16:30','outra','Reserva do grupo',{reserva:true});
+  add(['R'],'15:30','16:00','ensaio','Ensaio de teatro');
   add(work,'16:30','17:00','outra','Celebração');
 }
-const needsCover=b=>b.show||b.label==='Ensaio de Natal';
+const real=()=>S.people;
 const person=id=>S.people.find(p=>p.id===id);
 const blocksOf=id=>S.blocks.filter(b=>b.p===id).sort((a,b)=>a.s-b.s);
 const overlap=(a,b)=>a.s<b.e&&b.s<a.e;
+const livro=id=>S.livros.find(l=>l.id===id);
+const vl=()=>ui.role==='adm'?S.livros:S.livros.filter(l=>l.area==='pat');
+const allPos=l=>l.cenas.flatMap((c,ci)=>c.pos.map((x,pi)=>({...x,cena:c.n,ci,pi})));
+const chamadas=l=>new Set(allPos(l).filter(x=>x.p).map(x=>x.p)).size;
+const vagas=l=>allPos(l).filter(x=>!x.p).length;
+const mudancas=l=>allPos(l).filter(x=>x.mud).length;
 function conflicts(){
   const out=[];
   S.people.forEach(p=>{ if(p.folga)return; const bs=blocksOf(p.id);
-    for(let i=0;i<bs.length;i++)for(let j=i+1;j<bs.length;j++) if(overlap(bs[i],bs[j])&&!bs[i].reserva&&!bs[j].reserva) out.push([bs[i],bs[j]]);});
+    for(let i=0;i<bs.length;i++)for(let j=i+1;j<bs.length;j++) if(overlap(bs[i],bs[j])) out.push([bs[i],bs[j]]);});
   return out;
 }
 const confIds=()=>{const s=new Set();conflicts().forEach(([a,b])=>{s.add(a.id);s.add(b.id)});return s};
 function snap(){hist.push(JSON.stringify(S));if(hist.length>30)hist.shift()}
 function undo(){if(!hist.length)return;S=JSON.parse(hist.pop());toast('Alteração desfeita.');render()}
 let tt;function toast(msg,undoable){const t=document.getElementById('toast');t.innerHTML=`<span>${esc(msg)}</span>`+(undoable?'<button id="tundo">Desfazer</button>':'');t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),undoable?7000:4500);const u=document.getElementById('tundo');if(u)u.onclick=()=>{undo();t.classList.remove('on')}}
-function touch(personId,what){
+function touch(personId){
   const a=person(personId).area;
   if(S.areaStatus[a]==='enviada'){S.areaStatus[a]='aberta';toast(`A área ${AREAS[a]} foi alterada depois de enviada: voltou para "não enviada". A Supervisão é avisada no sino.`)}
 }
 const canEdit=p=>ui.role==='adm'||(ui.role==='sup'&&p.area==='pat');
 
-/* ---------- renderização ---------- */
 function stats(){
-  const f=S.people.filter(p=>p.folga).length;
-  const esc_=S.people.filter(p=>!p.folga&&blocksOf(p.id).length).length;
+  const f=real().filter(p=>p.folga).length;
+  const esc_=real().filter(p=>!p.folga&&blocksOf(p.id).length).length;
   const c=conflicts().length;
   const ex=new Set(S.blocks.filter(b=>b.exc).map(b=>b.p)).size;
-  const sem=S.people.filter(p=>!p.folga&&!blocksOf(p.id).length).length;
+  const sem=real().filter(p=>!p.folga&&!blocksOf(p.id).length).length;
   return {esc:esc_,f,c,ex,sem};
 }
 function attention(){
-  const it=[]; const sb=blocksOf('S');
-  const prec=sb.filter(needsCover).length;
-  if(person('S').folga&&sb.length) it.push({ic:'b',t:`Pessoa S está de folga e ainda aparece em ${sb.length} lugares. ${prec} precisam de quem cubra.`,btn:'Resolver',act:'folga'});
-  const c=conflicts(); c.forEach(([a,b])=>it.push({ic:'b',t:`Choque: ${person(a.p).name}, ${a.label} (${hm(a.s)}) e ${b.label} (${hm(b.s)}).`,btn:'Ver',act:'ver',id:a.id}));
-  S.vagas.forEach(v=>it.push({ic:'w',t:`Vaga sem ninguém: ${v}.`}));
-  if(sb.length) it.push({ic:'w',t:'Livro "Show Natal": 2 vagas dependem da Pessoa S (folga).'});
+  const it=[];
+  conflicts().forEach(([a,b])=>it.push({ic:'b',t:`Choque: ${person(a.p).name}, ${a.label} (${hm(a.s)}) e ${b.label} (${hm(b.s)}).`,btn:'Ver',act:'ver',id:a.id}));
+  vl().filter(l=>vagas(l)).forEach(l=>it.push({ic:'b',t:`${l.nome}: ${vagas(l)} ${vagas(l)>1?'vagas':'vaga'} sem ninguém. A troca é feita no Livro.`,btn:'Abrir o Livro',act:'livro',id:l.id}));
+  const nc=vl().filter(l=>!l.conferido).length;
+  if(nc)it.push({ic:'w',t:`Livros do dia a conferir: ${nc} de ${vl().length}.`,btn:'Ver os Livros',act:'tab'});
   return it;
 }
 function moments(){
-  const m={};S.blocks.forEach(b=>{if(b.reserva)return;const k=[b.s,b.e,b.type,b.label].join('|');m[k]=m[k]||{b,n:0};m[k].n++});
+  const m={};S.blocks.forEach(b=>{const k=[b.s,b.e,b.type,b.label].join('|');m[k]=m[k]||{b,n:0};m[k].n++});
   return Object.values(m).filter(x=>x.n>=3).sort((a,b)=>a.b.s-b.b.s);
 }
+const pendLivros=()=>S.livros.filter(l=>vagas(l)).length;
+
+/* ---------- renderização ---------- */
 function render(){
   const app=document.getElementById('app'), r=ui.role;
   if(r==='mem'){ app.innerHTML=elenco(); bar(); return }
-  const st=stats(), at=attention(), conf=confIds();
   let h=`<div class="banner">${r==='sup'?'Você é a <b>Supervisão dos Patinadores</b>: edita só a sua área, vê o rascunho das outras e envia a sua parte quando terminar.':'Você é a <b>Administração</b>: edita qualquer área e publica o dia quando todas as áreas estiverem prontas.'} O Elenco só vê o que for publicado.</div>`;
-  h+=`<div class="stats">
+  document.getElementById('sub').textContent=DIAS[ui.day]+' · rascunho · protótipo com dados de exemplo';
+  h+=ui.livro?livroDetalhe(livro(ui.livro)):escalaTab();
+  app.innerHTML=h; bar(); wire();
+}
+function escalaTab(){
+  const st=stats(), at=attention(), conf=confIds(), hit=matchIds();
+  let h=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0"><div class="seg" role="group" aria-label="Dia">${DIAS.map((d,i)=>`<button data-day="${i}" aria-pressed="${ui.day===i}">${i?'Amanhã':'Hoje'}</button>`).join('')}</div><span class="note">${DIAS[ui.day]}</span></div><div class="stats">
     <button class="stat ok" data-f="all"><b>${st.esc}</b>escaladas</button>
     <button class="stat"><b>${st.f}</b>de folga</button>
     <button class="stat ${st.c?'bad':''}" data-f="exc"><b>${st.c}</b>${st.c===1?'choque':'choques'}</button>
     <button class="stat ${st.ex?'warn':''}" data-f="exc"><b>${st.ex}</b>com exceção</button>
     <button class="stat"><b>${st.sem}</b>sem atividade</button></div>`;
-  h+=`<div class="card"><h2>Atenção do dia</h2>`+(at.length?at.map((x,i)=>`<div class="att"><span class="ic ${x.ic}">${x.ic==='b'?'×':'!'}</span><span class="t">${esc(x.t)}</span>${x.btn?`<button class="btn" data-att="${i}">${x.btn}</button>`:''}</div>`).join(''):`<div class="att"><span class="ic ok">✓</span><span class="t">Tudo certo por aqui: sem choques, sem folga esquecida e sem vaga vazia.</span></div>`)+`</div>`;
-  h+=`<div class="tools"><input class="search" id="q" type="search" placeholder="Buscar pessoa (ex.: Pessoa S)" value="${esc(ui.q)}" aria-label="Buscar pessoa"><label class="chk"><input type="checkbox" id="fl" ${ui.filter?'checked':''}>Só exceções e choques</label><button class="btn p" id="lote">Preencher em lote</button></div>`;
+  h+=`<div class="card"><h2>Atenção do dia</h2>`+(at.length?at.map((x,i)=>`<div class="att"><span class="ic ${x.ic}">${x.ic==='b'?'×':'!'}</span><span class="t">${esc(x.t)}</span>${x.btn?`<button class="btn" data-att="${i}">${x.btn}</button>`:''}</div>`).join(''):`<div class="att"><span class="ic ok">✓</span><span class="t">Tudo certo por aqui: sem choques e com todos os Livros conferidos.</span></div>`)+`</div>`;
+  const faltam=vl().filter(l=>!l.conferido).length;
+  h+=`<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2 style="margin:0">Livros do dia · ${ui.day?'amanhã':'hoje'}</h2><button class="btn p" data-fila ${faltam?'':'disabled'}>${faltam?`Conferir os Livros do dia (${faltam})`:'Todos conferidos ✓'}</button></div>`+vl().map(l=>{const v=vagas(l),m=mudancas(l);return `<div class="row"><span class="l"><b>${esc(l.nome)}</b><br><span class="note">${hm(l.s)}–${hm(l.e)} · ${l.tipo==='completo'?'Show completo':'Só personagens'} · ${chamadas(l)} chamadas</span></span>${m?`<span class="pill w">${m} ${m>1?'mudanças':'mudança'}</span>`:''}${v?`<span class="pill b">${v} ${v>1?'vagas sem ninguém':'vaga sem ninguém'}</span>`:''}<span class="pill ${l.conferido?'ok':'n'}">${l.conferido?'Conferido ✓':'A conferir'}</span><button class="btn p" data-lv="${l.id}">Abrir o Livro</button></div>`}).join('')+`<div class="note" style="margin-top:6px">${ui.role==='sup'?'Aparecem só os shows da sua responsabilidade (Patinadores). A Administração vê todos. ':''}O Livro abre no dia e no show que você tocou. É a mesma tela do Livro do Dia que já existe.</div></div>`;
+  const fo=S.people.filter(p=>p.folga);
+  h+=`<div class="card"><h2>Folgas de hoje (${fo.length})</h2>${fo.length?fo.map(p=>`<span class="pill n">${esc(p.name)} · ${AREAS[p.area]}</span>`).join(''):'<span class="note">Ninguém está de folga hoje.</span>'}<div class="note" style="margin-top:6px">Quem está de folga não aparece na grade. Só aparecem as pessoas que trabalham neste dia.</div></div>`;
+  h+=`<div class="seg" role="group" aria-label="Visão" style="margin:6px 0"><button data-view="pessoa" aria-pressed="${ui.view==='pessoa'}">Por pessoa</button><button data-view="atividade" aria-pressed="${ui.view==='atividade'}">Por atividade</button></div>`;
+  h+=`<div class="tools"><input class="search" id="q" type="search" placeholder="Buscar pessoa (ex.: Pessoa M)" value="${esc(ui.q)}" aria-label="Buscar pessoa"><label class="chk"><input type="checkbox" id="fl" ${ui.filter?'checked':''}>Só exceções e choques</label><button class="btn p" id="lote">Preencher em lote</button></div>`;
   const mo=moments(); h+=`<div class="moments" aria-label="Momentos do dia">${mo.map(x=>`<span class="moment c${TYPES[x.b.type][1]}">${hm(x.b.s)} ${esc(x.b.label)} · ${x.n} pessoas</span>`).join('')}</div>`;
   h+=`<div class="legend">${Object.values(TYPES).map(t=>`<span class="c${t[1]}">${t[0]}</span>`).join('')}</div>`;
-  const hit=matchIds();
-  h+=grid(conf,hit)+cards(conf,hit);
-  if(ui.sel){h+=`<div class="card tl"><h2>Dia de ${esc(person(ui.sel).name)}</h2>${blocksOf(ui.sel).map(b=>`<div class="it c${TYPES[b.type][1]}"><span class="tm">${hm(b.s)}–${hm(b.e)}</span>${esc(b.label)}${b.pos?' · '+esc(b.pos):''}</div>`).join('')||'<span class="note">Sem atividades hoje.</span>'}<div style="margin-top:8px"><button class="btn" id="selx">Fechar</button></div></div>`}
-  app.innerHTML=h; bar(); wire();
+  h+=`<div class="how" aria-label="Como ler a grade"><span><i class="sw ch"></i>Contorno vermelho: choque de horário</span><span><i class="sw ex"></i>Contorno amarelo: exceção (ex.: reserva que entrou no lugar de alguém)</span></div>`;
+  h+=ui.view==='pessoa'?grid(conf,hit)+cards(conf,hit):atividade(conf);
+  if(ui.sel){h+=`<div class="card tl"><h2>Dia de ${esc(person(ui.sel).name)}</h2>${blocksOf(ui.sel).map(b=>`<div class="it c${TYPES[b.type][1]}"><span class="tm">${hm(b.s)}–${hm(b.e)}</span>${esc(b.label)}</div>`).join('')||'<span class="note">Sem atividades hoje.</span>'}<div style="margin-top:8px"><button class="btn" id="selx">Fechar</button></div></div>`}
+  return h;
 }
 function matchIds(){const q=ui.q.trim().toLowerCase();if(!q)return null;return new Set(S.people.filter(p=>p.name.toLowerCase().includes(q)).map(p=>p.id))}
-function lanes(bs){ // largura para blocos que se cruzam
-  const res={};bs.forEach(b=>{const o=bs.filter(x=>x!==b&&overlap(x,b)&&!x.reserva&&!b.reserva);res[b.id]=o.length?{n:2,i:(bs.indexOf(b)<bs.indexOf(o[0])||o[0].reserva)?0:1}:{n:1,i:0}});return res}
+function lanes(bs){const res={};bs.forEach(b=>{const o=bs.filter(x=>x!==b&&overlap(x,b));res[b.id]=o.length?{n:2,i:bs.indexOf(b)<bs.indexOf(o[0])?0:1}:{n:1,i:0}});return res}
 function grid(conf,hit){
   const H=(END-START)*PX, key=b=>[b.s,b.e,b.type,b.label].join('|');
-  let h=`<div class="gwrap"><div class="grid"><div></div>`;
-  S.people.forEach(p=>h+=`<button class="hd ${ui.sel===p.id?'sel':''}" data-sel="${p.id}">${esc(p.name)}<small>${AREAS[p.area]}</small></button>`);
+  const ppl=S.people.filter(p=>!p.folga);
+  let h=`<div class="gwrap"><div class="grid" style="grid-template-columns:50px repeat(${ppl.length},minmax(64px,1fr))"><div></div>`;
+  const cp=new Set();conflicts().forEach(([a])=>cp.add(a.p));
+  ppl.forEach(p=>{const st=cp.has(p.id)?['b','choque de horário']:null;
+    h+=`<button class="hd ${ui.sel===p.id?'sel':''}" data-sel="${p.id}">${esc(p.name)}<small>${AREAS[p.area]}</small>${st?`<span class="bd ${st[0]}">${st[1]}</span>`:''}</button>`});
   h+=`<div class="axis" style="height:${H}px">`;
   for(let t=Math.ceil(START/60)*60;t<=END;t+=60)h+=`<i style="top:${(t-START)*PX}px">${hm(t)}</i>`;
   h+=`</div>`;
-  S.people.forEach((p,ci)=>{
+  ppl.forEach((p,ci)=>{
     const bs=blocksOf(p.id), ln=lanes(bs), dim=hit&&!hit.has(p.id);
-    h+=`<div class="col ${p.folga&&!bs.length?'folga':''} ${dim?'dim':''}" style="height:${H}px">`;
-    if(p.folga&&!bs.length)h+=`<div class="fol">FOLGA</div>`;
+    h+=`<div class="col ${dim?'dim':''}" style="height:${H}px">`;
     bs.forEach(b=>{
-      const prev=S.people[ci-1], same=prev&&S.blocks.some(x=>x.p===prev.id&&key(x)===key(b)&&!conf.has(x.id)&&!conf.has(b.id));
-      let run=1; if(!same&&!conf.has(b.id)){for(let j=ci+1;j<S.people.length;j++){if(S.blocks.some(x=>x.p===S.people[j].id&&key(x)===key(b)&&!conf.has(x.id)))run++;else break}}
+      const prev=ppl[ci-1], same=prev&&S.blocks.some(x=>x.p===prev.id&&key(x)===key(b)&&!conf.has(x.id)&&!conf.has(b.id));
+      let run=1; if(!same&&!conf.has(b.id)){for(let j=ci+1;j<ppl.length;j++){if(S.blocks.some(x=>x.p===ppl[j].id&&key(x)===key(b)&&!conf.has(x.id)))run++;else break}}
       const l=ln[b.id], w=100/l.n, top=(b.s-START)*PX, ht=(b.e-b.s)*PX-1;
-      const isEx=b.exc||(ui.filter&&false), faded=ui.filter&&!(b.exc||conf.has(b.id)||(p.folga&&p.pend));
-      h+=`<button class="blk c${TYPES[b.type][1]} ${conf.has(b.id)?'conf':''} ${p.folga&&p.pend?'pend':''} ${b.exc?'exc':''} ${faded?'faded':''}" data-b="${b.id}" style="top:${top}px;height:${ht}px;left:${l.i*w}%;width:${w}%" aria-label="${esc(p.name)}: ${esc(b.label)} ${hm(b.s)} a ${hm(b.e)}${conf.has(b.id)?' (choque)':''}${p.folga&&p.pend?' (pessoa de folga)':''}">`;
-      h+=`</button>`;
-      const lc=`color:var(--t${TYPES[b.type][1]}f);top:${top}px;height:${ht}px;left:${l.i*w}%;`;
+      const faded=ui.filter&&!(b.exc||conf.has(b.id));
+      const c=TYPES[b.type][1];
+      h+=`<button class="blk c${c} ${conf.has(b.id)?'conf':''} ${b.exc?'exc':''} ${faded?'faded':''}" data-b="${b.id}" style="top:${top}px;height:${ht}px;left:${l.i*w}%;width:${w}%" aria-label="${esc(p.name)}: ${esc(b.label)} ${hm(b.s)} a ${hm(b.e)}${conf.has(b.id)?' (choque)':''}${b.exc?' (exceção)':''}"></button>`;
+      const lc=`color:var(--t${c}f);top:${top}px;height:${ht}px;left:${l.i*w}%;`;
       if(!same&&l.n===1)h+=`<span class="lab ${faded?'faded':''}" style="${lc}width:calc(${run}*100% + ${(run-1)*GAP}px)">${esc(b.label)}${ht>46?`<br>${hm(b.s)}–${hm(b.e)}`:''}</span>`;
       else if(l.n===2) h+=`<span class="lab ${faded?'faded':''}" style="${lc}width:${w}%">${esc(b.label)}</span>`;
     });
@@ -285,19 +340,47 @@ function grid(conf,hit){
 }
 function cards(conf,hit){
   let h=`<div class="cards">`;
-  S.people.filter(p=>!hit||hit.has(p.id)).forEach(p=>{
+  S.people.filter(p=>!p.folga&&(!hit||hit.has(p.id))).forEach(p=>{
     const bs=blocksOf(p.id);
-    h+=`<div class="pc"><h3><span>${esc(p.name)}</span><span class="note">${AREAS[p.area]}${p.folga?' · folga':''}</span></h3>`;
-    if(!bs.length)h+=`<div class="note">${p.folga?'Folga o dia todo.':'Sem atividades hoje.'}</div>`;
-    bs.forEach(b=>{const faded=ui.filter&&!(b.exc||conf.has(b.id)||(p.folga&&p.pend));if(faded)return;
-      h+=`<button class="chip c${TYPES[b.type][1]} ${conf.has(b.id)?'conf':''} ${p.folga&&p.pend?'pend':''} ${b.exc?'exc':''}" data-b="${b.id}"><span class="tm">${hm(b.s)}–${hm(b.e)}</span><span>${esc(b.label)}${b.pos?' · '+esc(b.pos):''}${conf.has(b.id)?' · choque':''}${p.folga&&p.pend?' · folga':''}</span></button>`});
+    h+=`<div class="pc"><h3><span>${esc(p.name)}</span><span class="note">${AREAS[p.area]}</span></h3>`;
+    if(!bs.length)h+=`<div class="note">Sem atividades hoje.</div>`;
+    bs.forEach(b=>{const faded=ui.filter&&!(b.exc||conf.has(b.id));if(faded)return;
+      h+=`<button class="chip c${TYPES[b.type][1]} ${conf.has(b.id)?'conf':''} ${b.exc?'exc':''}" data-b="${b.id}"><span class="tm">${hm(b.s)}–${hm(b.e)}</span><span>${esc(b.label)}${conf.has(b.id)?' · choque':''}${b.exc?' · exceção':''}</span></button>`});
     h+=`</div>`;
   });
   return h+`</div>`;
 }
+function atividade(conf){
+  const m={};S.blocks.forEach(b=>{const k=[b.s,b.e,b.type,b.label].join('|');m[k]=m[k]||{b,ps:[]};m[k].ps.push(person(b.p))});
+  const rows=Object.values(m).sort((a,b)=>a.b.s-b.b.s||a.b.label.localeCompare(b.b.label));
+  const total=real().filter(p=>!p.folga).length;
+  return `<div class="act">`+rows.map(x=>{const n=x.ps.length;const todos=n>=total-1&&n>=8;
+    const who=todos?`Todo o elenco do dia${n<total?` (${n} de ${total})`:''}`:x.ps.map(p=>p.name).join(', ');
+    return `<div class="ar"><span class="tm">${hm(x.b.s)}–${hm(x.b.e)}</span><span class="moment c${TYPES[x.b.type][1]}">${esc(x.b.label)}</span><span class="who">${esc(who)}${x.b.livro?` · <button class="back" data-lv="${x.b.livro}" style="min-height:44px">Abrir o Livro</button>`:''}</span></div>`}).join('')+`</div>`;
+}
+/* ---------- aba dos Livros ---------- */
+function livrosTab(){
+  if(ui.livro)return livroDetalhe(livro(ui.livro));
+  let h=`<p class="note" style="margin:8px 0">Os Livros dos shows deste dia, a partir da Programação. Abra cada um, veja o que mudou e confira.</p>`;
+  S.livros.forEach(l=>{const v=vagas(l),m=mudancas(l);
+    h+=`<div class="card"><div class="lv"><div class="n"><h3>${esc(l.nome)}</h3><div class="note">${hm(l.s)}–${hm(l.e)} · Livro do Dia</div>
+    <div style="margin-top:6px"><span class="pill n">${l.tipo==='completo'?'Show completo':'Só personagens'}</span><span class="pill n">${chamadas(l)} pessoas chamadas</span>${m?`<span class="pill w">${m} ${m>1?'mudanças':'mudança'} hoje</span>`:''}${v?`<span class="pill b">${v} vaga sem ninguém</span>`:''}<span class="pill ${l.conferido?'ok':'n'}">${l.conferido?'Conferido ✓':'A conferir'}</span></div></div>
+    <button class="btn p" data-lv="${l.id}">Abrir o Livro</button></div></div>`});
+  return h;
+}
+function livroDetalhe(l){
+  const v=vagas(l);
+  let h=`<button class="back" id="lvback">← Voltar para a Escala</button>${ui.filaN?`<div class="banner" style="background:var(--warn-bg)"><b>Conferindo os Livros do dia: ${ui.filaN-(ui.fila?ui.fila.length:0)} de ${ui.filaN}.</b> Ao apertar "Conferido", abre o próximo. No último, volta para a Escala.</div>`:''}<div class="banner">Esta é a tela do <b>Livro do Dia que já existe</b> no app, aberta no dia e no show que você tocou na Escala (${esc(DIAS[ui.day])}). Nela você também navega por outros dias e brinca com o show. Aqui ela só ganha o botão <b>Conferido</b>.</div><div class="card"><h2 style="font-size:20px">${esc(l.nome)}</h2><div class="note">${hm(l.s)}–${hm(l.e)} · ${l.tipo==='completo'?'Show completo':'Só personagens'} · ${chamadas(l)} pessoas chamadas</div></div>`;
+  const mud=allPos(l).filter(x=>x.mud||!x.p);
+  h+=`<div class="card"><h2>O que mudou desde que o Livro foi gerado</h2>`+(mud.length?mud.map(x=>x.p?`<div class="att"><span class="ic ok">✓</span><span class="t"><b>${x.manual?'Você resolveu:':'Resolvido sozinho:'}</b> ${esc(x.mud)} ${esc(x.cena)}, ${esc(x.k)}.</span></div>`:`<div class="att"><span class="ic b">×</span><span class="t"><b>Vaga sem ninguém:</b> ${esc(x.cena)}, ${esc(x.k)}. ${x.tit?esc(person(x.tit).name)+' está de folga e ':''}não há reserva livre.</span></div>`).join(''):`<div class="att"><span class="ic ok">✓</span><span class="t">Nada mudou desde que foi gerado.</span></div>`)+`</div>`;
+  l.cenas.forEach((c,ci)=>{h+=`<div class="card cena"><h3>${esc(c.n)}</h3>`+c.pos.map((x,pi)=>`<div class="pos ${!x.p?'vg':x.mud?'mud':''}"><span class="k">${esc(x.k)}</span><span class="v">${x.p?esc(person(x.p).name):'Sem ninguém'}</span>${!x.p?`<button class="btn p" data-vaga="${l.id}:${ci}:${pi}">Colocar alguém</button>`:x.mud?'<span class="pill w">mudou hoje</span>':'<span class="pill n">titular</span>'}</div>`).join('')+`</div>`});
+  h+=`<div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0"><button class="btn" id="lvback2">Voltar</button><button class="btn p" id="lvok" ${l.conferido?'disabled':''}>${l.conferido?'Conferido ✓':(ui.fila&&ui.fila.length?'Conferido e ir para o próximo':'Conferido e voltar para a Escala')}</button></div>`;
+  return h;
+}
 function elenco(){
-  if(!S.published)return `<div class="empty"><b>A escala de hoje ainda não foi publicada.</b>O Elenco só vê o dia depois que a Administração publicar. Enquanto isso, Supervisão e Administração montam o rascunho.<br><br>Quando for publicada, o seu dia aparece aqui, com o personagem ou a posição de cada show.</div>`;
-  const p='A';return `<div class="card tl"><h2>Meu dia · ${esc(person(p).name)}</h2>${blocksOf(p).map(b=>`<div class="it c${TYPES[b.type][1]}"><span class="tm">${hm(b.s)}–${hm(b.e)}</span>${esc(b.label)}</div>`).join('')}</div>`;
+  if(!S.published)return `<div class="empty"><b>A escala de hoje ainda não foi publicada.</b>O Elenco só vê o dia depois que a Administração publicar. Enquanto isso, Supervisão e Administração montam o rascunho.<br><br>Quando for publicada, o seu dia aparece aqui, e quem foi chamado para um show vê o que vai fazer.</div>`;
+  const p='A', calls=S.livros.map(l=>({l,ps:allPos(l).filter(x=>x.p===p)})).filter(x=>x.ps.length);
+  return calls.map(({l,ps})=>`<div class="call"><b>Você foi chamada para o ${esc(l.nome)} às ${hm(l.s)}.</b><br>Você faz: ${ps.map(x=>esc(x.cena)+' · '+esc(x.k)).join('; ')}.</div>`).join('')+`<div class="card tl"><h2>Meu dia · ${esc(person(p).name)}</h2>${blocksOf(p).map(b=>`<div class="it c${TYPES[b.type][1]}"><span class="tm">${hm(b.s)}–${hm(b.e)}</span>${esc(b.label)}</div>`).join('')}</div>`;
 }
 function bar(){
   const b=document.getElementById('bar'), r=ui.role; let h='<div class="in">';
@@ -307,30 +390,52 @@ function bar(){
   }else if(r==='adm'){
     const falta=Object.entries(S.areaStatus).filter(([k,v])=>v!=='enviada').length;
     h+=`<div class="areas">`+Object.entries(AREAS).map(([k,n])=>`<div class="area"><span class="ic ${S.areaStatus[k]==='enviada'?'ok':'w'}">${S.areaStatus[k]==='enviada'?'✓':'!'}</span>${n}: ${S.areaStatus[k]==='enviada'?'enviada':'não enviada'}<button class="btn" data-area="${k}">${S.areaStatus[k]==='enviada'?'Reabrir':'Marcar pronta'}</button></div>`).join('')+`</div>`;
-    h+=`<div class="msg">${S.published?'<b>Publicado.</b> A escala e os Livros do Dia estão publicados.':falta?`${falta>1?'Faltam':'Falta'} ${falta} ${falta>1?'áreas':'área'} para publicar tudo.`:'Todas as áreas enviaram. Pode publicar.'}</div><button class="btn p" id="pub" ${falta||S.published?'disabled':''}>Publicar tudo</button>`;
+    h+=`<div class="msg">${S.published?'<b>Publicado.</b> A escala e os Livros do Dia estão publicados.':falta?`${falta>1?'Faltam':'Falta'} ${falta} ${falta>1?'áreas':'área'} para publicar tudo.`:'Todas as áreas enviaram. Pode publicar.'}</div><button class="btn p" id="pub" ${falta||S.published?'disabled':''}>Publicar a escala de ${ui.day?'domingo':'hoje'}</button>`;
   }else h+=`<div class="msg">${S.published?'Escala publicada.':'Sem escala publicada ainda.'}</div>`;
   h+=`<button class="btn" id="reset">Recomeçar protótipo</button></div>`;
   b.innerHTML=h;
   const $=id=>document.getElementById(id);
   if($('enviar'))$('enviar').onclick=enviar; if($('reabrir'))$('reabrir').onclick=()=>{S.areaStatus.pat='aberta';render()};
-  if($('pub'))$('pub').onclick=publicar; $('reset').onclick=()=>{fresh();hist=[];ui.sel=null;ui.q='';ui.filter=false;render()};
+  if($('pub'))$('pub').onclick=publicar; $('reset').onclick=()=>{fresh();hist=[];ui.sel=null;ui.q='';ui.filter=false;ui.livro=null;ui.fila=null;ui.filaN=0;ui.tab='escala';render()};
   b.querySelectorAll('[data-area]').forEach(x=>x.onclick=()=>{snap();const k=x.dataset.area;S.areaStatus[k]=S.areaStatus[k]==='enviada'?'aberta':'enviada';render()});
 }
 function wire(){
   const app=document.getElementById('app');
-  app.querySelectorAll('[data-b]').forEach(x=>x.onclick=e=>openBlock(+x.dataset.b,x));
+  app.querySelectorAll('[data-day]').forEach(x=>x.onclick=()=>{ui.day=+x.dataset.day;render()});
+  app.querySelectorAll('[data-view]').forEach(x=>x.onclick=()=>{ui.view=x.dataset.view;render()});
+  app.querySelectorAll('[data-lv]').forEach(x=>x.onclick=()=>{ui.tab='livros';ui.fila=null;ui.filaN=0;ui.livro=x.dataset.lv;render();scrollTo(0,0)});
+  app.querySelectorAll('[data-fila]').forEach(x=>x.onclick=()=>{const ids=vl().filter(l=>!l.conferido).map(l=>l.id);if(!ids.length)return;ui.filaN=ids.length;ui.livro=ids.shift();ui.fila=ids;render();scrollTo(0,0)});
+  app.querySelectorAll('[data-b]').forEach(x=>x.onclick=()=>openBlock(+x.dataset.b,x));
   app.querySelectorAll('[data-sel]').forEach(x=>x.onclick=()=>{ui.sel=ui.sel===x.dataset.sel?null:x.dataset.sel;render()});
   app.querySelectorAll('[data-f]').forEach(x=>x.onclick=()=>{ui.filter=x.dataset.f==='exc';render()});
-  app.querySelectorAll('[data-att]').forEach(x=>x.onclick=()=>{const a=attention()[+x.dataset.att];if(a.act==='folga')openFolga();else{const el=app.querySelector(`[data-b="${a.id}"]`);if(el){el.scrollIntoView({block:'center',inline:'center',behavior:'smooth'});el.focus();setTimeout(()=>openBlock(a.id,el),350)}}});
-  const q=document.getElementById('q');q.oninput=()=>{ui.q=q.value;const pos=q.selectionStart;render();const n=document.getElementById('q');n.focus();n.setSelectionRange(pos,pos);const m=matchIds();if(m&&m.size===1){ui.sel=[...m][0]}};
+  app.querySelectorAll('[data-vaga]').forEach(x=>x.onclick=()=>{const [l,c,p]=x.dataset.vaga.split(':');openVaga(l,+c,+p)});
+  app.querySelectorAll('[data-att]').forEach(x=>x.onclick=()=>{const a=attention()[+x.dataset.att];
+    if(a.act==='livro'){ui.tab='livros';ui.livro=a.id;render();scrollTo(0,0)}
+    else if(a.act==='tab'){const l=vl().find(z=>!z.conferido);ui.tab='livros';ui.livro=l?l.id:null;render();scrollTo(0,0)}
+    else{const el=app.querySelector(`[data-b="${a.id}"]`);if(el){el.scrollIntoView({block:'center',inline:'center',behavior:'smooth'});el.focus();setTimeout(()=>openBlock(a.id,el),350)}}});
+  const bk=document.getElementById('lvback'),bk2=document.getElementById('lvback2');[bk,bk2].forEach(x=>{if(x)x.onclick=()=>{ui.livro=null;ui.fila=null;ui.filaN=0;render()}});
+  const ok=document.getElementById('lvok');if(ok)ok.onclick=()=>confere(ui.livro);
+  const fu=document.getElementById('lvfull');if(fu)fu.onclick=()=>toast('No app, abre a tela do Livro do Dia inteiro, com cenas, formações e mapa. Aqui é só uma demonstração.');
+  const q=document.getElementById('q');if(q){q.oninput=()=>{ui.q=q.value;const pos=q.selectionStart;render();const n=document.getElementById('q');n.focus();n.setSelectionRange(pos,pos);const m=matchIds();if(m&&m.size===1){ui.sel=[...m][0]}};
   document.getElementById('fl').onchange=e=>{ui.filter=e.target.checked;render()};
-  document.getElementById('lote').onclick=openLote;
+  document.getElementById('lote').onclick=openLote;}
   const sx=document.getElementById('selx');if(sx)sx.onclick=()=>{ui.sel=null;render()};
+}
+function confere(id){
+  const l=livro(id),v=vagas(l);
+  const go=()=>{snap();l.conferido=true;close();
+    const prox=ui.fila&&ui.fila.length?ui.fila.shift():null;
+    if(prox){ui.livro=prox;toast(`${l.nome} conferido. Abrindo o próximo Livro.`)}
+    else{ui.livro=null;ui.fila=null;toast(`${l.nome} conferido. De volta à Escala.`)}
+    setTimeout(()=>{render();scrollTo(0,0)},200)};
+  if(!v){go();return}
+  layer(dialog('Ainda há vaga sem ninguém',`<p>No ${esc(l.nome)} ainda há ${v} ${v>1?'vagas':'vaga'} sem ninguém. Às vezes há menos gente do que o show precisa, e tudo bem. Marcar como conferido mesmo assim?</p>`,`<button class="btn" id="cn">Voltar e resolver</button><button class="btn p" id="ok">Conferido mesmo assim</button>`));
+  document.getElementById('cn').onclick=close;document.getElementById('ok').onclick=go;
 }
 
 /* ---------- camadas (menu, janelas) ---------- */
 let lastFocus=null;
-function layer(inner,cls){const L=document.getElementById('layer');lastFocus=document.activeElement;L.innerHTML=`<div class="layer" id="ly"><div class="scrim"></div>${inner}</div>`;const ly=document.getElementById('ly');requestAnimationFrame(()=>ly.classList.add('on'));ly.querySelector('.scrim').onclick=close;const f=ly.querySelector('button:not([disabled]),input');if(f&&innerWidth>760)f.focus();return ly}
+function layer(inner){const L=document.getElementById('layer');lastFocus=document.activeElement;L.innerHTML=`<div class="layer" id="ly"><div class="scrim"></div>${inner}</div>`;const ly=document.getElementById('ly');requestAnimationFrame(()=>ly.classList.add('on'));ly.querySelector('.scrim').onclick=close;const f=ly.querySelector('button:not([disabled]),input');if(f&&innerWidth>760)f.focus();return ly}
 function close(){const L=document.getElementById('layer');const ly=document.getElementById('ly');if(!ly)return;ly.classList.remove('on');setTimeout(()=>{L.innerHTML='';if(lastFocus&&lastFocus.focus)lastFocus.focus()},180)}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
 function dialog(title,body,foot){return `<div class="dlg" role="dialog" aria-modal="true" aria-label="${esc(title)}"><header><h2>${esc(title)}</h2></header><div class="body">${body}</div><footer>${foot}</footer></div>`}
@@ -340,13 +445,10 @@ function openBlock(id,el){
   if(ui.role==='mem')return;
   if(!canEdit(p)){toast(`${p.name} é da área ${AREAS[p.area]}. Só a Supervisão dela ou a Administração ajusta.`);return}
   const r=el.getBoundingClientRect(), X=Math.min(Math.max(8,r.left),innerWidth-330), Y=Math.min(r.bottom+6,innerHeight-330);
-  let inner=`<div class="pop" style="left:${X}px;top:${Math.max(8,Y)}px;transform-origin:${Math.max(0,r.left-X)+20}px 0"><div class="ph"><b>${esc(p.name)}</b> · ${esc(b.label)}${b.pos?' · '+esc(b.pos):''}<br>${hm(b.s)}–${hm(b.e)}${conf?' · <b style="color:var(--bad)">choque de horário</b>':''}${p.folga&&p.pend?' · <b style="color:var(--bad)">de folga</b>':''}</div>`;
-  if(b.show){
-    inner+=`<button data-m="livro">Abrir o Livro do Dia<small>${esc(b.livro||'Show')}: a troca de quem faz a posição é feita lá</small></button>
-      <button data-m="tirarshow">Tirar do show (pelo Livro)<small>A reserva do grupo cobre, se houver</small></button><hr>
-      <button disabled>Mudar horário só desta pessoa<small>Show não muda de horário. A saída é tirar do show.</small></button>`;
-  }else if(b.reserva){
-    inner+=`<button data-m="tirar">Tirar da reserva<small>Pessoa deixa de ficar disponível neste horário</small></button>`;
+  let inner=`<div class="pop" style="left:${X}px;top:${Math.max(8,Y)}px;transform-origin:${Math.max(0,r.left-X)+20}px 0"><div class="ph"><b>${esc(p.name)}</b> · ${esc(b.label)}<br>${hm(b.s)}–${hm(b.e)}${conf?' · <b style="color:var(--bad)">choque de horário</b>':''}${b.exc?' · <b style="color:var(--warn)">exceção</b>':''}</div>`;
+  if(b.livro){
+    inner+=`<button data-m="livro">Abrir o Livro do ${esc(b.label)}<small>Quem faz cada posição é visto e mudado lá</small></button><hr>
+      <button disabled>Mudar horário só desta pessoa<small>Show não muda de horário. A saída é tirar do show, pelo Livro.</small></button>`;
   }else{
     inner+=`<button data-m="tirar">Tirar de ${esc(b.label)}<small>Só esta pessoa. Os outros continuam</small></button>
       <button data-m="hora">Mudar horário só desta pessoa<small>Exceção individual, com motivo</small></button>
@@ -355,8 +457,8 @@ function openBlock(id,el){
   inner+=`</div>`;
   const ly=layer(inner);
   ly.querySelectorAll('[data-m]').forEach(x=>x.onclick=()=>{const m=x.dataset.m;close();setTimeout(()=>{
-    if(m==='livro')toast('No app, abre o Livro do Dia deste show. Aqui é só uma demonstração.');
-    else if(m==='tirar'||m==='tirarshow'){snap();S.blocks=S.blocks.filter(z=>z.id!==id);touch(b.p);if(m==='tirarshow'){const res=S.blocks.find(z=>z.reserva&&overlap(z,b));if(res){res.reserva=false;res.show=true;res.type='show';res.label=b.label;res.pos=b.pos;res.livro=b.livro;res.exc=true;toast(`${p.name} saiu do show. ${person(res.p).name} (reserva do grupo) cobre a posição.`,true)}else toast(`${p.name} saiu do show. Fica uma vaga sem ninguém.`,true),S.vagas.push(`${b.label}, ${b.pos||'posição'} (${hm(b.s)})`)}else toast(`${p.name} saiu de ${b.label}.`,true);render()}
+    if(m==='livro'){ui.tab='livros';ui.livro=b.livro;render();scrollTo(0,0)}
+    else if(m==='tirar'){snap();S.blocks=S.blocks.filter(z=>z.id!==id);touch(b.p);toast(`${p.name} saiu de ${b.label}.`,true);render()}
     else if(m==='hora')openHora(id);
     else if(m==='dividir')toast('No app, você escolhe onde dividir e o motivo. Aqui é só uma demonstração.');
   },200)});
@@ -367,58 +469,60 @@ function openHora(id){
    <div class="row"><span class="l">Começa</span><input type="time" id="hs" step="300" value="${hm(b.s)}"></div>
    <div class="row"><span class="l">Termina</span><input type="time" id="he" step="300" value="${hm(b.e)}"></div>
    <div class="row"><span class="l" style="flex-basis:100%">Motivo (aparece no Registro)<input type="text" id="mo" placeholder="Ex.: chegou depois do treino"></span></div><div id="err" class="note" style="color:var(--bad)"></div>`;
-  const ly=layer(dialog('Mudar horário de '+p.name,body,`<button class="btn" id="cn">Cancelar</button><button class="btn p" id="sv">Salvar horário</button>`));
+  layer(dialog('Mudar horário de '+p.name,body,`<button class="btn" id="cn">Cancelar</button><button class="btn p" id="sv">Salvar horário</button>`));
   document.getElementById('cn').onclick=close;
   document.getElementById('sv').onclick=()=>{const s=mm(document.getElementById('hs').value),e=mm(document.getElementById('he').value);if(!(e>s)){document.getElementById('err').textContent='O fim precisa ser depois do começo.';return}
     snap();b.s=s;b.e=e;b.exc=true;touch(b.p);close();toast(`Horário de ${p.name} mudado só para ela. Entrou no Registro.`,true);setTimeout(render,200)};
 }
-function openFolga(){
-  const sb=blocksOf('S'), free=(s,e,self)=>S.people.filter(q=>!q.folga&&q.id!=='S'&&!S.blocks.some(x=>x.p===q.id&&overlap(x,{s,e})&&!x.reserva));
-  const outros=sb.filter(b=>!needsCover(b)).length;
-  const rows=sb.filter(needsCover).map(b=>{const res=S.blocks.find(x=>x.reserva&&overlap(x,b));const opts=S.people.filter(q=>!q.folga&&q.id!=='S'&&!S.blocks.some(x=>x.p===q.id&&overlap(x,b)&&!x.reserva));
-    return `<div class="row" data-r="${b.id}"><span class="l"><b>${esc(b.label)}</b>${b.pos?' · '+esc(b.pos):''}<br><span class="note">${hm(b.s)}–${hm(b.e)}${b.show?' · '+esc(b.livro):''}</span></span>
-    <select aria-label="Quem cobre ${esc(b.label)}"><option value="">Deixar sem ninguém</option>${opts.map(q=>`<option value="${q.id}" ${res&&res.p===q.id?'selected':''}>${esc(q.name)}${res&&res.p===q.id?' · reserva do grupo':''}</option>`).join('')}</select></div>`}).join('');
-  const body=`<p class="note">Cada lugar tem a sua sugestão: a reserva do grupo daquela posição. Nem sempre é a mesma pessoa. Mude uma, se quiser.</p>${rows}<p class="note" style="margin-top:10px">Os outros ${outros} compromissos dela (treino, almoço, passagem, celebração) saem da escala dela sem precisar de cobertura.</p>`;
-  layer(dialog('Onde Pessoa S aparece hoje',body,`<button class="btn" id="cn">Cancelar</button><button class="btn p" id="ok">Aceitar as sugestões</button>`));
+function openVaga(lid,ci,pi){
+  const l=livro(lid), c=l.cenas[ci], x=c.pos[pi];
+  const inLivro=new Set(allPos(l).filter(y=>y.p).map(y=>y.p));
+  const free=real().filter(q=>!q.folga&&!inLivro.has(q.id)&&!S.blocks.some(z=>z.p===q.id&&z.livro!==l.id&&overlap(z,{s:l.s,e:l.e})));
+  const body=`<p><b>${esc(c.n)}</b> · ${esc(x.k)}<br><span class="note">${esc(l.nome)}${x.tit?' · titular: '+esc(person(x.tit).name)+' (folga)':''}</span></p>
+   <p class="note">O Livro já tentou sozinho: titular, depois substituto da posição, depois reserva do grupo. Não achou ninguém livre. Falta uma decisão sua.</p>
+   <div class="row"><span class="l"><b>Colocar alguém</b><br><span class="note">Só aparecem pessoas livres neste horário.</span></span>
+   <select id="vq" aria-label="Quem ocupa a vaga"><option value="">Escolher…</option>${free.map(q=>`<option value="${q.id}" ${canEdit(q)?'':'disabled'}>${esc(q.name)} · ${AREAS[q.area]}${canEdit(q)?'':' · só a Supervisão dela'}</option>`).join('')}</select></div>
+   ${free.length?'':'<p class="note">Ninguém está livre neste horário.</p>'}
+   <div class="row"><span class="l"><b>Ou mudar a formação</b><br><span class="note">O Livro oferece trocar a formação do grupo para cobrir a falta.</span></span><button class="btn" id="vf">Abrir a formação</button></div>`;
+  layer(dialog('Vaga sem ninguém',body,`<button class="btn" id="cn">Cancelar</button><button class="btn p" id="ok" disabled>Colocar na vaga</button>`));
+  const sel=document.getElementById('vq'); sel.onchange=()=>{document.getElementById('ok').disabled=!sel.value};
+  document.getElementById('vf').onclick=()=>toast('No app, abre a troca de formação do Livro do Dia. Aqui é só uma demonstração.');
   document.getElementById('cn').onclick=close;
-  document.getElementById('ok').onclick=()=>{
-    snap(); const pick=[...document.querySelectorAll('[data-r]')].map(r=>({id:+r.dataset.r,q:r.querySelector('select').value}));
-    let n=0,v=0;
-    blocksOf('S').filter(b=>!needsCover(b)).forEach(b=>{S.blocks=S.blocks.filter(z=>z.id!==b.id)});
-    pick.forEach(x=>{const b=S.blocks.find(z=>z.id===x.id);S.blocks=S.blocks.filter(z=>z.id!==x.id);
-      if(x.q){S.blocks=S.blocks.filter(z=>!(z.p===x.q&&z.reserva&&overlap(z,b)));S.blocks.push({...b,id:++uid,p:x.q,exc:true,cover:'S'});touch(x.q);n++}
-      else{S.vagas.push(`${b.label}${b.pos?', '+b.pos:''} (${hm(b.s)})`);v++}});
-    person('S').pend=false;touch('S');close();toast(`Pessoa S saiu da escala: ${n} de ${pick.length} lugares cobertos${v?`, ${v} sem ninguém`:''}. Entrou no Registro.`,true);setTimeout(render,200)};
+  document.getElementById('ok').onclick=()=>{const q=sel.value;if(!q)return;snap();
+    x.p=q;x.manual=true;x.mud=`${person(q).name} foi colocado na vaga.`;
+    if(!S.blocks.some(z=>z.p===q&&z.livro===l.id))S.blocks.push({id:++uid,p:q,s:l.s,e:l.e,type:'show',label:l.nome,livro:l.id,exc:true});
+    touch(q);close();toast(`${person(q).name} ocupa ${c.n} (${x.k}). Entrou no Registro e no Livro.`,true);setTimeout(render,200)};
 }
 function openLote(){
-  const PRE={reuniao:{n:'Reunião rápida · 16:00–16:30',s:'16:00',e:'16:30',type:'outra',label:'Reunião rápida'},inter:{n:'Interação com guardiões · 10:00–11:00',s:'10:00',e:'11:00',type:'inter',label:'Interação com guardiões'}};
+  const PRE={reuniao:{n:'Reunião rápida · 16:30–17:00',s:'16:30',e:'17:00',type:'outra',label:'Reunião rápida'},inter:{n:'Interação com guardiões · 10:00–11:00',s:'10:00',e:'11:00',type:'inter',label:'Interação com guardiões'}};
   const body=`<p class="note">Marque as pessoas e escolha a atividade. Antes de gravar, você vê quem entra e quem fica de fora.</p>
    <div class="row"><span class="l"><b>Atividade</b></span><select id="pre">${Object.entries(PRE).map(([k,v])=>`<option value="${k}">${v.n}</option>`).join('')}</select></div>
-   <div id="pl">${S.people.map(p=>{const ok=canEdit(p);return `<label class="pk"><input type="checkbox" value="${p.id}" ${ok?'':'disabled'}>${esc(p.name)} <span class="note">· ${AREAS[p.area]}${ok?'':' · só a Supervisão dela'}${p.folga?' · folga':''}</span></label>`}).join('')}</div>
-   <div class="card" style="margin:10px 0 0" id="pv"><b>Prévia</b><div class="note">Marque ao menos uma pessoa.</div></div>`;
+   <div id="pl">${real().map(p=>{const ok=canEdit(p);return `<label class="pk"><input type="checkbox" value="${p.id}" ${ok?'':'disabled'}>${esc(p.name)} <span class="note">· ${AREAS[p.area]}${ok?'':' · só a Supervisão dela'}${p.folga?' · folga':''}</span></label>`}).join('')}</div>
+   <div class="card" style="margin:10px 0 0" id="pv"><b>Prévia</b><div class="note">Marque ao menos uma pessoa.</div></div>
+   <p class="note" style="margin-top:8px">Show não entra aqui: quem faz o show é decidido no Livro do Dia.</p>`;
   layer(dialog('Preencher em lote',body,`<button class="btn" id="cn">Cancelar</button><button class="btn p" id="ok" disabled>Confirmar</button>`));
   const calc=()=>{const pr=PRE[document.getElementById('pre').value],ids=[...document.querySelectorAll('#pl input:checked')].map(x=>x.value);
     const entram=[],folga=[],choque=[];ids.forEach(id=>{const p=person(id);if(p.folga){folga.push(p.name);return}
-      const s=mm(pr.s),e=mm(pr.e);if(S.blocks.some(x=>x.p===id&&overlap(x,{s,e})&&!x.reserva))choque.push(p.name);entram.push(id)});
+      const s=mm(pr.s),e=mm(pr.e);if(S.blocks.some(x=>x.p===id&&overlap(x,{s,e})))choque.push(p.name);entram.push(id)});
     document.getElementById('pv').innerHTML=`<b>Prévia</b><ul style="margin:6px 0 0;padding-left:18px;font-size:14px"><li>${entram.length} ${entram.length===1?'pessoa entra':'pessoas entram'}</li>${folga.length?`<li>${folga.length} ficam de fora por folga: ${esc(folga.join(', '))}</li>`:''}${choque.length?`<li style="color:var(--bad)">${choque.length} terão choque de horário: ${esc(choque.join(', '))}</li>`:''}</ul>`;
     document.getElementById('ok').disabled=!entram.length;return {pr,entram}};
   document.getElementById('pre').onchange=calc;document.getElementById('pl').onchange=calc;
   document.getElementById('cn').onclick=close;
-  document.getElementById('ok').onclick=()=>{const {pr,entram}=calc();snap();entram.forEach(id=>{S.blocks.push({id:++uid,p:id,s:mm(pr.s),e:mm(pr.e),type:pr.type,label:pr.label,show:false,exc:true});touch(id)});close();toast(`${entram.length} ${entram.length===1?'pessoa entrou':'pessoas entraram'} em "${pr.label}". Entrou no Registro.`,true);setTimeout(render,200)};
+  document.getElementById('ok').onclick=()=>{const {pr,entram}=calc();snap();entram.forEach(id=>{S.blocks.push({id:++uid,p:id,s:mm(pr.s),e:mm(pr.e),type:pr.type,label:pr.label,exc:true});touch(id)});close();toast(`${entram.length} ${entram.length===1?'pessoa entrou':'pessoas entraram'} em "${pr.label}". Entrou no Registro.`,true);setTimeout(render,200)};
 }
 function enviar(){
   const pend=attention().filter(x=>x.ic==='b'||x.ic==='w');
   const go=()=>{snap();S.areaStatus.pat='enviada';close();toast('Parte dos Patinadores enviada. A Administração foi avisada.');setTimeout(render,200)};
   if(!pend.length){go();return}
-  layer(dialog('Ainda há pendências',`<p>Antes de enviar, veja o que ainda está aberto na sua área:</p><ul style="padding-left:18px;font-size:14px">${pend.map(x=>`<li>${esc(x.t)}</li>`).join('')}</ul><p class="note">Você pode enviar mesmo assim. A Administração verá as pendências ao publicar.</p>`,`<button class="btn" id="cn">Voltar e resolver</button><button class="btn p" id="ok">Enviar mesmo assim</button>`));
+  layer(dialog('Ainda há pendências',`<p>Antes de enviar, veja o que ainda está aberto:</p><ul style="padding-left:18px;font-size:14px">${pend.map(x=>`<li>${esc(x.t)}</li>`).join('')}</ul><p class="note">Você pode enviar mesmo assim. A Administração verá as pendências ao publicar.</p>`,`<button class="btn" id="cn">Voltar e resolver</button><button class="btn p" id="ok">Enviar mesmo assim</button>`));
   document.getElementById('cn').onclick=close;document.getElementById('ok').onclick=go;
 }
 function publicar(){
   const pend=attention().filter(x=>x.ic==='b').length;
-  layer(dialog('Publicar tudo',`<p>Vai publicar a Escala do dia e, em seguida, os Livros do Dia deste local. A ordem é sempre essa: Escala primeiro, Livros depois.</p>${pend?`<p style="color:var(--bad)"><b>Atenção:</b> ainda há ${pend} pendência${pend>1?'s':''} aberta${pend>1?'s':''}. Você decide se publica assim.</p>`:''}<div id="prog" class="note"></div>`,`<button class="btn" id="cn">Cancelar</button><button class="btn p" id="ok">Publicar tudo</button>`));
+  layer(dialog('Publicar tudo',`<p>Vai publicar a Escala do dia e, em seguida, os Livros do Dia dos ${S.livros.length} shows. A ordem é sempre essa: Escala primeiro, Livros depois.</p>${pend?`<p style="color:var(--bad)"><b>Atenção:</b> ainda há ${pend} pendência${pend>1?'s':''} aberta${pend>1?'s':''}. Você decide se publica assim.</p>`:''}<div id="prog" class="note"></div>`,`<button class="btn" id="cn">Cancelar</button><button class="btn p" id="ok">Publicar tudo</button>`));
   document.getElementById('cn').onclick=close;
   document.getElementById('ok').onclick=()=>{const ok=document.getElementById('ok');ok.disabled=true;ok.textContent='Publicando…';const pr=document.getElementById('prog');
-    const steps=['Escala do dia publicada.','Livro "Show Patinação" publicado.','Livro "Show Natal" publicado.'];let i=0;
+    const steps=['Escala do dia publicada.',...S.livros.map(l=>`Livro "${l.nome}" publicado.`)];let i=0;
     const t=setInterval(()=>{pr.innerHTML+=`<div>✓ ${steps[i]}</div>`;i++;if(i===steps.length){clearInterval(t);S.published=true;ok.textContent='Pronto';document.getElementById('cn').textContent='Fechar';pr.innerHTML+='<div><b>Tudo publicado. O Elenco já vê o seu dia.</b></div>';render()}},650)};
 }
 document.querySelectorAll('[data-role]').forEach(b=>b.onclick=()=>{ui.role=b.dataset.role;document.querySelectorAll('[data-role]').forEach(x=>x.setAttribute('aria-pressed',x===b));render()});
