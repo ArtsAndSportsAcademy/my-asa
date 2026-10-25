@@ -14,6 +14,7 @@ import { GradePessoa } from "@/components/escala/grade-pessoa";
 import { ResumoDoDia, trabalhaNoDia } from "@/components/escala/resumo-do-dia";
 import { TIPOS, ehExcecao, faixa, textoDoBloco, tipoDoBloco, toneDoTipo } from "@/components/escala/tipos";
 import "@/components/escala/escala-tokens.css";
+import { diaQueAEscalaAbre, type ViradaDoDia } from "@/lib/dia-da-escala";
 import "./shows.css"; // a janela do Ajustar usa .shows-dialog: sem isto ela não rola e o rodapé some quando a Escala abre direto
 import "./escalas.css";
 
@@ -31,7 +32,7 @@ type Mudanca = { userId: string; action: "ADICIONAR" | "REMOVER"; assignmentId?:
 export type Pessoa = { id: string; name: string; areaId: string | null; areaName: string | null; folga: string | null; chamadaNaFolga?: { motivo: string | null; decidida: boolean } };
 type Area = { id: string; name: string; supervisores: { id: string; name: string }[]; pronta: { por: string | null; em: string } | null };
 export type Dia = { date: string; location: { id: string; name: string }; escala: { id: string; status: string; version: number; publishedAt: string | null; alteradaDesde: string | null } | null; programacao: { id: string; nome: string; vigenciaInicio: string; vigenciaFim: string } | null; areas: Area[]; pessoas: Pessoa[]; blocos: Bloco[] };
-type Local = { id: string; name: string; podeEditar: boolean; areasSupervisionadas: string[] };
+type Local = { id: string; name: string; podeEditar: boolean; areasSupervisionadas: string[]; viradaDoDia?: ViradaDoDia };
 type ProgBloco = SampleProgramacao["blocos"][number];
 type Programacao = { id: string; locationId: string; nome: string; vigenciaInicio: string; vigenciaFim: string; active?: boolean; blocos: ProgBloco[] };
 type MinhaLocal = { location: { id: string; name: string }; publishedAt?: string | null; folga?: string | null; confirmada?: boolean; confirmedAt?: string | null; escalaId: string; escalaVersion: number; blocos: Omit<Bloco, "pessoaIds">[] };
@@ -110,11 +111,11 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
   const showMinha = isMem || tab === "minha";
   // Quem prepara o dia abre em amanhã; o Elenco abre em hoje (é o dia do show dele). Um atalho que já sabe
   // o dia (ex.: "Republicar a escala de hoje", no Meu Dia) manda ?data= e a tela abre nele.
-  const [date, setDate] = useState(() => {
-    const pedida = new URLSearchParams(window.location.search).get("data");
-    if (pedida && /^\d{4}-\d{2}-\d{2}$/.test(pedida)) return pedida;
-    return isMem ? todayISO() : addDays(todayISO(), 1);
-  });
+  const dataPedida = useMemo(() => { const p = new URLSearchParams(window.location.search).get("data"); return p && /^\d{4}-\d{2}-\d{2}$/.test(p) ? p : null; }, []);
+  // Quem já escolheu o dia (atalho com ?data= ou clique) não é levado a outro quando a lista de locais chega.
+  const jaEscolheuODia = useRef(Boolean(dataPedida));
+  const [date, setDateEscolhido] = useState(() => dataPedida ?? (isMem ? todayISO() : diaQueAEscalaAbre(new Date(), null, todayISO())));
+  const setDate = useCallback((d: string) => { jaEscolheuODia.current = true; setDateEscolhido(d); }, []);
   const [cal, setCal] = useState(false);
   const [locais, setLocais] = useState<Local[]>([]);
   const [localId, setLocalId] = useState("");
@@ -146,6 +147,13 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
     }
     customFetch<{ locais: Local[] }>("/api/escalas/locais").then((r) => { setLocais(r.locais); setLocalId((prev) => prev || lembrarLocal(r.locais) || ""); }).catch(() => setError("Não consegui carregar os locais.")).finally(() => setLocaisProntos(true));
   }, [review, role]);
+
+  // O dia em que a Escala abre vem da virada do local (Locais): à noite abre no dia seguinte, de manhã volta a hoje.
+  useEffect(() => {
+    if (isMem || jaEscolheuODia.current || !localId) return;
+    const l = locais.find((x) => x.id === localId);
+    if (l) setDateEscolhido(diaQueAEscalaAbre(new Date(), l.viradaDoDia, todayISO()));
+  }, [localId, locais, isMem]);
 
   // Trocar de local ou de dia esvazia a grade na hora: sem isso, a Escala do local anterior ficava na tela
   // por 2 a 3 segundos e dava para ajustar uma pessoa achando que era o outro local.
@@ -1043,7 +1051,7 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, b
         actions.push(<button key={areaId} type="button" className="esc-hit" disabled={saving} onClick={() => onPronta([areaId], !area.pronta)} style={css(btn(area.pronta ? "ghost" : "primary"))}>{busy === `pronta:${areaId}` ? "Salvando…" : area.pronta ? `Desmarcar ${area.name}` : `Marcar ${area.name} como pronta`}</button>);
       }
       if (isAdm && dia.escala) actions.push(<button key="pub" type="button" className="esc-hit" disabled={saving || faltam.length > 0} title={faltam.length ? `Faltam: ${faltam.map((a) => a.name).join(", ")}` : undefined} onClick={() => onPublicar(false)}
-        style={css(faltam.length ? "border-radius:999px;padding:9px 17px;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;border:none;background:var(--asa-line);color:var(--asa-label);cursor:default" : btn("primary"))}>{faltam.length ? `Publicar · faltam ${faltam.length} ${faltam.length === 1 ? "área pronta" : "áreas prontas"}` : busy === "publicar" ? "Publicando…" : "Publicar Escala e Livros"}</button>);
+        style={css(faltam.length ? "border-radius:999px;padding:9px 17px;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;border:none;background:var(--asa-line);color:var(--asa-label);cursor:default" : btn("primary"))}>{faltam.length ? `Publicar · faltam ${faltam.length} ${faltam.length === 1 ? "área pronta" : "áreas prontas"}` : busy === "publicar" ? "Publicando…" : `Publicar a escala de ${WEEKDAY_LONG[weekdayOf(dia.date)]!.split("-")[0]} e os Livros`}</button>);
     }
     if (tab === "escala" && isAdm && dia.escala?.alteradaDesde) actions.push(<button key="repub" type="button" className="esc-hit" disabled={saving} onClick={() => onPublicar(true)} style={css(btn("primary"))}>{busy === "publicar" ? "Republicando…" : "Republicar conjunto"}</button>);
   }
