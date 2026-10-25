@@ -622,8 +622,17 @@ router.patch("/show-books/:id/responsible", requireAuth, requireOrganization, re
           ),
         )
         .limit(1);
-      if (!sup) {
-        res.status(400).json({ error: "O responsável tem de ser um supervisor da operação do show" });
+      // A Administração também pode ser responsável por um show (decisão de 25/10/2026): ela já pode tudo, então isso não dá poder novo a ninguém;
+      // o efeito é só o de sempre, que Supervisão deixa de editar esse show e o Elenco passa a ver a Administração como quem responde.
+      // Tem de ser da mesma casa (organização) do show, para nunca apontar para a Administração de outra casa.
+      const [adm] = sup ? [] : await db
+        .select({ id: userRolesTable.id })
+        .from(userRolesTable)
+        .innerJoin(usersTable, eq(usersTable.id, userRolesTable.userId))
+        .where(and(eq(userRolesTable.userId, responsibleId), eq(userRolesTable.active, true), eq(userRolesTable.role, "ADMIN"), eq(usersTable.organizationId, req.user!.organizationId)))
+        .limit(1);
+      if (!sup && !adm) {
+        res.status(400).json({ error: "RESPONSAVEL_INVALIDO", message: "O responsável tem de ser da Supervisão da operação do show ou da Administração." });
         return;
       }
     }

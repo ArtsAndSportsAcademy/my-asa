@@ -33,7 +33,7 @@ const inShow = (character: Character, show: Show) => character.showBookId === sh
 /** Cena reservada com as vagas de personagem do show: não é cena do mapa. */
 const castRosterOf = (show: ShowTree) => show.scenes.find((scene) => scene.isCastRoster);
 const stageScenesOf = (show: ShowTree) => show.scenes.filter((scene) => !scene.isCastRoster);
-type PersonOption = { id: string; displayName?: string; nomeDeExibicao?: string; name?: string; nomeCompleto?: string; fullName?: string; areaId?: string | null; /** Campo legado: não é usado para definir a lotação da pessoa. */ defaultLocationId?: string | null; areaName?: string | null; locationName?: string | null; profile?: string; isCharacterEligible?: boolean; /** Operações em que a pessoa tem papel de Supervisão: é quem pode ser responsável de um show. */ supervisorOperationIds?: string[] };
+type PersonOption = { isAdmin?: boolean; id: string; displayName?: string; nomeDeExibicao?: string; name?: string; nomeCompleto?: string; fullName?: string; areaId?: string | null; /** Campo legado: não é usado para definir a lotação da pessoa. */ defaultLocationId?: string | null; areaName?: string | null; locationName?: string | null; profile?: string; isCharacterEligible?: boolean; /** Operações em que a pessoa tem papel de Supervisão: é quem pode ser responsável de um show. */ supervisorOperationIds?: string[] };
 type DriveLink = { id: string; title: string; type: string; scope: string; note?: string; state?: string; url?: string | null; order?: number };
 type Version = { id: string; version: number; reason?: string; changeType?: string; createdAt?: string };
 
@@ -904,13 +904,14 @@ function EditShowDialog({ show, onClose, onSave }: { show: Show; onClose: () => 
   </Dialog>;
 }
 function ResponsibleDialog({ show, people, onClose, onSave }: { show: Show; people: PersonOption[]; onClose: () => void; onSave: (responsibleId: string | null) => Promise<void> }) {
-  const eligible = people.filter((person) => person.supervisorOperationIds ? person.supervisorOperationIds.includes(show.operationId) : person.profile === "SUP");
+  // Supervisão da operação do show ou Administração (Direção só lê a operação e não responde por show).
+  const eligible = people.filter((person) => person.isAdmin || person.profile === "ADM" || (person.supervisorOperationIds ? person.supervisorOperationIds.includes(show.operationId) : person.profile === "SUP"));
   const [value, setValue] = useState(show.responsibleId ?? ""), [saving, setSaving] = useState(false), [error, setError] = useState("");
   const save = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); if (value === (show.responsibleId ?? "")) { onClose(); return; } setSaving(true); setError(""); try { await onSave(value || null); onClose(); } catch (e) { setError(apiMessage(e, "Não consegui salvar o responsável agora. Nada foi alterado; tente de novo.")); } finally { setSaving(false); } };
-  return <Dialog title="Supervisor responsável" onClose={() => { if (!saving) onClose(); }} footer={<button form="show-responsible-form" className="shows-primary" disabled={saving || !eligible.length}>{saving ? "Salvando…" : "Salvar responsável"}</button>}>
+  return <Dialog title="Responsável pelo show" onClose={() => { if (!saving) onClose(); }} footer={<button form="show-responsible-form" className="shows-primary" disabled={saving || !eligible.length}>{saving ? "Salvando…" : "Salvar responsável"}</button>}>
     <form id="show-responsible-form" className="shows-form" onSubmit={(event) => void save(event)}>
       <p>Quem for escolhido edita e publica {show.title} e o Livro do Dia dele (a Administração também). Sem responsável, qualquer Supervisão da operação pode mexer.</p>
-      {eligible.length ? <label>Supervisão<select value={value} onChange={(event) => setValue(event.target.value)} autoFocus><option value="">Sem responsável</option>{eligible.map((person) => <option key={person.id} value={person.id}>{personName(person)}{person.areaName ? ` · ${person.areaName}` : ""}</option>)}</select></label> : <p className="shows-error">Ainda não há Supervisão cadastrada nesta operação. Dê o papel de Supervisão a alguém em Pessoas e volte aqui.</p>}
+      {eligible.length ? <label>Pessoa responsável<select value={value} onChange={(event) => setValue(event.target.value)} autoFocus><option value="">Sem responsável</option>{eligible.map((person) => <option key={person.id} value={person.id}>{personName(person)}{person.isAdmin || person.profile === "ADM" ? " · Administração" : person.areaName ? ` · ${person.areaName}` : ""}</option>)}</select></label> : <p className="shows-error">Ainda não há Supervisão nem Administração disponível para esta operação. Dê o perfil a alguém em Pessoas e volte aqui.</p>}
       {error && <p className="shows-error" role="alert">{error}</p>}
     </form>
   </Dialog>;
