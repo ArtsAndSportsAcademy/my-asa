@@ -12,7 +12,7 @@ import { AtencaoDoDia, type ConflitoDaPessoa, type GrupoDeConflito } from "@/com
 import { BlocoMenu } from "@/components/escala/bloco-menu";
 import { GradePessoa } from "@/components/escala/grade-pessoa";
 import { ResumoDoDia, trabalhaNoDia } from "@/components/escala/resumo-do-dia";
-import { TIPOS, ehExcecao, faixa, textoDoBloco, tipoDoBloco, toneDoTipo } from "@/components/escala/tipos";
+import { TIPOS, ehExcecao, faixa, quandoDoDia, textoDoBloco, tipoDoBloco, toneDoTipo } from "@/components/escala/tipos";
 import "@/components/escala/escala-tokens.css";
 import { diaQueAEscalaAbre, type ViradaDoDia } from "@/lib/dia-da-escala";
 import { SaiuDialog, type PreviaDaSaida, type SaiuApi } from "@/components/escala/saiu-dialog";
@@ -348,7 +348,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
         if (ids.length) setDesfazerLote({ texto: `${v.rotulo} entrou no dia para ${plural(v.pessoaIds.length, "pessoa", "pessoas")}.`, escalaId: dia.escala.id, ids });
       }
       setManual(null); setRefresh((n) => n + 1);
-    } catch (err) { setError(errMsg(err, "Não consegui criar a atividade de hoje.")); } finally { setSaving(false); setBusy(""); }
+    } catch (err) { setError(errMsg(err, "Não consegui criar a atividade deste dia.")); } finally { setSaving(false); setBusy(""); }
   };
   const desfazerAtividade = async () => {
     const d = desfazerLote;
@@ -376,7 +376,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
     try {
       if (!review) await customFetch(`/api/scales/${dia.escala.id}/entries/${allocationIds[0]}`, { method: "DELETE", headers: { "if-match": String(dia.escala.version) }, body: JSON.stringify({ entryIds: allocationIds }) });
       setRefresh((n) => n + 1);
-    } catch (err) { setError(errMsg(err, "Não consegui tirar a atividade de hoje.")); } finally { setSaving(false); setBusy(""); }
+    } catch (err) { setError(errMsg(err, "Não consegui tirar a atividade deste dia.")); } finally { setSaving(false); setBusy(""); }
   };
   const folgaResolvida = async (userId: string) => {
     if (!localId) return;
@@ -446,7 +446,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       <button type="button" className="esc-hit" aria-expanded={cal} onClick={() => setCal((v) => !v)} style={css(cal ? pillOn : pillOff)}>Calendário</button>
     </div>
     {!isMem && !review && localId && <a className="esc-hit" href={`/imprimir?local=${encodeURIComponent(localId)}&data=${date}`} target="_blank" rel="noreferrer" style={css("flex:none;white-space:nowrap;border:1px solid var(--asa-line);background:#fff;color:var(--asa-ink-medium);border-radius:999px;padding:6px 13px;font-size:12px;font-weight:700;font-family:Manrope,sans-serif;text-decoration:none")}>Imprimir o dia</a>}
-    {(isAdm || areasMinhas.length > 0) && tab === "escala" && dia?.escala && <button type="button" className="esc-hit" disabled={saving} onClick={() => setManual({ bloco: null })} style={css(btn("primary") + "min-height:44px;white-space:nowrap")}>+ Atividade só de hoje</button>}
+    {(isAdm || areasMinhas.length > 0) && tab === "escala" && dia?.escala && <button type="button" className="esc-hit" disabled={saving} onClick={() => setManual({ bloco: null })} style={css(btn("primary") + "min-height:44px;white-space:nowrap")}>+ Atividade só deste dia</button>}
     {cal && <Calendario date={date} onPick={(d) => { setDate(d); setCal(false); }}/>}
   </div>;
 
@@ -573,7 +573,8 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
   const blocosDe = useCallback((pid: string) => dia.blocos.filter((b) => b.pessoaIds.includes(pid)), [dia.blocos]);
   const trabalham = useMemo(() => dia.pessoas.filter((p) => trabalhaNoDia(p, blocosDe)), [dia.pessoas, blocosDe]);
   const cols = trabalham.filter((p) => team === "todos" || p.areaId === team);
-  const vazios = dia.blocos.filter((b) => b.vazio && b.regra !== "ninguem");
+  // Sem ninguém: o bloco inteiro vazio, ou show com personagem/posição que ficou aberta (o resto do elenco do show segue escalado).
+  const vazios = dia.blocos.filter((b) => b.regra !== "ninguem" && (b.vazio || b.vagas?.some((v) => !v.userId)));
   const faixas = useMemo(() => {
     const seen = new Map<string, { inicio: string; fim: string | null; blocos: Bloco[] }>();
     for (const b of dia.blocos) { const k = faixa(b); const cur = seen.get(k) ?? { inicio: b.inicio, fim: b.fim, blocos: [] }; cur.blocos.push(b); seen.set(k, cur); }
@@ -640,7 +641,7 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
   const etiquetaDaVisao = telefone ? { pessoa: "Por pessoa", atividade: "Por atividade" } : { pessoa: "Por pessoa", atividade: "Por atividade" };
 
   return <div style={css("display:flex;flex-direction:column;gap:12px")}>
-    <ResumoDoDia pessoas={dia.pessoas} blocos={dia.blocos} blocosDe={blocosDe} pessoasComChoque={new Set(conflitos.map((c) => c.pessoaId)).size} motivoDaFolga={motivoDaFolga} soExcecoes={soExcecoes} onSoExcecoes={setSoExcecoes} onIrParaAtencao={irParaAtencao}/>
+    <ResumoDoDia data={dia.date} pessoas={dia.pessoas} blocos={dia.blocos} blocosDe={blocosDe} pessoasComChoque={new Set(conflitos.map((c) => c.pessoaId)).size} motivoDaFolga={motivoDaFolga} soExcecoes={soExcecoes} onSoExcecoes={setSoExcecoes} onIrParaAtencao={irParaAtencao}/>
 
     <AtencaoDoDia dia={dia} vazios={vazios} grupos={gruposDeConflito} canEdit={canEdit} editableAreaIds={editableAreaIds} tirando={tirando}
       onTirar={(bloco, pessoaId) => { const pessoa = dia.pessoas.find((p) => p.id === pessoaId); return pessoa ? tirarDoBloco(bloco, pessoa) : Promise.resolve(); }}
@@ -662,7 +663,7 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onHorario, onRemo
       <span style={css("font-size:12px;color:var(--asa-label)")}>{`${cols.length} de ${trabalham.length} pessoas · ${dia.location.name}`}</span>
     </div>
 
-    {achadasFora.map((p) => <div key={`fora-${p.id}`} role="status" style={css("font-size:12.5px;color:var(--asa-ink-medium);background:var(--asa-fade);border:1px solid var(--asa-line);border-radius:12px;padding:9px 13px")}>{`${p.name} está de ${motivoDaFolga(p).toLocaleLowerCase("pt-BR")} hoje e não aparece na grade.`}</div>)}
+    {achadasFora.map((p) => <div key={`fora-${p.id}`} role="status" style={css("font-size:12.5px;color:var(--asa-ink-medium);background:var(--asa-fade);border:1px solid var(--asa-line);border-radius:12px;padding:9px 13px")}>{`${p.name} está de ${motivoDaFolga(p).toLocaleLowerCase("pt-BR")} ${quandoDoDia(dia.date)} e não aparece na grade.`}</div>)}
     {termo && !achadas.length && <div role="status" style={css("font-size:12.5px;color:var(--asa-label);padding:2px 4px")}>{`Ninguém com "${busca.trim()}" no nome.`}</div>}
 
     {view === "pessoa" && !telefone && <div className="ge-legenda" aria-label="Cores por tipo de atividade">
@@ -1003,11 +1004,11 @@ export function AjusteCelulaDialog({ bloco, pessoas, editableAreaIds, focoVaga, 
       })}</div>}
       {!emVagas && !elegiveis.length && <span style={css("font-size:12px;color:var(--asa-label);padding:8px 0")}>Nenhuma pessoa disponível neste filtro.</span>}
       {deFolga.length > 0 && (!emVagas || escolhendo) && <details style={css("border-top:1px solid var(--asa-book-fade);padding-top:10px")}>
-        <summary style={css("cursor:pointer;list-style:none;font-size:12px;font-weight:700;color:var(--asa-badge-fg)")}>{`${plural(deFolga.length, "pessoa de folga hoje", "pessoas de folga hoje")} · chamar em emergência`}</summary>
+        <summary style={css("cursor:pointer;list-style:none;font-size:12px;font-weight:700;color:var(--asa-badge-fg)")}>{`${plural(deFolga.length, "pessoa de folga neste dia", "pessoas de folga neste dia")} · chamar em emergência`}</summary>
         <p style={css("margin:8px 0 6px;font-size:12px;line-height:1.5;color:var(--asa-label)")}>Folga vence a escala. Chamar alguém na folga pede o motivo, avisa a pessoa na hora e deixa a folga para a Administração remarcar.</p>
         <div style={css("display:flex;flex-direction:column;gap:6px")}>
           {deFolga.map((p) => <div key={p.id} style={css("display:flex;align-items:center;gap:10px;border:1px dashed var(--asa-vaga-bd);background:var(--asa-late-bg);border-radius:11px;padding:9px 12px")}>
-            <span style={css("display:flex;flex-direction:column;gap:1px;min-width:0;flex:1")}><strong style={css("font-size:12.5px;color:var(--asa-ink-dark)")}>{p.name}</strong><span style={css("font-size:12px;color:var(--asa-badge-fg)")}>de folga hoje</span></span>
+            <span style={css("display:flex;flex-direction:column;gap:1px;min-width:0;flex:1")}><strong style={css("font-size:12.5px;color:var(--asa-ink-dark)")}>{p.name}</strong><span style={css("font-size:12px;color:var(--asa-badge-fg)")}>de folga neste dia</span></span>
             <button type="button" className="esc-hit" disabled={saving} onClick={() => { setChamar(p); setMotivo(""); }} style={css(btn("ghost") + "padding:7px 12px")}>Chamar mesmo assim</button>
           </div>)}
         </div>
@@ -1602,8 +1603,8 @@ function AtividadeDeHojeDialog({ pessoas, bloco, saving, onClose, onSubmit }: { 
   const marcar = (id: string) => setEscolhidas((atual) => atual.includes(id) ? atual.filter((v) => v !== id) : [...atual, id]);
   const pronto = Boolean(escolhidas.length && rotulo.trim() && /^([01]\d|2[0-3]):[0-5]\d$/.test(inicio));
   const submit = (e: React.FormEvent) => { e.preventDefault(); if (pronto) void onSubmit({ pessoaIds: escolhidas, rotulo: rotulo.trim(), inicio, fim }); };
-  return <div className="shows-dialog-backdrop"><div className="shows-dialog" role="dialog" aria-modal="true" aria-label="Atividade só de hoje">
-    <header className="shows-dialog-header"><div><h2>{corrigindo ? "Mudar a atividade de hoje" : "Atividade só de hoje"}</h2><p>{corrigindo ? "Corrige o horário ou o nome para quem já está nela." : "Vale apenas neste dia — a Programação não muda."}</p></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
+  return <div className="shows-dialog-backdrop"><div className="shows-dialog" role="dialog" aria-modal="true" aria-label="Atividade só deste dia">
+    <header className="shows-dialog-header"><div><h2>{corrigindo ? "Mudar a atividade deste dia" : "Atividade só deste dia"}</h2><p>{corrigindo ? "Corrige o horário ou o nome para quem já está nela." : "Vale apenas neste dia — a Programação não muda."}</p></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
     <div className="shows-dialog-content"><form id="esc-manual" onSubmit={submit} className="shows-form">
       {corrigindo
         ? <p style={css("margin:0;font-size:12px;color:var(--asa-ink-muted)")}>{`Quem faz: ${(bloco?.pessoaIds ?? []).map((id) => pessoas.find((p) => p.id === id)?.name ?? "—").join(", ") || "ninguém"} · para mudar quem faz, tire do dia e ponha de novo.`}</p>
@@ -1622,7 +1623,7 @@ function AtividadeDeHojeDialog({ pessoas, bloco, saving, onClose, onSubmit }: { 
             </span>
           </button>;
         })}
-        {!filtradas.length && <span style={css("font-size:12px;color:var(--asa-label);padding:6px 4px")}>Ninguém com esse nome hoje.</span>}
+        {!filtradas.length && <span style={css("font-size:12px;color:var(--asa-label);padding:6px 4px")}>Ninguém com esse nome neste dia.</span>}
       </div>}
       {!corrigindo && <span style={css("font-size:12px;color:var(--asa-label);margin-top:-4px")}>{escolhidas.length ? `${escolhidas.length === 1 ? "1 pessoa escolhida" : `${escolhidas.length} pessoas escolhidas`} · quem está de folga não aparece` : "Escolha uma ou mais pessoas · quem está de folga não aparece"}</span>}
       <label>O que é<input value={rotulo} onChange={(e) => setRotulo(e.target.value)} placeholder="Prova de figurino" maxLength={60} required/></label>

@@ -37,7 +37,7 @@ export function AtencaoDoDia({ dia, vazios, grupos, canEdit, editableAreaIds, ti
   useEffect(() => { const abrir = () => setAberto(true); window.addEventListener("ge-abrir-atencao", abrir); return () => window.removeEventListener("ge-abrir-atencao", abrir); }, []);
   if (!total) return null;
   const resumo = [
-    vazios.length ? plural(vazios.length, "bloco sem ninguém", "blocos sem ninguém") : "",
+    vazios.length ? plural(vazios.length, "bloco com lugar sem ninguém", "blocos com lugar sem ninguém") : "",
     grupos.length ? plural(new Set(grupos.flatMap((g) => g.pessoas.map((c) => c.pessoaId))).size, "pessoa em dois lugares", "pessoas em dois lugares") : "",
     chamadas.length ? plural(chamadas.length, "chamada na folga", "chamadas na folga") : "",
     mexidas.length ? plural(mexidas.length, "mexida de outra área", "mexidas de outras áreas") : "",
@@ -66,7 +66,7 @@ export function AtencaoDoDia({ dia, vazios, grupos, canEdit, editableAreaIds, ti
 
     {vazios.length > 0 && <details className="esc-vazios" style={css("background:var(--asa-late-bg);border:1px solid var(--asa-amber-streak);border-radius:12px;padding:6px 12px;")}>
       <summary style={css("display:flex;align-items:center;gap:11px;cursor:pointer;list-style:none;min-height:44px")}>
-        <span style={css("font-size:12.5px;font-weight:700;color:var(--asa-amber-mid);flex:1")}>{plural(vazios.length, "bloco sem ninguém", "blocos sem ninguém")}</span>
+        <span style={css("font-size:12.5px;font-weight:700;color:var(--asa-amber-mid);flex:1")}>{plural(vazios.length, "bloco com lugar sem ninguém", "blocos com lugar sem ninguém")}</span>
         <span className="esc-vazios-ver" style={css("font-size:12px;font-weight:700;color:var(--asa-amber-mid)")}>ver quais</span>
       </summary>
       <ul style={css("margin:6px 0 6px;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px")}>
@@ -114,7 +114,7 @@ export function AtencaoDoDia({ dia, vazios, grupos, canEdit, editableAreaIds, ti
     </div>}
 
     {chamadas.map((p) => <div key={`folga-${p.id}`} style={css("display:flex;flex-wrap:wrap;align-items:center;gap:11px;background:var(--asa-late-bg);border:1px solid var(--asa-amber-stripe);border-radius:12px;padding:10px 13px;")}>
-      <span style={css("font-size:12px;color:var(--asa-amber-dark);line-height:1.5;flex:1;min-width:220px;text-wrap:pretty")}>{`${p.name} está de folga hoje e foi chamada mesmo assim${p.chamadaNaFolga?.motivo ? ` — ${p.chamadaNaFolga.motivo}` : ""}. Falta decidir a folga: remarcar para outro dia ou deixar como está.`}</span>
+      <span style={css("font-size:12px;color:var(--asa-amber-dark);line-height:1.5;flex:1;min-width:220px;text-wrap:pretty")}>{`${p.name} está de folga neste dia e entrou na escala mesmo assim${p.chamadaNaFolga?.motivo ? ` — ${p.chamadaNaFolga.motivo}` : ""}. Falta decidir a folga: remarcar para outro dia ou deixar como está.`}</span>
       <Link href="/folgas" className="esc-hit" style={css(botao("fantasma") + "text-decoration:none;display:inline-flex;align-items:center")}>Abrir Folgas</Link>
       {canEdit && onFolgaResolvida && <button type="button" className="esc-hit" onClick={() => void onFolgaResolvida(p.id)} style={css(botao("primario"))}>Já resolvi</button>}
     </div>)}

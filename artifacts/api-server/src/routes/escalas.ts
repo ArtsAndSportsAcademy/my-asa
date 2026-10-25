@@ -1033,7 +1033,7 @@ router.patch("/programacoes/:id", requireAuth, requireOrganization, async (req, 
   const actor = req.user! as Actor;
   const current = await programacaoInOrg(req.params.id as string, actor.organizationId);
   if (!current) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Programação não encontrada." }); return; }
-  if (!(await canManageLocal(actor, current.locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Você não altera a Programação deste local." }); return; }
+  if (!(await canManageLocal(actor, current.locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: `${fraseDeRecusaPorPerfil(["ADMIN", "SUPERVISOR_A"], actor.role)} Alterar a Programação é da Administração ou da Supervisão do local.` }); return; }
   const { nome, vigenciaInicio, vigenciaFim, active } = req.body ?? {};
   const next = {
     nome: typeof nome === "string" && nome.trim() ? nome.trim() : current.nome,
@@ -1054,7 +1054,7 @@ router.post("/programacoes/:id/blocos", requireAuth, requireOrganization, async 
   const actor = req.user! as Actor;
   const programacao = await programacaoInOrg(req.params.id as string, actor.organizationId);
   if (!programacao) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Programação não encontrada." }); return; }
-  if (!(await canManageLocal(actor, programacao.locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Você não altera a Programação deste local." }); return; }
+  if (!(await canManageLocal(actor, programacao.locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: `${fraseDeRecusaPorPerfil(["ADMIN", "SUPERVISOR_A"], actor.role)} Alterar a Programação é da Administração ou da Supervisão do local.` }); return; }
   // A mesma atividade costuma repetir em vários dias da semana (treino de segunda a sexta):
   // `weekdays` cria um bloco por dia de uma vez; `weekday` sozinho continua valendo.
   const dias = Array.isArray((req.body as { weekdays?: unknown })?.weekdays)
@@ -1085,7 +1085,7 @@ router.patch("/programacoes/:id/blocos/:blocoId", requireAuth, requireOrganizati
   const actor = req.user! as Actor;
   const programacao = await programacaoInOrg(req.params.id as string, actor.organizationId);
   if (!programacao) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Programação não encontrada." }); return; }
-  if (!(await canManageLocal(actor, programacao.locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: "Você não altera a Programação deste local." }); return; }
+  if (!(await canManageLocal(actor, programacao.locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: `${fraseDeRecusaPorPerfil(["ADMIN", "SUPERVISOR_A"], actor.role)} Alterar a Programação é da Administração ou da Supervisão do local.` }); return; }
   const [current] = await db.select().from(programacaoBlocosTable).where(and(eq(programacaoBlocosTable.id, req.params.blocoId as string), eq(programacaoBlocosTable.programacaoId, programacao.id))).limit(1);
   if (!current) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Bloco não encontrado." }); return; }
   // Versão que a pessoa tinha aberta (o "atualizado em" do bloco). Se outra pessoa salvou antes, nada é gravado: quem salva por

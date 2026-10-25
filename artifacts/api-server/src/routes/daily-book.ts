@@ -578,8 +578,31 @@ async function writeDailyBookAudit(
       .returning();
 
     if (mo) {
+      // O Registro mostra este evento a quem lê: precisa de frase em português e de quem fez (antes saía "assignment_swap" e "alguém").
+      const [ator] = await executor.select({ fullName: usersTable.fullName, organizationId: usersTable.organizationId }).from(usersTable).where(eq(usersTable.id, actorId)).limit(1);
+      const nomeDe = async (id: unknown) => typeof id === "string" ? (await executor.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, id)).limit(1))[0]?.name ?? "alguém" : null;
+      const frases: Record<string, string> = {
+        assignment_swap: "Pessoa trocada numa vaga do Livro do Dia", regenerate: "Livro do Dia refeito", publish: "Livro do Dia publicado", republish: "Livro do Dia republicado",
+        execute: "Livro do Dia marcado como executado", cancel: "Livro do Dia cancelado", reopen: "Livro do Dia reaberto", archive: "Livro do Dia arquivado",
+        position_removed: "Posição tirada do Livro do Dia", scene_removed: "Cena tirada do Livro do Dia", block_removed: "Grupo tirado do Livro do Dia",
+        scene_restored: "Cena devolvida ao Livro do Dia", block_restored: "Grupo devolvido ao Livro do Dia", position_restored: "Posição devolvida ao Livro do Dia",
+        scenes_reordered: "Cenas do Livro do Dia reordenadas", formation_applied_today: "Formação aplicada ao Livro do Dia", formation_saved_from_day: "Formação do dia guardada na biblioteca",
+      };
+      let narrative = frases[action] ? `${frases[action]}.` : undefined;
+      if (action === "assignment_swap") {
+        const de = await nomeDe((beforeState as { userId?: unknown } | null)?.userId), para = await nomeDe((afterState as { userId?: unknown } | null)?.userId);
+        const pelaEscala = (afterState as { action?: unknown } | null)?.action; // ajuste feito na Escala: antes e depois trazem a mesma pessoa, o que muda é a ação
+        narrative = pelaEscala === "ADICIONAR" && para ? `${para} foi posto numa vaga do Livro do Dia pela Escala.`
+          : pelaEscala === "REMOVER" && para ? `${para} saiu de uma vaga do Livro do Dia pela Escala.`
+          : de && para ? `${para} entrou no lugar de ${de} numa vaga do Livro do Dia.` : para ? `${para} foi posto numa vaga do Livro do Dia que estava sem ninguém.` : de ? `${de} saiu de uma vaga do Livro do Dia, que ficou sem ninguém.` : narrative;
+      }
       await executor.insert(historyEventsTable).values({
         moId: mo.id,
+        category: "DAILY_BOOK",
+        title: frases[action] ?? action,
+        narrative,
+        orgId: ator?.organizationId,
+        actorName: ator?.fullName,
         entityType: "daily_book",
         entityId: dailyBookId,
         actorId,

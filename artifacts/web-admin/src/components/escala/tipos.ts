@@ -33,7 +33,28 @@ export function tipoDoBloco(b: Pick<Bloco, "rotulo" | "regra">): TipoKey {
 /** Atividade que foge do padrão do dia: entrada manual, horário só de uma pessoa, pedido aprovado ou bloco de poucas pessoas escolhidas à mão. */
 export const ehExcecao = (b: Bloco) => b.origem === "manual" || b.origem === "solicitacao" || Boolean(b.horarioDela) || (b.regra === "pessoas" && b.pessoaIds.length <= 3);
 
-export const minutosDe = (hora: string) => { const [h, m] = hora.split(":").map(Number); return h * 60 + (m || 0); };
+/**
+ * Só o primeiro nome cabe em coluna e em resumo; quando duas pessoas da lista começam igual, entra a inicial
+ * (ou o número) do resto do nome: "Ana P.", "Pessoa 8".
+ */
+export const nomesCurtos = (lista: { name: string }[]) => {
+  const primeiros = new Map<string, number>();
+  for (const p of lista) { const f = p.name.split(" ")[0]; primeiros.set(f, (primeiros.get(f) ?? 0) + 1); }
+  return (p: { name: string }) => {
+    const [f, ...resto] = p.name.split(" ");
+    if ((primeiros.get(f) ?? 0) < 2 || !resto.length) return f;
+    return /^\d+$/.test(resto[0]) ? `${f} ${resto[0]}` : `${f} ${resto[0][0]}.`;
+  };
+};
+
+/** Como a frase chama o dia que a tela mostra: "hoje", "amanhã" ou, em qualquer outro, "neste dia". */
+export const quandoDoDia = (iso: string) => {
+  const dia = (d: Date) => Math.round(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 86_400_000);
+  const [y, m, d] = iso.split("-").map(Number);
+  const diff = dia(new Date(y, m - 1, d)) - dia(new Date());
+  return diff === 0 ? "hoje" : diff === 1 ? "amanhã" : "neste dia";
+};
+export const minutosDe =(hora: string) => { const [h, m] = hora.split(":").map(Number); return h * 60 + (m || 0); };
 export const horaDe = (minutos: number) => `${String(Math.floor(minutos / 60)).padStart(2, "0")}:${String(minutos % 60).padStart(2, "0")}`;
 /** Show sem hora de fim cadastrada vale 30 minutos na grade, como em toda a Escala. */
 export const fimEmMinutos = (b: Pick<Bloco, "inicio" | "fim">) => (b.fim ? minutosDe(b.fim) : minutosDe(b.inicio) + 30);

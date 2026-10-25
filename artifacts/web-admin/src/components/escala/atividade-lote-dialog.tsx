@@ -64,8 +64,8 @@ export function AtividadeLoteDialog({ pessoas, areas, blocos, areasQueSupervisio
   const campo = "width:100%;box-sizing:border-box;min-height:44px;border:1px solid var(--asa-line-soft);border-radius:10px;padding:8px 12px;font:600 13px Manrope,sans-serif;color:var(--asa-ink-dark)";
   const atalho = (ativo: boolean) => "min-height:44px;border-radius:999px;padding:6px 13px;font-size:12px;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap;" + (ativo ? "border:1px solid var(--asa-ink-dark);background:var(--asa-ink-dark);color:#fff;font-weight:700;" : "border:1px solid var(--asa-line);background:#fff;color:var(--asa-ink-medium);font-weight:600;");
 
-  return <div className="shows-dialog-backdrop"><div className="shows-dialog" role="dialog" aria-modal="true" aria-label="Atividade só de hoje">
-    <header className="shows-dialog-header"><div><h2>Atividade só de hoje</h2><p>Vale apenas neste dia: a Programação não muda.</p></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
+  return <div className="shows-dialog-backdrop"><div className="shows-dialog" role="dialog" aria-modal="true" aria-label="Atividade só deste dia">
+    <header className="shows-dialog-header"><div><h2>Atividade só deste dia</h2><p>Vale apenas neste dia: a Programação não muda.</p></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
     <div className="shows-dialog-content"><form id="esc-lote" onSubmit={(e) => void enviar(e)} className="shows-form">
       <fieldset style={css("border:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px")}>
         <legend style={css("padding:0;font-size:12px;font-weight:700;color:var(--asa-label)")}>Quem faz</legend>
@@ -88,7 +88,7 @@ export function AtividadeLoteDialog({ pessoas, areas, blocos, areasQueSupervisio
               </span>
             </button>;
           })}
-          {!filtradas.length && <span style={css("font-size:12px;color:var(--asa-label);padding:6px 4px")}>Ninguém com esse nome trabalhando hoje.</span>}
+          {!filtradas.length && <span style={css("font-size:12px;color:var(--asa-label);padding:6px 4px")}>Ninguém com esse nome trabalhando neste dia.</span>}
         </div>
       </fieldset>
       <label>O que é<input value={rotulo} onChange={(e) => setRotulo(e.target.value)} placeholder="Prova de figurino" maxLength={60} required/></label>
@@ -101,7 +101,7 @@ export function AtividadeLoteDialog({ pessoas, areas, blocos, areasQueSupervisio
         <strong>Prévia</strong>
         <ul style={css("margin:6px 0 0;padding-left:18px")}>
           <li>{escolhidas.length ? `${plural(escolhidas.length, "pessoa entra", "pessoas entram")}` : "Marque quem faz."}</li>
-          {deFolga.length > 0 && <li>{`${plural(deFolga.length, "pessoa fica de fora", "pessoas ficam de fora")} por não trabalhar hoje: ${nomes(deFolga)}.`}</li>}
+          {deFolga.length > 0 && <li>{`${plural(deFolga.length, "pessoa fica de fora", "pessoas ficam de fora")} por não trabalhar neste dia:${nomes(deFolga)}.`}</li>}
           {choques.length > 0 && <li style={css("color:var(--esc-choque);font-weight:700")}>{`${plural(choques.length, "pessoa vai ficar", "pessoas vão ficar")} em dois lugares ao mesmo tempo: ${nomes(choques.map((c) => c.pessoa))}. É um aviso, não bloqueia.`}</li>}
           {deOutraArea.length > 0 && <li>{`${plural(deOutraArea.length, "pessoa é", "pessoas são")} de outra área. A Supervisão dela vai ver que foi você.`}</li>}
         </ul>

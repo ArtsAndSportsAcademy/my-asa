@@ -428,7 +428,7 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
     if (pedido) {
       livroPedido.current = null;
       if (todayBooks.some((b) => b.id === pedido)) { void open(pedido); return; }
-      aviso = "Não achei esse Livro do Dia neste dia. Ele pode ter sido cancelado ou ser de outro dia. Mostrei o de agora.";
+      aviso = "Não achei esse Livro do Dia entre os que você vê neste dia. Ele pode ter sido cancelado, ser de outro dia ou ser de um show que tem outra pessoa como responsável. Mostrei o de agora.";
     }
     // Abre o show que ainda não terminou (o de agora, ou o próximo). Às 18h não faz sentido
     // abrir o das 10h já executado; se o dia todo acabou, fica no último.
@@ -640,7 +640,7 @@ function HojeTab(props: {
       const r = await customFetch<{ dia: DiaDaEscala; areasSupervisionadas: string[] }>(`/api/escalas/dia?locationId=${book.locationId}&date=${String(book.eventDate ?? date).slice(0, 10)}`);
       const bloco = r.dia.blocos.find((b) => b.dailyBookId === book.id && b.vagas?.some((v) => v.assignmentId === assignmentId));
       if (!bloco) { setErroTroca("Este show ainda não aparece na Escala deste dia. Gere a Escala do dia e tente de novo."); return; }
-      setTroca({ dia: r.dia, bloco, foco: assignmentId, areas: isAdm ? null : r.areasSupervisionadas });
+      setTroca({ dia: r.dia, bloco, foco: assignmentId, areas: null }); // 25/10/2026: quem pode trocar no Livro troca qualquer pessoa; a API recusa com frase quem não pode.
     } catch (err) { setErroTroca(mensagemDoErro(err, "Não consegui abrir a troca. Nada mudou; tente de novo.")); } finally { setAbrindoTroca(null); }
   };
   const subs = useMemo(() => new Map(diffs.filter((d) => d.hoje !== "fora do dia" && d.hoje !== "em aberto" && d.padrao !== "posição do padrão").map((d) => [d.where, d.padrao])), [diffs]);

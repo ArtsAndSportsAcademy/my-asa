@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { CSSProperties } from "react";
 import type { Bloco, Pessoa } from "@/pages/escalas";
-import { ehExcecao, faixa, fimEmMinutos, horaDe, minutosDe, nomeDoTipo, textoDoBloco, tipoDoBloco, toneDoTipo } from "./tipos";
+import { ehExcecao, faixa, fimEmMinutos, horaDe, minutosDe, nomeDoTipo, nomesCurtos, textoDoBloco, tipoDoBloco, toneDoTipo } from "./tipos";
 import "./escala-tokens.css";
 
 /** Pixels por minuto: 20 minutos ficam com 26 px, o bastante para uma linha de texto de 12 px. */
@@ -63,17 +63,7 @@ export function GradePessoa({ colunas, blocosDe, temChoque, mexidoPor, soExcecoe
     return { porColuna, ini, fim };
   }, [colunas, blocosDe]);
 
-  // Só o primeiro nome cabe na coluna; quando duas pessoas começam igual, entra a inicial (ou o número) do resto do nome.
-  const nomeCurto = useMemo(() => {
-    const primeiros = new Map<string, number>();
-    for (const p of colunas) { const f = p.name.split(" ")[0]; primeiros.set(f, (primeiros.get(f) ?? 0) + 1); }
-    return (p: Pessoa) => {
-      const [f, ...resto] = p.name.split(" ");
-      if ((primeiros.get(f) ?? 0) < 2 || !resto.length) return f;
-      const segundo = resto[0];
-      return /^\d+$/.test(segundo) ? `${f} ${segundo}` : `${f} ${segundo[0]}.`;
-    };
-  }, [colunas]);
+  const nomeCurto = useMemo(() => nomesCurtos(colunas), [colunas]);
 
   if (!dados) return <div className="ge-wrap"><p className="ge-vazio">Nenhum bloco neste dia.</p></div>;
   const { porColuna, ini, fim } = dados;
