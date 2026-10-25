@@ -16,6 +16,7 @@ import { TIPOS, ehExcecao, faixa, textoDoBloco, tipoDoBloco, toneDoTipo } from "
 import "@/components/escala/escala-tokens.css";
 import { diaQueAEscalaAbre, type ViradaDoDia } from "@/lib/dia-da-escala";
 import { SaiuDialog, type PreviaDaSaida, type SaiuApi } from "@/components/escala/saiu-dialog";
+import { AtividadeLoteDialog } from "@/components/escala/atividade-lote-dialog";
 import "./shows.css"; // a janela do Ajustar usa .shows-dialog: sem isto ela não rola e o rodapé some quando a Escala abre direto
 import "./escalas.css";
 
@@ -136,6 +137,9 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
   // Qual ação está em andamento, para o botão dizer "Gerando…"/"Publicando…" enquanto o servidor responde.
   const [busy, setBusy] = useState("");
   const [refresh, setRefresh] = useState(0);
+  // Atividade posta no dia para várias pessoas: o desfazer tira todas as entradas criadas de uma vez.
+  const [desfazerLote, setDesfazerLote] = useState<{ texto: string; escalaId: string; ids: string[] } | null>(null);
+  const diaRef = useRef<Dia | null>(null);
 
   // Locais visíveis: amostra = locais do JSON; real = /escalas/locais (escopo checado no servidor).
   useEffect(() => {
@@ -193,6 +197,8 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
     return () => { cancelled = true; };
   }, [review, localId, date, isMem, showMinha, refresh]);
 
+  diaRef.current = dia;
+  useEffect(() => { if (!desfazerLote) return; const id = window.setTimeout(() => setDesfazerLote(null), 12000); return () => window.clearTimeout(id); }, [desfazerLote]);
   const local = locais.find((l) => l.id === localId);
   const meusBlocos = minha?.escalas?.flatMap((escala) => escala.blocos) ?? minha?.blocos ?? [];
   const operationLabel = isMem ? (minha?.escalas && minha.escalas.length > 1 ? "Mais de um local" : minha?.escalas?.[0]?.location.name ?? minha?.location?.name ?? "—") : (local?.name ?? "—");
@@ -334,11 +340,22 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
     setSaving(true); setBusy("manual"); setError("");
     try {
       if (!review) {
-        await customFetch(`/api/scales/${dia.escala.id}/entries`, { method: "POST", headers: { "if-match": String(dia.escala.version) },
+        const r = await customFetch<{ entries?: { id: string }[] }>(`/api/scales/${dia.escala.id}/entries`, { method: "POST", headers: { "if-match": String(dia.escala.version) },
           body: JSON.stringify({ memberIds: v.pessoaIds, date, label: v.rotulo, startTime: v.inicio, endTime: v.fim || null }) });
+        const ids = (r.entries ?? []).map((e) => e.id);
+        if (ids.length) setDesfazerLote({ texto: `${v.rotulo} entrou no dia para ${plural(v.pessoaIds.length, "pessoa", "pessoas")}.`, escalaId: dia.escala.id, ids });
       }
       setManual(null); setRefresh((n) => n + 1);
     } catch (err) { setError(errMsg(err, "Não consegui criar a atividade de hoje.")); } finally { setSaving(false); setBusy(""); }
+  };
+  const desfazerAtividade = async () => {
+    const d = desfazerLote;
+    if (!d) return;
+    setDesfazerLote(null);
+    try {
+      await customFetch(`/api/scales/${d.escalaId}/entries/${d.ids[0]}`, { method: "DELETE", headers: { "if-match": String(diaRef.current?.escala?.version ?? "") }, body: JSON.stringify({ entryIds: d.ids }) });
+      setRefresh((n) => n + 1);
+    } catch (err) { setError(errMsg(err, "Não consegui desfazer. A atividade continua no dia.")); setRefresh((n) => n + 1); }
   };
   const editarEntradaManual = async (allocationIds: string[], v: { rotulo: string; inicio: string; fim: string }) => {
     if (!dia?.escala || !allocationIds.length) return;
@@ -427,7 +444,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       <button type="button" className="esc-hit" aria-expanded={cal} onClick={() => setCal((v) => !v)} style={css(cal ? pillOn : pillOff)}>Calendário</button>
     </div>
     {!isMem && !review && localId && <a className="esc-hit" href={`/imprimir?local=${encodeURIComponent(localId)}&data=${date}`} target="_blank" rel="noreferrer" style={css("flex:none;white-space:nowrap;border:1px solid var(--asa-line);background:#fff;color:var(--asa-ink-medium);border-radius:999px;padding:6px 13px;font-size:12px;font-weight:700;font-family:Manrope,sans-serif;text-decoration:none")}>Imprimir o dia</a>}
-    {isAdm && tab === "escala" && dia?.escala && <button type="button" className="esc-hit" disabled={saving} onClick={() => setManual({ bloco: null })} style={css(btn("primary") + "min-height:44px;white-space:nowrap")}>+ Atividade só de hoje</button>}
+    {(isAdm || areasMinhas.length > 0) && tab === "escala" && dia?.escala && <button type="button" className="esc-hit" disabled={saving} onClick={() => setManual({ bloco: null })} style={css(btn("primary") + "min-height:44px;white-space:nowrap")}>+ Atividade só de hoje</button>}
     {cal && <Calendario date={date} onPick={(d) => { setDate(d); setCal(false); }}/>}
   </div>;
 
@@ -461,8 +478,10 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       {!isMem && tab === "prog" && localId && <ProgramacaoTab review={review} localId={localId} localName={operationLabel} date={date} dia={dia} canEdit={Boolean(local?.podeEditar)} onChanged={() => setRefresh((n) => n + 1)}/>}
     </div>
 
-    {manual && dia && <AtividadeDeHojeDialog pessoas={dia.pessoas} bloco={manual.bloco} saving={busy === "manual"} onClose={() => setManual(null)}
-      onSubmit={async (v) => { const alvo = manual.bloco; if (alvo) await editarEntradaManual(alvo.allocationIds?.length ? alvo.allocationIds : [alvo.allocationId!], v); else await criarEntradaManual(v); }}/>}
+    {manual && dia && manual.bloco && <AtividadeDeHojeDialog pessoas={dia.pessoas} bloco={manual.bloco} saving={busy === "manual"} onClose={() => setManual(null)}
+      onSubmit={async (v) => { const alvo = manual.bloco!; await editarEntradaManual(alvo.allocationIds?.length ? alvo.allocationIds : [alvo.allocationId!], v); }}/>}
+    {manual && dia && !manual.bloco && <AtividadeLoteDialog pessoas={dia.pessoas} areas={dia.areas} blocos={dia.blocos} areasQueSupervisiona={isAdm ? null : areasMinhas} saving={busy === "manual"} onClose={() => setManual(null)} onSubmit={criarEntradaManual}/>}
+    {desfazerLote && <div className="ge-desfazer" role="status"><span>{desfazerLote.texto}</span><button type="button" onClick={() => void desfazerAtividade()}>Desfazer</button></div>}
 
     {regrasAbertas && isAdm && localId && <RegrasDoLocalDialog localId={localId} localNome={locais.find((l) => l.id === localId)?.name ?? "este local"} onClose={() => setRegrasAbertas(false)}/>}
     {gerarMesAberto && isAdm && <GerarMesDialog locais={locais} localInicial={localId} review={review} onClose={() => setGerarMesAberto(false)} onGerou={() => setRefresh((n) => n + 1)}/>}
