@@ -85,6 +85,12 @@ export const fimEmMinutos = (b: Pick<Bloco, "inicio" | "fim">) => (b.fim ? minut
 
 /** Texto do bloco na célula: show leva a hora ("MUSICAL 12:30"), a menos que o nome já traga uma. */
 export const textoDoBloco = (b: Pick<Bloco, "rotulo" | "inicio" | "regra"> & Partial<Pick<Bloco, "fim" | "flexivel">>) => (b.flexivel ? textoDaJanela({ rotulo: b.rotulo, inicio: b.inicio, fim: b.fim ?? null }) : b.regra === "livro" && !/\d{1,2}(:|h)\d{0,2}/i.test(b.rotulo) ? `${b.rotulo} ${b.inicio}` : b.rotulo);
+/** Bloco geral encurtado para quem tem outra atividade no começo ou no fim: "Treino de gelo até 10:00 · ENSAIO às 10:00". */
+export const textoDoEncurtado = (b: { rotulo: string; inicio: string; fim: string | null; encurtado?: { original: { inicio: string; fim: string | null }; por: string[] } }) => {
+  if (!b.encurtado) return "";
+  const nome = b.rotulo.trim().toLocaleLowerCase("pt-BR");
+  return `${nome.charAt(0).toLocaleUpperCase("pt-BR")}${nome.slice(1)} ${b.inicio === b.encurtado.original.inicio ? `até ${b.fim}` : `a partir de ${b.inicio}`} · ${b.encurtado.por.join(" · ")}`;
+};
 /** Bloco flexível (almoço): uma janela, nunca um horário fixo — "Almoço entre 11:00 e 13:00". */
 export const textoDaJanela = (b: { rotulo: string; inicio: string; fim: string | null }) => {
   const nome = b.rotulo.trim().toLocaleLowerCase("pt-BR");

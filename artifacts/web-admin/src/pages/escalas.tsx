@@ -14,7 +14,7 @@ import { GradePessoa } from "@/components/escala/grade-pessoa";
 import { ResumoDoDia, trabalhaNoDia } from "@/components/escala/resumo-do-dia";
 import { QuemResumido } from "@/components/escala/quem-resumido";
 import { resumirQuem, type PessoaDoDia } from "@/components/escala/resumo-de-quem";
-import { TIPOS, ehExcecao, faixa, quandoDoDia, resolverTipo, textoDoBloco, toneDoTipo, type TipoDoLocal } from "@/components/escala/tipos";
+import { TIPOS, ehExcecao, faixa, quandoDoDia, resolverTipo, textoDoBloco, textoDoEncurtado, toneDoTipo, type TipoDoLocal } from "@/components/escala/tipos";
 import { TipoSelect } from "@/components/escala/tipo-select";
 import { TiposDialog } from "@/components/escala/tipos-dialog";
 import "@/components/escala/escala-tokens.css";
@@ -33,7 +33,7 @@ import "./escalas.css";
 
 type Role = "adm" | "dir" | "sup" | "mem";
 type Regra = "todos" | "ninguem" | "area" | "grupo" | "pessoas" | "livro";
-export type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; origem: "programacao" | "livro" | "manual" | "solicitacao"; regra: Regra | null; pessoaIds: string[]; vazio: boolean; sinal: string | null; showBookId: string | null; dailyBookId: string | null; dailyBookStatus: string | null; blocoId: string | null; allocationId?: string | null; allocationIds?: string[]; vagas?: VagaDoLivro[]; showTipo?: string | null; tipoId?: string | null; horarioDela?: { chaveOriginal: string; inicio: string; fim: string | null }; /** Bloco flexível: janela, sem nomes e sem choque. */ flexivel?: boolean; /** Quem saiu deste bloco geral por ter atividade específica no mesmo horário. */ cedeu?: { userId: string; para: string }[] };
+export type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; origem: "programacao" | "livro" | "manual" | "solicitacao"; regra: Regra | null; pessoaIds: string[]; vazio: boolean; sinal: string | null; showBookId: string | null; dailyBookId: string | null; dailyBookStatus: string | null; blocoId: string | null; allocationId?: string | null; allocationIds?: string[]; vagas?: VagaDoLivro[]; showTipo?: string | null; tipoId?: string | null; horarioDela?: { chaveOriginal: string; inicio: string; fim: string | null }; /** Bloco flexível: janela, sem nomes e sem choque. */ flexivel?: boolean; /** Quem saiu deste bloco geral por ter atividade específica no mesmo horário. */ cedeu?: { userId: string; para: string }[]; /** Bloco geral encurtado para quem tem outra atividade no começo ou no fim dele. */ encurtado?: { original: { inicio: string; fim: string | null }; por: string[] } };
 /** Personagem de um bloco que vem de Livro do Dia: quem o faz hoje (ou ninguém, se a vaga está aberta). */
 type VagaDoLivro = { assignmentId: string; personagem: string; userId: string | null };
 /** Uma mexida no bloco; com `assignmentId`, vale para aquele personagem e não para "a primeira vaga aberta". */
@@ -700,6 +700,7 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
               <strong style={css("font-size:13.5px;color:var(--asa-ink-dark);overflow-wrap:anywhere")}>{p.name}</strong>
               <span style={css("font-size:12px;color:var(--asa-label)")}>{`${p.areaName ?? "sem área"} · ${plural(lista.length, "bloco", "blocos")}`}{p.chamadaNaFolga ? " · chamado na folga" : ""}{mexidoPor(p.id) ? ` · ajustado por ${mexidoPor(p.id)}` : ""}</span>
             </div>
+                {b.encurtado && <span style={css("font-size:12px;color:var(--asa-label)")}>{textoDoEncurtado(b)}</span>}
           </header>
           {lista.length ? <ul className="esc-cartao-blocos">
             {lista.filter((b) => !soExcecoes || ehExcecao(b) || temChoque(p, b)).map((b) => <li key={b.key} className="esc-cartao-bloco">
@@ -744,6 +745,7 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
                     {resumido
                       ? <QuemResumido resumo={resumo}/>
                       : who.map((id) => <span key={id} style={css("display:inline-flex;align-items:center;gap:5px;border:1px solid var(--asa-line);background:#fff;border-radius:999px;padding:3px 10px 3px 4px;font-size:12px;font-weight:600;color:var(--asa-ink-medium);")}>
+                    {b.encurtado && <span style={css("font-size:12px;color:var(--asa-label)")}>{`${textoDoEncurtado(b)} (o bloco de todos vai das ${b.encurtado.original.inicio}${b.encurtado.original.fim ? ` às ${b.encurtado.original.fim}` : ""}).`}</span>}
                         <span style={css("width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--asa-violet),var(--asa-indigo));")}>{initials(personName(id))[0]}</span>
                         <span>{personName(id)}</span>
                       </span>)}
@@ -1216,6 +1218,7 @@ function MinhaEscalaLocal({ minha, date, onHoje, onConfirm, saving }: { minha: M
         </div>
         {/* No telefone estes dois ficam juntos na direita, sem espremer o nome do bloco. */}
         <span style={css("display:flex;align-items:center;gap:8px;flex:none;white-space:nowrap")}>
+          {b.encurtado && <span style={css("font-size:12px;color:var(--asa-label);text-wrap:pretty")}>{textoDoEncurtado(b)}</span>}
           {livro && <span style={css("flex:none;font-size:12px;font-weight:700;color:var(--asa-purple);white-space:nowrap")}>abrir Livro do Dia →</span>}
           {b.regra === "livro" && <span style={css("flex:none;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;border-radius:6px;background:" + tone.bg + ";color:" + tone.fg + ";")}>show</span>}
         </span>

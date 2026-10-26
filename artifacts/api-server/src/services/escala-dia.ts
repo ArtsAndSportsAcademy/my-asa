@@ -78,6 +78,8 @@ export type BlocoDia = {
   flexivel?: boolean;
   /** Quem saiu deste bloco geral porque tem uma atividade específica no mesmo horário (a Programação manda), e para qual. */
   cedeu?: { userId: string; para: string }[];
+  /** Bloco geral encurtado para quem tem atividade específica no começo ou no fim dele: o horário original e o que cortou. */
+  encurtado?: { original: { inicio: string; fim: string | null }; por: string[] };
 };
 
 export type VagaDoLivro = { assignmentId: string; personagem: string; userId: string | null };
@@ -546,24 +548,58 @@ export function blocosSeCruzam(a: Pick<BlocoDia, "inicio" | "fim">, b: Pick<Bloc
  *  - específico = bloco da Programação que escolhe pessoas, Livro do Dia, atividade só de hoje e horário pedido e aprovado;
  *  - bloco flexível (almoço) não entra: não cede e não toma ninguém, porque nunca gera choque;
  *  - bloco de grupo não entra em nenhum lado (a regra não diz) e continua como sempre foi.
+ * Se a atividade específica pega só o começo ou o fim do bloco geral, a pessoa sai só desse trecho (gelo 08:40–11:00 e ensaio 10:00–11:00:
+ * ela fica no gelo até 10:00); cobrindo tudo, ou caindo no meio, sai do bloco inteiro. O bloco geral segue igual para os outros.
  * Roda antes dos ajustes do dia: se a Supervisão voltar a pôr a pessoa no bloco geral de propósito, vale o que ela decidiu.
  */
 export function aplicarPrioridade(blocos: BlocoDia[]) {
   const geral = (b: BlocoDia) => b.origem === "programacao" && !b.flexivel && (b.regra === "todos" || b.regra === "area");
   const especifico = (b: BlocoDia) => !b.flexivel && (b.origem !== "programacao" || b.regra === "pessoas" || b.regra === "livro");
-  const especificos = blocos.filter(especifico);
+  const minutos = (hora: string) => { const [h, m] = hora.split(":").map(Number); return h! * 60 + (m || 0); };
+  const hora = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+  const especificos = blocos.filter(especifico).sort((a, b) => a.inicio.localeCompare(b.inicio));
+  const novos: BlocoDia[] = [];
   for (const g of blocos.filter(geral)) {
     const cedeu: { userId: string; para: string }[] = [];
+    // O que sobra do bloco geral para cada pessoa que cruza com uma atividade específica: o trecho livre, ou nada.
+    const sobra = new Map<string, { s: number; e: number; motivos: string[] }>();
+    const saiu = new Set<string>();
     for (const e of especificos) {
       if (!blocosSeCruzam(g, e)) continue;
-      for (const id of e.pessoaIds) if (g.pessoaIds.includes(id) && !cedeu.some((c) => c.userId === id)) cedeu.push({ userId: id, para: e.rotulo });
+      for (const id of e.pessoaIds) {
+        if (!g.pessoaIds.includes(id) || saiu.has(id)) continue;
+        // Sem hora de fim (do bloco geral ou da atividade) não há trecho a cortar: sai do bloco inteiro, como sempre foi.
+        const atual = sobra.get(id) ?? { s: minutos(g.inicio), e: g.fim ? minutos(g.fim) : -1, motivos: [] };
+        const es = minutos(e.inicio), ee = e.fim ? minutos(e.fim) : -1;
+        const tira = () => { saiu.add(id); sobra.delete(id); cedeu.push({ userId: id, para: e.rotulo }); };
+        if (atual.e < 0 || ee < 0) { tira(); continue; }
+        if (!(es < atual.e && atual.s < ee)) continue; // já não cruza com o que sobrou
+        if (es <= atual.s && ee >= atual.e) tira(); // cobre tudo
+        else if (es > atual.s && ee >= atual.e) sobra.set(id, { s: atual.s, e: es, motivos: [...atual.motivos, `${e.rotulo} às ${e.inicio}`] }); // corta o fim
+        else if (es <= atual.s && ee < atual.e) sobra.set(id, { s: ee, e: atual.e, motivos: [...atual.motivos, `${e.rotulo} até ${e.fim}`] }); // corta o início
+        else tira(); // cai no meio: sai do bloco inteiro
+      }
     }
-    if (!cedeu.length) continue;
-    const saem = new Set(cedeu.map((c) => c.userId));
-    g.pessoaIds = g.pessoaIds.filter((id) => !saem.has(id));
-    g.cedeu = cedeu;
+    if (!cedeu.length && !sobra.size) continue;
+    const mexidos = new Set([...cedeu.map((c) => c.userId), ...sobra.keys()]);
+    g.pessoaIds = g.pessoaIds.filter((id) => !mexidos.has(id));
+    if (cedeu.length) g.cedeu = cedeu;
+    // Quem fica só num trecho ganha um bloco dele, com o horário encurtado (um por trecho, para quem tem o mesmo).
+    const porTrecho = new Map<string, { inicio: string; fim: string; motivos: string[]; ids: string[] }>();
+    for (const [id, r] of sobra) {
+      const chave = `${r.s}-${r.e}`;
+      const t = porTrecho.get(chave) ?? { inicio: hora(r.s), fim: hora(r.e), motivos: r.motivos, ids: [] };
+      t.ids.push(id); porTrecho.set(chave, t);
+    }
+    for (const t of porTrecho.values()) {
+      novos.push({
+        ...g, key: `t:${g.key}:${t.inicio}-${t.fim}`, inicio: t.inicio, fim: t.fim, regra: "pessoas", pessoaIds: t.ids, vazio: false,
+        sinal: null, cedeu: undefined, encurtado: { original: { inicio: g.inicio, fim: g.fim }, por: t.motivos },
+      });
+    }
     if (!g.pessoaIds.length) { g.vazio = false; g.sinal = "Todas as pessoas desta regra estão em atividade específica neste horário"; }
   }
+  blocos.push(...novos);
 }
 
 /**

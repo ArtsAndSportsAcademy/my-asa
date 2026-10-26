@@ -41,12 +41,33 @@ function conferirRegraPura() {
   const outraGeral = mk("AULA", "area", "10:30", "11:30", ["a", "c"]);
   const blocos = [geral, grupo, flex, ensaio, livro, outraGeral];
   aplicarPrioridade(blocos);
-  assert(geral.pessoaIds.join() === "c", "o bloco geral perde quem tem ensaio ou show no mesmo horário");
-  assert(geral.cedeu?.map((c) => `${c.userId}>${c.para}`).sort().join() === "a>ENSAIO,b>SHOW", "o bloco geral guarda quem saiu e para qual atividade");
+  assert(geral.pessoaIds.join() === "c", "o bloco geral perde quem tem ensaio (no meio) ou show (no fim) no mesmo horário");
+  assert(geral.cedeu?.map((c) => `${c.userId}>${c.para}`).join() === "a>ENSAIO", "quem tem atividade no MEIO do bloco geral sai dele inteiro, e o bloco guarda para qual atividade");
+  const doB = blocos.find((x) => x.key.startsWith("t:GELO") && x.pessoaIds.join() === "b");
+  assert(doB?.inicio === "10:00" && doB.fim === "11:30" && doB.encurtado?.por.join() === "SHOW às 11:30", "show que pega o FIM do bloco geral só corta esse trecho: a pessoa fica no geral até a hora do show");
   assert(grupo.pessoaIds.join() === "a,b" && !grupo.cedeu, "bloco de grupo não cede nem toma ninguém");
   assert(flex.pessoaIds.join() === "a,b,c" && !flex.cedeu, "bloco flexível não cede");
   assert(ensaio.pessoaIds.join() === "a" && livro.pessoaIds.join() === "b", "a atividade específica não perde ninguém");
-  assert(outraGeral.pessoaIds.join() === "c", "dois blocos gerais não se mexem entre si; só as específicas ganham (a sai da aula por causa do ensaio)");
+  assert(outraGeral.pessoaIds.join() === "c", "dois blocos gerais não se mexem entre si; só as específicas ganham");
+  const doA = blocos.find((x) => x.key.startsWith("t:AULA") && x.pessoaIds.join() === "a");
+  assert(doA?.inicio === "10:30" && doA.fim === "11:00", "ensaio às 11:00 até o fim da aula: a pessoa fica na aula só das 10:30 às 11:00");
+  // O caso da dona: gelo 08:40–11:00 e ensaio 10:00–11:00 → a pessoa fica no gelo até 10:00 e no ensaio das 10:00 às 11:00.
+  const gelo = mk("GELO2", "todos", "08:40", "11:00", ["a", "b"]), ens = mk("ENS2", "pessoas", "10:00", "11:00", ["a"]);
+  aplicarPrioridade([gelo, ens]);
+  assert(gelo.pessoaIds.join() === "b" && !gelo.cedeu, "gelo 08:40–11:00 segue igual para quem não tem o ensaio");
+  const encurtadoA = [gelo, ens];
+  void encurtadoA;
+  const comInicio = mk("G3", "todos", "10:00", "12:00", ["a"]);
+  const ens3 = mk("E3", "pessoas", "09:00", "10:30", ["a"]);
+  const lista = [comInicio, ens3];
+  aplicarPrioridade(lista);
+  const corte = lista.find((x) => x.key.startsWith("t:G3"));
+  assert(corte?.inicio === "10:30" && corte.fim === "12:00", "atividade que pega o COMEÇO do bloco geral: a pessoa entra no geral só quando ela termina");
+  const dois = mk("G4", "todos", "08:00", "12:00", ["a"]);
+  const lista4 = [dois, mk("E4", "pessoas", "08:00", "09:00", ["a"]), mk("E5", "pessoas", "11:00", "12:00", ["a"])];
+  aplicarPrioridade(lista4);
+  const corte4 = lista4.find((x) => x.key.startsWith("t:G4"));
+  assert(corte4?.inicio === "09:00" && corte4.fim === "11:00", "atividade no começo e outra no fim: sobra só o trecho do meio");
   const sozinha = mk("TREINO", "todos", "10:00", "10:30", ["a"]);
   aplicarPrioridade([sozinha, mk("AULA2", "pessoas", "10:00", "10:30", ["a"])]);
   assert(sozinha.pessoaIds.length === 0 && sozinha.vazio === false && /atividade específica/.test(sozinha.sinal ?? ""), "bloco geral esvaziado pela prioridade não vira alarme de 'vazio': explica o motivo");
@@ -145,6 +166,26 @@ async function run() {
     const meuAlmoco = minha.blocos.find((b) => b.rotulo === "ALMOÇO");
     assert(meuAlmoco?.flexivel === true && !("pessoaIds" in meuAlmoco), "Minha escala traz o almoço marcado como janela, sem a lista de pessoas");
     assert(minha.blocos.some((b) => b.rotulo === "ENSAIO"), "Minha escala traz o ensaio");
+
+    // ── o caso da dona, de ponta a ponta: gelo 08:40–11:00 e ensaio 10:00–11:00 (terça) ──
+    const terca = "2026-10-27"; // terça, dentro da vigência da Programação
+    const pg = await asAdmin("POST", `/programacoes/${prog.id}/blocos`, { weekday: 2, regra: "todos", rotulo: "GELO", inicio: "08:40", fim: "11:00" });
+    await asAdmin("POST", `/programacoes/${prog.id}/blocos`, { weekday: 2, regra: "pessoas", rotulo: "ENSAIO", inicio: "10:00", fim: "11:00", pessoaIds: [ana.id] });
+    const dTerca = (await asAdmin("GET", `/escalas/dia?locationId=${local!.id}&date=${terca}`)).body.dia as { blocos: (Bloco & { inicio: string; fim: string | null; encurtado?: { por: string[] } })[] };
+    const geloGeral = dTerca.blocos.find((b) => b.rotulo === "GELO" && b.inicio === "08:40" && b.fim === "11:00");
+    const geloDela = dTerca.blocos.find((b) => b.rotulo === "GELO" && b.fim === "10:00");
+    assert(Boolean(geloGeral) && !geloGeral!.pessoaIds.includes(ana.id) && geloGeral!.pessoaIds.length === 3, "o gelo das 08:40 às 11:00 continua igual para os outros três");
+    assert(geloDela?.inicio === "08:40" && geloDela.pessoaIds.join() === ana.id && /ENSAIO às 10:00/.test(geloDela.encurtado?.por.join() ?? ""), "a pessoa do ensaio fica no gelo só até as 10:00, e o bloco dela diz por quê");
+    assert(dTerca.blocos.find((b) => b.rotulo === "ENSAIO")?.pessoaIds.join() === ana.id, "e está no ensaio das 10:00 às 11:00");
+
+    // ── choque entre duas atividades específicas é só aviso: não bloqueia salvar, republicar nem nada ──
+    const versaoAgora = (await db.select().from(scalesTable).where(eq(scalesTable.id, escalaId)))[0]!.version;
+    const outra = await asAdmin("POST", `/scales/${escalaId}/entries`, { memberIds: [ana.id], date, label: "OUTRA ATIVIDADE", startTime: "11:00", endTime: "11:20", expectedVersion: versaoAgora });
+    assert(outra.status === 201 || outra.status === 200, `atividade em choque com o ensaio grava normalmente (recebi ${outra.status})`);
+    const dChoque = await dia();
+    assert(por(dChoque, "ENSAIO").pessoaIds.includes(ana.id) && por(dChoque, "OUTRA ATIVIDADE").pessoaIds.includes(ana.id), "a pessoa aparece nas duas atividades específicas: o choque segue, só como aviso");
+    const rep = await asAdmin("POST", `/escalas/${escalaId}/republicar`, { expectedVersion: await versao() });
+    assert(rep.status === 200, `republicar com choque na escala funciona (recebi ${rep.status}: ${rep.text.slice(0, 120)})`);
 
     // ── desfazer: tirar a marca devolve o horário fixo; entra no Registro ──
     const bloco = (await asAdmin("GET", `/programacoes?locationId=${local!.id}`)).body.programacoes[0].blocos.find((b: { rotulo: string }) => b.rotulo === "ALMOÇO") as { id: string; updatedAt: string };
