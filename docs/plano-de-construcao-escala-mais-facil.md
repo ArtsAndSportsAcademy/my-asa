@@ -1,5 +1,7 @@
 # Plano de construção: Escala mais fácil, mais limpa e mais bonita
 
+> **Atenção (26/10/2026):** este arquivo é **histórico**. As Etapas 0 a 7 já foram feitas e estão em produção; o plano vivo é `docs/plano-mestre-escala.md`. Daqui continua valendo, como detalhe, a **Fase 2 (semana e equilíbrio)** e a **Fase 3 (relatório do mês)**, e a migração da Fase 2 passa a ser a 0087.
+
 Versão reestruturada (24/10/2026). Este é o plano **para construir**. O outro (`plano-escala-mais-facil-para-a-babi.md`) é o resumo
 para a Babi decidir regras e usa outra numeração, mais conceitual. **Nada daqui foi feito no app ainda.**
 

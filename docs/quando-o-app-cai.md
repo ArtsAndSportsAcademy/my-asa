@@ -12,6 +12,7 @@ escrito aqui.
 | Aviso no sino: **"O relógio do sistema parou"**, ou a faixa vermelha no Painel | O app abre, mas a tarefa que roda a cada minuto (lembretes de check-in, publicação automática, entrega de avisos) parou | Passo 3 |
 | Aviso no sino: **"O relógio do sistema voltou"** | Resolveu sozinho. Os lembretes do tempo parado podem não ter saído | Passo 5 |
 | Alguém do elenco avisa "não consigo entrar" | Pode ser o app, ou só a senha da pessoa | Passo 1 |
+| E-mail do Sentry com **`EMAXCONN max client connections reached, limit: 200`** (e, junto, o verificador dizendo `"banco_fora"`) | O banco recusou conexões novas por uns minutos: foi um pico de uso, não um defeito. Costuma passar sozinho | Seção "Limite de conexões" no fim |
 
 ## Passo 1 — O app está no ar? (30 segundos)
 
@@ -84,3 +85,16 @@ Quando o relógio fica parado, **não saem sozinhos**: lembrete de check-in, pub
 - Quando o relógio passa de **3 minutos** sem rodar, quem olhar primeiro (o verificador, ou a Administração abrindo o Painel) faz o app gravar **um aviso no sino da Administração** — um por parada, não um por minuto — e o Painel mostra a faixa vermelha.
 - Quando o relógio volta, a faixa some sozinha e chega o aviso de que voltou.
 - O endereço `/api/saude` **não mostra nome nem dado de ninguém**: só se o app e o banco respondem e há quantos segundos o relógio rodou.
+
+## Limite de conexões (`EMAXCONN`): o pico que passa sozinho
+
+**O que foi (26/10/2026, 19:45):** o banco de produção recusou conexões novas por alguns minutos ("máximo de 200 conexões atingido"). O verificador respondeu `banco_fora`, o Sentry avisou erro em `/api/saude`, `/api/meu-dia` e `/api/internal/ciclo`, e as telas mostraram "não consegui carregar". Minutos depois tudo estava em dia; nada foi perdido.
+
+**Por que acontece:** cada cópia da API que a Vercel liga abre até 10 conexões com o banco, e num pico a Vercel liga muitas cópias de uma vez. O plano grátis do Supabase aceita 200.
+
+**O que fazer:**
+1. Abra **https://my-asa.vercel.app/api/saude**. Se mostra `"status":"ok"`, passou: não precisa fazer mais nada.
+2. Se voltar a acontecer sem ninguém ter mexido em nada, quem constrói o app limita as conexões por cópia: na Vercel, projeto **my-asa** (a API), em *Settings → Environment Variables*, criar **`DB_POOL_MAX`** = **`3`** em *Production* e promover a API de novo (o código já lê essa variável, em `lib/db/src/index.ts`). Com 3 por cópia cabem muito mais cópias antes de chegar aos 200.
+3. Se continuar mesmo assim, o assunto vira o plano pago do Supabase (`docs/para-a-cris-o-que-vale-pagar.md`).
+
+Quem escreve muita coisa seguida em produção (por exemplo, cadastrar uma fila em vários personagens) deve ir com pausas: cada salvamento recarrega a tela e puxa várias consultas.
