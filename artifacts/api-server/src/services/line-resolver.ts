@@ -717,6 +717,11 @@ export interface RoleResolution {
   hasUncoveredLine: boolean;
   /** Há ao menos uma linha que requer cobertura hoje (COBERTA ou DESCOBERTA). */
   hasActiveLine: boolean;
+  /**
+   * Há linha que o motor nunca resolve sozinho (função como "Produção", personagem sem fila): a posição existe no dia
+   * e quem monta escolhe a pessoa à mão. Diferente de "não atua neste dia da semana", que de propósito não gera vaga.
+   */
+  temLinhaManual?: boolean;
 }
 
 /**
@@ -740,7 +745,9 @@ export async function resolveAssignmentsByRole(
         const rotationAdvanceUserIds: string[] = [];
         let hasUncoveredLine = false;
         let hasActiveLine = false;
+        let temLinhaManual = false;
         for (const line of pos.lines) {
+          if (line.status === "INACTIVE" && line.type !== "DAY_OF_WEEK") temLinhaManual = true;
           for (const p of line.people) {
             if (!seen.has(p.userId)) { seen.add(p.userId); people.push(p); }
           }
@@ -754,6 +761,7 @@ export async function resolveAssignmentsByRole(
           hasLines: pos.lines.length > 0,
           hasUncoveredLine,
           hasActiveLine,
+          temLinhaManual,
         });
       }
     }

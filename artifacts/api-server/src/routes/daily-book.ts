@@ -659,6 +659,9 @@ export function planRoleAssignments(
     if (manualUserId) {
       return [{ userId: manualUserId, status: "ASSIGNED" }];
     }
+    // Função (Produção) ou personagem sem fila: o motor não escolhe ninguém, mas a posição vale no dia. Sem uma vaga aberta ela não
+    // aparecia na Escala nem tinha o botão Escolher; "não atua neste dia da semana" é outra coisa e continua sem vaga.
+    if (rr.temLinhaManual) return openSlots(Math.max(1, minimumCoverage));
     return [];
   }
   // Caminho legado (papel sem linhas): cai na escala manual e gera minimumCoverage vagas.
