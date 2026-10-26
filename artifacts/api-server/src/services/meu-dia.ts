@@ -108,7 +108,7 @@ async function diasDoLocal(orgId: string, locationId: string, hoje: string, aman
  * elenco procura, entre os locais com escala publicada hoje ou amanhã, o primeiro em que a pessoa
  * está escalada — hoje antes de amanhã. Sem escala em lugar nenhum, cai no local de costume.
  */
-async function diasDaPessoa(orgId: string, userId: string, localDeCostume: string | null, hoje: string, amanha: string): Promise<Dias> {
+async function diasDaPessoa(orgId: string, userId: string, localDeCostume: string | null, hoje: string, amanha: string): Promise<{ principal: Dias; todos: Dias[] }> {
   const comEscala = await db.selectDistinct({ id: scalesTable.locationId }).from(scalesTable)
     .innerJoin(locationsTable, eq(scalesTable.locationId, locationsTable.id))
     .where(and(eq(locationsTable.organizationId, orgId), eq(locationsTable.closed, false),
@@ -121,9 +121,12 @@ async function diasDaPessoa(orgId: string, userId: string, localDeCostume: strin
     return { ...d, hoje: await publicada(d.hoje), amanha: await publicada(d.amanha) };
   }));
   const escalado = (dia: EscalaDia | null) => Boolean(dia && escalaPublicada(dia.escala?.status) && dia.blocos.some((b) => b.pessoaIds.includes(userId)));
-  return dias.find((d) => escalado(d.hoje)) ?? dias.find((d) => escalado(d.amanha))
+  const principal = dias.find((d) => escalado(d.hoje)) ?? dias.find((d) => escalado(d.amanha))
     // Sem bloco em lugar nenhum, qualquer escala do dia ainda diz se a pessoa está de folga.
     ?? dias.find((_, i) => locais[i] === localDeCostume) ?? dias[0] ?? { hoje: null, amanha: null };
+  // Quem trabalha em dois locais no mesmo dia (Musical no Snowland e aula no Acquamotion) vê os dois: o `principal` só
+  // dá o contexto (folga, nome do local de costume); os blocos vêm de todos os locais em que ela está escalada.
+  return { principal, todos: dias };
 }
 async function feitosNaEscala(scaleId: string | undefined) {
   if (!scaleId) return new Map<string, { status: string; at: Date | null }[]>();
@@ -156,12 +159,20 @@ export async function montarMeuDia(actor: { sub: string; organizationId: string;
 type Parte = Omit<MeuDia, "perfil" | "nome" | "data" | "hora" | "mural">;
 
 async function elenco(actor: { sub: string; organizationId: string; role: string }, nome: string, locationId: string | null, hoje: string, amanha: string, agora: number): Promise<Parte> {
-  const dias = await diasDaPessoa(actor.organizationId, actor.sub, locationId, hoje, amanha);
+  const { principal: dias, todos } = await diasDaPessoa(actor.organizationId, actor.sub, locationId, hoje, amanha);
   const pub = dias.hoje && escalaPublicada(dias.hoje.escala?.status) ? dias.hoje : null;
-  const meus = (pub?.blocos ?? []).filter((b) => b.pessoaIds.includes(actor.sub)).sort((a, b) => a.inicio.localeCompare(b.inicio));
-  const amanhaPub = dias.amanha && escalaPublicada(dias.amanha.escala?.status) ? dias.amanha.blocos.filter((b) => b.pessoaIds.includes(actor.sub)).sort((a, b) => a.inicio.localeCompare(b.inicio)) : [];
+  type DoLocal = BlocoDia & { local: string; scaleId: string };
+  const blocosDe = (dia: EscalaDia | null): DoLocal[] => dia && escalaPublicada(dia.escala?.status)
+    ? dia.blocos.filter((b) => b.pessoaIds.includes(actor.sub)).map((b) => ({ ...b, local: dia.location.name, scaleId: dia.escala!.id })) : [];
+  const doDia = (dia: "hoje" | "amanha") => {
+    const lista = todos.flatMap((d) => blocosDe(d[dia])).sort((a, b) => a.inicio.localeCompare(b.inicio));
+    return lista.length || !dias[dia] ? lista : blocosDe(dias[dia]);
+  };
+  const meus = doDia("hoje");
+  const amanhaPub = doDia("amanha");
+  const maisDeUmLocal = new Set(meus.map((b) => b.local)).size > 1;
   const folga = pub?.pessoas.find((p) => p.id === actor.sub)?.folga ?? dias.hoje?.pessoas.find((p) => p.id === actor.sub)?.folga ?? null;
-  const feitos = (await feitosNaEscala(pub?.escala?.id)).get(actor.sub) ?? [];
+  const feitos = (await Promise.all([...new Set(meus.map((b) => b.scaleId))].map(feitosNaEscala))).flatMap((m) => m.get(actor.sub) ?? []);
   const jaChegou = feitos.find((r) => r.status === "CHECKED_IN" || r.status === "LATE");
   const local = pub?.location.name ?? dias.hoje?.location.name ?? "";
 
@@ -173,7 +184,7 @@ async function elenco(actor: { sub: string; organizationId: string; role: string
   // Depois do primeiro bloco, "você entra às 09:00" lido às 12h soa como atraso: o texto acompanha a hora.
   else if (alvo) saudacao = { titulo: saudar(agora, nome), texto: min(meus[0]!.inicio) <= agora
     ? `Seu dia começou às ${meus[0]!.inicio} (${texto(meus[0]!)}) e o check-in ainda não foi feito. Faz por aqui mesmo — leva um toque.`
-    : `Você entra às ${meus[0]!.inicio} em ${texto(meus[0]!)}. Faz o check-in por aqui mesmo — leva um toque.`, mascote: "bom-dia", acao: { label: "Fazer check-in", checkIn: { scaleId: pub!.escala!.id, sourceKey: alvo.key, date: hoje } } };
+    : `Você entra às ${meus[0]!.inicio} em ${texto(meus[0]!)}. Faz o check-in por aqui mesmo — leva um toque.`, mascote: "bom-dia", acao: { label: "Fazer check-in", checkIn: { scaleId: alvo.scaleId, sourceKey: alvo.key, date: hoje } } };
   else saudacao = { titulo: saudar(agora, nome), texto: "Seus blocos de hoje já terminaram.", mascote: "tarefa-concluida", acao: { label: "Ver minha escala", href: APP_ROUTES.escalas } };
 
   // Uma saudação por bloco seria enganosa quando há dois turnos no mesmo dia.
@@ -193,12 +204,12 @@ async function elenco(actor: { sub: string; organizationId: string; role: string
 
   const prox = alvo;
   const proximo: Parte["proximo"] = prox
-    ? { rotulo: "Sua próxima atividade", link: prox.dailyBookId ? "abrir Livro do Dia" : "ver minha escala", href: prox.dailyBookId ? APP_ROUTES.livroDoDia : APP_ROUTES.escalas, time: prox.inicio, rel: rel(prox.inicio, agora), title: texto(prox), sub: `${local}${prox.fim ? ` · até ${prox.fim}` : ""}${prox.dailyBookId ? " · Livro do Dia" : ""}`, chips: [local].filter(Boolean) }
-    : amanhaPub[0] ? { rotulo: "Sua próxima atividade", link: "ver minha escala", href: APP_ROUTES.escalas, time: amanhaPub[0].inicio, rel: "amanhã", title: texto(amanhaPub[0]), sub: `${dias.amanha?.location.name ?? ""} · escala de amanhã publicada`, chips: [] } : null;
+    ? { rotulo: "Sua próxima atividade", link: prox.dailyBookId ? "abrir Livro do Dia" : "ver minha escala", href: prox.dailyBookId ? APP_ROUTES.livroDoDia : APP_ROUTES.escalas, time: prox.inicio, rel: rel(prox.inicio, agora), title: texto(prox), sub: `${prox.local}${prox.fim ? ` · até ${prox.fim}` : ""}${prox.dailyBookId ? " · Livro do Dia" : ""}`, chips: [prox.local].filter(Boolean) }
+    : amanhaPub[0] ? { rotulo: "Sua próxima atividade", link: "ver minha escala", href: APP_ROUTES.escalas, time: amanhaPub[0].inicio, rel: "amanhã", title: texto(amanhaPub[0]), sub: `${amanhaPub[0].local} · escala de amanhã publicada`, chips: [] } : null;
 
   const itens: LinhaDoDia[] = meus.map((b) => {
     const passou = fimDe(b) <= agora, emCurso = min(b.inicio) <= agora && !passou;
-    return { time: b.inicio, title: texto(b), sub: b.fim ? `até ${b.fim}` : local, tag: emCurso ? "agora" : passou ? "passou" : b.dailyBookId ? "show" : "", tone: emCurso ? "ok" : passou ? "mute" : b.dailyBookId ? "mine" : "mute", href: b.dailyBookId ? APP_ROUTES.livroDoDia : undefined };
+    return { time: b.inicio, title: texto(b), sub: `${b.fim ? `até ${b.fim}` : ""}${maisDeUmLocal ? `${b.fim ? " · " : ""}${b.local}` : b.fim ? "" : local}`, tag: emCurso ? "agora" : passou ? "passou" : b.dailyBookId ? "show" : "", tone: emCurso ? "ok" : passou ? "mute" : b.dailyBookId ? "mine" : "mute", href: b.dailyBookId ? APP_ROUTES.livroDoDia : undefined };
   });
 
   const [tarefas, folgas, pedidos] = await Promise.all([
