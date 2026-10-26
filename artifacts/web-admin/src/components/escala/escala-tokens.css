@@ -46,6 +46,9 @@
 .ge-rotulo{position:absolute;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:2px 4px;box-sizing:border-box;overflow:hidden;pointer-events:none;color:var(--fg);font-size:12px;font-weight:700;line-height:1.2;text-align:center}
 .ge-rotulo small{font:600 12px 'JetBrains Mono',monospace;opacity:.82}
 .ge-rotulo[data-apagado="true"]{opacity:.16}
+.ge-janela{position:absolute;left:0;right:0;z-index:0;box-sizing:border-box;border:1.5px dashed #b9afd6;border-radius:7px;background:rgba(233,228,246,.35);pointer-events:none;display:flex;align-items:flex-end;justify-content:center;overflow:hidden}
+.ge-janela small{display:flex;flex-direction:column;align-items:center;font:600 12px 'JetBrains Mono',monospace;color:#4a3f6b;padding:2px 4px;text-align:center;line-height:1.2;background:rgba(255,255,255,.78);border-radius:5px;margin-bottom:2px}.ge-janela small b{font:700 12px Manrope,sans-serif}
+.ge-janela[data-apagado="true"]{opacity:.16}
 .ge-vazio{margin:0;padding:18px;text-align:center;font-size:12.5px;color:var(--asa-label)}
 
 /* ---------- resumo do topo ---------- */
@@ -190,3 +193,7 @@
 .ge-livro-cena li b[data-vazia="true"]{color:var(--esc-choque)}
 .ge-livro-novidade{margin:0;padding:8px 10px;border-radius:10px;background:#fff6e0;font-size:12.5px;line-height:1.45;color:#8f5200}
 .ge-livro-ver>.ge-livro-botao{align-self:flex-start}
+
+/* Janela "Novo bloco": no telefone os campos passavam da borda e escondiam o texto (a coluna da grade não encolhia abaixo do tamanho natural do campo). */
+#esc-bloco{grid-template-columns:minmax(0,1fr)}
+#esc-bloco input:not([type=checkbox]),#esc-bloco select{min-width:0;width:100%;box-sizing:border-box}

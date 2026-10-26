@@ -4,6 +4,7 @@ import { customFetch } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/useAuth";
 import { sampleDia, sampleLocais } from "@/lib/review-escala";
 import { resumirQuem, type PessoaDoDia } from "@/components/escala/resumo-de-quem";
+import { textoDaJanela } from "@/components/escala/tipos";
 
 /**
  * Folha do camarim (doc 12: "a escala do dia precisa existir fora do app"). Lê a mesma Escala do dia da
@@ -12,7 +13,7 @@ import { resumirQuem, type PessoaDoDia } from "@/components/escala/resumo-de-que
  * Rascunho sai marcado como rascunho.
  */
 type Vaga = { assignmentId: string; personagem: string; userId: string | null };
-type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; regra: string | null; pessoaIds: string[]; vazio: boolean; sinal: string | null; vagas?: Vaga[] };
+type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; regra: string | null; pessoaIds: string[]; vazio: boolean; sinal: string | null; vagas?: Vaga[]; flexivel?: boolean };
 type Dia = {
   date: string; location: { id: string; name: string };
   escala: { status: string; version: number; publishedAt: string | null; alteradaDesde: string | null } | null;
@@ -23,7 +24,7 @@ const WEEKDAY = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "qu
 const MONTH = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const longDate = (iso: string) => { const [y, m, d] = iso.split("-").map(Number); return `${WEEKDAY[new Date(y, m - 1, d).getDay()]}, ${d} de ${MONTH[m - 1]} de ${y}`; };
 const FOLGA: Record<string, string> = { DAY_OFF: "folga", RECESSO: "recesso", NO_SHOW: "no show", AFASTAMENTO: "afastamento", RESTRICAO: "restrição", OUTRO: "fora" };
-const texto = (b: Bloco) => b.regra === "livro" && !/\d{1,2}(:|h)\d{0,2}/i.test(b.rotulo) ? `${b.rotulo} ${b.inicio}` : b.rotulo; // "Musical 15h" já traz a hora
+const texto = (b: Bloco) => b.flexivel ? textoDaJanela(b) : b.regra === "livro" && !/\d{1,2}(:|h)\d{0,2}/i.test(b.rotulo) ? `${b.rotulo} ${b.inicio}` : b.rotulo; // "Musical 15h" já traz a hora
 const nomeOrdem = (a: string, b: string) => a.localeCompare(b, "pt-BR");
 /** Personagens que a pessoa faz neste bloco (um show pode dar duas vagas à mesma pessoa). */
 const personagensDe = (b: Bloco, pessoaId: string) => (b.vagas ?? []).filter((v) => v.userId === pessoaId).map((v) => v.personagem);
@@ -106,11 +107,11 @@ export default function PrintDayPage() {
     {dia?.escala?.alteradaDesde && <p className="print-warning" role="alert">Mudou depois da publicação e ainda não foi republicada.</p>}
     {loading ? <p>Carregando escala…</p> : error ? <p role="alert">{error}</p> : <>
       {modo === "pessoa"
-        ? <div className="print-columns grid grid-cols-2 gap-5">{colunas.map((coluna, i) => <table className="w-full text-sm" key={i}><thead><tr><th>Pessoa</th><th>Blocos do dia</th></tr></thead><tbody>{coluna.map((p) => <tr key={p.id}><td><strong>{p.name}</strong><div>{p.areaName ?? ""}</div></td><td>{p.blocos.map((b) => <div key={b.key}>{b.inicio}{b.fim ? `–${b.fim}` : ""} · {texto(b)}{personagensDe(b, p.id).length > 0 && <strong> — {personagensDe(b, p.id).join(", ")}</strong>}</div>)}</td></tr>)}</tbody></table>)}</div>
+        ? <div className="print-columns grid grid-cols-2 gap-5">{colunas.map((coluna, i) => <table className="w-full text-sm" key={i}><thead><tr><th>Pessoa</th><th>Blocos do dia</th></tr></thead><tbody>{coluna.map((p) => <tr key={p.id}><td><strong>{p.name}</strong><div>{p.areaName ?? ""}</div></td><td>{p.blocos.map((b) => <div key={b.key}>{b.flexivel ? null : <>{b.inicio}{b.fim ? `–${b.fim}` : ""} · </>}{texto(b)}{personagensDe(b, p.id).length > 0 && <strong> — {personagensDe(b, p.id).join(", ")}</strong>}</div>)}</td></tr>)}</tbody></table>)}</div>
         : <table className="w-full text-sm"><thead><tr><th>Horário</th><th>Atividade</th><th>Quem</th></tr></thead><tbody>{porAtividade.map(({ bloco: b, personagens, semVaga, resumo, semNinguem }) => <tr key={b.key}>
             <td style={{ whiteSpace: "nowrap" }}>{b.inicio}{b.fim ? `–${b.fim}` : ""}</td>
             <td><strong>{texto(b)}</strong></td>
-            <td>{b.vazio ? <em>Sem ninguém escalado</em> : resumo.tipo === "show-grande"
+            <td>{b.flexivel ? <em>Cada pessoa cumpre dentro da janela, sem horário fixo</em> : b.vazio ? <em>Sem ninguém escalado</em> : resumo.tipo === "show-grande"
               ? <div><strong>{resumo.rotulo}</strong>{mostrarNomes ? <> — {resumo.nomes.join(" · ")}</> : " · ver Livro do Dia"}</div>
               : !personagens.length && (resumo.tipo === "todos" || resumo.tipo === "area") ? <div>{mostrarNomes ? <><strong>{resumo.rotulo}</strong>: {resumo.nomes.join(" · ")}</> : resumo.rotulo}</div> : <>
               {personagens.map((v, i) => <div key={i}>{v.personagem}: {v.nome ? <strong>{v.nome}</strong> : <em>vaga sem ninguém</em>}</div>)}

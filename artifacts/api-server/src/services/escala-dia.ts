@@ -74,6 +74,10 @@ export type BlocoDia = {
   horarioDela?: { chaveOriginal: string; inicio: string; fim: string | null };
   /** Bloco de Livro do Dia: cada personagem (vaga) e quem o faz hoje, para o Ajustar trocar por personagem. */
   vagas?: VagaDoLivro[];
+  /** Bloco flexível (0085): uma janela (almoço 11:00–13:00). A tela mostra uma linha só, sem nomes, e ele nunca gera choque. */
+  flexivel?: boolean;
+  /** Quem saiu deste bloco geral porque tem uma atividade específica no mesmo horário (a Programação manda), e para qual. */
+  cedeu?: { userId: string; para: string }[];
 };
 
 export type VagaDoLivro = { assignmentId: string; personagem: string; userId: string | null };
@@ -374,7 +378,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     if (vazio && !sinal) sinal = bloco.regra === "pessoas" && bloco.pessoaIds.length === 0 ? "Sem regra de quem entra — fica vazio até alguém decidir" : "Ninguém disponível para a regra deste bloco hoje";
     blocos.push({
       ...base, key: `p:${bloco.id}`, rotulo: bloco.rotulo, inicio, fim: hhmm(bloco.fim), origem: "programacao", regra: bloco.regra,
-      pessoaIds, vazio, sinal, blocoId: bloco.id, showBookId: bloco.showBookId, tipoId: bloco.tipoId ?? null,
+      pessoaIds, vazio, sinal, blocoId: bloco.id, showBookId: bloco.showBookId, tipoId: bloco.tipoId ?? null, flexivel: bloco.flexivel,
       dailyBookId: livro?.id ?? null, dailyBookStatus: livro?.status ?? null, showTipo: livro?.showType ?? null,
       ...(livro ? { vagas: vagas.get(livro.id) ?? [] } : {}),
     });
@@ -434,6 +438,8 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
       });
     }
   }
+
+  aplicarPrioridade(blocos);
 
   // Quem foi chamado mesmo estando de folga: a grade mostra a marca e o motivo, e a decisão
   // sobre a folga perdida (remarcar ou deixar) fica pendente até alguém resolver.
@@ -518,6 +524,46 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     blocos,
     tipos: await tiposDoLocal(locationId),
   };
+}
+
+/** Como o bloco flexível se escreve para quem faz: "Almoço entre 11:00 e 13:00" (nunca um horário fixo). */
+export function textoDaJanela(b: Pick<BlocoDia, "rotulo" | "inicio" | "fim">) {
+  const nome = b.rotulo.trim().toLocaleLowerCase("pt-BR");
+  return `${nome.charAt(0).toLocaleUpperCase("pt-BR")}${nome.slice(1)} entre ${b.inicio}${b.fim ? ` e ${b.fim}` : ""}`;
+}
+
+/** Dois blocos se cruzam no relógio? Mesma regra da tela: começar antes de o outro terminar; começar junto só conta se os dois têm fim. */
+export function blocosSeCruzam(a: Pick<BlocoDia, "inicio" | "fim">, b: Pick<BlocoDia, "inicio" | "fim">) {
+  if (a.inicio === b.inicio) return Boolean(a.fim && b.fim);
+  const [primeiro, segundo] = a.inicio < b.inicio ? [a, b] : [b, a];
+  return segundo.inicio < (primeiro.fim ?? primeiro.inicio);
+}
+
+/**
+ * Prioridade (decisão de 26/10/2026): a atividade ESPECÍFICA ganha do bloco GERAL no mesmo horário. Quem tem ensaio, aula ou show sai do
+ * "treino de gelo para todos" daquela hora em vez de aparecer nos dois e acusar choque.
+ *  - geral    = bloco da Programação que convoca todos ou uma área;
+ *  - específico = bloco da Programação que escolhe pessoas, Livro do Dia, atividade só de hoje e horário pedido e aprovado;
+ *  - bloco flexível (almoço) não entra: não cede e não toma ninguém, porque nunca gera choque;
+ *  - bloco de grupo não entra em nenhum lado (a regra não diz) e continua como sempre foi.
+ * Roda antes dos ajustes do dia: se a Supervisão voltar a pôr a pessoa no bloco geral de propósito, vale o que ela decidiu.
+ */
+export function aplicarPrioridade(blocos: BlocoDia[]) {
+  const geral = (b: BlocoDia) => b.origem === "programacao" && !b.flexivel && (b.regra === "todos" || b.regra === "area");
+  const especifico = (b: BlocoDia) => !b.flexivel && (b.origem !== "programacao" || b.regra === "pessoas" || b.regra === "livro");
+  const especificos = blocos.filter(especifico);
+  for (const g of blocos.filter(geral)) {
+    const cedeu: { userId: string; para: string }[] = [];
+    for (const e of especificos) {
+      if (!blocosSeCruzam(g, e)) continue;
+      for (const id of e.pessoaIds) if (g.pessoaIds.includes(id) && !cedeu.some((c) => c.userId === id)) cedeu.push({ userId: id, para: e.rotulo });
+    }
+    if (!cedeu.length) continue;
+    const saem = new Set(cedeu.map((c) => c.userId));
+    g.pessoaIds = g.pessoaIds.filter((id) => !saem.has(id));
+    g.cedeu = cedeu;
+    if (!g.pessoaIds.length) { g.vazio = false; g.sinal = "Todas as pessoas desta regra estão em atividade específica neste horário"; }
+  }
 }
 
 /**

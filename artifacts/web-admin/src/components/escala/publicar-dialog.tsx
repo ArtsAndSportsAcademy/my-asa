@@ -43,7 +43,7 @@ export function PublicarDialog({ dia, dataLonga, republicar, review, ocupado, on
   const choques = useMemo(() => {
     const out: { pessoa: string; a: string; b: string }[] = [];
     for (const p of dia.pessoas) {
-      const seus = dia.blocos.filter((b) => b.pessoaIds.includes(p.id)).sort((x, y) => x.inicio.localeCompare(y.inicio));
+      const seus = dia.blocos.filter((b) => !b.flexivel && b.pessoaIds.includes(p.id)).sort((x, y) => x.inicio.localeCompare(y.inicio));
       for (let i = 0; i < seus.length; i++) for (let j = i + 1; j < seus.length; j++) {
         const a = seus[i]!, b = seus[j]!;
         if (b.inicio < (a.fim ?? a.inicio) || (b.inicio === a.inicio && b.fim && a.fim)) out.push({ pessoa: p.name, a: a.rotulo, b: b.rotulo });

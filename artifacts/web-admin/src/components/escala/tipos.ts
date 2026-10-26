@@ -84,5 +84,10 @@ export const horaDe = (minutos: number) => `${String(Math.floor(minutos / 60)).p
 export const fimEmMinutos = (b: Pick<Bloco, "inicio" | "fim">) => (b.fim ? minutosDe(b.fim) : minutosDe(b.inicio) + 30);
 
 /** Texto do bloco na célula: show leva a hora ("MUSICAL 12:30"), a menos que o nome já traga uma. */
-export const textoDoBloco = (b: Pick<Bloco, "rotulo" | "inicio" | "regra">) => (b.regra === "livro" && !/\d{1,2}(:|h)\d{0,2}/i.test(b.rotulo) ? `${b.rotulo} ${b.inicio}` : b.rotulo);
+export const textoDoBloco = (b: Pick<Bloco, "rotulo" | "inicio" | "regra"> & Partial<Pick<Bloco, "fim" | "flexivel">>) => (b.flexivel ? textoDaJanela({ rotulo: b.rotulo, inicio: b.inicio, fim: b.fim ?? null }) : b.regra === "livro" && !/\d{1,2}(:|h)\d{0,2}/i.test(b.rotulo) ? `${b.rotulo} ${b.inicio}` : b.rotulo);
+/** Bloco flexível (almoço): uma janela, nunca um horário fixo — "Almoço entre 11:00 e 13:00". */
+export const textoDaJanela = (b: { rotulo: string; inicio: string; fim: string | null }) => {
+  const nome = b.rotulo.trim().toLocaleLowerCase("pt-BR");
+  return `${nome.charAt(0).toLocaleUpperCase("pt-BR")}${nome.slice(1)} entre ${b.inicio}${b.fim ? ` e ${b.fim}` : ""}`;
+};
 export const faixa = (b: Pick<Bloco, "inicio" | "fim">) => (b.fim ? `${b.inicio}–${b.fim}` : b.inicio);

@@ -65,6 +65,8 @@ export const programacaoBlocosTable = pgTable("programacao_blocos", {
   programacaoId: uuid("programacao_id").notNull().references(() => programacoesTable.id),
   // 0084: o tipo escolhido na Programação. Vazio = o app adivinha pelo nome, como sempre fez.
   tipoId: uuid("tipo_id").references(() => escalaTiposTable.id),
+  // 0085: bloco flexível (almoço 11:00–13:00). É uma janela: uma linha só, sem nomes e sem choque; cada pessoa cumpre dentro dela.
+  flexivel: boolean("flexivel").notNull().default(false),
   // 0 = domingo … 6 = sábado
   weekday: integer("weekday").notNull(),
   inicio: time("inicio").notNull(),

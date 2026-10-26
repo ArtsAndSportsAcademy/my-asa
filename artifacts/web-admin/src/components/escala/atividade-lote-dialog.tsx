@@ -50,7 +50,7 @@ export function AtividadeLoteDialog({ tipos, pessoas, areas, blocos, areasQueSup
     const achados: { pessoa: Pessoa; com: Bloco }[] = [];
     for (const p of trabalham) {
       if (!marcadas.has(p.id)) continue;
-      const com = blocos.find((b) => b.pessoaIds.includes(p.id) && minutosDe(b.inicio) < z && a < fimEmMinutos(b));
+      const com = blocos.find((b) => !b.flexivel && b.pessoaIds.includes(p.id) && minutosDe(b.inicio) < z && a < fimEmMinutos(b));
       if (com) achados.push({ pessoa: p, com });
     }
     return achados;

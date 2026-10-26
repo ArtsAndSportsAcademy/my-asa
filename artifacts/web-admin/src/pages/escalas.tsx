@@ -33,7 +33,7 @@ import "./escalas.css";
 
 type Role = "adm" | "dir" | "sup" | "mem";
 type Regra = "todos" | "ninguem" | "area" | "grupo" | "pessoas" | "livro";
-export type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; origem: "programacao" | "livro" | "manual" | "solicitacao"; regra: Regra | null; pessoaIds: string[]; vazio: boolean; sinal: string | null; showBookId: string | null; dailyBookId: string | null; dailyBookStatus: string | null; blocoId: string | null; allocationId?: string | null; allocationIds?: string[]; vagas?: VagaDoLivro[]; showTipo?: string | null; tipoId?: string | null; horarioDela?: { chaveOriginal: string; inicio: string; fim: string | null } };
+export type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; origem: "programacao" | "livro" | "manual" | "solicitacao"; regra: Regra | null; pessoaIds: string[]; vazio: boolean; sinal: string | null; showBookId: string | null; dailyBookId: string | null; dailyBookStatus: string | null; blocoId: string | null; allocationId?: string | null; allocationIds?: string[]; vagas?: VagaDoLivro[]; showTipo?: string | null; tipoId?: string | null; horarioDela?: { chaveOriginal: string; inicio: string; fim: string | null }; /** Bloco flexível: janela, sem nomes e sem choque. */ flexivel?: boolean; /** Quem saiu deste bloco geral por ter atividade específica no mesmo horário. */ cedeu?: { userId: string; para: string }[] };
 /** Personagem de um bloco que vem de Livro do Dia: quem o faz hoje (ou ninguém, se a vaga está aberta). */
 type VagaDoLivro = { assignmentId: string; personagem: string; userId: string | null };
 /** Uma mexida no bloco; com `assignmentId`, vale para aquele personagem e não para "a primeira vaga aberta". */
@@ -44,7 +44,7 @@ type Area = { id: string; name: string; supervisores: { id: string; name: string
 export type Mexida = { pessoaId: string; pessoaNome: string; pessoaAreaNome: string | null; porId: string; porNome: string; porAreaNome: string | null; em: string; texto: string };
 export type Dia = { date: string; location: { id: string; name: string }; escala: { id: string; status: string; version: number; publishedAt: string | null; alteradaDesde: string | null } | null; programacao: { id: string; nome: string; vigenciaInicio: string; vigenciaFim: string } | null; areas: Area[]; pessoas: Pessoa[]; blocos: Bloco[]; mexidas?: Mexida[]; tipos?: TipoDoLocal[] };
 type Local = { id: string; name: string; podeEditar: boolean; areasSupervisionadas: string[]; viradaDoDia?: ViradaDoDia };
-type ProgBloco = SampleProgramacao["blocos"][number] & { tipoId?: string | null };
+type ProgBloco = SampleProgramacao["blocos"][number] & { tipoId?: string | null; flexivel?: boolean };
 type Programacao = { id: string; locationId: string; nome: string; vigenciaInicio: string; vigenciaFim: string; active?: boolean; blocos: ProgBloco[] };
 type MinhaLocal = { location: { id: string; name: string }; publishedAt?: string | null; folga?: string | null; confirmada?: boolean; confirmedAt?: string | null; escalaId: string; escalaVersion: number; blocos: Omit<Bloco, "pessoaIds">[]; tipos?: TipoDoLocal[] };
 type Minha = { date: string; publicada: boolean; escalas?: MinhaLocal[]; location?: { id: string; name: string } | null; publishedAt?: string | null; folga?: string | null; confirmada?: boolean; confirmedAt?: string | null; escalaId?: string | null; escalaVersion?: number | null; blocos?: Omit<Bloco, "pessoaIds">[] };
@@ -606,7 +606,8 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
   const conflitos = useMemo(() => {
     const out: ConflitoDaPessoa[] = [];
     for (const p of dia.pessoas) {
-      const list = dia.blocos.filter((b) => b.pessoaIds.includes(p.id)).sort((x, y) => x.inicio.localeCompare(y.inicio));
+      // Bloco flexível (almoço) é janela: nunca cruza com nada.
+      const list = dia.blocos.filter((b) => !b.flexivel && b.pessoaIds.includes(p.id)).sort((x, y) => x.inicio.localeCompare(y.inicio));
       for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
         const a = list[i], b = list[j];
         const fimA = a.fim ?? a.inicio;
@@ -640,7 +641,7 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
     const inner = <>
       {b.dailyBookId && <span title={`Livro do Dia · ${b.dailyBookStatus ?? ""}`} style={css("width:6px;height:6px;border-radius:50%;flex:none;background:" + (b.dailyBookStatus === "DRAFT" ? "var(--asa-vaga-fg)" : "var(--asa-prep-fg)") + ";")}/>}
       <span style={css("overflow:hidden;text-overflow:ellipsis")}>{textoDoBloco(b)}</span>
-      {!semHora && b.fim && b.regra !== "livro" && <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;color:" + tone.fg + ";opacity:.75;margin-left:auto;")}>{faixa(b)}</span>}
+      {!semHora && b.fim && b.regra !== "livro" && !b.flexivel && <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;color:" + tone.fg + ";opacity:.75;margin-left:auto;")}>{faixa(b)}</span>}
     </>;
     return b.dailyBookId
       ? <Link key={b.key} href={`/livro-do-dia?data=${dia.date}&livro=${b.dailyBookId}`} title="Abrir no Livro do Dia" className="esc-bloco-link" style={css(blockStyle(tone, "cursor:pointer;text-decoration:none;" + extra))}>{inner}</Link>
@@ -738,7 +739,8 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
                 <td style={css("border-bottom:1px solid var(--asa-purple-airy);border-right:1px solid var(--asa-purple-lift);padding:6px 9px;vertical-align:middle;width:210px;")}>{blockEl(b, "display:inline-flex;")}</td>
                 <td style={css("border-bottom:1px solid var(--asa-purple-airy);padding:6px 9px;vertical-align:middle;")}>
                   <div style={css("display:flex;flex-wrap:wrap;gap:5px;align-items:center")}>
-                    {b.regra === "livro" ? <ShowLinha bloco={b} data={dia.date} nomeDe={personName} pessoasDoDia={pessoasDoDia}/> : <>
+                    {b.flexivel ? <span style={css("font-size:12.5px;font-weight:600;color:var(--asa-ink-medium)")}>{`Cada pessoa cumpre dentro da janela, sem horário fixo · ${plural(who.length, "pessoa", "pessoas")}`}</span>
+                    : b.regra === "livro" ? <ShowLinha bloco={b} data={dia.date} nomeDe={personName} pessoasDoDia={pessoasDoDia}/> : <>
                     {resumido
                       ? <QuemResumido resumo={resumo}/>
                       : who.map((id) => <span key={id} style={css("display:inline-flex;align-items:center;gap:5px;border:1px solid var(--asa-line);background:#fff;border-radius:999px;padding:3px 10px 3px 4px;font-size:12px;font-weight:600;color:var(--asa-ink-medium);")}>
@@ -748,6 +750,7 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
                     {b.regra !== "ninguem" && (b.vazio ? <span style={css("display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;background:var(--asa-vaga-bg);color:var(--asa-vaga-fg);border:1px dashed var(--asa-vaga-bd);")}>sem ninguém · defina quem entra</span>
                       : !resumido && <span style={css("font-size:12px;color:var(--asa-label);margin-left:2px")}>{plural(who.length, "pessoa", "pessoas")}</span>)}
                     </>}
+                    {b.cedeu && b.cedeu.length > 0 && <span style={css("font-size:12px;color:var(--asa-label)")}>{`Saíram daqui por ter atividade específica no mesmo horário: ${b.cedeu.length <= 4 ? b.cedeu.map((c) => `${personName(c.userId)} (${c.para})`).join(", ") : plural(b.cedeu.length, "pessoa", "pessoas")}.`}</span>}
                     {b.horarioDela && <span style={css("font-size:12px;color:var(--asa-label)")}>{`Horário só desta pessoa · era ${faixa(b.horarioDela)}`}</span>}
                     {canEdit && b.horarioDela && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => void onHorario({ ...b, key: b.horarioDela!.chaveOriginal }, b.pessoaIds[0]!, null)}>Voltar ao normal</button>}
                     {canEdit && !b.horarioDela && b.regra !== "ninguem" && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setAjustando(b)}>Ajustar</button>}
@@ -1204,7 +1207,7 @@ function MinhaEscalaLocal({ minha, date, onHoje, onConfirm, saving }: { minha: M
       const row = <>
         <div style={css("display:flex;flex-direction:column;gap:2px;width:104px;flex:none")}>
           <span style={css("font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--asa-ink-medium)")}>{b.inicio}</span>
-          <span style={css("font-size:12px;color:var(--asa-label)")}>{durLabel(b.inicio, b.fim)}</span>
+          <span style={css("font-size:12px;color:var(--asa-label)")}>{b.flexivel ? "dentro da janela" : durLabel(b.inicio, b.fim)}</span>
         </div>
         {/* No telefone a coluna do meio não pode encolher até sobrar uma palavra por linha. */}
         <div style={css("display:flex;flex-direction:column;gap:3px;flex:1 1 150px;min-width:150px")}>
@@ -1226,7 +1229,7 @@ function MinhaEscalaLocal({ minha, date, onHoje, onConfirm, saving }: { minha: M
 /* ---------- aba Programação: o molde ---------- */
 
 /** Nome, para a pessoa, de cada campo do bloco que ela mudou (aparece no rodapé). */
-const ROTULO_DO_CAMPO: Record<string, string> = { tipoId: "o tipo", rotulo: "a atividade", inicio: "o início", fim: "o fim", regra: "quem entra", areaIds: "as áreas", pessoaIds: "as pessoas" };
+const ROTULO_DO_CAMPO: Record<string, string> = { flexivel: "se é janela flexível", tipoId: "o tipo", rotulo: "a atividade", inicio: "o início", fim: "o fim", regra: "quem entra", areaIds: "as áreas", pessoaIds: "as pessoas" };
 const REGRA_LABEL: Record<Regra, string> = { todos: "Todo mundo do local", ninguem: "Sem participantes", area: "Por área", grupo: "Por grupo", pessoas: "Pessoas específicas", livro: "Show → Livro do Dia" };
 function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChanged }: { review: boolean; localId: string; localName: string; date: string; dia: Dia | null; canEdit: boolean; onChanged: () => void }) {
   const [list, setList] = useState<Programacao[]>([]);
@@ -1322,6 +1325,7 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
     if ("inicio" in patch && !patch.inicio) { setErroBloco("Escolha a hora de início."); return; }
     const inicio = String(patch.inicio ?? bloco.inicio), fim = "fim" in patch ? (patch.fim ?? null) : bloco.fim;
     if (fim && fim <= inicio) { setErroBloco("O fim precisa ser depois do início."); return; }
+    if (("flexivel" in patch ? patch.flexivel : bloco.flexivel) && !fim) { setErroBloco("Uma janela flexível precisa de hora de início e de fim (por exemplo, almoço entre 11:00 e 13:00)."); return; }
     setErroBloco(""); setSalvando(true);
     const antes = Object.fromEntries(Object.keys(patch).map((campo) => [campo, (bloco as unknown as Record<string, unknown>)[campo]])) as Partial<ProgBloco>;
     const deuCerto = await salvarBloco(bloco, patch);
@@ -1442,7 +1446,7 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
             {g.blocos.map((b) => {
               const t = toneOf(b, tipos), selected = b.id === bloco?.id;
               const n = resolved(b).length;
-              const quemTexto = b.regra === "livro" ? "o elenco do Livro do Dia" : b.regra === "ninguem" ? "nenhuma pessoa entra" : n ? `${resumo(b)} · ${plural(n, "pessoa", "pessoas")}` : "fica vazio e sinalizado na escala";
+              const quemTexto = b.flexivel ? `janela flexível · ${plural(n, "pessoa", "pessoas")}` : b.regra === "livro" ? "o elenco do Livro do Dia" : b.regra === "ninguem" ? "nenhuma pessoa entra" : n ? `${resumo(b)} · ${plural(n, "pessoa", "pessoas")}` : "fica vazio e sinalizado na escala";
               return <button key={b.id} type="button" className="esc-hit" aria-pressed={selected} onClick={() => { if (b.id !== bloco?.id) semPerder(() => { setSel(b.id); window.setTimeout(() => document.getElementById("esc-bloco-painel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80); }); }}
                 style={css("flex:1 1 190px;max-width:340px;min-height:44px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border-radius:10px;padding:8px 11px;cursor:pointer;font-family:Manrope,sans-serif;background:" + t.bg + ";color:" + t.fg + ";border:" + (selected ? "2px solid var(--asa-ink-dark)" : "1px solid " + t.bd) + ";")}>
                 <span style={css("font-size:12.5px;font-weight:700;line-height:1.25;overflow-wrap:anywhere")}>{textoDoBloco(b)}</span>
@@ -1487,6 +1491,10 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
           </label>
           <label style={css("display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:700;color:var(--asa-label)")}>Tipo
             <TipoSelect tipos={tipos} value={valorDe("tipoId")} onChange={(id) => mudarCampo("tipoId", id)} style={css("border:1px solid var(--asa-line-soft);border-radius:9px;padding:6px 9px;min-height:44px;box-sizing:border-box;font:600 12.5px Manrope,sans-serif;color:var(--asa-ink-dark);min-width:190px;background:#fff")}/>
+          </label>
+          <label style={css("display:flex;align-items:center;gap:8px;min-height:44px;font-size:12.5px;font-weight:700;color:var(--asa-ink-dark);flex-basis:100%")}>
+            <input type="checkbox" checked={Boolean(valorDe("flexivel"))} disabled={isShow} onChange={(e) => mudarCampo("flexivel", e.target.checked)} style={css("width:20px;height:20px")}/>
+            <span>Janela flexível<span style={css("display:block;font-size:12px;font-weight:500;color:var(--asa-label)")}>{isShow ? "Bloco de show do Livro tem hora marcada." : "Para o almoço: cada pessoa cumpre dentro do horário de início e fim, sem hora fixa. Aparece numa linha só, sem nomes, e não gera choque."}</span></span>
           </label>
           <span style={css("font-size:12px;color:var(--asa-label);flex:1;min-width:140px")}>Só vale depois de “Salvar alterações”, e muda apenas os dias que ainda não foram publicados.</span>
         </div>}
@@ -1572,6 +1580,7 @@ function BlocoDialog({ tipos, weekday, vocabulario, areas, shows, pessoas, onClo
   const [regra, setRegra] = useState<Regra>("pessoas");
   const [showBookId, setShowBookId] = useState("");
   const [tipoId, setTipoId] = useState<string | null>(null);
+  const [flexivel, setFlexivel] = useState(false);
   const [areaIds, setAreaIds] = useState<string[]>([]);
   const [pessoaIds, setPessoaIds] = useState<string[]>([]);
   // A mesma atividade costuma repetir em vários dias; começa no dia aberto e você marca os outros.
@@ -1582,9 +1591,10 @@ function BlocoDialog({ tipos, weekday, vocabulario, areas, shows, pessoas, onClo
     event.preventDefault();
     if (salvando) return;
     if (!dias.length) { setError("Escolha pelo menos um dia da semana."); return; }
+    if (flexivel && !fim) { setError("Uma janela flexível precisa de hora de fim (por exemplo, almoço entre 11:00 e 13:00)."); return; }
     setSalvando(true); setError("");
-    try { await onSubmit({ weekday: dias[0]!, weekdays: dias, rotulo: rotulo.trim(), inicio, fim: fim || null, regra: regra as ProgBloco["regra"], showBookId: regra === "livro" ? showBookId || null : null, tipoId, areaIds: regra === "area" ? areaIds : [], pessoaIds: regra === "pessoas" ? pessoaIds : [] }); }
-    catch (err) { setError(err instanceof ApiError && err.data && typeof (err.data as { error?: unknown }).error === "string" ? (err.data as { error: string }).error : "Não consegui criar o bloco."); }
+    try { await onSubmit({ weekday: dias[0]!, weekdays: dias, rotulo: rotulo.trim(), inicio, fim: fim || null, regra: regra as ProgBloco["regra"], showBookId: regra === "livro" ? showBookId || null : null, tipoId, flexivel: flexivel && regra !== "livro", areaIds: regra === "area" ? areaIds : [], pessoaIds: regra === "pessoas" ? pessoaIds : [] }); }
+    catch (err) { setError(err instanceof ApiError && err.data && typeof (err.data as { message?: unknown }).message === "string" ? (err.data as { message: string }).message : err instanceof ApiError && err.data && typeof (err.data as { error?: unknown }).error === "string" ? (err.data as { error: string }).error : "Não consegui criar o bloco."); }
     finally { setSalvando(false); }
   };
   return <div className="shows-dialog-backdrop"><div className="shows-dialog" role="dialog" aria-modal="true" aria-label="Novo bloco">
@@ -1602,6 +1612,7 @@ function BlocoDialog({ tipos, weekday, vocabulario, areas, shows, pessoas, onClo
       <label>Início<input required type="time" value={inicio} onChange={(e) => setInicio(e.target.value)}/></label>
       <label>Fim (opcional)<input type="time" value={fim} onChange={(e) => setFim(e.target.value)}/></label>
       <label>Tipo (dá a cor na Escala)<TipoSelect tipos={tipos} value={tipoId} onChange={setTipoId}/></label>
+      {regra !== "livro" && <label style={css("display:flex;align-items:flex-start;gap:8px;min-height:44px;min-width:0;max-width:100%")}><input type="checkbox" checked={flexivel} onChange={(e) => setFlexivel(e.target.checked)} style={css("width:20px;height:20px;flex:none")}/><span style={css("flex:1;min-width:0;overflow-wrap:anywhere;white-space:normal")}>Janela flexível (almoço): cada pessoa cumpre entre o início e o fim, sem hora fixa; aparece numa linha só, sem nomes, e não gera choque.</span></label>}
       <label>Quem entra<select value={regra} onChange={(e) => setRegra(e.target.value as Regra)}>{(["livro", "area", "todos", "pessoas", "ninguem"] as Regra[]).map((r) => <option key={r} value={r}>{REGRA_LABEL[r]}</option>)}</select></label>
       {regra === "livro" && <label>Show<select required value={showBookId} onChange={(e) => setShowBookId(e.target.value)}><option value="">Escolha o show</option>{shows.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}</select></label>}
       {regra === "area" && <fieldset style={css("border:none;padding:0;display:flex;flex-wrap:wrap;gap:7px")}>{areas.map((a) => { const on = areaIds.includes(a.id); return <button key={a.id} type="button" onClick={() => setAreaIds(on ? areaIds.filter((x) => x !== a.id) : [...areaIds, a.id])} style={css(on ? chipOn : chipOff)}>{a.name}</button>; })}</fieldset>}

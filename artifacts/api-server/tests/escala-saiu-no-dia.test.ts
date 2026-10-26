@@ -72,7 +72,7 @@ async function run() {
     const prog = (await asAdmin("POST", "/programacoes", { locationId: local!.id, nome: "Natal", vigenciaInicio: "2026-10-01", vigenciaFim: "2026-10-31" })).body.programacao as { id: string };
     for (const b of [
       { weekday: 1, inicio: "09:00", fim: "10:00", rotulo: "ENSAIO", regra: "pessoas", pessoaIds: [jeff.id] },
-      { weekday: 1, inicio: "10:00", fim: "11:30", rotulo: "TREINO GELO", regra: "area", areaIds: [pat!.id] },
+      { weekday: 1, inicio: "10:00", fim: "11:30", rotulo: "TREINO GELO", regra: "pessoas", pessoaIds: [jeff.id, carol.id, supPat.id] }, // pessoas escolhidas (e não "área"): duas atividades específicas no mesmo horário continuam em choque; com bloco geral a específica ganha (pacote E)
       { weekday: 1, inicio: "11:00", fim: "12:00", rotulo: "AULA", regra: "pessoas", pessoaIds: [jeff.id, carol.id] },
       { weekday: 1, inicio: "14:00", rotulo: "SHOW TEATRO", regra: "livro", showBookId: show!.id },
     ]) assert((await asAdmin("POST", `/programacoes/${prog.id}/blocos`, b)).status === 201, `bloco ${b.rotulo} criado na Programação`);

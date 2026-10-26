@@ -57,7 +57,7 @@ export type GradePessoaProps = {
 
 export function GradePessoa({ colunas, blocosDe, temChoque, tipos, mexidoPor, soExcecoes, busca, selecionada, onEscolherPessoa, onTocarBloco }: GradePessoaProps) {
   const dados = useMemo(() => {
-    const porColuna = colunas.map((p) => { const blocos = blocosDe(p.id); return { pessoa: p, blocos, lanes: lanesDe(blocos) }; });
+    const porColuna = colunas.map((p) => { const blocos = blocosDe(p.id); return { pessoa: p, blocos, lanes: lanesDe(blocos.filter((b) => !b.flexivel)) }; });
     const todos = porColuna.flatMap((c) => c.blocos);
     if (!todos.length) return null;
     const ini = Math.floor(Math.min(...todos.map((b) => minutosDe(b.inicio))) / 30) * 30;
@@ -95,6 +95,9 @@ export function GradePessoa({ colunas, blocosDe, temChoque, tipos, mexidoPor, so
         const simples = (c: typeof porColuna[number] | undefined, b: Bloco) => Boolean(c && c.blocos.some((x) => chaveDaFaixa(x) === chaveDaFaixa(b) && c.lanes.get(x.key)?.n === 1 && !temChoque(c.pessoa, x)));
         return <div key={pessoa.id} className="ge-col" data-dim={busca ? !busca.has(pessoa.id) : false} style={{ backgroundSize: "100% var(--ge-hora)", backgroundPositionY: deslocamentoDasLinhas }}>
           {blocos.map((b) => {
+            // Bloco flexível (almoço): uma faixa tracejada atrás dos outros, sem lado a lado e sem choque.
+            if (b.flexivel) return <span key={b.key} className="ge-janela" aria-label={`${pessoa.name}: ${textoDoBloco(b)}`} role="img" data-apagado={soExcecoes}
+              style={{ top: (minutosDe(b.inicio) - ini) * PX, height: Math.max(22, (fimEmMinutos(b) - minutosDe(b.inicio)) * PX - 2) }}><small aria-hidden="true"><b>{textoDoBloco({ ...b, flexivel: false }).charAt(0) + textoDoBloco({ ...b, flexivel: false }).slice(1).toLocaleLowerCase("pt-BR")}</b>{faixa(b)}</small></span>;
             const faixaDoBloco = lanes.get(b.key) ?? { lane: 0, n: 1 };
             const tipo = resolverTipo(b, tipos);
             const tom = toneDoTipo(tipo.cor);

@@ -1057,7 +1057,7 @@ router.patch("/escalas/tipos/:id", requireAuth, requireOrganization, async (req,
 
 // ─── Programação ─────────────────────────────────────────────────────────────
 
-type BlocoInput = { weekday?: unknown; inicio?: unknown; fim?: unknown; rotulo?: unknown; regra?: unknown; showBookId?: unknown; tipoId?: unknown; areaIds?: unknown; grupoIds?: unknown; pessoaIds?: unknown; order?: unknown; active?: unknown };
+type BlocoInput = { weekday?: unknown; inicio?: unknown; fim?: unknown; rotulo?: unknown; regra?: unknown; showBookId?: unknown; tipoId?: unknown; flexivel?: unknown; areaIds?: unknown; grupoIds?: unknown; pessoaIds?: unknown; order?: unknown; active?: unknown };
 const uuidList = (value: unknown) => Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
 /** Valida um bloco. `partial` aceita só os campos enviados (PATCH). */
 function parseBloco(body: BlocoInput, partial: boolean): { ok: true; value: Record<string, unknown> } | { ok: false; error: string } {
@@ -1071,6 +1071,8 @@ function parseBloco(body: BlocoInput, partial: boolean): { ok: true; value: Reco
   if (body.showBookId !== undefined) out.showBookId = typeof body.showBookId === "string" ? body.showBookId : null;
   // Tipo de atividade (0084): vazio ou nulo tira o tipo escolhido e o app volta a adivinhar pelo nome. Quem confere se vale no local é a rota.
   if (body.tipoId !== undefined) out.tipoId = typeof body.tipoId === "string" && body.tipoId ? body.tipoId : null;
+  // Bloco flexível (0085): janela em que cada pessoa cumpre quando der. Precisa ter fim (a janela) e não vale para show do Livro.
+  if (body.flexivel !== undefined) out.flexivel = body.flexivel === true;
   if (out.regra === "livro" && !out.showBookId && !partial) return { ok: false, error: "Escolha de qual show é este bloco do Livro." };
   if (body.areaIds !== undefined) out.areaIds = uuidList(body.areaIds);
   if (body.grupoIds !== undefined) out.grupoIds = uuidList(body.grupoIds);
@@ -1158,6 +1160,8 @@ router.post("/programacoes/:id/blocos", requireAuth, requireOrganization, async 
   if (dias.some((w) => !Number.isInteger(w) || w < 0 || w > 6)) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "weekdays: dias de 0 (domingo) a 6 (sábado)." }); return; }
   const parsed = parseBloco({ ...(req.body ?? {}), weekday: dias.length ? dias[0] : (req.body as BlocoInput)?.weekday }, false);
   if (!parsed.ok) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: parsed.error }); return; }
+  if (parsed.value.flexivel === true && !parsed.value.fim) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: FRASE_FLEXIVEL_SEM_FIM }); return; }
+  if (parsed.value.flexivel === true && parsed.value.regra === "livro") { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: FRASE_FLEXIVEL_LIVRO }); return; }
   if (typeof parsed.value.showBookId === "string") {
     const [show] = await db.select({ id: showBooksTable.id }).from(showBooksTable).where(eq(showBooksTable.id, parsed.value.showBookId)).limit(1);
     if (!show) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Show não encontrado." }); return; }
@@ -1179,6 +1183,8 @@ router.post("/programacoes/:id/blocos", requireAuth, requireOrganization, async 
   res.status(201).json({ bloco: created[0], blocos: created });
 });
 
+const FRASE_FLEXIVEL_SEM_FIM = "Um bloco flexível é uma janela (por exemplo, almoço entre 11:00 e 13:00): informe também o horário em que ela termina.";
+const FRASE_FLEXIVEL_LIVRO = "Bloco de show do Livro do Dia não pode ser flexível: o show tem hora marcada. Desligue a opção \"flexível\" ou escolha outra regra de quem entra.";
 const MENSAGEM_BLOCO_MUDOU = "Outra pessoa alterou este bloco depois que você abriu. Nada foi salvo: a tela foi atualizada, confira a versão nova e refaça a mudança se ainda for preciso.";
 router.patch("/programacoes/:id/blocos/:blocoId", requireAuth, requireOrganization, async (req, res) => {
   const actor = req.user! as Actor;
@@ -1201,13 +1207,15 @@ router.patch("/programacoes/:id/blocos/:blocoId", requireAuth, requireOrganizati
   }
   const merged = { ...current, ...parsed.value } as typeof current;
   if (merged.regra === "livro" && !merged.showBookId) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "Escolha de qual show é este bloco do Livro.." }); return; }
+  if (merged.flexivel && !merged.fim) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: FRASE_FLEXIVEL_SEM_FIM }); return; }
+  if (merged.flexivel && merged.regra === "livro") { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: FRASE_FLEXIVEL_LIVRO }); return; }
   if (merged.fim && merged.fim.slice(0, 5) <= merged.inicio.slice(0, 5)) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "fim precisa ser depois do início." }); return; }
   const updated = await db.transaction(async (tx) => {
     // A conferência vale também na gravação (duas pessoas salvando ao mesmo tempo): só grava se o bloco ainda é o que foi lido.
     const [row] = await tx.update(programacaoBlocosTable).set({ ...parsed.value, updatedAt: new Date() })
       .where(and(eq(programacaoBlocosTable.id, current.id), sql`date_trunc('milliseconds', ${programacaoBlocosTable.updatedAt}) = ${current.updatedAt}`)).returning();
     if (!row) return null;
-    await writeHistoryEvent({ category: "SCALE", action: row!.active ? "programacao.bloco_alterado" : "programacao.bloco_desativado", title: row!.active ? "Bloco da Programação alterado" : "Bloco da Programação desativado", narrative: `Bloco ${row!.rotulo} ${row!.active ? "alterado" : "desativado (sem exclusão)"} na programação ${programacao.nome}.`, entityType: "programacao", entityId: programacao.id, actorId: actor.sub, orgId: actor.organizationId, beforeState: { bloco: current }, afterState: { bloco: row } }, tx as unknown as HistoryExecutor);
+    await writeHistoryEvent({ category: "SCALE", action: row!.active ? "programacao.bloco_alterado" : "programacao.bloco_desativado", title: row!.active ? "Bloco da Programação alterado" : "Bloco da Programação desativado", narrative: `Bloco ${row!.rotulo} ${row!.active ? "alterado" : "desativado (sem exclusão)"} na programação ${programacao.nome}.${row!.flexivel !== current.flexivel ? (row!.flexivel ? " Passou a ser flexível: uma janela, sem choque e sem nomes na escala." : " Deixou de ser flexível: voltou a ter horário fixo.") : ""}`, entityType: "programacao", entityId: programacao.id, actorId: actor.sub, orgId: actor.organizationId, beforeState: { bloco: current }, afterState: { bloco: row } }, tx as unknown as HistoryExecutor);
     return row!;
   });
   if (!updated) { res.status(409).json({ error: "VERSAO_MUDOU", message: MENSAGEM_BLOCO_MUDOU }); return; }

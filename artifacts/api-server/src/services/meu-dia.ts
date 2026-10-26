@@ -25,7 +25,7 @@ import {
 import { operationalDate, OPERATIONAL_TIME_ZONE, shiftOperationalDate } from "../lib/operational-date.js";
 import { shiftPlans, shiftsForDate } from "./shift-checkins.js";
 import { APP_ROUTES } from "../lib/app-routes.js";
-import { comoPublicada, escalaPublicada, montarEscalaDoDia, type BlocoDia, type EscalaDia } from "./escala-dia.js";
+import { comoPublicada, escalaPublicada, montarEscalaDoDia, textoDaJanela, type BlocoDia, type EscalaDia } from "./escala-dia.js";
 import { listAreaLocalScopes } from "./area-local-scope.js";
 import { canReadAnnouncement } from "./announcement-access.js";
 import { etapasAbertasDe } from "./task-steps.js";
@@ -54,7 +54,8 @@ const curta = (iso: string) => { const [, m, d] = iso.split("-").map(Number); re
 const min = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return h! * 60 + (m ?? 0); };
 const fimDe = (b: Pick<BlocoDia, "inicio" | "fim">) => b.fim ? min(b.fim) : min(b.inicio) + 60;
 // A hora só entra quando o nome do bloco ainda não a traz ("Musical 15h" não vira "Musical 15h 15:00").
-const texto = (b: Pick<BlocoDia, "rotulo" | "inicio" | "regra">) => b.regra === "livro" && !/\d{1,2}(:|h)\d{0,2}/i.test(b.rotulo) ? `${b.rotulo} ${b.inicio}` : b.rotulo;
+// Bloco flexível (almoço) não tem hora marcada: vira "Almoço entre 11:00 e 13:00".
+const texto = (b: Pick<BlocoDia, "rotulo" | "inicio" | "regra"> & Partial<Pick<BlocoDia, "fim" | "flexivel">>) => b.flexivel ? textoDaJanela({ rotulo: b.rotulo, inicio: b.inicio, fim: b.fim ?? null }) : b.regra === "livro" && !/\d{1,2}(:|h)\d{0,2}/i.test(b.rotulo) ? `${b.rotulo} ${b.inicio}` : b.rotulo;
 const plural = (n: number, um: string, muitos: string) => `${n} ${n === 1 ? um : muitos}`;
 function relogio(now: Date) {
   const hhmm = new Intl.DateTimeFormat("en-GB", { timeZone: OPERATIONAL_TIME_ZONE, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(now);
