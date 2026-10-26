@@ -1,4 +1,4 @@
-import { eq, and, inArray, lte, gte, sql } from "drizzle-orm";
+import { eq, and, inArray, lt, lte, gte, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { carregarRegrasDoDia, chaveDeEvitar, type EventoConhecido } from "./regras-de-escala.js";
 import { janelaDoMes, lembrarOuLer, type LeiturasDoMes } from "./leituras-do-mes.js";
@@ -15,6 +15,8 @@ import {
   rotationDailyAdvancesTable,
   characterCastTable,
   charactersTable,
+  dailyBooksTable,
+  agendaEventsTable,
   isSchedulableMember,
 } from "@workspace/db";
 import { operationalDate } from "../lib/operational-date.js";
@@ -287,6 +289,8 @@ function resolveLine(
   advancedToday: ReadonlySet<string> = new Set(),
   /** userId → por que a pessoa não pode entrar neste show (restrição de horário, limite do dia). Proibição. */
   bloqueios: ReadonlyMap<string, string> = new Map(),
+  /** chave (rotationCountKey) → vezes já escolhidas em Livros do Dia ainda em rascunho, de datas anteriores. Soma à contagem. */
+  emRascunho: ReadonlyMap<string, number> = new Map(),
 ): ResolvedLine {
   const byBalance = (a: { id: string; idx: number; count: number }, b: { id: string; idx: number; count: number }) =>
     compareKeys([...balance(a.id), a.count, a.idx], [...balance(b.id), b.count, b.idx]);
@@ -351,7 +355,7 @@ function resolveLine(
           // Desconta aqui pela mesma razão: senão o Livro do Dia vivo trocaria o rodízio sozinho
           // logo depois de publicar, sem folga nem mexida nenhuma.
           const legacy = Math.max(0, asNum(legacyCounts[id]) - (advancedToday.has(key) ? 1 : 0));
-          return { id, idx, count: Math.max(legacy, rotationCounts.get(key) ?? 0) };
+          return { id, idx, count: Math.max(legacy, rotationCounts.get(key) ?? 0) + (emRascunho.get(key) ?? 0) };
         })
         .filter((m) => !blocked(m.id))
         .sort(byBalance);
@@ -407,7 +411,10 @@ function resolveLine(
           return { lineId: line.id, type: line.type, status: "COVERED", people: [person(chosen)], note };
         }
         const available = memberIdsOverride
-          .map((id, idx) => ({ id, idx, count: rotationCounts.get(rotationCountKey(line.characterId!, id)) ?? 0 }))
+          .map((id, idx) => {
+            const key = rotationCountKey(line.characterId!, id);
+            return { id, idx, count: (rotationCounts.get(key) ?? 0) + (emRascunho.get(key) ?? 0) };
+          })
           .filter((m) => !blocked(m.id))
           .sort(byBalance);
         if (available.length === 0) {
@@ -479,14 +486,85 @@ async function workloadBalance(userIds: string[], operationId: string, dateISO: 
 }
 
 /**
+ * Quantas vezes cada pessoa já foi escolhida no rodízio por Livros do Dia ainda em RASCUNHO, de datas anteriores à
+ * `dateISO` (e de hoje em diante: rascunho que ficou no passado sem publicar não aconteceu). Chave: `rotationCountKey`.
+ *
+ * Não conta duas vezes: Livro publicado já está em `rotation_daily_advances` (a publicação grava o avanço) e aqui só
+ * entram Livros DRAFT — cancelado/descartado sai sozinho da conta. Se o mesmo (personagem, pessoa, dia) já tem avanço
+ * gravado, o rascunho não soma de novo; e, como no avanço, o mesmo trio no mesmo dia vale uma vez só.
+ * Lê os vencedores guardados na geração (`snapshot_json.rotationWinners`) em vez de re-resolver: o que foi escolhido
+ * fica escolhido, mesmo que a escolha mudasse hoje.
+ */
+async function vencedoresEmRascunho(
+  operationId: string,
+  dateISO: string,
+  tree: Awaited<ReturnType<typeof buildShowBookTree>>,
+  rotationKeys: ReadonlySet<string>,
+): Promise<Map<string, number>> {
+  const contagem = new Map<string, number>();
+  if (rotationKeys.size === 0) return contagem;
+  const hoje = operationalDate();
+  const livros = await db
+    .select({ date: agendaEventsTable.date, vencedores: sql<unknown>`${dailyBooksTable.snapshotJson}->'rotationWinners'` })
+    .from(dailyBooksTable)
+    .innerJoin(agendaEventsTable, eq(dailyBooksTable.agendaEventId, agendaEventsTable.id))
+    .where(and(
+      eq(dailyBooksTable.status, "DRAFT"),
+      eq(agendaEventsTable.operationId, operationId),
+      gte(agendaEventsTable.date, hoje),
+      lt(agendaEventsTable.date, dateISO),
+    ));
+  const comVencedores = livros
+    .map((l) => ({ date: l.date, vencedores: l.vencedores as Record<string, unknown> | null }))
+    .filter((l): l is { date: string; vencedores: Record<string, unknown> } => Boolean(l.vencedores) && typeof l.vencedores === "object" && Object.keys(l.vencedores!).length > 0);
+  if (comVencedores.length === 0) return contagem;
+
+  // lineId → chave do rodízio. As linhas do próprio Show já estão na árvore; as de outros Shows (personagem compartilhado) vêm do banco.
+  const chaveDaLinha = new Map<string, string>();
+  for (const scene of tree) for (const block of scene.blocks) for (const pos of block.positions) for (const line of pos.lines) chaveDaLinha.set(line.id, rotationCharacterKey(line));
+  const faltam = new Set<string>();
+  for (const l of comVencedores) for (const lineId of Object.keys(l.vencedores)) if (!chaveDaLinha.has(lineId)) faltam.add(lineId);
+  if (faltam.size > 0) {
+    const outras = await db.select().from(showBookLinesTable).where(inArray(showBookLinesTable.id, Array.from(faltam)));
+    for (const line of outras) chaveDaLinha.set(line.id, rotationCharacterKey(line));
+  }
+
+  const jaGravados = new Set<string>();
+  const chavesDeHistorico = Array.from(rotationKeys).filter(ehUuid);
+  if (chavesDeHistorico.length > 0) {
+    const rows = await db
+      .select({ characterId: rotationDailyAdvancesTable.characterId, userId: rotationDailyAdvancesTable.userId, date: rotationDailyAdvancesTable.date })
+      .from(rotationDailyAdvancesTable)
+      .where(inArray(rotationDailyAdvancesTable.characterId, chavesDeHistorico));
+    for (const row of rows) jaGravados.add(`${rotationCountKey(row.characterId, row.userId)}|${row.date}`);
+  }
+
+  const vistos = new Set<string>();
+  for (const livro of comVencedores) {
+    for (const [lineId, userId] of Object.entries(livro.vencedores)) {
+      const chave = chaveDaLinha.get(lineId);
+      if (!chave || typeof userId !== "string" || !rotationKeys.has(chave)) continue;
+      const key = rotationCountKey(chave, userId);
+      const dia = `${key}|${livro.date}`;
+      if (jaGravados.has(dia) || vistos.has(dia)) continue;
+      vistos.add(dia);
+      contagem.set(key, (contagem.get(key) ?? 0) + 1);
+    }
+  }
+  return contagem;
+}
+
+/**
  * Resolve o elenco concreto de cada linha do Livro do Show numa data específica,
  * respeitando disponibilidade (folga/atestado/restrição) e a ordem configurada.
+ * `contarRascunhos`: conta como já feitos os vencedores dos Livros em rascunho de datas anteriores (geração e leitura ao
+ * vivo de Livro em rascunho); fica desligado nas leituras de Livro publicado, que não mudam por rascunho de outro dia.
  */
 export async function resolveShowBookCast(
   showBookId: string,
   operationId: string,
   dateISO: string,
-  opts: { dedupPerScene?: boolean; eventId?: string; leituras?: LeiturasDoMes; eventoConhecido?: EventoConhecido } = {}
+  opts: { dedupPerScene?: boolean; eventId?: string; leituras?: LeiturasDoMes; eventoConhecido?: EventoConhecido; contarRascunhos?: boolean } = {}
 ): Promise<ResolveResult> {
   return (await resolveShowBookCastComNomes(showBookId, operationId, dateISO, opts)).result;
 }
@@ -496,7 +574,7 @@ export async function resolveShowBookCastComNomes(
   showBookId: string,
   operationId: string,
   dateISO: string,
-  opts: { dedupPerScene?: boolean; eventId?: string; leituras?: LeiturasDoMes; eventoConhecido?: EventoConhecido } = {}
+  opts: { dedupPerScene?: boolean; eventId?: string; leituras?: LeiturasDoMes; eventoConhecido?: EventoConhecido; contarRascunhos?: boolean } = {}
 ): Promise<{ result: ResolveResult; nomes: ReadonlyMap<string, string> }> {
   const { leituras } = opts;
   const tree = await lembrarOuLer(leituras, `arvore:${showBookId}`, () => buildShowBookTree(showBookId));
@@ -632,6 +710,10 @@ export async function resolveShowBookCastComNomes(
     for (const key of advancedToday) rotationCounts.set(key, Math.max(0, (rotationCounts.get(key) ?? 0) - 1));
   }
 
+  // O rodízio só avança na publicação, então dia gerado em rascunho (o seguinte, ou o mês inteiro) não pesava para quem vem depois
+  // e duas gerações seguidas davam a mesma pessoa. Quem foi escolhido nos Livros em rascunho de datas ANTERIORES conta como já feito.
+  const emRascunho = opts.contarRascunhos ? await vencedoresEmRascunho(operationId, dateISO, tree, rotationKeys) : new Map<string, number>();
+
   let uncoveredCount = 0;
   const scenes: ResolvedScene[] = tree.map((scene) => {
     // Quando dedupPerScene está ligado, uma pessoa escolhida numa posição passa a
@@ -661,7 +743,7 @@ export async function resolveShowBookCastComNomes(
       const memberIdsOverride = line.characterId
         ? castMembers.get(line.characterId) ?? []
         : undefined;
-      return resolveLine({ ...line, config }, weekday, unavailable, nameOf, excluded, rotationCounts, memberIdsOverride, line.characterId ? characterModes.get(line.characterId) : undefined, balance, advancedToday, regras?.bloqueios);
+      return resolveLine({ ...line, config }, weekday, unavailable, nameOf, excluded, rotationCounts, memberIdsOverride, line.characterId ? characterModes.get(line.characterId) : undefined, balance, advancedToday, regras?.bloqueios, emRascunho);
     };
     const registrar = (line: { id: string }, resolved: ResolvedLine) => {
       if (resolved.status === "UNCOVERED") uncoveredCount += 1;
@@ -733,7 +815,7 @@ export async function resolveAssignmentsByRole(
   showBookId: string,
   operationId: string,
   dateISO: string,
-  opts: { dedupPerScene?: boolean; eventId?: string; leituras?: LeiturasDoMes; eventoConhecido?: EventoConhecido } = {}
+  opts: { dedupPerScene?: boolean; eventId?: string; leituras?: LeiturasDoMes; eventoConhecido?: EventoConhecido; contarRascunhos?: boolean } = {}
 ): Promise<{ byRole: Map<string, RoleResolution>; result: ResolveResult; nomes: ReadonlyMap<string, string> }> {
   const { result, nomes } = await resolveShowBookCastComNomes(showBookId, operationId, dateISO, opts);
   const byRole = new Map<string, RoleResolution>();

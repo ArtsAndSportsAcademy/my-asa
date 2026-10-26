@@ -778,7 +778,7 @@ type LiveResolutionContext = {
 /** Reúne o que é preciso para resolver o livro ao vivo. `null` quando não há Show Book para
  *  resolver contra (papel legado/manual continua exatamente como está guardado). */
 async function liveResolutionContext(
-  book: { agendaEventId: string; showBookId: string | null; scaleId: string | null },
+  book: { status?: string; agendaEventId: string; showBookId: string | null; scaleId: string | null },
   dbLike: typeof db = db,
 ): Promise<LiveResolutionContext | null> {
   if (!book.showBookId) return null;
@@ -793,7 +793,7 @@ async function liveResolutionContext(
   const allocationMap: Record<string, string | null> = {};
   allocations.forEach((a) => { if (a.positionId) allocationMap[a.positionId] = a.userId ?? null; });
   const [{ byRole }, unavailable] = await Promise.all([
-    resolveAssignmentsByRole(book.showBookId, event.operationId, event.date, { dedupPerScene: true, eventId: book.agendaEventId }),
+    resolveAssignmentsByRole(book.showBookId, event.operationId, event.date, { dedupPerScene: true, eventId: book.agendaEventId, contarRascunhos: book.status === "DRAFT" }),
     getUnavailableUserIds(event.operationId, event.date),
   ]);
   return { operationId: event.operationId, date: event.date, byRole, allocationMap, unavailable };
@@ -1142,7 +1142,7 @@ export async function generateDailyBookDraftForScale(input: {
   allocations.forEach((allocation) => { if (allocation.positionId) allocationMap[allocation.positionId] = allocation.userId ?? null; });
   // O evento e o local do Show já estão em mãos: o motor das regras do dia não precisa relê-los.
   const eventoConhecido = { id: event.id, showBookId: event.showBookId, start: event.startTime, end: event.endTime, eventLocationId: event.locationId, showLocationId: showBook.locationId };
-  const { byRole, result, nomes } = await resolveAssignmentsByRole(showBookId, event.operationId, date, { dedupPerScene: true, eventId: event.id, leituras, eventoConhecido });
+  const { byRole, result, nomes } = await resolveAssignmentsByRole(showBookId, event.operationId, date, { dedupPerScene: true, eventId: event.id, leituras, eventoConhecido, contarRascunhos: true });
   const rotationWinners = collectRotationWinners(result);
   const sessoesDoLivro = sessoesComuns ?? (session ? [] : await eligibleSessions(showBookId, date, db, { separada: false }));
   const nomeFormal = await nomeFormalDoAtor(actorId, leituras);
@@ -1379,7 +1379,7 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
 
     // Resolve o elenco por papel pelas regras das linhas + disponibilidade na data do evento.
     // dedupPerScene: não repetir a mesma pessoa na mesma cena — puxa o próximo substituto/rodízio.
-    const { byRole, result } = await resolveAssignmentsByRole(showBookId, event.operationId, event.date, { dedupPerScene: true, eventId: event.id });
+    const { byRole, result } = await resolveAssignmentsByRole(showBookId, event.operationId, event.date, { dedupPerScene: true, eventId: event.id, contarRascunhos: true });
     // Persistimos o vencedor de cada linha ROTATION agora, na geração, para que a publicação
     // avance o contador exatamente para quem ficou escalado (e não re-resolva).
     const rotationWinners = collectRotationWinners(result);
@@ -1535,7 +1535,7 @@ router.post("/daily-book/:id/sincronizar", requireAuth, requireOrganization, req
         .where(and(eq(scaleAllocationsTable.scaleId, book.scaleId), eq(scaleAllocationsTable.agendaEventId, book.agendaEventId), eq(scaleAllocationsTable.active, true)));
       allocations.forEach((a) => { if (a.positionId) allocationMap[a.positionId] = a.userId ?? null; });
     }
-    const { byRole } = await resolveAssignmentsByRole(showBookId, event.operationId, event.date, { dedupPerScene: true, eventId: event.id });
+    const { byRole } = await resolveAssignmentsByRole(showBookId, event.operationId, event.date, { dedupPerScene: true, eventId: event.id, contarRascunhos: true });
     const sceneByBlock: Record<string, string | null> = {};
     todosGrupos.forEach((g) => { sceneByBlock[g.id] = g.sceneId ?? null; });
     const assignedByScene = buildSceneOccupancyFromResolver(todosPapeis, sceneByBlock, byRole);
@@ -1648,7 +1648,7 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
 
     // Resolve o elenco por papel pelas regras das linhas + disponibilidade na data do evento.
     // dedupPerScene: não repetir a mesma pessoa na mesma cena — puxa o próximo substituto/rodízio.
-    const { byRole, result } = await resolveAssignmentsByRole(showBookId, event.operationId, event.date, { dedupPerScene: true, eventId: event.id });
+    const { byRole, result } = await resolveAssignmentsByRole(showBookId, event.operationId, event.date, { dedupPerScene: true, eventId: event.id, contarRascunhos: true });
     const rotationWinners = collectRotationWinners(result);
 
     // Blocos de sessão nunca são apagados aqui: os das sessões ainda elegíveis são
@@ -2525,7 +2525,7 @@ async function buildPatternDiffRows(
 ) {
   const [currentTree, resolved] = await Promise.all([
     resolveLiveTree(book),
-    resolveAssignmentsByRole(showBookId, operationId, dateISO, { dedupPerScene: true, eventId: book.agendaEventId }),
+    resolveAssignmentsByRole(showBookId, operationId, dateISO, { dedupPerScene: true, eventId: book.agendaEventId, contarRascunhos: book.status === "DRAFT" }),
   ]);
   const { byRole, result } = resolved;
   const noteByRole = new Map<string, string>();
