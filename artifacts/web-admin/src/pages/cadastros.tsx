@@ -54,11 +54,12 @@ const mensagemDe = (err: unknown, padrao: string) => {
 const stateLabel = (person: Person) => person.status === "INACTIVE" || person.personStatus === "ARCHIVED" || person.personStatus === "LEFT" ? "desligada" : person.personStatus === "ON_LEAVE" ? "afastada" : "ativa";
 const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
 
-// `fixo`: janela que mostra uma senha que só aparece uma vez. Toque fora e Esc não fecham (um toque sem querer
-// faria a senha sumir antes de ser passada); só o botão de confirmar e o ×.
+// `fixo`: janela que mostra uma senha que só aparece uma vez. Toque fora não fecha (um toque sem querer faria a senha
+// sumir antes de ser passada). O Esc fecha como em qualquer janela, mas antes pergunta: a senha não volta.
 function Dialog({ children, onClose, fixo = false }: { children: ReactNode; onClose: () => void; fixo?: boolean }) {
-  useFecharComEsc(onClose, !fixo);
-  return <div className="cad-dialog-backdrop" role="presentation" onMouseDown={fixo ? undefined : onClose}><section className="cad-dialog" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}><button className="cad-dialog-close" aria-label="Fechar" onClick={onClose}><X size={20}/></button>{children}</section></div>;
+  const [confirmandoSaida, setConfirmandoSaida] = useState(false);
+  useFecharComEsc(fixo ? () => setConfirmandoSaida((aberto) => !aberto) : onClose);
+  return <div className="cad-dialog-backdrop" role="presentation" onMouseDown={fixo ? undefined : onClose}><section className="cad-dialog" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}><button className="cad-dialog-close" aria-label="Fechar" onClick={onClose}><X size={20}/></button>{children}{fixo && confirmandoSaida && <div className="cad-reset-note" role="alertdialog" aria-label="Fechar a janela da senha"><p>Já passou a senha? Ela não aparece de novo depois que a janela fecha.</p><footer className="cad-form-footer"><button type="button" onClick={() => setConfirmandoSaida(false)}>Ainda não, voltar</button><button className="cad-primary" type="button" onClick={onClose}>Já passei, fechar</button></footer></div>}</section></div>;
 }
 
 export default function CadastrosPage({ screen, role }: { screen: CadastroScreen; role: ShellRole }) {
