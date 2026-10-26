@@ -18,8 +18,14 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     return;
   }
   const token = authHeader.slice(7);
+  let payload: AccessTokenPayload;
   try {
-    const payload = verifyAccessToken(token);
+    payload = verifyAccessToken(token);
+  } catch {
+    res.status(401).json({ error: "Unauthorized", message: "Token invalid or expired" });
+    return;
+  }
+  try {
     const user = await assertUserCanAuthenticate(payload.sub);
     const authorization = await loadAuthorizationContext(payload.sub);
     if (!authorization.primaryRole) {
@@ -38,7 +44,9 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       res.status(401).json({ error: error.code, message: error.message });
       return;
     }
-    res.status(401).json({ error: "Unauthorized", message: "Token invalid or expired" });
+    // Erro de banco ou de servidor não é "sessão vencida": responder 401 aqui fazia a tela renovar,
+    // falhar e mandar a pessoa para o login com a credencial boa (banco lento). 503 não derruba ninguém.
+    res.status(503).json({ error: "SERVICE_UNAVAILABLE", message: "Não consegui falar com o banco agora. Tente de novo em instantes." });
   }
 }
 
