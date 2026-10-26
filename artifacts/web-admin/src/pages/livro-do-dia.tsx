@@ -437,7 +437,8 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
   // carrega — o tipo do show chega depois do livro e a tela mostrava o layout do show errado por alguns segundos.
   // Recarregar o mesmo livro (depois de publicar, tirar cena…) continua sem piscar.
   const open = async (id: string) => {
-    if (book && book.id !== id) setOpening(true);
+    // Também quando ainda não há Livro na tela (link com ?livro=): sem isso a pessoa via só a lista, sem saber que o Livro estava abrindo.
+    if (book?.id !== id) setOpening(true);
     try { await abrirLivro(id); } finally { setOpening(false); }
   };
 
@@ -632,7 +633,7 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
       {conflict && <ConflictBanner conflict={conflict} onReload={() => { setConflict(null); void refreshOpen(); }}/>}
 
       {tab === "hoje" && <HojeTab
-        role={role} review={review} me={me} date={date} onDate={setDate} loading={loading} opening={opening} todayBooks={todayBooks} book={book} source={source}
+        role={role} review={review} me={me} date={date} onDate={setDate} loading={loading} opening={opening} abrindoId={bookId} todayBooks={todayBooks} book={book} source={source}
         diffs={diffs} hasLiveChanges={hasLiveChanges} charactersToday={charactersToday} characterNames={characterNames} formations={formations}
         canManage={canManage} saving={saving} openSceneId={openSceneId} setOpenSceneId={setOpenSceneId}
         formSel={formSel} setFormSel={setFormSel} framesOn={framesOn} setFramesOn={setFramesOn} sceneNote={sceneNote} supLocal={supLocal}
@@ -685,7 +686,7 @@ function CalendarioDoLivro({ date, onPick, onClose }: { date: string; onPick: (i
 
 /* ---------- aba: os shows de hoje ---------- */
 function HojeTab(props: {
-  role: Role; review: boolean; me: string; date: string; loading: boolean; opening: boolean; todayBooks: DailyBook[]; book: DailyBook | null; source: ShowSource | null;
+  role: Role; review: boolean; me: string; date: string; loading: boolean; opening: boolean; abrindoId: string; todayBooks: DailyBook[]; book: DailyBook | null; source: ShowSource | null;
   diffs: PatternDiffRow[]; hasLiveChanges: boolean; charactersToday: CharacterToday[]; characterNames: Map<string, string>; formations: Formation[];
   canManage: boolean; saving: boolean; openSceneId: string; setOpenSceneId: (id: string) => void;
   formSel: Record<string, string>; setFormSel: (fn: (prev: Record<string, string>) => Record<string, string>) => void;
@@ -743,7 +744,7 @@ function HojeTab(props: {
     {calAberto && <CalendarioDoLivro date={date} onPick={(d) => { props.onDate(d); setCalAberto(false); }} onClose={() => setCalAberto(false)}/>}
     {!loading && todayBooks.length > 0 && <div style={css("display:flex;gap:9px;flex-wrap:wrap")}>
       {todayBooks.map((b) => {
-        const on = b.id === book?.id;
+        const on = b.id === (opening ? props.abrindoId : book?.id);
         const e = estOf(b.status);
         const n = convocadosOf(b).size || (review ? sampleCharactersToday(b.showTitle ?? "").length : 0);
         return <button key={b.id} type="button" className="ldd-shrink" onClick={() => props.onPick(b.id)}
@@ -758,6 +759,7 @@ function HojeTab(props: {
         </button>;
       })}
     </div>}
+    {opening && <div role="status" style={css("font-size:13px;color:var(--asa-label)")}>Abrindo o Livro do Dia…</div>}
     {!loading && !todayBooks.length && <div style={css(DASHED_NOTE)}>{isMem
       ? (date === todayISO() ? "A escala de hoje ainda não foi publicada — nada foi convocado, então não há livro seu para abrir." : "A escala deste dia ainda não foi publicada — nada foi convocado, então não há livro seu para abrir.")
       : (date === todayISO() ? "Nenhum show da casa hoje no seu escopo." : "Nenhum show da casa neste dia no seu escopo.")}</div>}
