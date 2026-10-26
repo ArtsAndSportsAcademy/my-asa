@@ -586,10 +586,15 @@ async function writeDailyBookAudit(
         execute: "Livro do Dia marcado como executado", cancel: "Livro do Dia cancelado", reopen: "Livro do Dia reaberto", archive: "Livro do Dia arquivado",
         position_removed: "Posição tirada do Livro do Dia", scene_removed: "Cena tirada do Livro do Dia", block_removed: "Grupo tirado do Livro do Dia",
         scene_restored: "Cena devolvida ao Livro do Dia", block_restored: "Grupo devolvido ao Livro do Dia", position_restored: "Posição devolvida ao Livro do Dia",
-        conferido: "Livro do Dia conferido", conferencia_desfeita: "Conferência do Livro do Dia desfeita",
+        conferido: "Livro do Dia conferido", conferencia_desfeita: "Conferência do Livro do Dia desfeita", sincronizado: "Livro do Dia atualizado com o Livro do Show",
         scenes_reordered: "Cenas do Livro do Dia reordenadas", formation_applied_today: "Formação aplicada ao Livro do Dia", formation_saved_from_day: "Formação do dia guardada na biblioteca",
       };
       let narrative = frases[action] ? `${frases[action]}.` : undefined;
+      if (action === "sincronizado") {
+        const a = ((afterState as { adicionou?: { cenas: number; grupos: number; posicoes: number } } | null)?.adicionou) ?? { cenas: 0, grupos: 0, posicoes: 0 };
+        const partes = [a.cenas ? `${a.cenas} ${a.cenas === 1 ? "cena" : "cenas"}` : "", a.grupos ? `${a.grupos} ${a.grupos === 1 ? "grupo" : "grupos"}` : "", a.posicoes ? `${a.posicoes} ${a.posicoes === 1 ? "posição" : "posições"}` : ""].filter(Boolean);
+        narrative = `Trouxe do Livro do Show o que faltava neste dia: ${partes.join(", ") || "nada"}. O que já estava no dia (trocas, cenas tiradas) não mudou.`;
+      }
       if (action === "assignment_swap") {
         const de = await nomeDe((beforeState as { userId?: unknown } | null)?.userId), para = await nomeDe((afterState as { userId?: unknown } | null)?.userId);
         const pelaEscala = (afterState as { action?: unknown } | null)?.action; // ajuste feito na Escala: antes e depois trazem a mesma pessoa, o que muda é a ação
@@ -933,6 +938,49 @@ async function manterConferenciaDeQuemMexeu(
   if (!retratoAntes || retratoAntes !== claimedBook.conferredFingerprint) return;
   const depois = retratoDoElenco(await resolveLiveTree(claimedBook, tx));
   await tx.update(dailyBooksTable).set({ conferredFingerprint: depois }).where(eq(dailyBooksTable.id, claimedBook.id));
+}
+
+/** Resumo do Livro por cena e posição, para o cartão da Escala mostrar quem faz o quê sem abrir o Livro. */
+function resumoDoLivro(tree: { name: string; isRemoved: boolean; blocks: { isRemoved: boolean; positions: { name: string; isRemoved: boolean; assignments: { userId: string | null; status: string; userName?: string | null }[] }[] }[] }[]) {
+  return tree.filter((cena) => !cena.isRemoved).map((cena) => ({
+    nome: cena.name,
+    posicoes: cena.blocks.filter((g) => !g.isRemoved).flatMap((g) => g.positions.filter((p) => !p.isRemoved).map((p) => ({
+      nome: p.name,
+      pessoas: p.assignments.filter((a) => a.status !== "REMOVED" && a.userId).map((a) => a.userName ?? "—"),
+      vazias: p.assignments.filter((a) => a.status !== "REMOVED" && !a.userId).length,
+    }))),
+  })).filter((cena) => cena.posicoes.length > 0);
+}
+
+/**
+ * O Livro do Dia é uma cópia do Livro do Show tirada quando o dia é gerado. O que o show ganhou depois (cenas, grupos, posições) não chega
+ * sozinho: aqui sai o que o show tem e o dia ainda não. Item que o dia tirou (restaurável) conta como presente, para não voltar sozinho.
+ */
+async function faltandoDoShow(book: { id: string; showBookId: string | null }, dbLike: typeof db = db) {
+  if (!book.showBookId) return { scenes: [], blocks: [], roles: [] } as { scenes: (typeof showBookScenesTable.$inferSelect)[]; blocks: (typeof showBookBlocksTable.$inferSelect)[]; roles: (typeof showBookRolesTable.$inferSelect)[] };
+  const [scenes, blocks, roles] = await Promise.all([
+    dbLike.select().from(showBookScenesTable).where(and(eq(showBookScenesTable.showBookId, book.showBookId), eq(showBookScenesTable.active, true))).orderBy(showBookScenesTable.order),
+    dbLike.select().from(showBookBlocksTable).where(and(eq(showBookBlocksTable.showBookId, book.showBookId), eq(showBookBlocksTable.active, true))).orderBy(showBookBlocksTable.order),
+    dbLike.select().from(showBookRolesTable).where(and(eq(showBookRolesTable.showBookId, book.showBookId), eq(showBookRolesTable.active, true))).orderBy(showBookRolesTable.order, showBookRolesTable.id),
+  ]);
+  const [diaCenas, diaGrupos, diaPosicoes] = await Promise.all([
+    dbLike.select({ s: dailyBookScenesTable.sourceSceneId }).from(dailyBookScenesTable).where(and(eq(dailyBookScenesTable.dailyBookId, book.id), isNull(dailyBookScenesTable.supersededAt))),
+    dbLike.select({ s: dailyBookBlocksTable.sourceBlockId }).from(dailyBookBlocksTable).where(and(eq(dailyBookBlocksTable.dailyBookId, book.id), isNull(dailyBookBlocksTable.supersededAt))),
+    dbLike.select({ s: dailyBookPositionsTable.sourceRoleId }).from(dailyBookPositionsTable).where(and(eq(dailyBookPositionsTable.dailyBookId, book.id), isNull(dailyBookPositionsTable.supersededAt))),
+  ]);
+  const temCena = new Set(diaCenas.map((r) => r.s).filter(Boolean)), temGrupo = new Set(diaGrupos.map((r) => r.s).filter(Boolean)), temPosicao = new Set(diaPosicoes.map((r) => r.s).filter(Boolean));
+  const cenasAtivas = new Set(scenes.map((c) => c.id)), gruposAtivos = new Set(blocks.map((g) => g.id));
+  return {
+    scenes: scenes.filter((c) => !temCena.has(c.id)),
+    blocks: blocks.filter((g) => !temGrupo.has(g.id) && (!g.sceneId || cenasAtivas.has(g.sceneId))),
+    roles: roles.filter((r) => !temPosicao.has(r.id) && (!r.blockId || gruposAtivos.has(r.blockId))),
+  };
+}
+
+/** Quantas cenas, grupos e posições o Livro do Show tem a mais que o dia (0 em tudo = o dia está em dia). */
+async function novidadesDoShow(book: { id: string; showBookId: string | null }, dbLike: typeof db = db) {
+  const f = await faltandoDoShow(book, dbLike);
+  return { cenas: f.scenes.length, grupos: f.blocks.length, posicoes: f.roles.length };
 }
 
 /**
@@ -1444,6 +1492,95 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível gerar o Livro do Dia. Tente de novo." });
+  }
+});
+
+/**
+ * Traz para o dia o que o Livro do Show ganhou depois que o dia foi gerado (cenas, grupos, posições novas), SEM refazer o dia: o que já está
+ * no dia (trocas feitas à mão, cenas e posições tiradas, conferência) fica como está. Nada é apagado. Serve ao rascunho e ao dia já publicado
+ * (neste, a Escala pede republicação); dia executado ou cancelado é registro e não muda.
+ */
+router.post("/daily-book/:id/sincronizar", requireAuth, requireOrganization, requireRole("ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"), async (req, res) => {
+  const id = req.params.id as string;
+  const actorId = req.user!.sub;
+  let expectedVersion: number | null = null;
+  try {
+    const book = await getDailyBookOrFail(id, res);
+    if (!book) return;
+    if (book.status === "EXECUTED" || book.status === "CANCELLED") { res.status(409).json({ error: "ESTADO_INVALIDO", message: "Livro executado ou cancelado é registro: não recebe novidades do Livro do Show." }); return; }
+    if (!(await requireDailyBookOperate(book, req.user!, res))) return;
+    if (!book.showBookId) { res.status(409).json({ error: "SEM_SHOW", message: "Este Livro do Dia não está ligado a um Livro do Show." }); return; }
+    expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
+    if (expectedVersion === null) return;
+    const faltando = await faltandoDoShow(book);
+    if (!faltando.scenes.length && !faltando.blocks.length && !faltando.roles.length) {
+      res.json({ adicionou: { cenas: 0, grupos: 0, posicoes: 0 }, version: book.version, semNovidades: true });
+      return;
+    }
+    const [event] = await db.select().from(agendaEventsTable).where(eq(agendaEventsTable.id, book.agendaEventId)).limit(1);
+    if (!event) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "O evento deste Livro do Dia não foi encontrado." }); return; }
+    const showBookId = book.showBookId;
+    const [todosGrupos, todosPapeis, quadrosIniciais] = await Promise.all([
+      db.select().from(showBookBlocksTable).where(and(eq(showBookBlocksTable.showBookId, showBookId), eq(showBookBlocksTable.active, true))),
+      db.select().from(showBookRolesTable).where(and(eq(showBookRolesTable.showBookId, showBookId), eq(showBookRolesTable.active, true))),
+      faltando.scenes.length ? db.select({ id: showBookKeyframesTable.id, sceneId: showBookKeyframesTable.sceneId }).from(showBookKeyframesTable)
+        .where(and(eq(showBookKeyframesTable.type, "inicial"), eq(showBookKeyframesTable.active, true), inArray(showBookKeyframesTable.sceneId, faltando.scenes.map((c) => c.id)))) : Promise.resolve([] as { id: string; sceneId: string }[]),
+    ]);
+    const allocationMap: Record<string, string | null> = {};
+    if (book.scaleId) {
+      const allocations = await db.select({ positionId: scaleAllocationsTable.positionId, userId: scaleAllocationsTable.userId }).from(scaleAllocationsTable)
+        .where(and(eq(scaleAllocationsTable.scaleId, book.scaleId), eq(scaleAllocationsTable.agendaEventId, book.agendaEventId), eq(scaleAllocationsTable.active, true)));
+      allocations.forEach((a) => { if (a.positionId) allocationMap[a.positionId] = a.userId ?? null; });
+    }
+    const { byRole } = await resolveAssignmentsByRole(showBookId, event.operationId, event.date, { dedupPerScene: true, eventId: event.id });
+    const sceneByBlock: Record<string, string | null> = {};
+    todosGrupos.forEach((g) => { sceneByBlock[g.id] = g.sceneId ?? null; });
+    const assignedByScene = buildSceneOccupancyFromResolver(todosPapeis, sceneByBlock, byRole);
+    const antes: VersionedSnapshot = { scenes: await buildDailyBookTree(id) };
+
+    const adicionou = await mutateDailyBook(id, expectedVersion, async (tx) => {
+      const cenasDoDia = await tx.select({ id: dailyBookScenesTable.id, s: dailyBookScenesTable.sourceSceneId }).from(dailyBookScenesTable).where(and(eq(dailyBookScenesTable.dailyBookId, id), isNull(dailyBookScenesTable.supersededAt)));
+      const gruposDoDia = await tx.select({ id: dailyBookBlocksTable.id, s: dailyBookBlocksTable.sourceBlockId }).from(dailyBookBlocksTable).where(and(eq(dailyBookBlocksTable.dailyBookId, id), isNull(dailyBookBlocksTable.supersededAt)));
+      const cenaDoDia = new Map<string, string>(cenasDoDia.filter((r) => r.s).map((r) => [r.s!, r.id]));
+      const grupoDoDia = new Map<string, string>(gruposDoDia.filter((r) => r.s).map((r) => [r.s!, r.id]));
+      const quadroDaCena = new Map(quadrosIniciais.map((q) => [q.sceneId, q.id]));
+      if (faltando.scenes.length) {
+        const novas = faltando.scenes.map((c) => ({ id: randomUUID(), dailyBookId: id, name: c.name, order: c.order, sourceSceneId: c.id, sourceKeyframeId: quadroDaCena.get(c.id) ?? null }));
+        await tx.insert(dailyBookScenesTable).values(novas);
+        novas.forEach((c) => cenaDoDia.set(c.sourceSceneId, c.id));
+      }
+      if (faltando.blocks.length) {
+        const novos = faltando.blocks.map((g) => ({
+          id: randomUUID(), dailyBookId: id, name: g.name, order: g.order, startTime: g.startTime, endTime: g.endTime, sourceBlockId: g.id,
+          sceneId: g.sceneId ? cenaDoDia.get(g.sceneId) ?? null : null,
+        }));
+        await tx.insert(dailyBookBlocksTable).values(novos);
+        novos.forEach((g) => grupoDoDia.set(g.sourceBlockId, g.id));
+      }
+      const posicoes: (typeof dailyBookPositionsTable.$inferInsert)[] = [];
+      const vagas: (typeof dailyBookAssignmentsTable.$inferInsert)[] = [];
+      for (const papel of faltando.roles) {
+        const positionId = randomUUID();
+        posicoes.push({ id: positionId, dailyBookId: id, name: papel.name, minimumCoverage: papel.minimumCoverage, sourceRoleId: papel.id, blockId: papel.blockId ? grupoDoDia.get(papel.blockId) ?? null : null });
+        const cenaDoShow = papel.blockId ? sceneByBlock[papel.blockId] ?? null : null;
+        for (const a of planAssignmentsForRole(papel.id, byRole, allocationMap, cenaDoShow, assignedByScene, papel.minimumCoverage)) {
+          vagas.push({ dailyBookId: id, positionId, sceneId: cenaDoShow ? cenaDoDia.get(cenaDoShow) ?? null : null, userId: a.userId, status: a.status });
+        }
+      }
+      if (posicoes.length) await tx.insert(dailyBookPositionsTable).values(posicoes);
+      for (let i = 0; i < vagas.length; i += 1000) await tx.insert(dailyBookAssignmentsTable).values(vagas.slice(i, i + 1000));
+      return { cenas: faltando.scenes.length, grupos: faltando.blocks.length, posicoes: faltando.roles.length };
+    }, async (tx, _claimed, feito) => {
+      const depois: VersionedSnapshot = { scenes: await buildDailyBookTree(id, tx) };
+      await marcarEscalaAlteradaPeloLivro(tx as unknown as typeof db, id, actorId, "Livro do Show trouxe novidades");
+      await writeDailyBookAudit(id, actorId, "sincronizado", { version: book.version, snapshot: antes }, { version: book.version + 1, snapshot: depois, adicionou: feito }, tx);
+    });
+    eventBus.emit("daily-book.updated", { dailyBookId: id, changeType: "sincronizado", changedBy: actorId });
+    res.json({ adicionou, version: book.version + 1 });
+  } catch (err) {
+    if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
+    console.error(err);
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não consegui trazer as novidades do Livro do Show. Nada foi alterado; tente de novo." });
   }
 });
 
@@ -2181,7 +2318,8 @@ router.get("/daily-book/cartoes", requireAuth, requireOrganization, async (req, 
       if (await canViewDailyBook(actor, r.operationId, r.book.status, { id: r.book.showBookId!, responsibleId: r.showResponsibleId })) visiveis.push(r);
     }
     const daProgramacao = await horariosDosShowsNaProgramacao([...new Set(visiveis.filter((r) => !r.book.sessionId).map((r) => r.book.showBookId!))], date);
-    const cartoes = await Promise.all(visiveis.map(async (r) => {
+    // Dois Livros por vez: cada um abre várias consultas, e o banco aceita poucas conexões ao mesmo tempo (todos juntos davam erro 500 em dia cheio).
+    const montarCartao = async (r: (typeof visiveis)[number]) => {
       const tree = await resolveLiveTree(r.book);
       const vagas = contagemDasVagas(tree);
       const conferencia = conferenciaDoLivro(r.book, retratoDoElenco(tree));
@@ -2195,14 +2333,19 @@ router.get("/daily-book/cartoes", requireAuth, requireOrganization, async (req, 
         horarios, status: r.book.status,
         responsavel: r.showResponsibleId ? { id: r.showResponsibleId, name: r.responsibleName } : null,
         vagas: vagas.total, vagasSemPessoa: vagas.semPessoa,
+        resumo: resumoDoLivro(tree as never),
+        novidadesDoShow: terminal ? null : await novidadesDoShow(r.book),
         conferido: conferencia.conferido, conferidoPor: conferencia.conferido ? quem : null, conferidoEm: conferencia.conferido ? conferencia.em : null,
         conferenciaCaiu: conferencia.caiu ? { por: quem, em: conferencia.em } : null,
         podeConferir: !terminal && actor.role !== "DIR" && (await canOperateDailyBook(actor, r.operationId, { id: r.book.showBookId!, responsibleId: r.showResponsibleId })),
       };
-    }));
+    };
+    const cartoes: Awaited<ReturnType<typeof montarCartao>>[] = [];
+    for (let i = 0; i < visiveis.length; i += 2) cartoes.push(...await Promise.all(visiveis.slice(i, i + 2).map(montarCartao)));
     cartoes.sort((a, b) => (a.horarios[0] ?? "99:99").localeCompare(b.horarios[0] ?? "99:99") || (a.showTitle ?? "").localeCompare(b.showTitle ?? "", "pt-BR"));
     res.json({ cartoes });
   } catch (err) {
+    console.error("cartões do Livro do Dia", err);
     res.status(500).json({ error: "ERRO_INTERNO", message: "Não foi possível montar os Livros do dia. Tente de novo." });
   }
 });
@@ -2288,10 +2431,13 @@ router.get("/daily-book/:id", requireAuth, requireOrganization, async (req, res)
     // Conferência só aparece para quem opera o Livro (e a Direção, que lê): o Elenco não vê "conferido".
     const { conferredFingerprint: _retrato, conferredBy: _porId, conferredAt: _em, ...livroSemRetrato } = book;
     const conferencia = ctx.seesLive ? conferenciaDoLivro(book, retratoDoElenco(liveTree)) : null;
+    // Quem opera o Livro vê quando o Livro do Show ganhou algo depois que o dia foi gerado (e pode trazer as novidades).
+    const novidades = ctx.seesLive && book.status !== "EXECUTED" && book.status !== "CANCELLED" ? await novidadesDoShow(book) : null;
     const conferidoPor = conferencia?.porId ? (await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, conferencia.porId)).limit(1))[0]?.name ?? null : null;
     res.json({
       dailyBook: {
         ...livroSemRetrato,
+        novidadesDoShow: novidades,
         conferencia: conferencia ? { conferido: conferencia.conferido, por: conferencia.conferido ? conferidoPor : null, em: conferencia.conferido ? conferencia.em : null, caiu: conferencia.caiu ? { por: conferidoPor, em: conferencia.em } : null } : null,
         operationId: ctx.operationId,
         operationName: ctx.operationName,

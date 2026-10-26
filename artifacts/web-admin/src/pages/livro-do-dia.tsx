@@ -23,7 +23,7 @@ type DPosition = { id: string; name: string; minimumCoverage: number; sourceRole
 type DBlock = { id: string; name: string; order: number; sceneId: string | null; sourceBlockId: string | null; isRemoved: boolean; positions: DPosition[] };
 type DScene = { id: string; name: string; order: number; sourceSceneId: string | null; isRemoved: boolean; blocks: DBlock[] };
 type SessionBlockView = { id: string; name: string; startTime: string; endTime: string; order: number; isRemoved: boolean; stale: boolean; staleReason: string | null };
-type DailyBook = { id: string; agendaEventId: string; scaleId: string | null; showBookId: string | null; status: DailyBookStatus; version: number; operationId?: string; operationName?: string; eventTitle?: string; eventDate?: string; eventStartTime?: string | null; locationName?: string | null; locationId?: string | null; showTitle?: string | null; sessionLabel?: string | null; scenes?: DScene[]; sessionBlocks?: SessionBlockView[]; programacaoHoje?: { inicio: string; fim: string | null; rotulo: string }[]; horarios?: string[]; conferencia?: Conferencia | null };
+type DailyBook = { id: string; agendaEventId: string; scaleId: string | null; showBookId: string | null; status: DailyBookStatus; version: number; operationId?: string; operationName?: string; eventTitle?: string; eventDate?: string; eventStartTime?: string | null; locationName?: string | null; locationId?: string | null; showTitle?: string | null; sessionLabel?: string | null; scenes?: DScene[]; sessionBlocks?: SessionBlockView[]; programacaoHoje?: { inicio: string; fim: string | null; rotulo: string }[]; horarios?: string[]; conferencia?: Conferencia | null; novidadesDoShow?: { cenas: number; grupos: number; posicoes: number } | null };
 /** Conferência do elenco (vem só para quem opera o Livro ou a Direção): vale enquanto ninguém mais mudar quem faz cada papel. */
 type Conferencia = { conferido: boolean; por: string | null; em: string | null; caiu: { por: string | null; em: string | null } | null };
 /** Livro de sessão separada leva a hora no nome ("Teatro de Natal · 11:30"); sem isso, duas linhas do mesmo show ficam iguais. */
@@ -31,7 +31,7 @@ const tituloDoLivro = (b: { showTitle?: string | null; eventTitle?: string; sess
 type PatternDiffRow = { where: string; padrao: string; hoje: string; why: string };
 type Formation = { id: string; name: string; peopleCount: number; positions: Record<string, unknown>[]; showId: string | null; sceneId: string | null; sceneName?: string | null; active: boolean; timesUsed: number; lastUsedAt?: string | null; approximate?: boolean };
 /** `assignmentId` é a vaga do Livro de hoje que faz este personagem; sem ela (exemplo, vaga removida) não dá para trocar daqui. */
-type CharacterToday = { characterId: string; name: string; selectedName: string | null; why: string; assignmentId?: string };
+type CharacterToday = { characterId: string; name: string; selectedName: string | null; why: string; assignmentId?: string; posicao?: DPosition };
 type ConflictInfo = { expectedVersion: number; currentVersion: number; changes: { message?: string }[] };
 type ShowKind = "form" | "mix" | "pers";
 type Frame = { name: string; type: string };
@@ -400,9 +400,11 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
       // folgas e ajustes da Escala) — não um novo cálculo por personagem, que repetia a mesma pessoa.
       const escaladosPorVaga = new Map<string, string[]>();
       const assignmentPorVaga = new Map<string, string>();
+      const posicaoPorVaga = new Map<string, DPosition>();
       for (const scene of opened.scenes ?? []) for (const block of scene.blocks) for (const p of block.positions) {
         if (p.sourceRoleId && !p.isRemoved) {
           escaladosPorVaga.set(p.sourceRoleId, [...(escaladosPorVaga.get(p.sourceRoleId) ?? []), ...namesOf(p)]);
+          if (!posicaoPorVaga.has(p.sourceRoleId)) posicaoPorVaga.set(p.sourceRoleId, p);
           const primeira = liveAssignments(p)[0];
           if (primeira && !assignmentPorVaga.has(p.sourceRoleId)) assignmentPorVaga.set(p.sourceRoleId, primeira.id);
         }
@@ -412,11 +414,22 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
       await Promise.all([...new Set(vagas.map((v) => v.characterId))].map((characterId) =>
         customFetch<{ character: { name: string; mode: string } }>(`/api/characters/${characterId}/resolve?operationId=${opened.operationId}&date=${opened.eventDate}`)
           .then((r) => { modos.set(characterId, r.character); }).catch(() => undefined)));
-      setCharactersToday(vagas.filter((v) => modos.has(v.characterId)).map((v) => {
+      const linhas: CharacterToday[] = vagas.filter((v) => modos.has(v.characterId)).map((v) => {
         const quem = escaladosPorVaga.get(v.positionId) ?? [];
         const modo = modos.get(v.characterId)!;
-        return { characterId: `${v.positionId}`, name: modo.name, selectedName: quem.join(", ") || null, why: !quem.length ? "sem ninguém escalado hoje" : modo.mode === "titular" ? "titular" : "rodízio", assignmentId: assignmentPorVaga.get(v.positionId) };
-      }));
+        return { characterId: `${v.positionId}`, name: modo.name, selectedName: quem.join(", ") || null, why: !quem.length ? "sem ninguém escalado hoje" : modo.mode === "titular" ? "titular" : "rodízio", assignmentId: assignmentPorVaga.get(v.positionId), posicao: posicaoPorVaga.get(v.positionId) };
+      });
+      // Show só de personagens: o Livro do Dia É esta lista. Posição do dia sem linha de personagem no show (criada depois, ou sem personagem
+      // cadastrado) também aparece, para dar para escolher quem faz ou tirar; antes ela sumia e a vaga aberta ficava sem como editar.
+      if (showResult?.showBook.type === "CHARACTERS_ONLY") {
+        const comLinha = new Set(vagas.filter((v) => modos.has(v.characterId)).map((v) => v.positionId));
+        for (const scene of opened.scenes ?? []) for (const block of scene.blocks) for (const p of block.positions) {
+          if (p.isRemoved || (p.sourceRoleId && comLinha.has(p.sourceRoleId))) continue;
+          const quem = namesOf(p);
+          linhas.push({ characterId: p.id, name: p.name, selectedName: quem.join(", ") || null, why: quem.length ? "no Livro do Dia" : "sem ninguém escalado hoje", assignmentId: liveAssignments(p)[0]?.id, posicao: p });
+        }
+      }
+      setCharactersToday(linhas);
       await customFetch<{ formations: Formation[] }>(`/api/formations/by-show/${opened.showBookId}`).then((r) => setFormations(r.formations)).catch(() => setFormations([]));
     } catch { setError("Não consegui abrir este Livro do Dia."); }
   };
@@ -508,6 +521,29 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
       if (conferido && posicaoNoGuia >= 0) await irParaOProximo();
     } catch (err) { setError(mensagemDoErro(err, conferido ? "Não consegui marcar o Livro como conferido." : "Não consegui tirar a marca de conferido.")); } finally { setSaving(false); }
   };
+  // O Livro do Dia é uma cópia do Livro do Show tirada quando o dia foi gerado: o que o show ganhou depois só chega por aqui.
+  const [trouxe, setTrouxe] = useState("");
+  useEffect(() => { setTrouxe(""); }, [book?.id]);
+  const trazerNovidades = async () => {
+    if (!book) return;
+    setSaving(true); setError(""); setTrouxe("");
+    try {
+      const r = await customFetch<{ adicionou: { cenas: number; grupos: number; posicoes: number } }>(`/api/daily-book/${book.id}/sincronizar`, { method: "POST", body: withVersion() });
+      const a = r.adicionou;
+      const partes = [a.cenas ? plural(a.cenas, "cena", "cenas") : "", a.grupos ? plural(a.grupos, "grupo", "grupos") : "", a.posicoes ? plural(a.posicoes, "posição", "posições") : ""].filter(Boolean);
+      await refreshOpen();
+      setTrouxe(partes.length ? `Trouxe do Livro do Show: ${partes.join(", ")}. O que você já tinha trocado ou tirado neste dia continua como estava.` : "Este dia já estava em dia com o Livro do Show.");
+    } catch (err) { handleMutationError(err, "Não consegui trazer as novidades do Livro do Show. Nada foi alterado; tente de novo."); } finally { setSaving(false); }
+  };
+  const nNovidades = book?.novidadesDoShow ? book.novidadesDoShow.cenas + book.novidadesDoShow.grupos + book.novidadesDoShow.posicoes : 0;
+  const podeOperar = Boolean(book) && canManage && !isDir && !isMem && editableStatus(book!.status);
+  const faixasDoLivro = book && !isMem ? <>
+    {podeOperar && nNovidades > 0 && <NovidadesDoShow novidades={book.novidadesDoShow!} saving={saving} onTrazer={() => void trazerNovidades()}/>}
+    {trouxe && <div role="status" style={css("padding:10px 14px;border:1px solid #9fd5b3;border-radius:12px;background:#e7f6ec;font-size:12.5px;line-height:1.45;color:#0f5a2d")}>{trouxe}</div>}
+    {book.conferencia && <ConferenciaDoLivro titulo={`${tituloDoLivro(book)}${(book.sessionLabel ?? book.programacaoHoje?.[0]?.inicio ?? (book.eventStartTime ? time(book.eventStartTime) : "")) ? ` · ${book.sessionLabel ?? book.programacaoHoje?.[0]?.inicio ?? time(book.eventStartTime)}` : ""}`} conferencia={book.conferencia} podeConferir={podeOperar} saving={saving} desatualizado={nNovidades > 0}
+      passo={posicaoNoGuia >= 0 && guia ? { atual: posicaoNoGuia + 1, total: guia.ids.length } : null}
+      onConferir={() => void conferir(true)} onDesfazer={() => void conferir(false)} onPular={() => void irParaOProximo()} onVoltar={voltarParaAEscala}/>}
+  </> : null;
   const toggleScene = (scene: DScene) => mutate(`/scenes/${scene.id}${scene.isRemoved ? "/restore" : ""}`, scene.isRemoved ? "PATCH" : "DELETE", {}, "Não consegui ajustar esta cena.");
   const togglePosition = (position: DPosition) => mutate(`/positions/${position.id}${position.isRemoved ? "/restore" : ""}`, position.isRemoved ? "PATCH" : "DELETE", {}, "Não consegui ajustar esta posição.");
 
@@ -595,17 +631,13 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
       </div>}
       {conflict && <ConflictBanner conflict={conflict} onReload={() => { setConflict(null); void refreshOpen(); }}/>}
 
-      {tab === "hoje" && book?.conferencia && !isMem && <ConferenciaDoLivro conferencia={book.conferencia} podeConferir={canManage && !isDir && editableStatus(book.status)} saving={saving}
-        passo={posicaoNoGuia >= 0 && guia ? { atual: posicaoNoGuia + 1, total: guia.ids.length } : null}
-        onConferir={() => void conferir(true)} onDesfazer={() => void conferir(false)} onPular={() => void irParaOProximo()} onVoltar={voltarParaAEscala}/>}
-
       {tab === "hoje" && <HojeTab
         role={role} review={review} me={me} date={date} onDate={setDate} loading={loading} opening={opening} todayBooks={todayBooks} book={book} source={source}
         diffs={diffs} hasLiveChanges={hasLiveChanges} charactersToday={charactersToday} characterNames={characterNames} formations={formations}
         canManage={canManage} saving={saving} openSceneId={openSceneId} setOpenSceneId={setOpenSceneId}
         formSel={formSel} setFormSel={setFormSel} framesOn={framesOn} setFramesOn={setFramesOn} sceneNote={sceneNote} supLocal={supLocal}
         onPick={(id) => void open(id)} onAjustado={() => void refreshOpen()} onPublish={publish} onRepublish={republish} onExecute={execute} onCancel={cancel} onReopen={reopen}
-        onToggleScene={toggleScene} onTogglePosition={togglePosition} onSaveFormation={saveFormationFromScene} onApplyToday={applyFormationToday}
+        onToggleScene={toggleScene} onTogglePosition={togglePosition} onSaveFormation={saveFormationFromScene} onApplyToday={applyFormationToday} faixas={faixasDoLivro}
       />}
       {tab === "diff" && !isMem && <DiffTab diffs={diffs} hasBook={Boolean(book)}/>}
       {tab === "forma" && !isMem && <FormacoesTab review={review} scopeLocal={supLocal} currentShowId={book?.showBookId ?? null} currentFormations={formations} canApplyToday={(f) => Boolean(canManage && book && editableStatus(book.status) && book.scenes?.some((s) => s.sourceSceneId === f.sceneId))} saving={saving} onApplyToday={applyFormationToday}/>}
@@ -659,6 +691,8 @@ function HojeTab(props: {
   formSel: Record<string, string>; setFormSel: (fn: (prev: Record<string, string>) => Record<string, string>) => void;
   framesOn: Record<string, string[]>; setFramesOn: (fn: (prev: Record<string, string[]>) => Record<string, string[]>) => void;
   sceneNote: { sceneId: string; text: string } | null; supLocal: string | null; onDate: (iso: string) => void;
+  /** Avisos e conferência DO LIVRO ABERTO, logo abaixo do cabeçalho dele (assim ficam claramente deste show, não do dia todo). */
+  faixas?: ReactNode;
   onPick: (id: string) => void; onAjustado: () => void; onPublish: () => void; onRepublish: () => void; onExecute: () => void; onCancel: () => void; onReopen: () => void;
   onToggleScene: (scene: DScene) => void; onTogglePosition: (position: DPosition) => void; onSaveFormation: (scene: DScene, slots: SlotView[]) => void; onApplyToday: (formation: Formation) => void;
 }) {
@@ -755,6 +789,8 @@ function HojeTab(props: {
   const removedScenes = scenes.filter((s) => s.isRemoved);
   const removedPositions = scenes.filter((s) => !s.isRemoved).flatMap((s) => (slotsByScene.get(s.id) ?? []).filter((x) => x.position.isRemoved).map((x) => ({ scene: s, slot: x })));
   const nRem = removedScenes.length + removedPositions.length;
+  // Posições tiradas só deste dia (restauráveis): num show só de personagens não há cena para mostrá-las, então saem em lista própria.
+  const tiradosDoDia = soPers ? scenes.filter((s) => !s.isRemoved).flatMap((s) => s.blocks.flatMap((g) => g.positions.filter((pos) => pos.isRemoved))) : [];
   const statCell = (last: boolean) => `flex:1;min-width:120px;display:flex;flex-direction:column;gap:2px;padding:12px 16px;border-right:${last ? "none" : "1px solid var(--asa-book-fade)"}`;
   const persTit = charactersToday.filter((p) => p.why.startsWith("titular")).length;
   const persRod = charactersToday.filter((p) => p.why.startsWith("rodízio")).length;
@@ -835,6 +871,8 @@ function HojeTab(props: {
       </div>}
     </div>
 
+    {props.faixas}
+
     <div style={css(CARD)}>
       <div style={css("padding:14px 18px;border-bottom:1px solid var(--asa-book-fade);display:flex;align-items:center;gap:12px;flex-wrap:wrap")}>
         <span style={css(`flex:none;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:6px 11px;border-radius:999px;white-space:nowrap;background:${tm[1]}1a;color:${tm[1]}`)}>{tm[0]}</span>
@@ -884,9 +922,18 @@ function HojeTab(props: {
                 <span style={css("font-size:12px;color:var(--asa-label);line-height:1.35;text-wrap:pretty")}>{mine ? `você · ${p.why}` : p.why}</span>
               </span>
               {podeTrocar && p.assignmentId && <button type="button" className="ldd-hit" disabled={abrindoTroca !== null} aria-label={`Trocar quem faz ${p.name}`} onClick={() => void abrirTroca(p.assignmentId!)}
-                style={css("flex:none;border:1px solid var(--asa-purple-border);background:#fff;color:var(--asa-purple);border-radius:999px;padding:7px 14px;font:700 12px Manrope,sans-serif;cursor:pointer;min-height:36px")}>{abrindoTroca === p.assignmentId ? "Abrindo…" : p.selectedName ? "Trocar" : "Escolher"}</button>}
+                style={css("flex:none;border:1px solid var(--asa-purple-border);background:#fff;color:var(--asa-purple);border-radius:999px;padding:7px 14px;font:700 12px Manrope,sans-serif;cursor:pointer;min-height:44px")}>{abrindoTroca === p.assignmentId ? "Abrindo…" : p.selectedName ? "Trocar" : "Escolher"}</button>}
+              {canEdit && p.posicao && <button type="button" className="ldd-hit" disabled={saving} aria-label={`Tirar ${p.name} deste dia`} title="Tira o personagem só deste dia; dá para devolver" onClick={() => props.onTogglePosition(p.posicao!)}
+                style={css("flex:none;border:1px solid var(--asa-line-soft);background:#fff;color:var(--asa-ink-muted);border-radius:999px;padding:7px 14px;font:700 12px Manrope,sans-serif;cursor:pointer;min-height:44px")}>Tirar</button>}
             </div>;
           })}
+          {canEdit && tiradosDoDia.length > 0 && <div style={css("display:flex;flex-direction:column;gap:6px;border:1px dashed var(--asa-line-soft);border-radius:12px;padding:9px 12px")}>
+            <span style={css("font-size:12px;font-weight:700;color:var(--asa-label)")}>{`${plural(tiradosDoDia.length, "personagem tirado deste dia", "personagens tirados deste dia")} · dá para devolver`}</span>
+            {tiradosDoDia.map((pos) => <span key={pos.id} style={css("display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--asa-ink-muted)")}>
+              <span style={css("flex:1;min-width:0;overflow-wrap:anywhere")}>{pos.name}</span>
+              <button type="button" className="ldd-hit" disabled={saving} onClick={() => props.onTogglePosition(pos)} style={css("flex:none;border:1px solid var(--asa-purple-border);background:#fff;color:var(--asa-purple);border-radius:999px;padding:7px 14px;font:700 12px Manrope,sans-serif;cursor:pointer;min-height:44px")}>Devolver</button>
+            </span>)}
+          </div>}
           {charactersToday.length > 0 && <span style={css("font-size:12px;line-height:1.5;color:var(--asa-label);text-wrap:pretty")}>É quem está escalado neste Livro do Dia e cobre todas as sessões deste show hoje. {podeTrocar ? "Para trocar quem faz um personagem, use o botão ao lado dele." : "Para trocar, use Ajustar na Escala."}</span>}
           {erroTroca && <span role="alert" style={css("font-size:12px;line-height:1.5;color:var(--asa-red-dark);border-left:3px solid var(--asa-red);background:var(--asa-red-airy);border-radius:8px;padding:8px 11px")}>{erroTroca}</span>}
           {troca && <AjusteCelulaDialog bloco={troca.bloco} pessoas={troca.dia.pessoas} editableAreaIds={troca.areas} focoVaga={troca.foco} onClose={() => setTroca(null)}
@@ -933,7 +980,7 @@ function HojeTab(props: {
       <SceneMapColumn {...props} scene={openScene} slots={slotsByScene.get(openScene.id) ?? []}/>
 
       <div className="ldd-shrink" style={css("flex:1;min-width:280px;display:flex;flex-direction:column;gap:12px")}>
-        <ScenePanel {...props} scene={openScene} slots={slotsByScene.get(openScene.id) ?? []} canEdit={canEdit} whyByWhere={whyByWhere}/>
+        <ScenePanel {...props} scene={openScene} slots={slotsByScene.get(openScene.id) ?? []} canEdit={canEdit} whyByWhere={whyByWhere} podeEscolher={podeTrocar} escolhendo={abrindoTroca} onEscolher={(assignmentId) => void abrirTroca(assignmentId)}/>
 
         {!isMem && nRem > 0 && <div style={css("border:1px solid var(--asa-amber-cream);border-radius:16px;background:var(--asa-amber-white);padding:15px 17px;display:flex;flex-direction:column;gap:9px")}>
           <div style={css("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
@@ -1036,7 +1083,8 @@ function SceneMapColumn(props: Parameters<typeof HojeTab>[0] & { scene: DScene; 
 }
 
 /* ---------- cena aberta: posições, formações e ações ---------- */
-function ScenePanel(props: Parameters<typeof HojeTab>[0] & { scene: DScene; slots: SlotView[]; canEdit: boolean; whyByWhere: Map<string, string> }) {
+/** `onEscolher`: posição de cena sem ninguém também pode receber uma pessoa daqui (o mesmo Ajustar da Escala, nas mesmas regras de folga, área e limite). */
+function ScenePanel(props: Parameters<typeof HojeTab>[0] & { scene: DScene; slots: SlotView[]; canEdit: boolean; whyByWhere: Map<string, string>; podeEscolher: boolean; escolhendo: string | null; onEscolher: (assignmentId: string) => void }) {
   const { scene, slots, canEdit, role, me, source, formations, saving } = props;
   const isMem = role === "mem";
   const out = scene.isRemoved;
@@ -1048,6 +1096,7 @@ function ScenePanel(props: Parameters<typeof HojeTab>[0] & { scene: DScene; slot
   const slotBox = (s: SlotView) => {
     const mine = isMine(s);
     const vago = !s.who;
+    const abertaId = liveAssignments(s.position).find((a) => !a.userId)?.id;
     const { manual, alerta } = manualInfo(s.position);
     const tone = s.out ? "var(--asa-error-fg)" : mine ? "var(--asa-mine-fg)" : vago ? "var(--asa-vaga-fg)" : s.sub ? "var(--asa-ok-fg)" : "var(--asa-purple)";
     const note = alerta ?? (s.out ? "fora do dia" : s.sub ? `no lugar de ${s.sub}` : s.papel ? s.papel : mine ? "você" : "");
@@ -1059,6 +1108,8 @@ function ScenePanel(props: Parameters<typeof HojeTab>[0] & { scene: DScene; slot
           {manual && !s.out && <span title="Trocado à mão — não se completa mais sozinho" style={css("flex:none;font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--asa-label);background:var(--asa-book-fade);padding:1px 5px;border-radius:999px")}>fixo</span>}
         </span>
         {note && <span style={css(`font-size:12px;color:${alerta ? "var(--asa-amber)" : s.out ? "var(--asa-error-fg)" : s.sub ? "var(--asa-ok-fg)" : mine ? "var(--asa-mine-fg)" : "var(--asa-label)"}`)}>{note}</span>}
+        {props.podeEscolher && !s.out && vago && abertaId && <button type="button" className="ldd-hit" disabled={props.escolhendo !== null} aria-label={`Escolher quem faz ${s.label}`} onClick={() => props.onEscolher(abertaId)}
+          style={css("align-self:flex-start;border:1px solid var(--asa-purple-border);background:#fff;color:var(--asa-purple);border-radius:999px;padding:5px 14px;font:700 12px Manrope,sans-serif;cursor:pointer;min-height:44px")}>{props.escolhendo === abertaId ? "Abrindo…" : "Escolher"}</button>}
       </div>
       {canEdit && !out && <button type="button" className="ldd-hit" disabled={saving} onClick={() => props.onTogglePosition(s.position)} title={s.out ? "restaurar esta posição no dia" : "tirar esta posição do dia"} aria-label={`${s.out ? "Restaurar" : "Tirar"} ${s.label} do dia`}
         style={css("border:none;background:transparent;color:var(--asa-label);font-size:14px;line-height:1;cursor:pointer;padding:2px 4px;flex:none")}>{s.out ? "↺" : "×"}</button>}
@@ -1337,14 +1388,25 @@ function ListaTab({ isMem, books, me, review, filter, onFilter, onOpen }: { isMe
   </>;
 }
 
+/** O Livro do Show ganhou cenas, grupos ou posições depois que este dia foi gerado: aviso com o botão que traz o que falta, sem refazer o dia. */
+function NovidadesDoShow({ novidades, saving, onTrazer }: { novidades: { cenas: number; grupos: number; posicoes: number }; saving: boolean; onTrazer: () => void }) {
+  const partes = [novidades.cenas ? plural(novidades.cenas, "cena", "cenas") : "", novidades.grupos ? plural(novidades.grupos, "grupo", "grupos") : "", novidades.posicoes ? plural(novidades.posicoes, "posição", "posições") : ""].filter(Boolean);
+  return <section aria-label="Novidades do Livro do Show" style={css("display:flex;flex-direction:column;gap:8px;padding:11px 14px;border:1px solid #f0d79b;border-radius:14px;background:#fff6e0")}>
+    <strong style={css("font-size:13.5px;color:#8f5200")}>O Livro do Show mudou depois que este dia foi montado</strong>
+    <span style={css("font-size:12.5px;line-height:1.45;color:var(--asa-ink-medium)")}>{`O show tem ${partes.join(", ")} que este dia ainda não tem. Trazer as novidades só acrescenta: o que você já trocou, tirou ou ajustou neste dia continua como está, e a conferência volta a pedir a sua olhada.`}</span>
+    <div style={css("display:flex;flex-wrap:wrap;gap:8px")}><button type="button" className="ldd-hit" disabled={saving} onClick={onTrazer} style={css(PRIMARY + ";height:44px")}>{saving ? "Trazendo…" : "Trazer as novidades do Livro do Show"}</button></div>
+  </section>;
+}
+
 const quandoConferiu = (iso: string | null) => { if (!iso) return ""; const d = new Date(iso); return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")} às ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
 
 /**
  * Faixa de conferência acima do Livro aberto: diz se alguém já conferiu quem faz cada papel e dá o botão que marca. Na conferência guiada
  * (vinda dos cartões da Escala) marcar leva ao próximo Livro, e depois do último volta à Escala. Direção só lê (sem botões).
  */
-function ConferenciaDoLivro({ conferencia, podeConferir, saving, passo, onConferir, onDesfazer, onPular, onVoltar }: {
-  conferencia: Conferencia; podeConferir: boolean; saving: boolean; passo: { atual: number; total: number } | null;
+function ConferenciaDoLivro({ titulo: livro, conferencia, podeConferir, saving, desatualizado, passo, onConferir, onDesfazer, onPular, onVoltar }: {
+  /** O Livro a que esta faixa se refere (show e hora): a marca vale só para ele, não para os outros shows do dia. */
+  titulo: string; conferencia: Conferencia; podeConferir: boolean; saving: boolean; desatualizado: boolean; passo: { atual: number; total: number } | null;
   onConferir: () => void; onDesfazer: () => void; onPular: () => void; onVoltar: () => void;
 }) {
   const estado = conferencia.conferido ? "ok" : conferencia.caiu ? "caiu" : "falta";
@@ -1354,16 +1416,18 @@ function ConferenciaDoLivro({ conferencia, podeConferir, saving, passo, onConfer
   const ultimo = passo !== null && passo.atual === passo.total;
   const cor = estado === "ok" ? { bg: "#e7f6ec", bd: "#9fd5b3", fg: "#0f5a2d" } : estado === "caiu" ? { bg: "#fdecea", bd: "#f0b5b0", fg: "#a8221b" } : { bg: "#fff6e0", bd: "#f0d79b", fg: "#8f5200" };
   return <section aria-label="Conferência do elenco" style={css(`display:flex;flex-direction:column;gap:8px;padding:11px 14px;border:1px solid ${cor.bd};border-radius:14px;background:${cor.bg}`)}>
-    {passo && <span style={css(MONO_LABEL)}>{`Conferência guiada · Livro ${passo.atual} de ${passo.total}`}</span>}
+    <span style={css(MONO_LABEL)}>{passo ? `Conferência guiada · Livro ${passo.atual} de ${passo.total}` : "Conferência deste Livro"}</span>
+    <span style={css("font-family:Outfit,sans-serif;font-size:15px;font-weight:600;color:var(--asa-ink-dark);overflow-wrap:anywhere")}>{livro}</span>
     <strong style={css(`font-size:13.5px;color:${cor.fg};overflow-wrap:anywhere`)}>{titulo}</strong>
     <span style={css("font-size:12.5px;line-height:1.45;color:var(--asa-ink-medium)")}>
       {conferencia.conferido
-        ? "Se quem conferiu trocar alguém, a marca continua. Se outra pessoa mudar quem faz cada papel, a marca sai sozinha."
-        : podeConferir ? "Veja quem faz cada papel abaixo. Depois de marcar, a Escala mostra este show como conferido."
-          : "Só quem responde por este show ou a Administração marca o Livro como conferido. Você acompanha o estado aqui."}
+        ? "Vale só para este show. Se quem conferiu trocar alguém, a marca continua; se outra pessoa mudar quem faz cada papel, ela sai sozinha."
+        : desatualizado ? "Antes de conferir, traga as novidades do Livro do Show (aviso acima): o que você ia conferir está incompleto."
+          : podeConferir ? "Veja abaixo quem faz cada papel DESTE show. A marca vale só para ele; os outros shows do dia são conferidos um a um."
+            : "Só quem responde por este show ou a Administração marca o Livro como conferido. Você acompanha o estado aqui."}
     </span>
     {podeConferir && <div style={css("display:flex;flex-wrap:wrap;gap:8px")}>
-      {!conferencia.conferido && <button type="button" className="ldd-hit" disabled={saving} onClick={onConferir} style={css(PRIMARY + ";height:44px")}>{saving ? "Marcando…" : passo ? (ultimo ? "Conferido · voltar à Escala" : "Conferido · próximo Livro") : "Conferido"}</button>}
+      {!conferencia.conferido && <button type="button" className="ldd-hit" disabled={saving || desatualizado} onClick={onConferir} style={css(PRIMARY + ";height:44px")}>{saving ? "Marcando…" : passo ? (ultimo ? "Conferido · voltar à Escala" : "Conferido · próximo Livro") : "Conferido"}</button>}
       {conferencia.conferido && passo && <button type="button" className="ldd-hit" disabled={saving} onClick={onPular} style={css(PRIMARY + ";height:44px")}>{ultimo ? "Voltar à Escala" : "Próximo Livro"}</button>}
       {conferencia.conferido && <button type="button" className="ldd-hit" disabled={saving} onClick={onDesfazer} style={css(GHOST + ";height:44px")}>{saving ? "Aguarde…" : "Tirar a marca"}</button>}
       {passo && !conferencia.conferido && !ultimo && <button type="button" className="ldd-hit" disabled={saving} onClick={onPular} style={css(GHOST + ";height:44px")}>Pular este</button>}

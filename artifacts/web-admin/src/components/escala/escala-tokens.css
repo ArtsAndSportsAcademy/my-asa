@@ -176,3 +176,17 @@
 .ge-publicar-dialog .shows-dialog-footer{flex-wrap:wrap}
 .ge-publicar-dialog .shows-dialog-footer button{flex:1 1 140px;min-width:0;white-space:normal;line-height:1.25}
 .ge-publicar-dialog .shows-dialog-footer .shows-primary{min-width:0}
+
+/* ---------- cartão do Livro: ver quem faz o quê ---------- */
+.ge-livro-ver{display:flex;flex-direction:column;gap:8px;border-top:1px dashed var(--asa-line-soft);padding-top:6px}
+.ge-livro-ver>summary,.ge-livro-cena>summary{cursor:pointer;list-style:none;display:flex;align-items:center;min-height:44px;font:700 12.5px Manrope,sans-serif;color:var(--asa-purple)}
+.ge-livro-ver>summary::-webkit-details-marker,.ge-livro-cena>summary::-webkit-details-marker{display:none}
+.ge-livro-cena{border:1px solid var(--asa-line);border-radius:10px;padding:0 10px;background:var(--asa-fade)}
+.ge-livro-cena>summary{color:var(--asa-ink-dark);overflow-wrap:anywhere}
+.ge-livro-cena ul{margin:0 0 8px;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px}
+.ge-livro-cena li{display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 10px;font-size:12.5px;line-height:1.35}
+.ge-livro-cena li span{color:var(--asa-label);overflow-wrap:anywhere}
+.ge-livro-cena li b{color:var(--asa-ink-dark);overflow-wrap:anywhere;text-align:right}
+.ge-livro-cena li b[data-vazia="true"]{color:var(--esc-choque)}
+.ge-livro-novidade{margin:0;padding:8px 10px;border-radius:10px;background:#fff6e0;font-size:12.5px;line-height:1.45;color:#8f5200}
+.ge-livro-ver>.ge-livro-botao{align-self:flex-start}
