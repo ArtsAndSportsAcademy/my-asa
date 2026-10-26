@@ -308,7 +308,7 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [conflict, setConflict] = useState<ConflictInfo | null>(null);
-  const [prompt, setPrompt] = useState<{ title: string; label: string; initial?: string; onSubmit: (value: string) => void } | null>(null);
+  const [prompt, setPrompt] = useState<{ title: string; label: string; initial?: string; aviso?: string; onSubmit: (value: string) => void } | null>(null);
 
   const handleMutationError = (err: unknown, fallback: string) => {
     if (err instanceof ApiError && err.status === 409 && err.data && typeof err.data === "object") {
@@ -536,10 +536,20 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
       setTrouxe(partes.length ? `Trouxe do Livro do Show: ${partes.join(", ")}. O que você já tinha trocado ou tirado neste dia continua como estava.` : "Este dia já estava em dia com o Livro do Show.");
     } catch (err) { handleMutationError(err, "Não consegui trazer as novidades do Livro do Show. Nada foi alterado; tente de novo."); } finally { setSaving(false); }
   };
+  // Refazer do zero: o dia volta a ser uma cópia nova do Livro do Show (mudou um titular, uma regra, a ordem das cenas). Só no rascunho.
+  const refazerDoZero = () => setPrompt({
+    title: "Refazer este dia do zero", label: "Motivo",
+    aviso: "O dia é montado de novo a partir do Livro do Show e da Escala. Tudo o que foi trocado, tirado ou ajustado à mão neste dia se perde, e a conferência volta a pedir a sua olhada. Para só trazer cenas, grupos e posições novas sem perder nada, use \"Trazer as novidades\".",
+    onSubmit: (reason) => { setPrompt(null); void mutate("/regenerate", "POST", { reason }, "Não consegui refazer o Livro do Dia. Nada foi alterado; tente de novo."); },
+  });
   const nNovidades = book?.novidadesDoShow ? book.novidadesDoShow.cenas + book.novidadesDoShow.grupos + book.novidadesDoShow.posicoes : 0;
   const podeOperar = Boolean(book) && canManage && !isDir && !isMem && editableStatus(book!.status);
   const faixasDoLivro = book && !isMem ? <>
     {podeOperar && nNovidades > 0 && <NovidadesDoShow novidades={book.novidadesDoShow!} saving={saving} onTrazer={() => void trazerNovidades()}/>}
+    {podeOperar && book.status === "DRAFT" && <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:10px")}>
+      <button type="button" className="ldd-hit" disabled={saving} onClick={refazerDoZero} style={css(GHOST + ";height:44px")}>Refazer este dia do zero</button>
+      <span style={css("font-size:12px;line-height:1.45;color:var(--asa-label);flex:1 1 220px")}>Mudou algo no Livro do Show e não apareceu aqui? Refazer monta o dia de novo (perde as trocas à mão).</span>
+    </div>}
     {trouxe && <div role="status" style={css("padding:10px 14px;border:1px solid #9fd5b3;border-radius:12px;background:#e7f6ec;font-size:12.5px;line-height:1.45;color:#0f5a2d")}>{trouxe}</div>}
     {book.conferencia && <ConferenciaDoLivro titulo={`${tituloDoLivro(book)}${(book.sessionLabel ?? book.programacaoHoje?.[0]?.inicio ?? (book.eventStartTime ? time(book.eventStartTime) : "")) ? ` · ${book.sessionLabel ?? book.programacaoHoje?.[0]?.inicio ?? time(book.eventStartTime)}` : ""}`} conferencia={book.conferencia} podeConferir={podeOperar} saving={saving} desatualizado={nNovidades > 0}
       passo={posicaoNoGuia >= 0 && guia ? { atual: posicaoNoGuia + 1, total: guia.ids.length } : null}
@@ -650,7 +660,7 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
       <span style={css("font-size:12px;line-height:1.5;color:var(--asa-ink-muted)")}>{ruleText}</span>
     </div>
 
-    {prompt && <PromptDialog title={prompt.title} label={prompt.label} initial={prompt.initial} onClose={() => setPrompt(null)} onSubmit={prompt.onSubmit}/>}
+    {prompt && <PromptDialog title={prompt.title} label={prompt.label} initial={prompt.initial} aviso={prompt.aviso} onClose={() => setPrompt(null)} onSubmit={prompt.onSubmit}/>}
   </section>;
 }
 
@@ -1448,13 +1458,13 @@ function ConflictBanner({ conflict, onReload }: { conflict: ConflictInfo; onRelo
   </div>;
 }
 
-function PromptDialog({ title, label, initial, onClose, onSubmit }: { title: string; label: string; initial?: string; onClose: () => void; onSubmit: (value: string) => void }) {
+function PromptDialog({ title, label, initial, aviso, onClose, onSubmit }: { title: string; label: string; initial?: string; aviso?: string; onClose: () => void; onSubmit: (value: string) => void }) {
   useFecharComEsc(onClose);
   const [value, setValue] = useState(initial ?? "");
   const submit = (event: FormEvent) => { event.preventDefault(); if (value.trim()) onSubmit(value.trim()); };
   return <div className="shows-dialog-backdrop"><div className="shows-dialog" role="dialog" aria-modal="true" aria-label={title}>
     <header className="shows-dialog-header"><h2>{title}</h2><button onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
-    <div className="shows-dialog-content"><form id="ldd-prompt-form" onSubmit={submit} className="shows-form"><label>{label}<textarea required rows={label === "Motivo" ? 3 : 1} value={value} onChange={(e) => setValue(e.target.value)} autoFocus placeholder={label === "Motivo" ? "Fica registrado no histórico" : undefined}/></label></form></div>
+    <div className="shows-dialog-content">{aviso && <p style={css("margin:0 0 10px;font-size:13px;line-height:1.5;color:var(--asa-ink-medium)")}>{aviso}</p>}<form id="ldd-prompt-form" onSubmit={submit} className="shows-form"><label>{label}<textarea required rows={label === "Motivo" ? 3 : 1} value={value} onChange={(e) => setValue(e.target.value)} autoFocus placeholder={label === "Motivo" ? "Fica registrado no histórico" : undefined}/></label></form></div>
     <footer className="shows-dialog-footer"><button form="ldd-prompt-form" className="shows-primary" disabled={!value.trim()}>Confirmar</button></footer>
   </div></div>;
 }

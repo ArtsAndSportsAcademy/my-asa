@@ -38,6 +38,8 @@ export default function PrintDayPage() {
   const [locationId, setLocationId] = useState(params.get("local") ?? "");
   const [locais, setLocais] = useState<{ id: string; name: string }[]>([]);
   const [modo, setModo] = useState<"pessoa" | "atividade">(params.get("ver") === "atividade" ? "atividade" : "pessoa");
+  // Por atividade, "Elenco todo (28)" cabe numa folha curta; quem prefere o nome de cada um liga aqui (a folha fica maior).
+  const [mostrarNomes, setMostrarNomes] = useState(params.get("nomes") === "1");
   const [dia, setDia] = useState<Dia | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -94,6 +96,7 @@ export default function PrintDayPage() {
         <button type="button" className="print-button" aria-pressed={modo === "pessoa"} style={{ fontWeight: modo === "pessoa" ? 700 : 400 }} onClick={() => setModo("pessoa")}>Por pessoa</button>{" "}
         <button type="button" className="print-button" aria-pressed={modo === "atividade"} style={{ fontWeight: modo === "atividade" ? 700 : 400 }} onClick={() => setModo("atividade")}>Por atividade</button>
       </span>
+      {modo === "atividade" && <label><input type="checkbox" checked={mostrarNomes} onChange={(e) => setMostrarNomes(e.target.checked)}/> Escrever o nome de todo mundo</label>}
       <button type="button" className="print-button" disabled={!dia || loading} onClick={() => window.print()}>Imprimir a escala do dia</button>
       <a href="/escalas">Voltar para Escalas</a>
     </div>
@@ -108,8 +111,8 @@ export default function PrintDayPage() {
             <td style={{ whiteSpace: "nowrap" }}>{b.inicio}{b.fim ? `–${b.fim}` : ""}</td>
             <td><strong>{texto(b)}</strong></td>
             <td>{b.vazio ? <em>Sem ninguém escalado</em> : resumo.tipo === "show-grande"
-              ? <div><strong>{resumo.rotulo}</strong> · ver Livro do Dia{semNinguem > 0 && <em> · {semNinguem === 1 ? "1 vaga sem ninguém" : `${semNinguem} vagas sem ninguém`}</em>}</div>
-              : !personagens.length && (resumo.tipo === "todos" || resumo.tipo === "area") ? <div>{resumo.rotulo}</div> : <>
+              ? <div><strong>{resumo.rotulo}</strong>{mostrarNomes ? <> — {resumo.nomes.join(" · ")}</> : " · ver Livro do Dia"}</div>
+              : !personagens.length && (resumo.tipo === "todos" || resumo.tipo === "area") ? <div>{mostrarNomes ? <><strong>{resumo.rotulo}</strong>: {resumo.nomes.join(" · ")}</> : resumo.rotulo}</div> : <>
               {personagens.map((v, i) => <div key={i}>{v.personagem}: {v.nome ? <strong>{v.nome}</strong> : <em>vaga sem ninguém</em>}</div>)}
               {semVaga.length > 0 && <div>{semVaga.join(" · ")}</div>}
             </>}</td>
