@@ -3,6 +3,7 @@ import { Redirect } from "wouter";
 import { customFetch } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/useAuth";
 import { sampleDia, sampleLocais } from "@/lib/review-escala";
+import { resumirQuem, type PessoaDoDia } from "@/components/escala/resumo-de-quem";
 
 /**
  * Folha do camarim (doc 12: "a escala do dia precisa existir fora do app"). Lê a mesma Escala do dia da
@@ -15,7 +16,7 @@ type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; 
 type Dia = {
   date: string; location: { id: string; name: string };
   escala: { status: string; version: number; publishedAt: string | null; alteradaDesde: string | null } | null;
-  pessoas: { id: string; name: string; areaName: string | null; folga: string | null }[];
+  pessoas: { id: string; name: string; areaId?: string | null; areaName: string | null; folga: string | null; chamadaNaFolga?: unknown }[];
   blocos: Bloco[];
 };
 const WEEKDAY = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
@@ -70,12 +71,16 @@ export default function PrintDayPage() {
     .filter((p) => p.blocos.length).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   const nomeDe = new Map((dia?.pessoas ?? []).map((p) => [p.id, p.name]));
   // Por atividade: só entra bloco que convoca alguém ou que ficou sem ninguém (bloco "ninguém" é pausa, não escala).
+  // Quem trabalha no dia (mesma conta da tela): sem folga, ou chamado na folga e com bloco. É a base do "Elenco todo" e da área.
+  const doDia: PessoaDoDia[] = (dia?.pessoas ?? []).filter((p) => !p.folga || (p.chamadaNaFolga && (dia?.blocos ?? []).some((b) => b.pessoaIds.includes(p.id))))
+    .map((p) => ({ id: p.id, name: p.name, areaId: p.areaId ?? null, areaName: p.areaName }));
   const porAtividade = (dia?.blocos ?? []).filter((b) => b.pessoaIds.length || b.vazio).sort((a, b) => a.inicio.localeCompare(b.inicio) || a.rotulo.localeCompare(b.rotulo, "pt-BR"))
     .map((b) => {
       const comVaga = new Set<string>();
       const personagens = (b.vagas ?? []).map((v) => { const quem = v.userId && b.pessoaIds.includes(v.userId) ? v.userId : null; if (quem) comVaga.add(quem); return { personagem: v.personagem, nome: quem ? nomeDe.get(quem) ?? "—" : null }; });
       const semVaga = b.pessoaIds.filter((id) => !comVaga.has(id)).map((id) => nomeDe.get(id) ?? "—").sort(nomeOrdem);
-      return { bloco: b, personagens, semVaga };
+      const resumo = resumirQuem(b.pessoaIds, doDia, b.vagas?.length ?? 0);
+      return { bloco: b, personagens, semVaga, resumo, semNinguem: (b.vagas ?? []).filter((v) => !v.userId).length };
     });
   const colunas = [porPessoa.slice(0, Math.ceil(porPessoa.length / 2)), porPessoa.slice(Math.ceil(porPessoa.length / 2))];
   const fora = (dia?.pessoas ?? []).filter((p) => p.folga);
@@ -99,10 +104,12 @@ export default function PrintDayPage() {
     {loading ? <p>Carregando escala…</p> : error ? <p role="alert">{error}</p> : <>
       {modo === "pessoa"
         ? <div className="print-columns grid grid-cols-2 gap-5">{colunas.map((coluna, i) => <table className="w-full text-sm" key={i}><thead><tr><th>Pessoa</th><th>Blocos do dia</th></tr></thead><tbody>{coluna.map((p) => <tr key={p.id}><td><strong>{p.name}</strong><div>{p.areaName ?? ""}</div></td><td>{p.blocos.map((b) => <div key={b.key}>{b.inicio}{b.fim ? `–${b.fim}` : ""} · {texto(b)}{personagensDe(b, p.id).length > 0 && <strong> — {personagensDe(b, p.id).join(", ")}</strong>}</div>)}</td></tr>)}</tbody></table>)}</div>
-        : <table className="w-full text-sm"><thead><tr><th>Horário</th><th>Atividade</th><th>Quem</th></tr></thead><tbody>{porAtividade.map(({ bloco: b, personagens, semVaga }) => <tr key={b.key}>
+        : <table className="w-full text-sm"><thead><tr><th>Horário</th><th>Atividade</th><th>Quem</th></tr></thead><tbody>{porAtividade.map(({ bloco: b, personagens, semVaga, resumo, semNinguem }) => <tr key={b.key}>
             <td style={{ whiteSpace: "nowrap" }}>{b.inicio}{b.fim ? `–${b.fim}` : ""}</td>
             <td><strong>{texto(b)}</strong></td>
-            <td>{b.vazio ? <em>Sem ninguém escalado</em> : <>
+            <td>{b.vazio ? <em>Sem ninguém escalado</em> : resumo.tipo === "show-grande"
+              ? <div><strong>{resumo.rotulo}</strong> · ver Livro do Dia{semNinguem > 0 && <em> · {semNinguem === 1 ? "1 vaga sem ninguém" : `${semNinguem} vagas sem ninguém`}</em>}</div>
+              : !personagens.length && (resumo.tipo === "todos" || resumo.tipo === "area") ? <div>{resumo.rotulo}</div> : <>
               {personagens.map((v, i) => <div key={i}>{v.personagem}: {v.nome ? <strong>{v.nome}</strong> : <em>vaga sem ninguém</em>}</div>)}
               {semVaga.length > 0 && <div>{semVaga.join(" · ")}</div>}
             </>}</td>

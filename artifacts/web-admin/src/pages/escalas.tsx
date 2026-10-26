@@ -12,6 +12,8 @@ import { AtencaoDoDia, type ConflitoDaPessoa, type GrupoDeConflito } from "@/com
 import { BlocoMenu } from "@/components/escala/bloco-menu";
 import { GradePessoa } from "@/components/escala/grade-pessoa";
 import { ResumoDoDia, trabalhaNoDia } from "@/components/escala/resumo-do-dia";
+import { QuemResumido } from "@/components/escala/quem-resumido";
+import { resumirQuem, type PessoaDoDia } from "@/components/escala/resumo-de-quem";
 import { TIPOS, ehExcecao, faixa, quandoDoDia, resolverTipo, textoDoBloco, toneDoTipo, type TipoDoLocal } from "@/components/escala/tipos";
 import { TipoSelect } from "@/components/escala/tipo-select";
 import { TiposDialog } from "@/components/escala/tipos-dialog";
@@ -582,6 +584,7 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
   const blocosDe = useCallback((pid: string) => dia.blocos.filter((b) => b.pessoaIds.includes(pid)), [dia.blocos]);
   const trabalham = useMemo(() => dia.pessoas.filter((p) => trabalhaNoDia(p, blocosDe)), [dia.pessoas, blocosDe]);
   const cols = trabalham.filter((p) => team === "todos" || p.areaId === team);
+  const pessoasDoDia = useMemo<PessoaDoDia[]>(() => trabalham.map((p) => ({ id: p.id, name: p.name, areaId: p.areaId, areaName: p.areaName })), [trabalham]);
   // Sem ninguém: o bloco inteiro vazio, ou show com personagem/posição que ficou aberta (o resto do elenco do show segue escalado).
   const vazios = dia.blocos.filter((b) => b.regra !== "ninguem" && (b.vazio || b.vagas?.some((v) => !v.userId)));
   const faixas = useMemo(() => {
@@ -725,7 +728,9 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
           <tbody>
             {faixas.flatMap((f) => f.blocos.map((b, gi) => {
               const who = b.pessoaIds.filter((id) => team === "todos" || dia.pessoas.find((p) => p.id === id)?.areaId === team);
-              const todoOElenco = who.length >= Math.max(8, Math.ceil(trabalham.length * 0.9));
+              // Com um grupo escolhido, "todo" e "área" se medem dentro dele; sem filtro, contra o dia inteiro.
+              const resumo = resumirQuem(who, team === "todos" ? pessoasDoDia : pessoasDoDia.filter((p) => p.areaId === team));
+              const resumido = resumo.tipo === "todos" || resumo.tipo === "area";
               return <tr key={b.key}>
                 <td style={css("border-right:1px solid var(--asa-line-soft);border-bottom:1px solid var(--asa-purple-airy);padding:7px 11px;vertical-align:middle;background:var(--asa-card-faint);width:130px;")}>
                   {gi === 0 && <div style={css("display:flex;flex-direction:column;gap:1px")}><span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--asa-ink-medium)")}>{faixa(f)}</span></div>}
@@ -733,18 +738,15 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
                 <td style={css("border-bottom:1px solid var(--asa-purple-airy);border-right:1px solid var(--asa-purple-lift);padding:6px 9px;vertical-align:middle;width:210px;")}>{blockEl(b, "display:inline-flex;")}</td>
                 <td style={css("border-bottom:1px solid var(--asa-purple-airy);padding:6px 9px;vertical-align:middle;")}>
                   <div style={css("display:flex;flex-wrap:wrap;gap:5px;align-items:center")}>
-                    {b.regra === "livro" ? <ShowLinha bloco={b} data={dia.date} nomeDe={personName}/> : <>
-                    {todoOElenco
-                      ? <details style={css("font-size:12px;color:var(--asa-ink-medium)")}>
-                        <summary style={css("cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:8px;min-height:44px;font-weight:700")}><span style={css("border:1px solid var(--asa-line);background:var(--asa-fade);border-radius:999px;padding:4px 12px")}>{`Todo o elenco do dia (${who.length})`}</span><span style={css("color:var(--asa-purple)")}>ver nomes</span></summary>
-                        <div style={css("display:flex;flex-wrap:wrap;gap:5px;padding:4px 0 8px")}>{who.map((id) => <span key={id} className="ge-pilula">{personName(id)}</span>)}</div>
-                      </details>
+                    {b.regra === "livro" ? <ShowLinha bloco={b} data={dia.date} nomeDe={personName} pessoasDoDia={pessoasDoDia}/> : <>
+                    {resumido
+                      ? <QuemResumido resumo={resumo}/>
                       : who.map((id) => <span key={id} style={css("display:inline-flex;align-items:center;gap:5px;border:1px solid var(--asa-line);background:#fff;border-radius:999px;padding:3px 10px 3px 4px;font-size:12px;font-weight:600;color:var(--asa-ink-medium);")}>
                         <span style={css("width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--asa-violet),var(--asa-indigo));")}>{initials(personName(id))[0]}</span>
                         <span>{personName(id)}</span>
                       </span>)}
                     {b.regra !== "ninguem" && (b.vazio ? <span style={css("display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;background:var(--asa-vaga-bg);color:var(--asa-vaga-fg);border:1px dashed var(--asa-vaga-bd);")}>sem ninguém · defina quem entra</span>
-                      : !todoOElenco && <span style={css("font-size:12px;color:var(--asa-label);margin-left:2px")}>{plural(who.length, "pessoa", "pessoas")}</span>)}
+                      : !resumido && <span style={css("font-size:12px;color:var(--asa-label);margin-left:2px")}>{plural(who.length, "pessoa", "pessoas")}</span>)}
                     </>}
                     {b.horarioDela && <span style={css("font-size:12px;color:var(--asa-label)")}>{`Horário só desta pessoa · era ${faixa(b.horarioDela)}`}</span>}
                     {canEdit && b.horarioDela && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => void onHorario({ ...b, key: b.horarioDela!.chaveOriginal }, b.pessoaIds[0]!, null)}>Voltar ao normal</button>}
