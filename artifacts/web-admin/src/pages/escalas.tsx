@@ -1005,7 +1005,8 @@ export function AjusteCelulaDialog({ bloco, pessoas, editableAreaIds, focoVaga, 
               })}
               {!candidatas.length && <span style={css("font-size:12px;color:var(--asa-label);padding:6px 0")}>Nenhuma pessoa disponível neste filtro.</span>}
             </div>
-            {quem && <button type="button" className="esc-hit" disabled={saving} onClick={() => { setTrocas(escolher(v, null)); setEscolhendo(null); setBusca(""); }} style={css(btn("ghost") + "padding:7px 12px;align-self:flex-start")}>Deixar sem ninguém</button>}
+            {quem && <button type="button" className="esc-hit" disabled={saving} onClick={() => { setTrocas(escolher(v, null)); setEscolhendo(null); setBusca(""); }} style={css(btn("ghost") + "padding:7px 12px;align-self:flex-start")}>Deixar a vaga aberta</button>}
+            {quem && <span style={css("font-size:12px;line-height:1.45;color:var(--asa-label)")}>A vaga fica aberta e o personagem continua no dia. Para tirá-lo do dia de vez, use o botão “Tirar” no Livro do Dia.</span>}
           </div>}
         </div>;
       })}</div>}
