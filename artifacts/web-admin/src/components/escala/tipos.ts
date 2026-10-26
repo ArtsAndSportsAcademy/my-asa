@@ -16,12 +16,12 @@ export const nomeDaCor = (cor: string) => CORES.find((c) => c.key === cor)?.labe
 export type TipoDoLocal = { id: string; nome: string; cor: string; chave: string | null; ordem: number; active: boolean };
 
 export const TIPOS: { key: TipoKey; label: string }[] = [
-  { key: "gelo", label: "Treinos no gelo" },
-  { key: "ensaio", label: "Ensaios e preparação" },
-  { key: "show", label: "Shows e teatro" },
-  { key: "inter", label: "Interações e personagens" },
+  { key: "gelo", label: "Treinos e aulas" },
+  { key: "ensaio", label: "Ensaio e preparação" },
+  { key: "show", label: "Shows" },
+  { key: "inter", label: "Interação e personagem" },
   { key: "prod", label: "Produção e apoio" },
-  { key: "pausa", label: "Pausas e almoço" },
+  { key: "pausa", label: "Almoço" },
   { key: "outra", label: "Outras atividades" },
 ];
 

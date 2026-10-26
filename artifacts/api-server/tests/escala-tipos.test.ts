@@ -76,6 +76,7 @@ async function run() {
     assert(prontos.status === 201 && prontos.body.criados === 7, "a Administração cria os sete tipos prontos do local");
     let tipos = await lista();
     assert(tipos.length === 7 && tipos.every((t) => t.chave === t.cor && t.active), "os sete nascem ativos, cada um com a cor do seu tipo");
+    assert(tipos.map((t) => t.nome).sort().join("|") === ["Almoço", "Ensaio e preparação", "Interação e personagem", "Outras atividades", "Produção e apoio", "Shows", "Treinos e aulas"].sort().join("|"), "os nomes de fábrica são os da planilha de papel (Treinos e aulas, Shows, Almoço…)");
     assert((await asAdmin("POST", "/escalas/tipos", { locationId: local!.id, padrao: true })).status === 409, "repetir os prontos é 409 com frase");
     assert((await lista(outroLocal!.id)).length === 0, "os tipos de um local não aparecem em outro");
 
@@ -115,7 +116,7 @@ async function run() {
     // ── renomear, pintar e arquivar ──
     const renomeia = await asAdmin("PATCH", `/escalas/tipos/${ensaioAberto.id}`, { nome: "Ensaio com público", cor: "magenta" });
     assert(renomeia.status === 200 && renomeia.body.tipo.nome === "Ensaio com público" && renomeia.body.tipo.cor === "magenta", "a Administração renomeia e muda a cor");
-    const colide = await asAdmin("PATCH", `/escalas/tipos/${ensaioAberto.id}`, { nome: "shows e teatro" });
+    const colide = await asAdmin("PATCH", `/escalas/tipos/${ensaioAberto.id}`, { nome: "shows" });
     assert(colide.status === 409, "renomear para o nome de outro tipo ativo é 409");
     assert((await asSup("PATCH", `/escalas/tipos/${ensaioAberto.id}`, { nome: "Da Supervisão" })).status === 403, "a Supervisão não renomeia tipo");
     const arquiva = await asAdmin("PATCH", `/escalas/tipos/${ensaioAberto.id}`, { active: false });

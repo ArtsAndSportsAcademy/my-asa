@@ -9,12 +9,12 @@ type Exec = typeof db;
 
 /** Os sete tipos da planilha de papel. `chave` é também a cor do tipo (as sete primeiras da lista de cores). */
 export const TIPOS_PRONTOS: { chave: CorDeTipo; nome: string }[] = [
-  { chave: "gelo", nome: "Treinos no gelo" },
-  { chave: "ensaio", nome: "Ensaios e preparação" },
-  { chave: "show", nome: "Shows e teatro" },
-  { chave: "inter", nome: "Interações e personagens" },
+  { chave: "gelo", nome: "Treinos e aulas" },
+  { chave: "ensaio", nome: "Ensaio e preparação" },
+  { chave: "show", nome: "Shows" },
+  { chave: "inter", nome: "Interação e personagem" },
   { chave: "prod", nome: "Produção e apoio" },
-  { chave: "pausa", nome: "Pausas e almoço" },
+  { chave: "pausa", nome: "Almoço" },
   { chave: "outra", nome: "Outras atividades" },
 ];
 
