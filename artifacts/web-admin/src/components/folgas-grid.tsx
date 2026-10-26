@@ -534,7 +534,7 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
                 </tr>
               )}
               <tr className={rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
-                <td title={editable(m.userId) ? undefined : "Só a Administração altera a folga desta pessoa"} className={`sticky left-0 z-10 border-r border-b border-border px-3 py-1.5 font-medium truncate max-w-[200px] ${
+                <td title={editable(m.userId) ? m.name : "Só a Administração altera a folga desta pessoa"} className={`sticky left-0 z-10 border-r border-b border-border px-3 py-1.5 font-medium ${m.name.endsWith("(desligado)") ? "whitespace-normal break-words leading-tight" : "truncate"} max-w-[200px] ${
                   rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50"
                 }`}>
                   {!editable(m.userId) && <Lock className="inline w-3 h-3 mr-1 text-muted-foreground" aria-label="Só a Administração altera" />}{m.name}
