@@ -92,6 +92,7 @@ export async function verifyBlock6HttpRoutes(c: Input) {
     const adminOnly: [string, string, object?][] = [
       ["POST", "/areas", { name: `${tag}_denied` }], ["PATCH", `/areas/${areaId}`, { name: tag }], ["DELETE", `/areas/${areaId}`],
       ["POST", "/locations", { name: `${tag}_denied` }], ["PATCH", `/locations/${locationId}`, { name: tag }], ["DELETE", `/locations/${locationId}`],
+      ["PUT", `/locations/${locationId}/virada-do-dia`, { padrao: true }],
       ["PUT", `/areas/${areaId}/locations/${locationId}/supervisor`, { supervisorId: c.supervisorId }],
       ["DELETE", `/areas/${areaId}/locations/${locationId}/supervisor`],
       ["PUT", `/operations/${c.operationId}/locations`, { locationIds: [c.snowId, c.acquaId] }],
@@ -202,6 +203,9 @@ export async function verifyBlock6HttpRoutes(c: Input) {
     await call("DELETE", `/characters/${characterId}`, "ADMIN", 200);
     await call("DELETE", `/show-books/${c.showId}/sessions/${sessionId}`, "SUPERVISOR_A", 200);
     for (const profile of ["ADMIN", "SUPERVISOR_B"]) await call("DELETE", `/show-books/${c.showId}/sessions/${sessionId}`, profile, 200);
+    // Hora em que a Escala do local passa a abrir no dia seguinte (Etapa 1): só a Administração muda; valor que não é hora é 400 com frase.
+    await call("PUT", `/locations/${locationId}/virada-do-dia`, "ADMIN", 400, { abreAmanhaAPartirDe: "25:99", voltaAHojeAPartirDe: "05:00" });
+    await call("PUT", `/locations/${locationId}/virada-do-dia`, "ADMIN", 200, { abreAmanhaAPartirDe: "19:00", voltaAHojeAPartirDe: "06:00" });
     await call("DELETE", `/locations/${locationId}`, "ADMIN", 200, { reason: "Encerramento" });
     await call("PATCH", `/locations/${locationId}`, "ADMIN", 400, { closed: false, reason: "  " });
     await call("PATCH", `/locations/${locationId}`, "ADMIN", 200, { closed: false, reason: "Retomada da operação" });
