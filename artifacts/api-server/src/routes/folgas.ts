@@ -17,6 +17,7 @@ import { groupCoveredOperationIds } from "./groups.js";
 import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
 import { writeHistoryEvent } from "../lib/history-helper.js";
+import { nomeNaLista } from "../lib/nome-na-lista.js";
 import { enqueueNotification } from "../services/undo.js";
 import { avisarRepublicacaoFolgas, chaveMesFolgas, pessoasComFolgaAlterada, ultimoRetratoFolgas, type FolgaPublicada } from "../services/folgas-publicadas.js";
 import { operationalDate } from "../lib/operational-date.js";
@@ -316,6 +317,8 @@ router.get("/folgas", requireAuth, requireOrganization, async (req, res) => {
         id:            folgasTable.id,
         userId:        folgasTable.userId,
         userName:      usersTable.name,
+        userFullName:  usersTable.fullName,
+        userPersonStatus: usersTable.personStatus,
         operationId:   folgasTable.operationId,
         operationName: operationsTable.name,
         type:          folgasTable.type,
@@ -344,7 +347,7 @@ router.get("/folgas", requireAuth, requireOrganization, async (req, res) => {
     }
 
     log.info({ count: visibleRows.length, role: user.role }, "folgas listadas");
-    res.json({ folgas: visibleRows });
+    res.json({ folgas: visibleRows.map(({ userFullName, userPersonStatus, ...row }) => ({ ...row, userName: nomeNaLista({ name: row.userName, fullName: userFullName, personStatus: userPersonStatus }) })) });
   } catch (err) {
     log.error({ err }, "erro ao listar folgas");
     res.status(500).json({ error: "Internal Server Error" });
@@ -405,6 +408,8 @@ router.get("/folgas/grid", requireAuth, requireOrganization, async (req, res) =>
       .selectDistinct({
         userId:         userRolesTable.userId,
         name:           usersTable.name,
+        fullName:       usersTable.fullName,
+        personStatus:   usersTable.personStatus,
         specialization: usersTable.specialization,
         areaId:         usersTable.areaId,
         defaultLocationId: usersTable.defaultLocationId,
@@ -530,7 +535,7 @@ router.get("/folgas/grid", requireAuth, requireOrganization, async (req, res) =>
         if (type in totals) totals[type]++;
       }
       const g = groupByUser.get(m.userId) ?? null;
-      return { userId: m.userId, name: m.name, days, totals, groupId: g?.id ?? null, groupName: g?.name ?? null, editable: canEdit(m) };
+      return { userId: m.userId, name: nomeNaLista(m), days, totals, groupId: g?.id ?? null, groupName: g?.name ?? null, editable: canEdit(m) };
     });
 
     log.info({ operationId, yr, mo, members: result.length }, "grade de folgas gerada");

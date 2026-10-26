@@ -51,11 +51,14 @@ function useCycleDirectory(review: boolean, role: Role) {
     let cancelled = false;
     setFalhou(false);
     Promise.all([
-      customFetch<{ users?: { id: string; name: string; areaName?: string | null }[] }>("/api/users").catch(() => { if (!cancelled) setFalhou(true); return { users: [] }; }),
+      customFetch<{ users?: { id: string; name: string; fullName?: string | null; displayName?: string | null; personStatus?: string | null; areaName?: string | null }[] }>("/api/users").catch(() => { if (!cancelled) setFalhou(true); return { users: [] }; }),
       role === "mem" ? Promise.resolve({ locais: [] }) : customFetch<{ locais: { id: string; name: string }[] }>("/api/escalas/locais").catch(() => { if (!cancelled) setFalhou(true); return { locais: [] }; }),
     ]).then(([users, locais]) => {
       if (cancelled) return;
-      setPeople((users.users ?? []).map((user) => ({ id: user.id, name: user.name, area: user.areaName ?? "Sem área" })));
+      // Pessoa desligada com o primeiro nome igual ao de outra ("Pessoa", "Pessoa") ficava indistinguível nas listas: ela
+      // aparece com o nome completo e a marca "(desligado)".
+      const desligada = (user: { personStatus?: string | null }) => user.personStatus === "LEFT" || user.personStatus === "ARCHIVED";
+      setPeople((users.users ?? []).map((user) => ({ id: user.id, name: desligada(user) ? `${user.fullName ?? user.displayName ?? user.name} (desligado)` : user.name, area: user.areaName ?? "Sem área" })));
       setLocations(locais.locais.map((local) => ({ id: local.id, name: local.name })));
       setReady(true);
     });

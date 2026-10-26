@@ -9,6 +9,7 @@ import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { canSupervisorAccessPerson, listAreaLocalScopes } from "../services/area-local-scope.js";
 import { comoPublicada, montarEscalaDoDia, operationForLocation } from "../services/escala-dia.js";
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
+import { nomeNaLista } from "../lib/nome-na-lista.js";
 import { exigirUuidNosParametros } from "../lib/uuid.js";
 import { isUniqueViolation } from "../lib/erro-de-banco.js";
 import { enqueueNotification } from "../services/undo.js";
@@ -92,7 +93,7 @@ router.post("/leave-regimes", requireAuth, requireOrganization, async (req, res)
 
 router.get("/leave-requests", requireAuth, requireOrganization, async (req, res) => {
   const actor = req.user!, from = typeof req.query.from === "string" ? req.query.from : operationalDate(), to = typeof req.query.to === "string" ? req.query.to : from;
-  const rows = await db.select({ request: leaveRequestsTable, userName: usersTable.name, fullName: usersTable.fullName, areaName: areasTable.name }).from(leaveRequestsTable).innerJoin(usersTable, eq(leaveRequestsTable.userId, usersTable.id)).leftJoin(areasTable, eq(leaveRequestsTable.areaId, areasTable.id)).where(and(eq(leaveRequestsTable.organizationId, actor.organizationId), lte(leaveRequestsTable.startDate, to), gte(leaveRequestsTable.endDate, from))).orderBy(desc(leaveRequestsTable.createdAt));
+  const rows = await db.select({ request: leaveRequestsTable, userName: usersTable.name, fullName: usersTable.fullName, personStatus: usersTable.personStatus, areaName: areasTable.name }).from(leaveRequestsTable).innerJoin(usersTable, eq(leaveRequestsTable.userId, usersTable.id)).leftJoin(areasTable, eq(leaveRequestsTable.areaId, areasTable.id)).where(and(eq(leaveRequestsTable.organizationId, actor.organizationId), lte(leaveRequestsTable.startDate, to), gte(leaveRequestsTable.endDate, from))).orderBy(desc(leaveRequestsTable.createdAt));
   const visible = [] as typeof rows;
   // O colega de uma troca vê o pedido enquanto a troca depende dele (ou depois de resolvida), nunca um pedido cancelado.
   const ehColegaDaTroca = (row: (typeof rows)[number]) => row.request.peerId === actor.sub && row.request.userId !== actor.sub && !isAdmin(actor.role) && row.request.status !== "CANCELLED";
@@ -140,7 +141,7 @@ router.get("/leave-requests", requireAuth, requireOrganization, async (req, res)
       dias: row.request.alternativeDates, souEu: row.request.userId === actor.sub,
       estado: row.request.alternativeAccepted === null ? "ESPERANDO" : row.request.alternativeAccepted ? "ACEITA" : "RECUSADA", motivoRecusa: row.request.alternativeReason,
     } : null;
-    saida.push({ ...row.request, ...(souSoOColega ? { reason: null } : {}), userName: row.userName ?? row.fullName, areaName: row.areaName, ...(jaMarcada.has(row.request.id) ? { jaTemFolga: true } : {}), ...(destino ? { destino: { ...destino, area: row.areaName } } : {}), ...(troca ? { troca } : {}), ...(alternativa ? { alternativa } : {}) });
+    saida.push({ ...row.request, ...(souSoOColega ? { reason: null } : {}), userName: nomeNaLista({ name: row.userName ?? row.fullName ?? "", fullName: row.fullName, personStatus: row.personStatus }), areaName: row.areaName, ...(jaMarcada.has(row.request.id) ? { jaTemFolga: true } : {}), ...(destino ? { destino: { ...destino, area: row.areaName } } : {}), ...(troca ? { troca } : {}), ...(alternativa ? { alternativa } : {}) });
   }
   res.json({ requests: saida });
 });
