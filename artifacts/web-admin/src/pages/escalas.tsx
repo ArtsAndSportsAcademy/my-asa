@@ -21,7 +21,6 @@ import "@/components/escala/escala-tokens.css";
 import { diaQueAEscalaAbre, type ViradaDoDia } from "@/lib/dia-da-escala";
 import { SaiuDialog, type PreviaDaSaida, type SaiuApi } from "@/components/escala/saiu-dialog";
 import { AtividadeLoteDialog } from "@/components/escala/atividade-lote-dialog";
-import { LivrosDoDia } from "@/components/escala/livros-do-dia";
 import { PublicarDialog } from "@/components/escala/publicar-dialog";
 import { ShowLinha } from "@/components/escala/show-linha";
 import "./shows.css"; // a janela do Ajustar usa .shows-dialog: sem isto ela não rola e o rodapé some quando a Escala abre direto
@@ -568,9 +567,10 @@ function useTelefone() {
 
 /* ---------- aba Escala: grade pessoas × horários ---------- */
 function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario, onRemoveManual, onEditManual, onFolgaResolvida, saiu }: { saiu?: SaiuApi; review: boolean; dia: Dia; canEdit: boolean; editableAreaIds: string[] | null; onHorario: (bloco: Bloco, pessoaId: string, horario: { inicio: string; fim: string | null; motivo?: string } | null) => Promise<string | null>; onAdjust: (bloco: Bloco, mudancas: Mudanca[], motivo?: string) => Promise<void>; onRemoveManual?: (allocationIds: string[]) => Promise<void>; onEditManual?: (bloco: Bloco) => void; onFolgaResolvida?: (userId: string) => Promise<void> }) {
-  const [view, setView] = useState<"pessoa" | "atividade">(() => typeof window !== "undefined" && window.matchMedia?.("(max-width: 640px)").matches ? "atividade" : "pessoa");
+  const [view, setView] = useState<"pessoa" | "atividade">("atividade");
   const [team, setTeam] = useState("todos");
   const [busca, setBusca] = useState("");
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [soExcecoes, setSoExcecoes] = useState(false);
   const [selecionada, setSelecionada] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ bloco: Bloco; pessoa: Pessoa; rect: DOMRect } | null>(null);
@@ -656,20 +656,12 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
   const etiquetaDaVisao = telefone ? { pessoa: "Por pessoa", atividade: "Por atividade" } : { pessoa: "Por pessoa", atividade: "Por atividade" };
 
   return <div style={css("display:flex;flex-direction:column;gap:12px")}>
-    <ResumoDoDia data={dia.date} pessoas={dia.pessoas} blocos={dia.blocos} blocosDe={blocosDe} pessoasComChoque={new Set(conflitos.map((c) => c.pessoaId)).size} motivoDaFolga={motivoDaFolga} soExcecoes={soExcecoes} onSoExcecoes={setSoExcecoes} onIrParaAtencao={irParaAtencao}/>
-
-    <AtencaoDoDia dia={dia} vazios={vazios} grupos={gruposDeConflito} canEdit={canEdit} editableAreaIds={editableAreaIds} tirando={tirando}
-      onTirar={(bloco, pessoaId) => { const pessoa = dia.pessoas.find((p) => p.id === pessoaId); return pessoa ? tirarDoBloco(bloco, pessoa) : Promise.resolve(); }}
-      onMudarHorario={(pessoaId, nome, bloco, outro) => setMudandoHorario({ pessoaId, nome, bloco, outro })}
-      onVoltarHorario={(bloco, pessoaId) => void onHorario({ ...bloco, key: bloco.horarioDela!.chaveOriginal }, pessoaId, null)}
-      onAjustarVazio={setAjustando} onFolgaResolvida={onFolgaResolvida}/>
-
-    <LivrosDoDia dia={dia} review={review}/>
-
     <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:9px")}>
       <div style={css("display:flex;align-items:center;gap:3px;border:1px solid var(--asa-line);border-radius:10px;padding:3px;background:var(--asa-fade)")}>
         {(["pessoa", "atividade"] as const).map((key) => <button key={key} type="button" className="esc-hit" aria-pressed={view === key} onClick={() => setView(key)} style={css(botaoDeVisao(view === key))}>{etiquetaDaVisao[key]}</button>)}
       </div>
+      {telefone && <button type="button" className="esc-hit" aria-expanded={filtrosAbertos} onClick={() => setFiltrosAbertos((v) => !v)} style={css("min-height:44px;border-radius:10px;padding:0 14px;font:700 13px Manrope,sans-serif;cursor:pointer;border:1px solid var(--asa-line);background:" + (busca.trim() || team !== "todos" ? "var(--asa-chip-on)" : "#fff") + ";color:var(--asa-ink-dark)")}>{busca.trim() || team !== "todos" ? "Filtrar · ligado" : "Filtrar"}</button>}
+      <div className="ge-filtros" data-aberto={!telefone || filtrosAbertos}>
       <input type="search" value={busca} onChange={(e) => { setBusca(e.target.value); const unico = e.target.value.trim() ? trabalham.filter((p) => p.name.toLocaleLowerCase("pt-BR").includes(e.target.value.trim().toLocaleLowerCase("pt-BR"))) : []; if (unico.length === 1) setSelecionada(unico[0]!.id); }} placeholder="Buscar pessoa" aria-label="Buscar pessoa na escala"
         style={css("flex:1 1 180px;min-width:140px;min-height:44px;border:1px solid var(--asa-line);border-radius:999px;padding:0 16px;font:600 13px Manrope,sans-serif;color:var(--asa-ink-dark);background:#fff")}/>
       {dia.areas.length > 1 && <div style={css("display:flex;flex-wrap:wrap;gap:6px")}>
@@ -678,16 +670,17 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
       </div>}
       <span style={css("flex:1")}/>
       <span style={css("font-size:12px;color:var(--asa-label)")}>{`${cols.length} de ${trabalham.length} pessoas · ${dia.location.name}`}</span>
+      </div>
     </div>
 
     {achadasFora.map((p) => <div key={`fora-${p.id}`} role="status" style={css("font-size:12.5px;color:var(--asa-ink-medium);background:var(--asa-fade);border:1px solid var(--asa-line);border-radius:12px;padding:9px 13px")}>{`${p.name} está de ${motivoDaFolga(p).toLocaleLowerCase("pt-BR")} ${quandoDoDia(dia.date)} e não aparece na grade.`}</div>)}
     {termo && !achadas.length && <div role="status" style={css("font-size:12.5px;color:var(--asa-label);padding:2px 4px")}>{`Ninguém com "${busca.trim()}" no nome.`}</div>}
 
-    {view === "pessoa" && !telefone && <div className="ge-legenda" aria-label="Cores por tipo de atividade">
-      {legenda.map((t) => <span key={t.id} style={{ "--bg": `var(--esc-t-${t.cor}-bg)`, "--fg": `var(--esc-t-${t.cor}-fg)` } as CSSProperties}>{t.nome}</span>)}
-      <span className="ge-leg-estado"><i style={{ boxShadow: "inset 0 0 0 2px var(--esc-choque)" }}/>choque de horário</span>
-      <span className="ge-leg-estado"><i style={{ boxShadow: "inset 0 0 0 2px var(--esc-excecao)" }}/>exceção</span>
-    </div>}
+    <AtencaoDoDia dia={dia} vazios={vazios} grupos={gruposDeConflito} canEdit={canEdit} editableAreaIds={editableAreaIds} tirando={tirando}
+      onTirar={(bloco, pessoaId) => { const pessoa = dia.pessoas.find((p) => p.id === pessoaId); return pessoa ? tirarDoBloco(bloco, pessoa) : Promise.resolve(); }}
+      onMudarHorario={(pessoaId, nome, bloco, outro) => setMudandoHorario({ pessoaId, nome, bloco, outro })}
+      onVoltarHorario={(bloco, pessoaId) => void onHorario({ ...bloco, key: bloco.horarioDela!.chaveOriginal }, pessoaId, null)}
+      onAjustarVazio={setAjustando} onFolgaResolvida={onFolgaResolvida}/>
 
     {view === "pessoa" && telefone ? <ul className="esc-cartoes" aria-label="Escala por pessoa">
       {cols.filter((p) => !buscaIds || buscaIds.has(p.id)).map((p) => {
@@ -700,7 +693,6 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
               <strong style={css("font-size:13.5px;color:var(--asa-ink-dark);overflow-wrap:anywhere")}>{p.name}</strong>
               <span style={css("font-size:12px;color:var(--asa-label)")}>{`${p.areaName ?? "sem área"} · ${plural(lista.length, "bloco", "blocos")}`}{p.chamadaNaFolga ? " · chamado na folga" : ""}{mexidoPor(p.id) ? ` · ajustado por ${mexidoPor(p.id)}` : ""}</span>
             </div>
-                {b.encurtado && <span style={css("font-size:12px;color:var(--asa-label)")}>{textoDoEncurtado(b)}</span>}
           </header>
           {lista.length ? <ul className="esc-cartao-blocos">
             {lista.filter((b) => !soExcecoes || ehExcecao(b) || temChoque(p, b)).map((b) => <li key={b.key} className="esc-cartao-bloco">
@@ -708,6 +700,7 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
               <div style={css("flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px")}>
                 {blockEl(b, "white-space:normal;max-width:100%;" + (temChoque(p, b) ? "box-shadow:inset 0 0 0 2px var(--esc-choque);" : ehExcecao(b) ? "box-shadow:inset 0 0 0 2px var(--esc-excecao);" : ""), true)}
                 {temChoque(p, b) && <span style={css("font-size:12px;font-weight:700;color:var(--esc-choque)")}>Cruza com outro bloco dela</span>}
+                {b.encurtado && <span style={css("font-size:12px;color:var(--asa-label)")}>{textoDoEncurtado(b)}</span>}
                 {b.horarioDela && <span style={css("font-size:12px;color:var(--asa-label)")}>{`Horário só desta pessoa · era ${faixa(b.horarioDela)}`}</span>}
                 {pode && b.horarioDela && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => void onHorario({ ...b, key: b.horarioDela!.chaveOriginal }, p.id, null)} aria-label={`Voltar ${p.name} ao horário normal de ${textoDoBloco(b)}`}>Voltar ao normal</button>}
                 {!b.horarioDela && b.regra !== "ninguem" && <button type="button" className="esc-cell-adjust esc-hit" style={{ minHeight: 44 }} onClick={(e) => setMenu({ bloco: b, pessoa: p, rect: e.currentTarget.getBoundingClientRect() })} aria-label={`Ações de ${textoDoBloco(b)} para ${p.name}`}>Mexer</button>}
@@ -721,7 +714,7 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
       ? <GradePessoa colunas={cols} blocosDe={blocosDe} temChoque={temChoque} tipos={dia.tipos} mexidoPor={mexidoPor} soExcecoes={soExcecoes} busca={buscaIds} selecionada={selecionada}
           onEscolherPessoa={(id) => setSelecionada((atual) => (atual === id ? null : id))} onTocarBloco={(bloco, pessoa, el) => setMenu({ bloco, pessoa, rect: el.getBoundingClientRect() })}/>
       : <div style={css("border:1px solid var(--asa-line-soft);border-radius:12px;overflow:hidden;background:#fff;")}>
-        <table className="esc-tab-atividade" style={css("border-collapse:separate;border-spacing:0;width:100%;font-size:12.5px")}>
+        <table className="esc-tab-atividade" style={css("border-collapse:separate;border-spacing:0;width:100%;font-size:15px")}>
           <thead><tr>
             <th style={css(MONO_TH)}>Horário</th>
             <th style={css(MONO_TH)}>Atividade</th>
@@ -734,18 +727,17 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
               const resumo = resumirQuem(who, team === "todos" ? pessoasDoDia : pessoasDoDia.filter((p) => p.areaId === team));
               const resumido = resumo.tipo === "todos" || resumo.tipo === "area";
               return <tr key={b.key}>
-                <td style={css("border-right:1px solid var(--asa-line-soft);border-bottom:1px solid var(--asa-purple-airy);padding:7px 11px;vertical-align:middle;background:var(--asa-card-faint);width:130px;")}>
-                  {gi === 0 && <div style={css("display:flex;flex-direction:column;gap:1px")}><span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--asa-ink-medium)")}>{faixa(f)}</span></div>}
+                <td style={css("border-right:1px solid var(--asa-line-soft);border-bottom:1px solid var(--asa-purple-airy);padding:12px 14px;vertical-align:middle;background:var(--asa-card-faint);width:150px;")}>
+                  {gi === 0 && <div style={css("display:flex;flex-direction:column;gap:1px")}><span style={css("font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--asa-ink-medium)")}>{faixa(f)}</span></div>}
                 </td>
-                <td style={css("border-bottom:1px solid var(--asa-purple-airy);border-right:1px solid var(--asa-purple-lift);padding:6px 9px;vertical-align:middle;width:210px;")}>{blockEl(b, "display:inline-flex;")}</td>
-                <td style={css("border-bottom:1px solid var(--asa-purple-airy);padding:6px 9px;vertical-align:middle;")}>
-                  <div style={css("display:flex;flex-wrap:wrap;gap:5px;align-items:center")}>
-                    {b.flexivel ? <span style={css("font-size:12.5px;font-weight:600;color:var(--asa-ink-medium)")}>{`Cada pessoa cumpre dentro da janela, sem horário fixo · ${plural(who.length, "pessoa", "pessoas")}`}</span>
+                <td style={css("border-bottom:1px solid var(--asa-purple-airy);border-right:1px solid var(--asa-purple-lift);padding:10px 12px;vertical-align:middle;width:260px;")}>{blockEl(b, "display:inline-flex;font-size:15px;padding:9px 13px;border-radius:9px;")}</td>
+                <td style={css("border-bottom:1px solid var(--asa-purple-airy);padding:10px 12px;vertical-align:middle;")}>
+                  <div style={css("display:flex;flex-wrap:wrap;gap:7px;align-items:center")}>
+                    {b.flexivel ? <span style={css("font-size:14px;font-weight:600;color:var(--asa-ink-medium)")}>{`Cada pessoa cumpre dentro da janela, sem horário fixo · ${plural(who.length, "pessoa", "pessoas")}`}</span>
                     : b.regra === "livro" ? <ShowLinha bloco={b} data={dia.date} nomeDe={personName} pessoasDoDia={pessoasDoDia}/> : <>
                     {resumido
                       ? <QuemResumido resumo={resumo}/>
-                      : who.map((id) => <span key={id} style={css("display:inline-flex;align-items:center;gap:5px;border:1px solid var(--asa-line);background:#fff;border-radius:999px;padding:3px 10px 3px 4px;font-size:12px;font-weight:600;color:var(--asa-ink-medium);")}>
-                    {b.encurtado && <span style={css("font-size:12px;color:var(--asa-label)")}>{`${textoDoEncurtado(b)} (o bloco de todos vai das ${b.encurtado.original.inicio}${b.encurtado.original.fim ? ` às ${b.encurtado.original.fim}` : ""}).`}</span>}
+                      : who.map((id) => <span key={id} style={css("display:inline-flex;align-items:center;gap:5px;border:1px solid var(--asa-line);background:#fff;border-radius:999px;padding:5px 13px 5px 5px;font-size:14px;font-weight:600;color:var(--asa-ink-medium);")}>
                         <span style={css("width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--asa-violet),var(--asa-indigo));")}>{initials(personName(id))[0]}</span>
                         <span>{personName(id)}</span>
                       </span>)}
@@ -753,6 +745,7 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
                       : !resumido && <span style={css("font-size:12px;color:var(--asa-label);margin-left:2px")}>{plural(who.length, "pessoa", "pessoas")}</span>)}
                     </>}
                     {b.cedeu && b.cedeu.length > 0 && <span style={css("font-size:12px;color:var(--asa-label)")}>{`Saíram daqui por ter atividade específica no mesmo horário: ${b.cedeu.length <= 4 ? b.cedeu.map((c) => `${personName(c.userId)} (${c.para})`).join(", ") : plural(b.cedeu.length, "pessoa", "pessoas")}.`}</span>}
+                    {b.encurtado && <span style={css("font-size:12px;color:var(--asa-label)")}>{`${textoDoEncurtado(b)} (o bloco de todos vai das ${b.encurtado.original.inicio}${b.encurtado.original.fim ? ` às ${b.encurtado.original.fim}` : ""}).`}</span>}
                     {b.horarioDela && <span style={css("font-size:12px;color:var(--asa-label)")}>{`Horário só desta pessoa · era ${faixa(b.horarioDela)}`}</span>}
                     {canEdit && b.horarioDela && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => void onHorario({ ...b, key: b.horarioDela!.chaveOriginal }, b.pessoaIds[0]!, null)}>Voltar ao normal</button>}
                     {canEdit && !b.horarioDela && b.regra !== "ninguem" && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setAjustando(b)}>Ajustar</button>}
@@ -766,6 +759,17 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
           </tbody>
         </table>
       </div>}
+
+    {view === "pessoa" && !telefone && <div className="ge-legenda" aria-label="Cores por tipo de atividade">
+      {legenda.map((t) => <span key={t.id} style={{ "--bg": `var(--esc-t-${t.cor}-bg)`, "--fg": `var(--esc-t-${t.cor}-fg)` } as CSSProperties}>{t.nome}</span>)}
+      <span className="ge-leg-estado"><i style={{ boxShadow: "inset 0 0 0 2px var(--esc-choque)" }}/>choque de horário</span>
+      <span className="ge-leg-estado"><i style={{ boxShadow: "inset 0 0 0 2px var(--esc-excecao)" }}/>exceção</span>
+    </div>}
+
+    <div className="ge-depois">
+    <ResumoDoDia data={dia.date} pessoas={dia.pessoas} blocos={dia.blocos} blocosDe={blocosDe} pessoasComChoque={new Set(conflitos.map((c) => c.pessoaId)).size} motivoDaFolga={motivoDaFolga} soExcecoes={soExcecoes} onSoExcecoes={setSoExcecoes} onIrParaAtencao={irParaAtencao}/>
+
+    </div>
 
     {pessoaSelecionada && <section style={css("display:flex;flex-direction:column;gap:8px;background:#fff;border:1px solid var(--asa-line);border-radius:14px;padding:12px 14px")} aria-label={`Dia de ${pessoaSelecionada.name}`}>
       <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:8px")}>
@@ -1214,11 +1218,11 @@ function MinhaEscalaLocal({ minha, date, onHoje, onConfirm, saving }: { minha: M
         {/* No telefone a coluna do meio não pode encolher até sobrar uma palavra por linha. */}
         <div style={css("display:flex;flex-direction:column;gap:3px;flex:1 1 150px;min-width:150px")}>
           <span style={css("font-size:14px;font-weight:600")}>{textoDoBloco(b)}</span>
+          {b.encurtado && <span style={css("font-size:12px;color:var(--asa-label);text-wrap:pretty")}>{textoDoEncurtado(b)}</span>}
           <span style={css("font-size:12px;color:var(--asa-label);text-wrap:pretty")}>{`${minha.location?.name ?? ""}${b.regra === "livro" ? " · Livro do Dia" + (b.dailyBookStatus === "DRAFT" ? " em preparação" : " publicado") : ""}`}</span>
         </div>
         {/* No telefone estes dois ficam juntos na direita, sem espremer o nome do bloco. */}
         <span style={css("display:flex;align-items:center;gap:8px;flex:none;white-space:nowrap")}>
-          {b.encurtado && <span style={css("font-size:12px;color:var(--asa-label);text-wrap:pretty")}>{textoDoEncurtado(b)}</span>}
           {livro && <span style={css("flex:none;font-size:12px;font-weight:700;color:var(--asa-purple);white-space:nowrap")}>abrir Livro do Dia →</span>}
           {b.regra === "livro" && <span style={css("flex:none;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;border-radius:6px;background:" + tone.bg + ";color:" + tone.fg + ";")}>show</span>}
         </span>

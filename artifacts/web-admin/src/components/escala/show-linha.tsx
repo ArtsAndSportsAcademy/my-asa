@@ -21,7 +21,7 @@ export function ShowLinha({ bloco, data, nomeDe, pessoasDoDia }: { bloco: Bloco;
   const semNinguem = vagas.filter((v) => !v.userId).length;
 
   if (resumo.tipo === "show-grande") {
-    return <details className="ge-show" style={css("font-size:12.5px;color:var(--asa-ink-medium);min-width:0")}>
+    return <details className="ge-show" style={css("font-size:14px;color:var(--asa-ink-medium);min-width:0")}>
       <summary style={css("cursor:pointer;list-style:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;min-height:44px")}>
         <strong style={css("color:var(--asa-ink-dark)")}>{resumo.rotulo}</strong>
         {semNinguem > 0 && <span style={css("color:var(--esc-choque);font-weight:700")}>{plural(semNinguem, "vaga sem ninguém", "vagas sem ninguém")}</span>}
@@ -37,7 +37,7 @@ export function ShowLinha({ bloco, data, nomeDe, pessoasDoDia }: { bloco: Bloco;
   if (vagas.length > 0 && vagas.length <= LIMITE_POSICOES_SHOW_PEQUENO) {
     const comVaga = new Set(vagas.map((v) => v.userId).filter((id): id is string => Boolean(id)));
     const semVaga = [...new Set(bloco.pessoaIds)].filter((id) => !comVaga.has(id)).map(nomeDe).sort((a, b) => a.localeCompare(b, "pt-BR"));
-    return <ul style={css("margin:0;padding:4px 0;list-style:none;display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--asa-ink-medium);min-width:0")}>
+    return <ul style={css("margin:0;padding:4px 0;list-style:none;display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--asa-ink-medium);min-width:0")}>
       {vagas.map((v) => <li key={v.assignmentId} style={css("display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline")}>
         <span style={css("color:var(--asa-label);overflow-wrap:anywhere")}>{v.personagem}:</span>
         {v.userId ? <strong style={css("color:var(--asa-ink-dark)")}>{nomeDe(v.userId)}</strong> : <strong style={css("color:var(--esc-choque)")}>vaga sem ninguém</strong>}

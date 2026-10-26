@@ -1,6 +1,7 @@
 /**
- * "Conferido" no Livro do Dia (25/10/2026): o cartão da Escala mostra o estado; quem confere é o responsável pelo show (ou a Administração);
- * a marca cai sozinha quando OUTRA pessoa muda quem faz o quê, e fica quando quem mexeu foi quem conferiu. Contra PostgreSQL real de teste.
+ * O "Conferido" saiu do app (26/10/2026): as rotas de conferir não existem mais e nenhuma resposta traz marca de conferência. O cartão
+ * dos Livros do dia continua servindo à janela de publicar (vagas sem ninguém, resumo, novidades), com o mesmo recorte de quem vê.
+ * Contra PostgreSQL real de teste.
  */
 import http from "node:http";
 import { and, eq, inArray, or } from "drizzle-orm";
@@ -19,7 +20,7 @@ function assert(condition: boolean, message: string) {
   else { failures.push(message); console.error(`  ✗ ${message}`); }
 }
 
-type Cartao = { id: string; conferido: boolean; conferidoPor: string | null; conferenciaCaiu: { por: string | null } | null; podeConferir: boolean; vagas: number; vagasSemPessoa: number; responsavel: { id: string } | null };
+type Cartao = { id: string; conferido?: unknown; conferidoPor?: unknown; conferenciaCaiu?: unknown; podeConferir?: unknown; vagas: number; vagasSemPessoa: number; responsavel: { id: string } | null };
 
 async function run() {
   const tag = `conferido_${Date.now()}`;
@@ -80,52 +81,30 @@ async function run() {
     // 1 · Quem vê o cartão: Administração, Direção (só lê) e o responsável; a outra Supervisão e o Elenco não.
     const doResp = await cartoes(asResp);
     assert(gen.status === 201 && doResp.length === 1 && doResp[0]!.id === bookId, "o responsável vê o cartão do Livro do dia");
-    assert(doResp[0]!.conferido === false && doResp[0]!.podeConferir === true && doResp[0]!.vagas === 1 && doResp[0]!.vagasSemPessoa === 0, "o Livro nasce sem conferência, com 1 vaga preenchida");
+    assert(doResp[0]!.vagas === 1 && doResp[0]!.vagasSemPessoa === 0, "o cartão diz 1 vaga preenchida");
     assert((await cartoes(asAdmin)).length === 1, "a Administração vê o cartão");
-    const daDirecao = await cartoes(asDir);
-    assert(daDirecao.length === 1 && daDirecao[0]!.podeConferir === false, "a Direção vê o cartão, mas não pode conferir");
+    assert((await cartoes(asDir)).length === 1, "a Direção vê o cartão (só lê)");
     assert((await cartoes(asOutra)).length === 0, "com responsável definido, a outra Supervisão não vê o cartão");
     assert((await cartoes(asElenco)).length === 0, "o Elenco não vê cartão");
     const semLocal = await asResp(`/daily-book/cartoes?date=${date}`);
     assert(semLocal.status === 400, "sem o local, o pedido responde 400 com frase");
 
-    // 2 · Quem não é responsável não confere, e a recusa explica.
-    const outraTenta = await asOutra(`/daily-book/${bookId}/conferir`, { method: "POST" });
-    const outraCorpo = await outraTenta.json() as { message?: string };
-    assert(outraTenta.status === 403 && /responsável|pessoa responsável/i.test(outraCorpo.message ?? ""), "a Supervisão que não é responsável recebe 403 dizendo que o show tem responsável");
-    assert((await asDir(`/daily-book/${bookId}/conferir`, { method: "POST" })).status === 403, "a Direção não confere");
-    assert((await asElenco(`/daily-book/${bookId}/conferir`, { method: "POST" })).status === 403, "o Elenco não confere");
-
-    // 3 · O responsável confere; o cartão passa a dizer quem.
-    const conferiu = await asResp(`/daily-book/${bookId}/conferir`, { method: "POST" });
-    assert(conferiu.status === 200, "o responsável confere o Livro");
-    const depois = (await cartoes(asResp))[0]!;
-    assert(depois.conferido === true && depois.conferidoPor === resp.name, "o cartão mostra conferido e por quem");
-    const detalhe = await (await asAdmin(`/daily-book/${bookId}`)).json() as { dailyBook: { conferencia: { conferido: boolean } | null; conferredFingerprint?: unknown } };
-    assert(detalhe.dailyBook.conferencia?.conferido === true && !("conferredFingerprint" in detalhe.dailyBook), "o Livro devolve a conferência sem expor o retrato interno");
+    // 2 · Sem "Conferido": nem o cartão nem o Livro trazem marca de conferência, e as rotas antigas não existem.
+    assert(!("conferido" in doResp[0]!) && !("conferenciaCaiu" in doResp[0]!) && !("podeConferir" in doResp[0]!), "o cartão não traz mais marca de conferência");
+    const detalhe = await (await asAdmin(`/daily-book/${bookId}`)).json() as { dailyBook: Record<string, unknown> };
+    assert(!("conferencia" in detalhe.dailyBook) && !("conferredFingerprint" in detalhe.dailyBook) && !("conferredBy" in detalhe.dailyBook), "o Livro não devolve conferência nem o retrato interno");
+    for (const [nome, as] of [["a Administração", asAdmin], ["o responsável", asResp]] as const) {
+      const marcar = await as(`/daily-book/${bookId}/conferir`, { method: "POST" });
+      const tirar = await as(`/daily-book/${bookId}/conferir`, { method: "DELETE" });
+      assert(marcar.status === 404 && tirar.status === 404, `${nome} não encontra mais as rotas de conferir (404)`);
+    }
     const eventos = await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, bookId), eq(historyEventsTable.action, "conferido")));
-    assert(eventos.length === 1, "conferir grava um evento no Registro");
+    assert(eventos.length === 0, "nada de conferido no Registro");
 
-    // 4 · Outra pessoa muda quem faz o papel: a marca cai.
+    // 3 · Trocar a pessoa de um papel segue funcionando para quem opera o Livro (antes carregava o retrato da conferência).
     assert((await trocar(asAdmin, a2.id)) === 200, "a Administração troca a pessoa do papel");
-    const caiu = (await cartoes(asResp))[0]!;
-    assert(caiu.conferido === false && caiu.conferenciaCaiu?.por === resp.name, "a troca de outra pessoa derruba a marca e o cartão diz quem tinha conferido");
-
-    // 5 · Quem conferiu e troca ele mesmo continua com o Livro conferido.
-    assert((await asResp(`/daily-book/${bookId}/conferir`, { method: "POST" })).status === 200, "o responsável confere de novo");
     assert((await trocar(asResp, a1.id)) === 200, "o responsável troca a pessoa do papel");
-    assert((await cartoes(asResp))[0]!.conferido === true, "quem conferiu e trocou ele mesmo continua com o Livro conferido");
-
-    // 6 · Depois da troca dele, a mexida de outra pessoa ainda derruba.
-    assert((await trocar(asAdmin, a2.id)) === 200, "a Administração troca de novo");
-    assert((await cartoes(asResp))[0]!.conferido === false, "depois da troca própria, a mexida de outra pessoa ainda derruba a marca");
-
-    // 7 · Desfazer a conferência; livro executado não confere mais.
-    await asResp(`/daily-book/${bookId}/conferir`, { method: "POST" });
-    assert((await asResp(`/daily-book/${bookId}/conferir`, { method: "DELETE" })).status === 200 && (await cartoes(asResp))[0]!.conferido === false, "desfazer a conferência volta o cartão a 'falta conferir'");
-    assert((await cartoes(asResp))[0]!.conferenciaCaiu === null, "desfeita de propósito, não aparece como 'mudou depois de conferido'");
-    await db.update(dailyBooksTable).set({ status: "EXECUTED" }).where(eq(dailyBooksTable.id, bookId));
-    assert((await asResp(`/daily-book/${bookId}/conferir`, { method: "POST" })).status === 409, "Livro executado não é mais conferido (409 com frase)");
+    assert((await trocar(asOutra, a2.id)) === 403, "a outra Supervisão continua sem poder trocar (403)");
   } finally {
     if (server) { server.closeAllConnections?.(); await new Promise<void>((resolve, reject) => server!.close((error) => error ? reject(error) : resolve())); }
     const changes = await db.select({ id: operationalChangesTable.id }).from(operationalChangesTable).where(inArray(operationalChangesTable.actorId, todos));

@@ -4,8 +4,8 @@ import type { Bloco, Pessoa } from "@/pages/escalas";
 import { ehExcecao, faixa, fimEmMinutos, horaDe, minutosDe, nomesCurtos, resolverTipo, textoDoBloco, toneDoTipo, type TipoDoLocal } from "./tipos";
 import "./escala-tokens.css";
 
-/** Pixels por minuto: 20 minutos ficam com 26 px, o bastante para uma linha de texto de 12 px. */
-const PX = 1.3;
+/** Pixels por minuto: 20 minutos ficam com 40 px, o bastante para uma linha de texto de 14 px (a grade é o centro da tela). */
+const PX = 2;
 const GAP = 3;
 
 type Faixa = { lane: number; n: number };

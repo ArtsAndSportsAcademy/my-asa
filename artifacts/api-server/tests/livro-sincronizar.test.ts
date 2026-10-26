@@ -22,7 +22,7 @@ function assert(condition: boolean, message: string) {
 
 type Posicao = { name: string; isRemoved: boolean; assignments: { userId: string | null; status: string; manual: boolean }[] };
 type Livro = { version: number; status: string; novidadesDoShow: { cenas: number; grupos: number; posicoes: number } | null; scenes: { name: string; isRemoved: boolean; blocks: { isRemoved: boolean; positions: Posicao[] }[] }[] };
-type Cartao = { id: string; showTitle: string; conferido: boolean; vagasSemPessoa: number; novidadesDoShow: { posicoes: number } | null; resumo: { nome: string; posicoes: { nome: string; pessoas: string[]; vazias: number }[] }[] };
+type Cartao = { id: string; showTitle: string; vagasSemPessoa: number; novidadesDoShow: { posicoes: number } | null; resumo: { nome: string; posicoes: { nome: string; pessoas: string[]; vazias: number }[] }[] };
 
 async function run() {
   const tag = `sincronizar_${Date.now()}`;
@@ -81,11 +81,6 @@ async function run() {
     let d1 = await livro(id1);
     assert(nomes(d1).length === 1 && d1.novidadesDoShow?.posicoes === 0 && d1.novidadesDoShow?.cenas === 0, "o dia nasce igual ao Livro do Show, sem novidades");
 
-    // ── "Conferido" de um show não vale para os outros do mesmo dia ──
-    assert((await asResp(`/daily-book/${id1}/conferir`, { method: "POST" })).status === 200, "o responsável confere o primeiro show");
-    const aposConferir = await cartoes();
-    assert(aposConferir.find((c) => c.id === id1)?.conferido === true && aposConferir.find((c) => c.id === id2)?.conferido === false, "conferir um show não confere o outro do mesmo dia");
-
     // ── o show ganha cena, grupo e posições depois; o dia ainda não sabe ──
     const [cena2] = await db.insert(showBookScenesTable).values({ showBookId: s1.show.id, name: "cena_nova", order: 1 }).returning();
     const [grupo2] = await db.insert(showBookBlocksTable).values({ showBookId: s1.show.id, sceneId: cena2!.id, name: "grupo_novo", order: 1 }).returning();
@@ -126,8 +121,7 @@ async function run() {
     const depois = await cartoes();
     const cartao1 = depois.find((c) => c.id === id1)!;
     assert(cartao1.vagasSemPessoa >= 3 && cartao1.novidadesDoShow?.posicoes === 0, "o cartão da Escala passa a mostrar as vagas abertas");
-    assert(cartao1.resumo.some((c) => c.nome === "cena_nova" && c.posicoes.length === 2) && cartao1.resumo.some((c) => c.posicoes.some((p) => p.nome === "patinacao_papel1" && p.pessoas.length === 1)), "o cartão traz o resumo do Livro (cena, posição, quem faz) para conferir sem abrir");
-    assert(cartao1.conferido === false, "mudou quem faz o quê por fora de quem conferiu: o Livro volta a faltar conferir");
+    assert(cartao1.resumo.some((c) => c.nome === "cena_nova" && c.posicoes.length === 2) && cartao1.resumo.some((c) => c.posicoes.some((p) => p.nome === "patinacao_papel1" && p.pessoas.length === 1)), "o cartão traz o resumo do Livro (cena, posição, quem faz) sem abrir o Livro");
 
     // ── repetir não duplica ──
     const repete = await asResp(`/daily-book/${id1}/sincronizar`, { method: "POST", body: JSON.stringify({ expectedVersion: await versao() }) });

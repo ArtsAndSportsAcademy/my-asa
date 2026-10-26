@@ -1,6 +1,5 @@
 import { type CSSProperties, type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
-import { useLocation } from "wouter";
 import { ApiError, customFetch } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useFecharComEsc } from "@/lib/fechar-com-esc";
@@ -23,9 +22,8 @@ type DPosition = { id: string; name: string; minimumCoverage: number; sourceRole
 type DBlock = { id: string; name: string; order: number; sceneId: string | null; sourceBlockId: string | null; isRemoved: boolean; positions: DPosition[] };
 type DScene = { id: string; name: string; order: number; sourceSceneId: string | null; isRemoved: boolean; blocks: DBlock[] };
 type SessionBlockView = { id: string; name: string; startTime: string; endTime: string; order: number; isRemoved: boolean; stale: boolean; staleReason: string | null };
-type DailyBook = { id: string; agendaEventId: string; scaleId: string | null; showBookId: string | null; status: DailyBookStatus; version: number; operationId?: string; operationName?: string; eventTitle?: string; eventDate?: string; eventStartTime?: string | null; locationName?: string | null; locationId?: string | null; showTitle?: string | null; sessionLabel?: string | null; scenes?: DScene[]; sessionBlocks?: SessionBlockView[]; programacaoHoje?: { inicio: string; fim: string | null; rotulo: string }[]; horarios?: string[]; conferencia?: Conferencia | null; novidadesDoShow?: { cenas: number; grupos: number; posicoes: number } | null };
-/** Conferência do elenco (vem só para quem opera o Livro ou a Direção): vale enquanto ninguém mais mudar quem faz cada papel. */
-type Conferencia = { conferido: boolean; por: string | null; em: string | null; caiu: { por: string | null; em: string | null } | null };
+type DailyBook = { id: string; agendaEventId: string; scaleId: string | null; showBookId: string | null; status: DailyBookStatus; version: number; operationId?: string; operationName?: string; eventTitle?: string; eventDate?: string; eventStartTime?: string | null; locationName?: string | null; locationId?: string | null; showTitle?: string | null; sessionLabel?: string | null; scenes?: DScene[]; sessionBlocks?: SessionBlockView[]; programacaoHoje?: { inicio: string; fim: string | null; rotulo: string }[]; horarios?: string[]; novidadesDoShow?: { cenas: number; grupos: number; posicoes: number } | null };
+
 /** Livro de sessão separada leva a hora no nome ("Teatro de Natal · 11:30"); sem isso, duas linhas do mesmo show ficam iguais. */
 const tituloDoLivro = (b: { showTitle?: string | null; eventTitle?: string; sessionLabel?: string | null }) => `${b.showTitle ?? b.eventTitle ?? ""}${b.sessionLabel ? ` · ${b.sessionLabel}` : ""}`;
 type PatternDiffRow = { where: string; padrao: string; hoje: string; why: string };
@@ -282,13 +280,6 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
   // Um atalho (a Escala, o Meu Dia) pode pedir o dia e o show: ?data=AAAA-MM-DD&livro=<id>. Sem pedido, abre hoje, como sempre.
   const [date, setDate] = useState(() => { const p = new URLSearchParams(window.location.search).get("data"); return p && /^\d{4}-\d{2}-\d{2}$/.test(p) ? p : todayISO(); });
   const livroPedido = useRef(new URLSearchParams(window.location.search).get("livro"));
-  // Conferência guiada (vinda dos cartões "Livros do dia" da Escala): a lista de Livros a conferir, em ordem, e o local de volta.
-  const [, navegar] = useLocation();
-  const [guia] = useState(() => {
-    const sp = new URLSearchParams(window.location.search);
-    const ids = (sp.get("conferir") ?? "").split(",").filter((id) => /^[0-9a-f-]{36}$/i.test(id));
-    return ids.length ? { ids, local: sp.get("local") } : null;
-  });
   const [books, setBooks] = useState<DailyBook[]>([]);
   const [loading, setLoading] = useState(true);
   const [opening, setOpening] = useState(false);
@@ -500,28 +491,6 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
   });
   const cancel = () => setPrompt({ title: "Marcar que não ocorreu", label: "Motivo", onSubmit: (reason) => { setPrompt(null); void mutate("/cancel", "POST", { reason }, "Não consegui marcar que o show não ocorreu."); } });
   const reopen = () => setPrompt({ title: "Reabrir como rascunho", label: "Motivo", onSubmit: (reason) => { setPrompt(null); void mutate("/reopen", "POST", { reason }, "Não consegui reabrir o Livro do Dia."); } });
-  // Conferir não muda o Livro nem a versão: é só a marca de que quem responde pelo show viu quem faz cada papel.
-  const posicaoNoGuia = guia && book ? guia.ids.indexOf(book.id) : -1;
-  const voltarParaAEscala = () => navegar(`/escalas?data=${date}${guia?.local ? `&local=${guia.local}` : ""}`);
-  const irParaOProximo = async () => {
-    const proximo = guia?.ids[posicaoNoGuia + 1];
-    if (proximo) await open(proximo); else voltarParaAEscala();
-  };
-  const conferir = async (conferido: boolean) => {
-    if (!book) return;
-    setSaving(true); setError("");
-    try {
-      if (review) {
-        const next: DailyBook = { ...book, conferencia: { conferido, por: conferido ? me || "você" : null, em: conferido ? new Date().toISOString() : null, caiu: null } };
-        saveReviewBook(next); setBook(next); setBooks((current) => current.map((b) => b.id === next.id ? next : b));
-      } else {
-        await customFetch(`/api/daily-book/${book.id}/conferir`, { method: conferido ? "POST" : "DELETE" });
-        // Na conferência guiada o próximo Livro abre já: recarregar este antes só faria a pessoa esperar à toa (a marca fica guardada no servidor).
-        if (!(conferido && posicaoNoGuia >= 0)) await refreshOpen();
-      }
-      if (conferido && posicaoNoGuia >= 0) await irParaOProximo();
-    } catch (err) { setError(mensagemDoErro(err, conferido ? "Não consegui marcar o Livro como conferido." : "Não consegui tirar a marca de conferido.")); } finally { setSaving(false); }
-  };
   // O Livro do Dia é uma cópia do Livro do Show tirada quando o dia foi gerado: o que o show ganhou depois só chega por aqui.
   const [trouxe, setTrouxe] = useState("");
   useEffect(() => { setTrouxe(""); }, [book?.id]);
@@ -539,7 +508,7 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
   // Refazer do zero: o dia volta a ser uma cópia nova do Livro do Show (mudou um titular, uma regra, a ordem das cenas). Só no rascunho.
   const refazerDoZero = () => setPrompt({
     title: "Refazer este dia do zero", label: "Motivo",
-    aviso: "O dia é montado de novo a partir do Livro do Show e da Escala. Tudo o que foi trocado, tirado ou ajustado à mão neste dia se perde, e a conferência volta a pedir a sua olhada. Para só trazer cenas, grupos e posições novas sem perder nada, use \"Trazer as novidades\".",
+    aviso: "O dia é montado de novo a partir do Livro do Show e da Escala. Tudo o que foi trocado, tirado ou ajustado à mão neste dia se perde. Para só trazer cenas, grupos e posições novas sem perder nada, use \"Trazer as novidades\".",
     onSubmit: (reason) => { setPrompt(null); void mutate("/regenerate", "POST", { reason }, "Não consegui refazer o Livro do Dia. Nada foi alterado; tente de novo."); },
   });
   const nNovidades = book?.novidadesDoShow ? book.novidadesDoShow.cenas + book.novidadesDoShow.grupos + book.novidadesDoShow.posicoes : 0;
@@ -551,9 +520,6 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
       <span style={css("font-size:12px;line-height:1.45;color:var(--asa-label);flex:1 1 220px")}>Mudou algo no Livro do Show e não apareceu aqui? Refazer monta o dia de novo (perde as trocas à mão).</span>
     </div>}
     {trouxe && <div role="status" style={css("padding:10px 14px;border:1px solid #9fd5b3;border-radius:12px;background:#e7f6ec;font-size:12.5px;line-height:1.45;color:#0f5a2d")}>{trouxe}</div>}
-    {book.conferencia && <ConferenciaDoLivro titulo={`${tituloDoLivro(book)}${(book.sessionLabel ?? book.programacaoHoje?.[0]?.inicio ?? (book.eventStartTime ? time(book.eventStartTime) : "")) ? ` · ${book.sessionLabel ?? book.programacaoHoje?.[0]?.inicio ?? time(book.eventStartTime)}` : ""}`} conferencia={book.conferencia} podeConferir={podeOperar} saving={saving} desatualizado={nNovidades > 0}
-      passo={posicaoNoGuia >= 0 && guia ? { atual: posicaoNoGuia + 1, total: guia.ids.length } : null}
-      onConferir={() => void conferir(true)} onDesfazer={() => void conferir(false)} onPular={() => void irParaOProximo()} onVoltar={voltarParaAEscala}/>}
   </> : null;
   const toggleScene = (scene: DScene) => mutate(`/scenes/${scene.id}${scene.isRemoved ? "/restore" : ""}`, scene.isRemoved ? "PATCH" : "DELETE", {}, "Não consegui ajustar esta cena.");
   const togglePosition = (position: DPosition) => mutate(`/positions/${position.id}${position.isRemoved ? "/restore" : ""}`, position.isRemoved ? "PATCH" : "DELETE", {}, "Não consegui ajustar esta posição.");
@@ -702,7 +668,7 @@ function HojeTab(props: {
   formSel: Record<string, string>; setFormSel: (fn: (prev: Record<string, string>) => Record<string, string>) => void;
   framesOn: Record<string, string[]>; setFramesOn: (fn: (prev: Record<string, string[]>) => Record<string, string[]>) => void;
   sceneNote: { sceneId: string; text: string } | null; supLocal: string | null; onDate: (iso: string) => void;
-  /** Avisos e conferência DO LIVRO ABERTO, logo abaixo do cabeçalho dele (assim ficam claramente deste show, não do dia todo). */
+  /** Avisos DO LIVRO ABERTO (novidades do show, refazer do zero), logo abaixo do cabeçalho dele (assim ficam claramente deste show, não do dia todo). */
   faixas?: ReactNode;
   onPick: (id: string) => void; onAjustado: () => void; onPublish: () => void; onRepublish: () => void; onExecute: () => void; onCancel: () => void; onReopen: () => void;
   onToggleScene: (scene: DScene) => void; onTogglePosition: (position: DPosition) => void; onSaveFormation: (scene: DScene, slots: SlotView[]) => void; onApplyToday: (formation: Formation) => void;
@@ -1405,46 +1371,8 @@ function NovidadesDoShow({ novidades, saving, onTrazer }: { novidades: { cenas: 
   const partes = [novidades.cenas ? plural(novidades.cenas, "cena", "cenas") : "", novidades.grupos ? plural(novidades.grupos, "grupo", "grupos") : "", novidades.posicoes ? plural(novidades.posicoes, "posição", "posições") : ""].filter(Boolean);
   return <section aria-label="Novidades do Livro do Show" style={css("display:flex;flex-direction:column;gap:8px;padding:11px 14px;border:1px solid #f0d79b;border-radius:14px;background:#fff6e0")}>
     <strong style={css("font-size:13.5px;color:#8f5200")}>O Livro do Show mudou depois que este dia foi montado</strong>
-    <span style={css("font-size:12.5px;line-height:1.45;color:var(--asa-ink-medium)")}>{`O show tem ${partes.join(", ")} que este dia ainda não tem. Trazer as novidades só acrescenta: o que você já trocou, tirou ou ajustou neste dia continua como está, e a conferência volta a pedir a sua olhada.`}</span>
+    <span style={css("font-size:12.5px;line-height:1.45;color:var(--asa-ink-medium)")}>{`O show tem ${partes.join(", ")} que este dia ainda não tem. Trazer as novidades só acrescenta: o que você já trocou, tirou ou ajustou neste dia continua como está.`}</span>
     <div style={css("display:flex;flex-wrap:wrap;gap:8px")}><button type="button" className="ldd-hit" disabled={saving} onClick={onTrazer} style={css(PRIMARY + ";height:44px")}>{saving ? "Trazendo…" : "Trazer as novidades do Livro do Show"}</button></div>
-  </section>;
-}
-
-const quandoConferiu = (iso: string | null) => { if (!iso) return ""; const d = new Date(iso); return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")} às ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
-
-/**
- * Faixa de conferência acima do Livro aberto: diz se alguém já conferiu quem faz cada papel e dá o botão que marca. Na conferência guiada
- * (vinda dos cartões da Escala) marcar leva ao próximo Livro, e depois do último volta à Escala. Direção só lê (sem botões).
- */
-function ConferenciaDoLivro({ titulo: livro, conferencia, podeConferir, saving, desatualizado, passo, onConferir, onDesfazer, onPular, onVoltar }: {
-  /** O Livro a que esta faixa se refere (show e hora): a marca vale só para ele, não para os outros shows do dia. */
-  titulo: string; conferencia: Conferencia; podeConferir: boolean; saving: boolean; desatualizado: boolean; passo: { atual: number; total: number } | null;
-  onConferir: () => void; onDesfazer: () => void; onPular: () => void; onVoltar: () => void;
-}) {
-  const estado = conferencia.conferido ? "ok" : conferencia.caiu ? "caiu" : "falta";
-  const titulo = conferencia.conferido ? `Conferido${conferencia.por ? ` por ${conferencia.por}` : ""}${conferencia.em ? ` · ${quandoConferiu(conferencia.em)}` : ""}`
-    : conferencia.caiu ? `${conferencia.caiu.por ? `Conferido por ${conferencia.caiu.por}, mas` : "Estava conferido, mas"} o elenco mudou depois: confira de novo`
-      : "Falta conferir quem faz cada papel";
-  const ultimo = passo !== null && passo.atual === passo.total;
-  const cor = estado === "ok" ? { bg: "#e7f6ec", bd: "#9fd5b3", fg: "#0f5a2d" } : estado === "caiu" ? { bg: "#fdecea", bd: "#f0b5b0", fg: "#a8221b" } : { bg: "#fff6e0", bd: "#f0d79b", fg: "#8f5200" };
-  return <section aria-label="Conferência do elenco" style={css(`display:flex;flex-direction:column;gap:8px;padding:11px 14px;border:1px solid ${cor.bd};border-radius:14px;background:${cor.bg}`)}>
-    <span style={css(MONO_LABEL)}>{passo ? `Conferência guiada · Livro ${passo.atual} de ${passo.total}` : "Conferência deste Livro"}</span>
-    <span style={css("font-family:Outfit,sans-serif;font-size:15px;font-weight:600;color:var(--asa-ink-dark);overflow-wrap:anywhere")}>{livro}</span>
-    <strong style={css(`font-size:13.5px;color:${cor.fg};overflow-wrap:anywhere`)}>{titulo}</strong>
-    <span style={css("font-size:12.5px;line-height:1.45;color:var(--asa-ink-medium)")}>
-      {conferencia.conferido
-        ? "Vale só para este show. Se quem conferiu trocar alguém, a marca continua; se outra pessoa mudar quem faz cada papel, ela sai sozinha."
-        : desatualizado ? "Antes de conferir, traga as novidades do Livro do Show (aviso acima): o que você ia conferir está incompleto."
-          : podeConferir ? "Veja abaixo quem faz cada papel DESTE show. A marca vale só para ele; os outros shows do dia são conferidos um a um."
-            : "Só quem responde por este show ou a Administração marca o Livro como conferido. Você acompanha o estado aqui."}
-    </span>
-    {podeConferir && <div style={css("display:flex;flex-wrap:wrap;gap:8px")}>
-      {!conferencia.conferido && <button type="button" className="ldd-hit" disabled={saving || desatualizado} onClick={onConferir} style={css(PRIMARY + ";height:44px")}>{saving ? "Marcando…" : passo ? (ultimo ? "Conferido · voltar à Escala" : "Conferido · próximo Livro") : "Conferido"}</button>}
-      {conferencia.conferido && passo && <button type="button" className="ldd-hit" disabled={saving} onClick={onPular} style={css(PRIMARY + ";height:44px")}>{ultimo ? "Voltar à Escala" : "Próximo Livro"}</button>}
-      {conferencia.conferido && <button type="button" className="ldd-hit" disabled={saving} onClick={onDesfazer} style={css(GHOST + ";height:44px")}>{saving ? "Aguarde…" : "Tirar a marca"}</button>}
-      {passo && !conferencia.conferido && !ultimo && <button type="button" className="ldd-hit" disabled={saving} onClick={onPular} style={css(GHOST + ";height:44px")}>Pular este</button>}
-      {passo && !(conferencia.conferido && ultimo) && <button type="button" className="ldd-hit" disabled={saving} onClick={onVoltar} style={css(GHOST + ";height:44px")}>Voltar à Escala</button>}
-    </div>}
   </section>;
 }
 
