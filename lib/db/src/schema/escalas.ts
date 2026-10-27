@@ -139,6 +139,29 @@ export const escalaBlocoAjustesTable = pgTable("escala_bloco_ajustes", {
   index("escala_bloco_ajustes_scale_source_idx").on(table.scaleId, table.sourceKey),
 ]);
 
+/**
+ * Edição de uma atividade só neste dia (0087): o horário para todos, o nome e o tipo mudados só naquela Escala. A chave é a mesma de
+ * `escala_bloco_ajustes` (p:<bloco da Programação>). Coluna vazia = vale o que a Programação manda. active = false é "Voltar ao normal".
+ */
+export const escalaBlocoEdicoesTable = pgTable("escala_bloco_edicoes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  scaleId: uuid("scale_id").notNull().references(() => scalesTable.id, { onDelete: "cascade" }),
+  sourceKey: text("source_key").notNull(),
+  newRotulo: text("novo_rotulo"),
+  newStart: text("novo_inicio"),
+  newEnd: text("novo_fim"),
+  newTipoId: uuid("novo_tipo_id").references(() => escalaTiposTable.id),
+  motivo: text("motivo"),
+  active: boolean("active").notNull().default(true),
+  createdBy: uuid("created_by").notNull().references(() => usersTable.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  endedBy: uuid("ended_by").references(() => usersTable.id),
+  endedAt: timestamp("ended_at", { withTimezone: true }),
+}, (table) => [
+  uniqueIndex("escala_bloco_edicoes_active_uq").on(table.scaleId, table.sourceKey).where(sql`${table.active}`),
+  index("escala_bloco_edicoes_scale_idx").on(table.scaleId),
+]);
+
 /** Como o horário de uma chamada se diz: um horário fixo ("13:00") ou "X minutos antes" do início da atividade. */
 export const MODOS_DE_CHAMADA = ["fixo", "antes"] as const;
 export type ModoDeChamada = typeof MODOS_DE_CHAMADA[number];
@@ -198,3 +221,4 @@ export type EscalaAreaPronta = typeof escalaAreasProntasTable.$inferSelect;
 export type EscalaBlocoAjuste = typeof escalaBlocoAjustesTable.$inferSelect;
 export type EscalaConfirmacao = typeof escalaConfirmacoesTable.$inferSelect;
 export type EscalaChamada = typeof escalaChamadasTable.$inferSelect;
+export type EscalaBlocoEdicao = typeof escalaBlocoEdicoesTable.$inferSelect;

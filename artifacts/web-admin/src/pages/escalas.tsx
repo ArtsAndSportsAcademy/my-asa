@@ -18,6 +18,7 @@ import { TIPOS, ehExcecao, faixa, foraDoChoque, quandoDoDia, resolverTipo, texto
 import { TipoSelect } from "@/components/escala/tipo-select";
 import { ChamadasDialog, ChamadasLista, gravarChamadas, primeiroErro, resumoDaChamada, type ChamadaDaApi, type ChamadaRascunho } from "@/components/escala/chamadas-editor";
 import { TiposDialog } from "@/components/escala/tipos-dialog";
+import { EditarAtividadeDialog, type EdicaoDaAtividade } from "@/components/escala/editar-atividade-dialog";
 import "@/components/escala/escala-tokens.css";
 import { diaQueAEscalaAbre, type ViradaDoDia } from "@/lib/dia-da-escala";
 import { SaiuDialog, type PreviaDaSaida, type SaiuApi } from "@/components/escala/saiu-dialog";
@@ -33,7 +34,7 @@ import "./escalas.css";
 
 type Role = "adm" | "dir" | "sup" | "mem";
 type Regra = "todos" | "ninguem" | "area" | "grupo" | "pessoas" | "livro";
-export type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; origem: "programacao" | "livro" | "manual" | "solicitacao" | "chamada"; regra: Regra | null; pessoaIds: string[]; vazio: boolean; sinal: string | null; showBookId: string | null; dailyBookId: string | null; dailyBookStatus: string | null; blocoId: string | null; allocationId?: string | null; allocationIds?: string[]; vagas?: VagaDoLivro[]; showTipo?: string | null; tipoId?: string | null; horarioDela?: { chaveOriginal: string; inicio: string; fim: string | null }; /** Bloco flexível: janela, sem nomes e sem choque. */ flexivel?: boolean; /** Quem saiu deste bloco geral por ter atividade específica no mesmo horário. */ cedeu?: { userId: string; para: string }[]; /** Bloco geral encurtado para quem tem outra atividade no começo ou no fim dele. */ encurtado?: { original: { inicio: string; fim: string | null }; por: string[] }; /** Chamada (0086): horário em que as pessoas da atividade têm que estar prontas. */ chamada?: { chamadaId: string; nome: string; ocupaTempo: boolean; avisar: boolean; dona: "sessao" | "bloco" | "dia"; atividade: { key: string; rotulo: string; inicio: string } } };
+export type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; origem: "programacao" | "livro" | "manual" | "solicitacao" | "chamada"; regra: Regra | null; pessoaIds: string[]; vazio: boolean; sinal: string | null; showBookId: string | null; dailyBookId: string | null; dailyBookStatus: string | null; blocoId: string | null; allocationId?: string | null; allocationIds?: string[]; vagas?: VagaDoLivro[]; showTipo?: string | null; tipoId?: string | null; horarioDela?: { chaveOriginal: string; inicio: string; fim: string | null }; /** Bloco flexível: janela, sem nomes e sem choque. */ flexivel?: boolean; /** Quem saiu deste bloco geral por ter atividade específica no mesmo horário. */ cedeu?: { userId: string; para: string }[]; /** Bloco geral encurtado para quem tem outra atividade no começo ou no fim dele. */ encurtado?: { original: { inicio: string; fim: string | null }; por: string[] }; /** Atividade editada só neste dia (0087): o que a Programação manda e quando foi editada (versão, para dois navegadores não se atropelarem). */ editadoNoDia?: { original: { rotulo: string; inicio: string; fim: string | null; tipoId: string | null }; motivo: string | null; em: string }; /** Chamada (0086): horário em que as pessoas da atividade têm que estar prontas. */ chamada?: { chamadaId: string; nome: string; ocupaTempo: boolean; avisar: boolean; dona: "sessao" | "bloco" | "dia"; atividade: { key: string; rotulo: string; inicio: string } } };
 /** Personagem de um bloco que vem de Livro do Dia: quem o faz hoje (ou ninguém, se a vaga está aberta). */
 type VagaDoLivro = { assignmentId: string; personagem: string; userId: string | null };
 /** Uma mexida no bloco; com `assignmentId`, vale para aquele personagem e não para "a primeira vaga aberta". */
@@ -336,6 +337,21 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       return frase;
     } finally { setSaving(false); setBusy(""); }
   };
+  /** Editar a atividade só neste dia (0087): nome, horário para todos e tipo. Devolve a frase do erro (a janela a mostra) ou null. */
+  const editarAtividade = async (bloco: Bloco, edicao: EdicaoDaAtividade | null): Promise<string | null> => {
+    if (!dia || !localId) return null;
+    if (review) return "No modo de amostra não dá para editar a atividade. Abra com a conta de teste para ver.";
+    setSaving(true); setBusy("ajuste"); setError("");
+    try {
+      await customFetch("/api/escalas/dia/editar", { method: "POST", body: JSON.stringify({ locationId: localId, date, sourceKey: bloco.key, baseEditadaEm: bloco.editadoNoDia?.em ?? null, ...(edicao ? { rotulo: edicao.rotulo, inicio: edicao.inicio, fim: edicao.fim, tipoId: edicao.tipoId, motivo: edicao.motivo } : { voltar: true }) }) });
+      setRefresh((n) => n + 1);
+      return null;
+    } catch (err) {
+      const frase = errMsg(err, "Não consegui editar a atividade agora. Nada foi alterado; tente de novo.");
+      setRefresh((n) => n + 1);
+      return frase;
+    } finally { setSaving(false); setBusy(""); }
+  };
   const ajustarCelula = async (bloco: Bloco, pessoaId: string, action: "ADICIONAR" | "REMOVER") => {
     if (!dia || !localId) return;
     setSaving(true); setError("");
@@ -499,7 +515,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       </div>}
       {carregandoTela && !error && !dia && !minha && <div aria-busy="true" style={css("padding:16px;text-align:center;font-size:12.5px;color:var(--asa-label);background:#fff;border:1px dashed var(--asa-line-soft);border-radius:12px")}>Montando a escala…</div>}
       {showMinha && minha && <MinhaEscala minha={minha} date={date} onHoje={() => setDate(todayISO())} onConfirm={confirmarEscala} saving={saving}/>}
-      {!isMem && tab === "escala" && dia && <EscalaGrid dia={dia} review={review} canEdit={isAdm || areasMinhas.length > 0} editableAreaIds={null} onAdjust={ajustarCelulaEmLote} onHorario={mudarHorario} onRemoveManual={isAdm || areasMinhas.length > 0 ? removerEntradaManual : undefined} onEditManual={isAdm || areasMinhas.length > 0 ? ((b) => setManual({ bloco: b })) : undefined} onFolgaResolvida={folgaResolvida} saiu={saiuApi}/>} 
+      {!isMem && tab === "escala" && dia && <EscalaGrid dia={dia} review={review} canEdit={isAdm || areasMinhas.length > 0} editableAreaIds={null} onAdjust={ajustarCelulaEmLote} onHorario={mudarHorario} onEditarAtividade={editarAtividade} onRemoveManual={isAdm || areasMinhas.length > 0 ? removerEntradaManual : undefined} onEditManual={isAdm || areasMinhas.length > 0 ? ((b) => setManual({ bloco: b })) : undefined} onFolgaResolvida={folgaResolvida} saiu={saiuApi}/>} 
       {!isMem && tab === "prog" && localId && <ProgramacaoTab review={review} localId={localId} localName={operationLabel} date={date} dia={dia} canEdit={Boolean(local?.podeEditar)} onChanged={() => setRefresh((n) => n + 1)}/>}
     </div>
 
@@ -583,7 +599,7 @@ function useTelefone() {
 }
 
 /* ---------- aba Escala: grade pessoas × horários ---------- */
-function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario, onRemoveManual, onEditManual, onFolgaResolvida, saiu }: { saiu?: SaiuApi; review: boolean; dia: Dia; canEdit: boolean; editableAreaIds: string[] | null; onHorario: (bloco: Bloco, pessoaId: string, horario: { inicio: string; fim: string | null; motivo?: string } | null) => Promise<string | null>; onAdjust: (bloco: Bloco, mudancas: Mudanca[], motivo?: string) => Promise<void>; onRemoveManual?: (allocationIds: string[]) => Promise<void>; onEditManual?: (bloco: Bloco) => void; onFolgaResolvida?: (userId: string) => Promise<void> }) {
+function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario, onEditarAtividade, onRemoveManual, onEditManual, onFolgaResolvida, saiu }: { saiu?: SaiuApi; review: boolean; dia: Dia; canEdit: boolean; editableAreaIds: string[] | null; onHorario: (bloco: Bloco, pessoaId: string, horario: { inicio: string; fim: string | null; motivo?: string } | null) => Promise<string | null>; onAdjust: (bloco: Bloco, mudancas: Mudanca[], motivo?: string) => Promise<void>; onEditarAtividade?: (bloco: Bloco, edicao: EdicaoDaAtividade | null) => Promise<string | null>; onRemoveManual?: (allocationIds: string[]) => Promise<void>; onEditManual?: (bloco: Bloco) => void; onFolgaResolvida?: (userId: string) => Promise<void> }) {
   const [view, setView] = useState<"pessoa" | "atividade">("atividade");
   const [team, setTeam] = useState("todos");
   const [busca, setBusca] = useState("");
@@ -593,6 +609,7 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
   const [menu, setMenu] = useState<{ bloco: Bloco; pessoa: Pessoa; rect: DOMRect } | null>(null);
   const [desfazer, setDesfazer] = useState<{ texto: string; acao: () => Promise<void> } | null>(null);
   const [ajustando, setAjustando] = useState<Bloco | null>(null);
+  const [editandoAtividade, setEditandoAtividade] = useState<Bloco | null>(null);
   const [mudandoHorario, setMudandoHorario] = useState<{ pessoaId: string; nome: string; bloco: Bloco; outro: Bloco | null } | null>(null);
   const [confirmarGrade, setConfirmarGrade] = useState<{ titulo: string; texto: string; acao: string; onSim: () => void } | null>(null);
   const [tirando, setTirando] = useState("");
@@ -766,7 +783,9 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
                     {b.horarioDela && <span style={css("font-size:12px;color:var(--asa-label)")}>{`Horário só desta pessoa · era ${faixa(b.horarioDela)}`}</span>}
                     {canEdit && b.horarioDela && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => void onHorario({ ...b, key: b.horarioDela!.chaveOriginal }, b.pessoaIds[0]!, null)}>Voltar ao normal</button>}
                     {b.chamada && <span style={css("font-size:12px;color:var(--asa-label)")}>{`${b.chamada.ocupaTempo ? "Ocupa o tempo de quem recebe" : "Só informa a hora, não ocupa tempo"} · segue quem faz ${b.chamada.atividade.rotulo}`}</span>}
+                    {b.editadoNoDia && <span style={css("font-size:12px;color:var(--asa-label)")}>{`Editada só neste dia · a Programação manda ${b.editadoNoDia.original.rotulo}, ${faixa(b.editadoNoDia.original)}`}</span>}
                     {canEdit && !b.horarioDela && !b.chamada && b.regra !== "ninguem" && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setAjustando(b)}>Ajustar</button>}
+                    {canEdit && onEditarAtividade && b.origem === "programacao" && b.regra !== "livro" && !b.chamada && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setEditandoAtividade(b)}>Editar neste dia</button>}
                     {onEditManual && b.origem === "manual" && b.allocationId && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => onEditManual(b)}>Mudar horário</button>}
                     {onRemoveManual && b.origem === "manual" && b.allocationId && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setConfirmarGrade({ titulo: "Tirar do dia", texto: `"${b.rotulo}" das ${b.inicio} sai do dia para ${b.pessoaIds.length === 1 ? "1 pessoa" : `${b.pessoaIds.length} pessoas`}. A Programação não muda.`, acao: "Tirar do dia", onSim: () => void onRemoveManual(b.allocationIds?.length ? b.allocationIds : [b.allocationId!]) })}>Tirar do dia</button>}
                   </div>
@@ -823,6 +842,9 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
       }
       return erro;
     }}/>}
+    {editandoAtividade && onEditarAtividade && <EditarAtividadeDialog bloco={editandoAtividade} tipos={dia.tipos ?? []} publicada={dia.escala?.status === "PUBLISHED" || dia.escala?.status === "REPUBLISHED"} onClose={() => setEditandoAtividade(null)}
+      onSalvar={async (v) => { const erro = await onEditarAtividade(editandoAtividade, v); if (!erro) setEditandoAtividade(null); return erro; }}
+      onVoltar={async () => { const erro = await onEditarAtividade(editandoAtividade, null); if (!erro) setEditandoAtividade(null); return erro; }}/>}
     {ajustando && <AjusteCelulaDialog bloco={ajustando} pessoas={dia.pessoas} editableAreaIds={editableAreaIds} onClose={() => setAjustando(null)} onAdjust={async (mudancas, motivo) => {
       await onAdjust(ajustando, mudancas, motivo);
       // Aplicado: fecha o diálogo e a grade mostra o resultado, sem versão intermediária na tela.

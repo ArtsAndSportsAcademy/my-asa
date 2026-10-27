@@ -24,6 +24,7 @@ import {
   db,
   escalaAreasProntasTable,
   escalaBlocoAjustesTable,
+  escalaBlocoEdicoesTable,
   escalaTiposTable,
   folgasTable,
   historyEventsTable,
@@ -81,6 +82,8 @@ export type BlocoDia = {
   cedeu?: { userId: string; para: string }[];
   /** Bloco geral encurtado para quem tem atividade específica no começo ou no fim dele: o horário original e o que cortou. */
   encurtado?: { original: { inicio: string; fim: string | null }; por: string[] };
+  /** Atividade editada só neste dia (0087): o que a Programação manda (nome, horário, tipo) e quem/por que mudou. Nome, horário e tipo do bloco já são os editados. */
+  editadoNoDia?: { original: { rotulo: string; inicio: string; fim: string | null; tipoId: string | null }; motivo: string | null; em: string };
   /** Chamada (0086): este bloco é o horário em que as pessoas da atividade têm que estar prontas. Ocupa tempo (gera choque) ou só informa; `avisar` = entra no aviso de convocação. */
   chamada?: { chamadaId: string; nome: string; ocupaTempo: boolean; avisar: boolean; dona: ChamadaDoDia["dona"]; atividade: ChamadaDoDia["atividade"] };
 };
@@ -443,6 +446,22 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
         pessoaIds: g.pessoaIds, vazio: g.pessoaIds.length === 0, sinal: g.pessoaIds.length ? null : "Entrada manual sem ninguém",
         allocationId: g.ids[0]!, allocationIds: g.ids, tipoId: g.tipoId,
       });
+    }
+  }
+
+  // Edição da atividade só neste dia (0087): o nome, o horário e o tipo mudados valem para todo mundo da atividade, só nesta data. Show não entra
+  // (o horário dele é do Livro do Dia). Vem ANTES das chamadas e da prioridade: a chamada "X minutos antes" acompanha o horário novo.
+  if (scale) {
+    const edicoes = await db.select().from(escalaBlocoEdicoesTable).where(and(eq(escalaBlocoEdicoesTable.scaleId, scale.id), eq(escalaBlocoEdicoesTable.active, true)));
+    const porChave = new Map(edicoes.map((e) => [e.sourceKey, e]));
+    for (const b of blocos) {
+      const e = b.origem === "programacao" && b.regra !== "livro" ? porChave.get(b.key) : undefined;
+      if (!e) continue;
+      b.editadoNoDia = { original: { rotulo: b.rotulo, inicio: b.inicio, fim: b.fim, tipoId: b.tipoId ?? null }, motivo: e.motivo ?? null, em: e.createdAt.toISOString() };
+      if (e.newRotulo) b.rotulo = e.newRotulo;
+      if (e.newStart) { b.inicio = e.newStart; if (e.newEnd === null && b.fim && b.fim <= e.newStart) b.fim = null; }
+      if (e.newEnd) b.fim = e.newEnd;
+      if (e.newTipoId) b.tipoId = e.newTipoId;
     }
   }
 

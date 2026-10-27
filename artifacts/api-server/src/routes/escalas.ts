@@ -20,6 +20,7 @@ import {
   escalaChamadasTable,
   escalaConfirmacoesTable,
   escalaTiposTable,
+  escalaBlocoEdicoesTable,
   operationsTable,
   sessionsTable,
   type EscalaChamada,
@@ -396,6 +397,113 @@ router.post("/escalas/dia/horario", requireAuth, requireOrganization, async (req
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "ERRO_INTERNO", message: "Não consegui mudar o horário agora. Nada foi alterado; tente de novo." });
+  }
+});
+
+/**
+ * Editar a atividade só neste dia (0087). Muda o nome, o horário (para todo mundo da atividade) e o tipo/cor SÓ na Escala daquela data; a
+ * Programação não muda. `rotulo`, `inicio`, `fim` e `tipoId` são o que a pessoa quer ver; o que for igual ao da Programação nem se guarda.
+ * Com `voltar: true` a atividade volta ao que a Programação manda. Show não entra (nome e horário vêm do Livro do Show). Quem pode: a
+ * Administração e a Supervisão do local. `baseEditadaEm` é a versão da edição que a tela abriu: se outra pessoa mexeu depois, 409 com a frase.
+ * Entra no Registro; escala já publicada marca "alterada depois de publicada" e avisa quem precisa republicar.
+ */
+router.post("/escalas/dia/editar", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  const { locationId, date, sourceKey, rotulo, inicio, fim, tipoId, voltar, motivo, baseEditadaEm } = req.body ?? {};
+  if (typeof locationId !== "string" || typeof date !== "string" || !DATE.test(date) || typeof sourceKey !== "string" || !sourceKey) {
+    res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "locationId, date e sourceKey são obrigatórios." }); return;
+  }
+  const desfazer = voltar === true;
+  const porque = typeof motivo === "string" && motivo.trim() ? motivo.trim().slice(0, 300) : null;
+  const nome = typeof rotulo === "string" ? rotulo.trim().replace(/\s+/g, " ") : "";
+  if (!desfazer) {
+    if (nome.length < 2 || nome.length > 80) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "Dê um nome à atividade, de 2 a 80 letras." }); return; }
+    if (typeof inicio !== "string" || !HORA.test(inicio)) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "Escolha a hora de início (formato 08:30)." }); return; }
+    if (fim !== undefined && fim !== null && fim !== "" && (typeof fim !== "string" || !HORA.test(fim))) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "A hora de fim não é válida (formato 08:30)." }); return; }
+    if (typeof fim === "string" && fim && fim <= inicio) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "O fim precisa ser depois do início." }); return; }
+    if (tipoId !== undefined && tipoId !== null && tipoId !== "" && (typeof tipoId !== "string" || !UUID.test(tipoId))) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "O tipo escolhido não é válido." }); return; }
+  }
+  try {
+    const location = await locationInOrg(locationId, actor.organizationId);
+    if (!location) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
+    if (!(await canManageLocal(actor, locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: `${fraseDeRecusaPorPerfil(["ADMIN", "SUPERVISOR_A"], actor.role)} Editar a atividade do dia é da Administração e da Supervisão do local.` }); return; }
+    const dia = await montarEscalaDoDia(actor.organizationId, locationId, date);
+    const bloco = dia?.blocos.find((b) => b.key === sourceKey);
+    if (!dia || !bloco) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Esta atividade não está mais na Escala do dia. Atualize a tela." }); return; }
+    if (bloco.origem !== "programacao" || bloco.regra === "livro" || bloco.chamada) {
+      res.status(409).json({ error: "ATIVIDADE_NAO_EDITAVEL", message: bloco.regra === "livro" || bloco.origem === "livro"
+        ? "Show não se edita aqui: o nome e o horário vêm do Livro do Show. Para mudar só neste dia, use o Livro do Dia."
+        : bloco.chamada ? "A chamada se muda na própria chamada (no show, na Programação ou na atividade do dia)."
+        : "Só dá para editar aqui a atividade que vem da Programação. A atividade só deste dia e o horário pedido se mudam onde foram criados." }); return;
+    }
+    const original = bloco.editadoNoDia?.original ?? { rotulo: bloco.rotulo, inicio: bloco.inicio, fim: bloco.fim, tipoId: bloco.tipoId ?? null };
+    const scaleAntes = await findEscalaDoDia(locationId, date);
+    if (!scaleAntes && desfazer) { res.json({ mudou: false, dia: await diaParaTela(actor.organizationId, locationId, date) }); return; }
+    const operationId = scaleAntes?.operationId ?? await operationForLocation(locationId);
+    if (!operationId) { res.status(409).json({ error: "LOCAL_SEM_OPERACAO", message: "Este local ainda não está ligado a uma operação." }); return; }
+    // O que difere da Programação é o que se guarda; igual ao original não vale como edição.
+    const novoFim = typeof fim === "string" && fim ? fim : null;
+    const novoTipo = typeof tipoId === "string" && tipoId ? tipoId : null;
+    if (!desfazer && novoTipo && novoTipo !== original.tipoId) {
+      const recusaTipo = await recusaDoTipo(novoTipo, locationId, original.tipoId ?? undefined);
+      if (recusaTipo) { res.status(400).json({ error: "TIPO_INVALIDO", message: recusaTipo }); return; }
+    }
+    if (!desfazer && !novoFim && original.fim && original.fim <= (inicio as string)) {
+      res.status(400).json({ error: "CAMPOS_INVALIDOS", message: `O horário de fim original (${original.fim}) ficou antes do novo início. Escolha também a hora de fim.` }); return;
+    }
+    const campos = desfazer ? null : {
+      newRotulo: nome !== original.rotulo ? nome : null,
+      newStart: inicio !== original.inicio ? (inicio as string) : null,
+      newEnd: novoFim !== original.fim ? (novoFim ?? original.fim) : null,
+      newTipoId: novoTipo && novoTipo !== original.tipoId ? novoTipo : null,
+    };
+    const semMudanca = !campos || (!campos.newRotulo && !campos.newStart && !campos.newEnd && !campos.newTipoId);
+    const faixa = (a: string, b: string | null | undefined) => (b ? `${a}–${b}` : a);
+    const resultado = await db.transaction(async (tx) => {
+      let scale = scaleAntes ?? null;
+      if (!scale) {
+        const [created] = await tx.insert(scalesTable).values({
+          operationId, locationId, title: `Escala do dia · ${location.name} · ${date}`, periodStart: date, periodEnd: date,
+          status: "DRAFT", generatedAt: new Date(), generatedBy: actor.sub, createdBy: actor.sub,
+        }).returning();
+        scale = created!;
+        await writeHistoryEvent({ category: "SCALE", action: "escala.criada", title: "Escala do dia criada", narrative: `Escala de ${location.name} para ${date} criada.`, entityType: "scale", entityId: scale.id, actorId: actor.sub, operationId, orgId: actor.organizationId, afterState: { scale } }, tx as unknown as HistoryExecutor);
+      }
+      const [anterior] = await tx.select().from(escalaBlocoEdicoesTable).where(and(eq(escalaBlocoEdicoesTable.scaleId, scale.id), eq(escalaBlocoEdicoesTable.sourceKey, sourceKey), eq(escalaBlocoEdicoesTable.active, true))).limit(1);
+      if (baseEditadaEm !== undefined && (anterior?.createdAt.toISOString() ?? null) !== (baseEditadaEm ?? null)) return { conflito: true as const };
+      if (!anterior && semMudanca) return { mudou: false as const, scale };
+      if (anterior) await tx.update(escalaBlocoEdicoesTable).set({ active: false, endedBy: actor.sub, endedAt: new Date() }).where(eq(escalaBlocoEdicoesTable.id, anterior.id));
+      if (!semMudanca) await tx.insert(escalaBlocoEdicoesTable).values({ scaleId: scale.id, sourceKey, ...campos!, motivo: porque, createdBy: actor.sub });
+      const antes = anterior ? { rotulo: bloco.rotulo, inicio: bloco.inicio, fim: bloco.fim } : null;
+      const depois = semMudanca ? null : { rotulo: campos!.newRotulo ?? original.rotulo, inicio: campos!.newStart ?? original.inicio, fim: campos!.newEnd ?? original.fim };
+      const mudancas: string[] = [];
+      if (depois) {
+        if (depois.rotulo !== original.rotulo) mudancas.push(`nome de "${original.rotulo}" para "${depois.rotulo}"`);
+        if (depois.inicio !== original.inicio || depois.fim !== original.fim) mudancas.push(`horário de ${faixa(original.inicio, original.fim)} para ${faixa(depois.inicio, depois.fim)}`);
+        if (campos!.newTipoId) mudancas.push("tipo");
+      }
+      const texto = semMudanca ? `${original.rotulo} voltou ao que a Programação manda` : `${original.rotulo}: ${mudancas.join("; ")}`;
+      await writeHistoryEvent({
+        category: "SCALE", action: semMudanca ? "escala.atividade_restaurada" : "escala.atividade_editada", title: semMudanca ? "Atividade do dia voltou ao normal" : "Atividade editada só neste dia",
+        narrative: `${texto} em ${date}, para todos da atividade.${porque ? ` Motivo: ${porque}` : ""}`,
+        entityType: "scale", entityId: scale.id, actorId: actor.sub, operationId, orgId: actor.organizationId,
+        beforeState: { sourceKey, edicao: antes }, afterState: { sourceKey, edicao: depois },
+        ...(porque ? { metadata: { reason: porque } } : {}),
+      }, tx as unknown as HistoryExecutor);
+      if (escalaPublicada(scale.status)) {
+        scale = (await tx.update(scalesTable).set({ alteradaDesde: scale.alteradaDesde ?? new Date(), updatedAt: new Date(), version: scale.version + 1 }).where(eq(scalesTable.id, scale.id)).returning())[0]!;
+        const areas = [...new Set(dia.pessoas.filter((p) => bloco.pessoaIds.includes(p.id)).map((p) => p.areaId))];
+        await avisarRepublicacaoPendente(tx as unknown as Parameters<typeof avisarRepublicacaoPendente>[0], scale, texto, { areaIds: areas });
+      }
+      return { mudou: true as const, scale };
+    });
+    if ("conflito" in resultado) {
+      res.status(409).json({ error: "ATIVIDADE_MUDOU", message: "Outra pessoa editou esta atividade depois que você abriu. Nada foi salvo: confira a versão nova e refaça a mudança se ainda for preciso." }); return;
+    }
+    res.json({ mudou: resultado.mudou, dia: await diaParaTela(actor.organizationId, locationId, date) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não consegui editar a atividade agora. Nada foi alterado; tente de novo." });
   }
 });
 
