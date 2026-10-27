@@ -43,7 +43,7 @@ import {
 } from "@workspace/db";
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
 import { isNotSessionBlock, listSessionBlocks } from "./session-blocks.js";
-import { chamadasDoDia, type ChamadaDoDia } from "./escala-chamadas.js";
+import { chamadasDoDia, chamadasDosBlocos, type ChamadaDoDia } from "./escala-chamadas.js";
 import { enqueueNotification } from "./undo.js";
 import { operationalDate } from "../lib/operational-date.js";
 import { APP_ROUTES } from "../lib/app-routes.js";
@@ -645,7 +645,8 @@ export function aplicarPrioridade(blocos: BlocoDia[]) {
  * para dizer quando o show acontece mesmo sem sessões no Livro do Show; as sessões continuam existindo
  * porque a formação da 1ª e da 2ª sessão pode não ser a mesma.
  */
-export async function horariosDoShowNaProgramacao(showBookId: string, date: string): Promise<{ inicio: string; fim: string | null; rotulo: string }[]> {
+export type HorarioDaProgramacao = { inicio: string; fim: string | null; rotulo: string; chamadas?: { nome: string; inicio: string; fim: string; ocupaTempo: boolean }[] };
+export async function horariosDoShowNaProgramacao(showBookId: string, date: string): Promise<HorarioDaProgramacao[]> {
   return (await horariosDosShowsNaProgramacao([showBookId], date)).get(showBookId) ?? [];
 }
 
@@ -653,8 +654,8 @@ export async function horariosDoShowNaProgramacao(showBookId: string, date: stri
  * O mesmo para vários shows de uma vez (a lista do Livro do Dia mostra dez cartões): três leituras no total,
  * não três por show. Cada show só aparece no mapa se a Programação lhe dá algum horário no dia.
  */
-export async function horariosDosShowsNaProgramacao(showBookIds: string[], date: string): Promise<Map<string, { inicio: string; fim: string | null; rotulo: string }[]>> {
-  const out = new Map<string, { inicio: string; fim: string | null; rotulo: string }[]>();
+export async function horariosDosShowsNaProgramacao(showBookIds: string[], date: string): Promise<Map<string, HorarioDaProgramacao[]>> {
+  const out = new Map<string, HorarioDaProgramacao[]>();
   const ids = [...new Set(showBookIds)];
   if (!ids.length) return out;
   const shows = await db.select({ id: showBooksTable.id, locationId: showBooksTable.locationId }).from(showBooksTable).where(inArray(showBooksTable.id, ids));
@@ -673,11 +674,13 @@ export async function horariosDosShowsNaProgramacao(showBookIds: string[], date:
     eq(programacaoBlocosTable.regra, "livro"), inArray(programacaoBlocosTable.showBookId, ids),
   )).orderBy(asc(programacaoBlocosTable.inicio), asc(programacaoBlocosTable.order));
   const localDoShow = new Map(shows.map((s) => [s.id, s.locationId]));
+  // As chamadas de cada horário vão junto: o Livro do Dia as mostra mesmo quando o show não tem sessões no Livro do Show.
+  const chamadas = await chamadasDosBlocos(blocos.map((b) => ({ id: b.id, inicio: hhmm(b.inicio)! })));
   for (const b of blocos) {
     const showId = b.showBookId;
     // O bloco só vale se a Programação dele é a vigente do local do show (um show não herda bloco de outro local).
     if (!showId || vigentePorLocal.get(localDoShow.get(showId) ?? "") !== b.programacaoId) continue;
-    (out.get(showId) ?? out.set(showId, []).get(showId)!).push({ inicio: hhmm(b.inicio)!, fim: hhmm(b.fim), rotulo: b.rotulo });
+    (out.get(showId) ?? out.set(showId, []).get(showId)!).push({ inicio: hhmm(b.inicio)!, fim: hhmm(b.fim), rotulo: b.rotulo, ...(chamadas.get(b.id)?.length ? { chamadas: chamadas.get(b.id)! } : {}) });
   }
   return out;
 }

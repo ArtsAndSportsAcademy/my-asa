@@ -23,7 +23,7 @@ type DPosition = { id: string; name: string; minimumCoverage: number; sourceRole
 type DBlock = { id: string; name: string; order: number; sceneId: string | null; sourceBlockId: string | null; isRemoved: boolean; positions: DPosition[] };
 type DScene = { id: string; name: string; order: number; sourceSceneId: string | null; isRemoved: boolean; blocks: DBlock[] };
 type SessionBlockView = { id: string; name: string; startTime: string; endTime: string; order: number; isRemoved: boolean; stale: boolean; staleReason: string | null };
-type DailyBook = { id: string; agendaEventId: string; scaleId: string | null; showBookId: string | null; status: DailyBookStatus; version: number; operationId?: string; operationName?: string; eventTitle?: string; eventDate?: string; eventStartTime?: string | null; locationName?: string | null; locationId?: string | null; showTitle?: string | null; sessionLabel?: string | null; scenes?: DScene[]; sessionBlocks?: SessionBlockView[]; programacaoHoje?: { inicio: string; fim: string | null; rotulo: string }[]; horarios?: string[]; novidadesDoShow?: { cenas: number; grupos: number; posicoes: number } | null };
+type DailyBook = { id: string; agendaEventId: string; scaleId: string | null; showBookId: string | null; status: DailyBookStatus; version: number; operationId?: string; operationName?: string; eventTitle?: string; eventDate?: string; eventStartTime?: string | null; locationName?: string | null; locationId?: string | null; showTitle?: string | null; sessionLabel?: string | null; scenes?: DScene[]; sessionBlocks?: SessionBlockView[]; programacaoHoje?: { inicio: string; fim: string | null; rotulo: string; chamadas?: { nome: string; inicio: string; fim: string; ocupaTempo: boolean }[] }[]; horarios?: string[]; novidadesDoShow?: { cenas: number; grupos: number; posicoes: number } | null };
 
 /** Livro de sessão separada leva a hora no nome ("Teatro de Natal · 11:30"); sem isso, duas linhas do mesmo show ficam iguais. */
 const tituloDoLivro = (b: { showTitle?: string | null; eventTitle?: string; sessionLabel?: string | null }) => `${b.showTitle ?? b.eventTitle ?? ""}${b.sessionLabel ? ` · ${b.sessionLabel}` : ""}`;
@@ -884,7 +884,7 @@ function HojeTab(props: {
             ? <>
               {book.programacaoHoje.map((h) => <div key={`${h.inicio}-${h.rotulo}`} style={css("display:flex;align-items:center;gap:12px;border-radius:12px;padding:11px 13px;min-height:44px;box-sizing:border-box;background:var(--asa-bg-page);border:1px solid var(--asa-purple-subdued)")}>
                 <span style={css("font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--asa-ink);flex:none")}>{h.fim ? `${h.inicio} — ${h.fim}` : h.inicio}</span>
-                <span style={css("flex:1;min-width:0;font-size:13px;font-weight:600;line-height:1.25")}>{h.rotulo}</span>
+                <span style={css("flex:1;min-width:0;display:flex;flex-direction:column;gap:2px")}><span style={css("font-size:13px;font-weight:600;line-height:1.25")}>{h.rotulo}</span>{h.chamadas?.length ? <span style={css("font-size:12px;color:var(--asa-label);line-height:1.4;overflow-wrap:anywhere")}>{h.chamadas.map((c) => `${c.nome} ${c.inicio}–${c.fim}`).join(" · ")}</span> : null}</span>
               </div>)}
               <span style={css("font-size:12px;color:var(--asa-label);line-height:1.45;text-wrap:pretty")}>Horários vindos da Programação do local. Este show ainda não tem sessões no Livro do Show.</span>
             </>

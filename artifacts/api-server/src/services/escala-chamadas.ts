@@ -139,3 +139,18 @@ export async function chamadasDoDia(blocos: BlocoDia[], date: string, scaleId: s
   }
   return saida.sort((a, b) => a.inicio.localeCompare(b.inicio) || a.fim.localeCompare(b.fim) || a.nome.localeCompare(b.nome, "pt-BR"));
 }
+
+/** Para o Livro do Dia: as chamadas ativas de cada bloco da Programação, já com a janela ("Aquecimento 13:00–13:15"), por id do bloco. */
+export async function chamadasDosBlocos(blocos: { id: string; inicio: string }[], executor: Exec = db): Promise<Map<string, { nome: string; inicio: string; fim: string; ocupaTempo: boolean }[]>> {
+  const out = new Map<string, { nome: string; inicio: string; fim: string; ocupaTempo: boolean }[]>();
+  if (!blocos.length) return out;
+  const inicioDe = new Map(blocos.map((b) => [b.id, b.inicio]));
+  const linhas = await executor.select().from(escalaChamadasTable).where(and(inArray(escalaChamadasTable.programacaoBlocoId, [...inicioDe.keys()]), eq(escalaChamadasTable.active, true))).orderBy(asc(escalaChamadasTable.ordem), asc(escalaChamadasTable.createdAt));
+  for (const c of linhas) {
+    const id = c.programacaoBlocoId; if (!id) continue;
+    const j = janelaDaChamada({ modo: c.modo, horaFixa: hhmm(c.horaFixa), minutosAntes: c.minutosAntes, duracaoMin: c.duracaoMin }, inicioDe.get(id)!);
+    if (!j) continue;
+    (out.get(id) ?? out.set(id, []).get(id)!).push({ nome: c.nome, inicio: j.inicio, fim: j.fim, ocupaTempo: c.ocupaTempo });
+  }
+  return out;
+}
