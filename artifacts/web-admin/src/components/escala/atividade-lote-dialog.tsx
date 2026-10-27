@@ -74,8 +74,8 @@ export function AtividadeLoteDialog({ tipos, pessoas, areas, blocos, areasQueSup
 
   return <div className="shows-dialog-backdrop"><div className="shows-dialog" role="dialog" aria-modal="true" aria-label="Atividade só deste dia">
     <header className="shows-dialog-header"><div><h2>Atividade só deste dia</h2><p>Vale apenas neste dia: a Programação não muda.</p></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
-    <div className="shows-dialog-content"><form id="esc-lote" onSubmit={(e) => void enviar(e)} className="shows-form">
-      <fieldset style={css("border:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px")}>
+    <div className="shows-dialog-content"><form id="esc-lote" onSubmit={(e) => void enviar(e)} className="shows-form" style={{ gridTemplateColumns: "minmax(0, 1fr)" }}>
+      <fieldset style={css("border:none;padding:0;margin:0;min-width:0;max-width:100%;display:flex;flex-direction:column;gap:8px")}>
         <legend style={css("padding:0;font-size:12px;font-weight:700;color:var(--asa-label)")}>Quem faz</legend>
         <div style={css("display:flex;flex-wrap:wrap;gap:6px")} role="group" aria-label="Marcar de uma vez">
           <button type="button" style={css(atalho(escolhidas.length === trabalham.length && trabalham.length > 0))} onClick={() => alternarGrupo(trabalham.map((p) => p.id))}>{`Todo o elenco do dia (${trabalham.length})`}</button>
@@ -102,7 +102,7 @@ export function AtividadeLoteDialog({ tipos, pessoas, areas, blocos, areasQueSup
       <label>O que é<input value={rotulo} onChange={(e) => setRotulo(e.target.value)} placeholder="Prova de figurino" maxLength={60} required/></label>
       <label>Começa às<input type="time" value={inicio} onChange={(e) => setInicio(e.target.value)} required/></label>
       <label>Termina às (opcional)<input type="time" value={fim} onChange={(e) => setFim(e.target.value)}/></label>
-      <label>Tipo (dá a cor na Escala)<TipoSelect tipos={tipos} value={tipoId} onChange={setTipoId}/></label>
+      <label>Tipo (dá a cor na Escala)<TipoSelect tipos={tipos} value={tipoId} onChange={setTipoId} style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box" }}/></label>
       {fim !== "" && HORA.test(inicio) && fim <= inicio && <span role="alert" style={css("font-size:12px;color:var(--asa-ausente-fg)")}>O fim precisa ser depois do início.</span>}
       {parecShow && <span style={css("font-size:12px;color:var(--asa-label);line-height:1.45")}>Show é do Livro do Dia: quem faz cada posição é decidido lá. Aqui entra só atividade que não é show.</span>}
       <details open={chamadasNovas.length > 0} style={css("border-top:1px solid var(--asa-book-fade);padding-top:10px")}>

@@ -657,12 +657,12 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
     const tone = toneOf(b, dia.tipos);
     const inner = <>
       {b.dailyBookId && <span title={`Livro do Dia · ${b.dailyBookStatus ?? ""}`} style={css("width:6px;height:6px;border-radius:50%;flex:none;background:" + (b.dailyBookStatus === "DRAFT" ? "var(--asa-vaga-fg)" : "var(--asa-prep-fg)") + ";")}/>}
-      <span style={css("overflow:hidden;text-overflow:ellipsis")}>{textoDoBloco(b)}</span>
-      {!semHora && b.fim && b.regra !== "livro" && !b.flexivel && <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;color:" + tone.fg + ";opacity:.75;margin-left:auto;")}>{faixa(b)}</span>}
+      <span style={css("overflow:hidden;text-overflow:ellipsis;min-width:0")}>{textoDoBloco(b)}</span>
+      {!semHora && b.fim && b.regra !== "livro" && !b.flexivel && <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;flex:none;color:" + tone.fg + ";opacity:.75;margin-left:auto;")}>{faixa(b)}</span>}
     </>;
     return b.dailyBookId
       ? <Link key={b.key} href={`/livro-do-dia?data=${dia.date}&livro=${b.dailyBookId}`} title="Abrir no Livro do Dia" className="esc-bloco-link" style={css(blockStyle(tone, "cursor:pointer;text-decoration:none;" + extra))}>{inner}</Link>
-      : <div key={b.key} style={css(blockStyle(tone, extra))}>{inner}</div>;
+      : <div key={b.key} style={css(blockStyle(tone, extra + "max-width:100%;box-sizing:border-box;"))}>{inner}</div>;
   };
 
   // Legenda de cores: os tipos do local (os arquivados só se ainda pintam algum bloco do dia); sem lista, os sete de fábrica.

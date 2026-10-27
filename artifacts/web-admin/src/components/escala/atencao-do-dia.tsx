@@ -86,14 +86,15 @@ export function AtencaoDoDia({ dia, vazios, grupos, canEdit, editableAreaIds, ti
       {grupos.map((g) => {
         const ini = g.a.inicio > g.b.inicio ? g.a.inicio : g.b.inicio;
         const fim = [g.a.fim ?? g.a.inicio, g.b.fim ?? g.b.inicio].sort()[0];
-        const tiraveis = [g.a, g.b].filter((bloco) => bloco.regra !== "livro" && !bloco.horarioDela);
-        const mudaveis = [g.a, g.b].filter((bloco) => bloco.regra !== "livro" && bloco.origem !== "livro" && bloco.origem !== "solicitacao");
+        const tiraveis = [g.a, g.b].filter((bloco) => !bloco.chamada && bloco.regra !== "livro" && !bloco.horarioDela);
+        const mudaveis = [g.a, g.b].filter((bloco) => !bloco.chamada && bloco.regra !== "livro" && bloco.origem !== "livro" && bloco.origem !== "solicitacao");
         return <div key={`${g.a.key}-${g.b.key}`} style={css("display:flex;flex-direction:column;gap:8px;border:1px solid var(--asa-rose-faint);background:var(--asa-rose-paper);border-radius:12px;padding:10px 12px")}>
           <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:9px")}>
             <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--asa-rose-fg)")}>{fim > ini ? `${ini}–${fim}` : ini}</span>
             <span style={css("font-size:13px;font-weight:700;color:var(--asa-ink-dark)")}>{`${textoDoBloco(g.a)}  ×  ${textoDoBloco(g.b)}`}</span>
             <span style={css("font-size:12px;color:var(--asa-label)")}>{plural(g.pessoas.length, "pessoa", "pessoas")}</span>
           </div>
+          {(g.a.chamada || g.b.chamada) && <span style={css("font-size:12px;color:var(--asa-label);line-height:1.45;text-wrap:pretty")}>A chamada ocupa o tempo de quem a recebe e acompanha a atividade dela. Para resolver, mude a outra atividade ou a hora da chamada (no show, na Programação ou na atividade do dia).</span>}
           {(g.a.regra === "livro" || g.b.regra === "livro") && <span style={css("font-size:12px;color:var(--asa-label);line-height:1.45;text-wrap:pretty")}>O show tem prioridade, mas não decide sozinho. Tirar do show é no Livro do Dia.</span>}
           <div style={css("display:flex;flex-wrap:wrap;gap:6px")}>
             {g.pessoas.map((c) => {
