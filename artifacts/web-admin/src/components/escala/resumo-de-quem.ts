@@ -85,3 +85,15 @@ export function resumoDoBloco(b: { quemRegra?: "todos" | "area"; areaNomes?: str
   const nome = b.areaNomes?.length ? emLista(b.areaNomes) : "";
   return nome ? { ...base, tipo: "area", rotulo: nome, extras: [] } : base;
 }
+
+/**
+ * Posições numeradas ("Guardião 1" … "Guardião 8") saem em ordem de número, na Escala e na folha. Só reordena quando TODAS terminam em número: show com
+ * nomes de personagem (YETI, IGNO, ASTRID…) segue na ordem do Livro do Dia.
+ */
+export function emOrdemDeNumero<T>(itens: T[], rotuloDe: (item: T) => string): T[] {
+  const partes = itens.map((item) => /^(.*?)(\d+)\s*$/.exec(rotuloDe(item).trim()));
+  if (itens.length < 2 || partes.some((m) => !m)) return itens;
+  return itens.map((item, i) => ({ item, i, prefixo: partes[i]![1]!.trim(), n: Number(partes[i]![2]) }))
+    .sort((a, b) => a.prefixo.localeCompare(b.prefixo, "pt-BR") || a.n - b.n || a.i - b.i)
+    .map((x) => x.item);
+}

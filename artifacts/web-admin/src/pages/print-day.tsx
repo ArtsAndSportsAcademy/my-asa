@@ -3,7 +3,7 @@ import { Redirect } from "wouter";
 import { customFetch } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/useAuth";
 import { sampleDia, sampleLocais } from "@/lib/review-escala";
-import { resumoDoBloco, resumirQuem, type PessoaDoDia } from "@/components/escala/resumo-de-quem";
+import { emOrdemDeNumero, resumoDoBloco, resumirQuem, type PessoaDoDia } from "@/components/escala/resumo-de-quem";
 import { textoDaJanela } from "@/components/escala/tipos";
 
 /**
@@ -87,7 +87,7 @@ export default function PrintDayPage() {
   const porAtividade = (dia?.blocos ?? []).filter((b) => !b.chamada && !b.encurtado && !b.horarioDela && (b.pessoaIds.length || b.vazio || b.cedeu?.length)).sort((a, b) => a.inicio.localeCompare(b.inicio) || a.rotulo.localeCompare(b.rotulo, "pt-BR"))
     .map((b) => {
       const comVaga = new Set<string>();
-      const personagens = (b.vagas ?? []).map((v) => { const quem = v.userId && b.pessoaIds.includes(v.userId) ? v.userId : null; if (quem) comVaga.add(quem); return { personagem: v.personagem, nome: quem ? nomeDe.get(quem) ?? "—" : null }; });
+      const personagens = emOrdemDeNumero(b.vagas ?? [], (v) => v.personagem).map((v) => { const quem = v.userId && b.pessoaIds.includes(v.userId) ? v.userId : null; if (quem) comVaga.add(quem); return { personagem: v.personagem, nome: quem ? nomeDe.get(quem) ?? "—" : null }; });
       const semVaga = b.pessoaIds.filter((id) => !comVaga.has(id)).map((id) => nomeDe.get(id) ?? "—").sort(nomeOrdem);
       const resumo = resumoDoBloco(b, b.pessoaIds, doDia, b.vagas?.length ?? 0);
       return { bloco: b, personagens, semVaga, resumo, semNinguem: (b.vagas ?? []).filter((v) => !v.userId).length, chamadas: [...(chamadasDe.get(b.key) ?? [])].sort((x, y) => x.inicio.localeCompare(y.inicio)) };

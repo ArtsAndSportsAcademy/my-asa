@@ -1,7 +1,7 @@
 // Rodar: node ../../node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/cli.mjs --test src/components/escala/resumo-de-quem.test.ts
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resumirQuem, type PessoaDoDia } from "./resumo-de-quem";
+import { emOrdemDeNumero, resumirQuem, type PessoaDoDia } from "./resumo-de-quem";
 
 // Dia com 20 pessoas: 10 da área P (patinadores), 8 da área B (bailarinos), 1 de C e 1 sem área.
 const pessoas: PessoaDoDia[] = [
@@ -99,4 +99,18 @@ test("show grande vale mesmo quando o elenco é quase todo o dia", () => {
 test("nomes saem em ordem alfabética e sem repetição", () => {
   const r = resumirQuem(["b1", "p0", "b1", "b0"], pessoas);
   assert.deepEqual(r.nomes, ["Bai 0", "Bai 1", "Pat 00"]);
+});
+
+test("posições numeradas saem em ordem de número (Guardião 1 a 8)", () => {
+  const ordem = [7, 2, 3, 8, 4, 5, 1, 6].map((n) => ({ personagem: `Guardião ${n}` }));
+  assert.deepEqual(emOrdemDeNumero(ordem, (v) => v.personagem).map((v) => v.personagem), [1, 2, 3, 4, 5, 6, 7, 8].map((n) => `Guardião ${n}`));
+  const dez = ["Guardião 10", "Guardião 2", "Guardião 1"].map((personagem) => ({ personagem }));
+  assert.deepEqual(emOrdemDeNumero(dez, (v) => v.personagem).map((v) => v.personagem), ["Guardião 1", "Guardião 2", "Guardião 10"], "10 vem depois de 2, não depois de 1");
+});
+
+test("personagem com nome não é reordenado; se um só não termina em número, fica como está", () => {
+  const musical = ["YETI", "IGNO", "ASTRID"].map((personagem) => ({ personagem }));
+  assert.deepEqual(emOrdemDeNumero(musical, (v) => v.personagem), musical);
+  const misto = ["Guardião 2", "Tecnico", "Guardião 1"].map((personagem) => ({ personagem }));
+  assert.deepEqual(emOrdemDeNumero(misto, (v) => v.personagem), misto);
 });

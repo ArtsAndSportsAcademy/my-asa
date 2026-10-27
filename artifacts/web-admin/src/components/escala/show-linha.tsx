@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { css } from "@/lib/dc-style";
 import type { Bloco } from "@/pages/escalas";
 import { QuemResumido } from "./quem-resumido";
-import { LIMITE_POSICOES_SHOW_PEQUENO, resumirQuem, type PessoaDoDia } from "./resumo-de-quem";
+import { LIMITE_POSICOES_SHOW_PEQUENO, emOrdemDeNumero, resumirQuem, type PessoaDoDia } from "./resumo-de-quem";
 import "./escala-tokens.css";
 
 const plural = (n: number, um: string, muitos: string) => `${n} ${n === 1 ? um : muitos}`;
@@ -38,7 +38,7 @@ export function ShowLinha({ bloco, data, nomeDe, pessoasDoDia }: { bloco: Bloco;
     const comVaga = new Set(vagas.map((v) => v.userId).filter((id): id is string => Boolean(id)));
     const semVaga = [...new Set(bloco.pessoaIds)].filter((id) => !comVaga.has(id)).map(nomeDe).sort((a, b) => a.localeCompare(b, "pt-BR"));
     return <ul style={css("margin:0;padding:4px 0;list-style:none;display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--asa-ink-medium);min-width:0")}>
-      {vagas.map((v) => <li key={v.assignmentId} style={css("display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline")}>
+      {emOrdemDeNumero(vagas, (v) => v.personagem).map((v) => <li key={v.assignmentId} style={css("display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline")}>
         <span style={css("color:var(--asa-label);overflow-wrap:anywhere")}>{v.personagem}:</span>
         {v.userId ? <strong style={css("color:var(--asa-ink-dark)")}>{nomeDe(v.userId)}</strong> : <strong style={css("color:var(--esc-choque)")}>vaga sem ninguém</strong>}
       </li>)}
