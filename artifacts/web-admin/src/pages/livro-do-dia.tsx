@@ -583,7 +583,7 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
     return () => onHeader?.(null);
   }, [scopeLabel, isMem]);
 
-  const tabDefs: [Tab, string][] = isMem ? [["hoje", "Meus shows de hoje"], ["lista", "Meus shows"]] : [["hoje", "Os shows de hoje"], ["diff", "Diferenças do padrão"], ["forma", "Formações"], ["lista", "Livros"]];
+  const tabDefs: [Tab, string][] = isMem ? [["hoje", "Meus shows de hoje"], ["lista", "Meus shows"]] : [["hoje", "Os shows do dia"], ["diff", "Diferenças do padrão"], ["forma", "Formações"], ["lista", "Livros"]];
   const ruleText = isMem
     ? "Publicado chega só a quem foi convocado. Ser do mesmo local não basta: se você não entra no show, o livro dele não é seu para ver."
     : isDir
@@ -787,7 +787,7 @@ function HojeTab(props: {
           { n: String(liveScenes.length), label: liveScenes.length === 1 ? "cena hoje" : "cenas hoje", tone: "var(--asa-ink)" },
         ]
       : [
-        { n: String(nConv), label: nConv === 1 ? "convocado hoje" : "convocados hoje", tone: "var(--asa-purple)" },
+        { n: String(nConv), label: nConv === 1 ? "convocado no dia" : "convocados no dia", tone: "var(--asa-purple)" },
         { n: `${liveScenes.length}/${scenes.length}`, label: liveScenes.length === scenes.length ? "cenas mantidas" : "cenas mantidas (há cena tirada hoje)", tone: "var(--asa-ink)" },
         { n: String(nSubs), label: nSubs === 1 ? "entrou no lugar de alguém" : "entraram no lugar de alguém", tone: nSubs ? "var(--asa-ok-fg)" : "var(--asa-label)" },
         { n: String(nVagas), label: nVagas === 1 ? "posição em aberto" : "posições em aberto", tone: nVagas ? "var(--asa-vaga-fg)" : "var(--asa-label)" },
@@ -861,7 +861,7 @@ function HojeTab(props: {
       </div>
       <div style={css("padding:14px 18px;display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start")}>
         <div className="ldd-shrink" style={css("flex:1 1 300px;min-width:260px;display:flex;flex-direction:column;gap:9px")}>
-          <span style={css(MONO_LABEL)}>sessões de hoje</span>
+          <span style={css(MONO_LABEL)}>sessões do dia</span>
           {sessions.map((s, i) => {
             const chamada = source?.callTimes[time(s.startTime)];
             const aviso = s.stale ? s.staleReason : null;
@@ -887,7 +887,7 @@ function HojeTab(props: {
         </div>
         <div className="ldd-shrink" style={css("flex:1 1 360px;min-width:300px;display:flex;flex-direction:column;gap:9px")}>
           <div style={css("display:flex;align-items:baseline;gap:9px;flex-wrap:wrap")}>
-            <span style={css(MONO_LABEL + ";flex:1")}>quem faz cada personagem hoje</span>
+            <span style={css(MONO_LABEL + ";flex:1")}>quem faz cada personagem no dia</span>
             <span style={css("font-size:12px;color:var(--asa-label)")}>{charactersToday.length ? plural(charactersToday.length, "personagem", "personagens") : "este show não usa personagens"}</span>
           </div>
           {charactersToday.map((p) => {
@@ -932,7 +932,7 @@ function HojeTab(props: {
 
     {!soPers && openScene && <div style={css("display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap")}>
       <div className="ldd-shrink" style={css("flex:0 0 268px;display:flex;flex-direction:column;gap:8px;min-width:240px")}>
-        <span style={css(MONO_LABEL)}>Cenas de hoje</span>
+        <span style={css(MONO_LABEL)}>Cenas do dia</span>
         {scenes.map((c, i) => {
           const live = (slotsByScene.get(c.id) ?? []).filter((s) => !s.out);
           const on = c.id === openScene.id;
@@ -1074,12 +1074,14 @@ function ScenePanel(props: Parameters<typeof HojeTab>[0] & { scene: DScene; slot
   const slotBox = (s: SlotView) => {
     const mine = isMine(s);
     const vago = !s.who;
+    // Papel nomeado ("Patinador principal") tem rótulo longo: vai numa linha só dele, para não empurrar o nome e o botão para fora da caixa.
+    const longo = s.label.length > 7;
     const abertaId = liveAssignments(s.position).find((a) => !a.userId)?.id;
     const { manual, alerta } = manualInfo(s.position);
     const tone = s.out ? "var(--asa-error-fg)" : mine ? "var(--asa-mine-fg)" : vago ? "var(--asa-vaga-fg)" : s.sub ? "var(--asa-ok-fg)" : "var(--asa-purple)";
     const note = alerta ?? (s.out ? "fora do dia" : s.sub ? `no lugar de ${s.sub}` : s.papel ? s.papel : mine ? "você" : "");
-    return <div key={s.position.id} style={css(`display:flex;align-items:center;gap:9px;padding:8px 10px;border:1px solid ${alerta ? "var(--asa-amber-glow)" : s.out ? "var(--asa-error2-bg)" : mine ? "var(--asa-pink-subtle)" : "var(--asa-line)"};border-radius:11px;background:${alerta ? "var(--asa-late-bg)" : s.out ? "var(--asa-red-cloud)" : mine ? "var(--asa-mine-faint)" : "#fff"};min-width:172px;max-width:214px`)}>
-      <span style={css(`font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:${tone};background:${tone}18;min-width:24px;text-align:center;padding:3px 5px;border-radius:7px;flex:none;white-space:nowrap`)}>{s.label}</span>
+    return <div key={s.position.id} style={css(`display:flex;align-items:center;gap:9px;padding:8px 10px;border:1px solid ${alerta ? "var(--asa-amber-glow)" : s.out ? "var(--asa-error2-bg)" : mine ? "var(--asa-pink-subtle)" : "var(--asa-line)"};border-radius:11px;background:${alerta ? "var(--asa-late-bg)" : s.out ? "var(--asa-red-cloud)" : mine ? "var(--asa-mine-faint)" : "#fff"};min-width:172px;max-width:${longo ? 264 : 214}px${longo ? ";flex-wrap:wrap" : ""}`)}>
+      <span style={css(`font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:${tone};background:${tone}18;min-width:24px;text-align:center;padding:3px 5px;border-radius:7px;${longo ? "flex:1 1 100%;text-align:left;white-space:normal;overflow-wrap:anywhere" : "flex:none;white-space:nowrap"}`)}>{s.label}</span>
       <div style={css("display:flex;flex-direction:column;gap:2px;min-width:0;flex:1")}>
         <span style={css("display:flex;align-items:center;gap:5px;min-width:0")}>
           <span style={css(`font-size:12.5px;font-weight:${mine ? 700 : 600};color:${vago ? "var(--asa-vaga-fg)" : mine ? "var(--asa-mine-fg)" : "var(--asa-ink)"};white-space:nowrap;overflow:hidden;text-overflow:ellipsis${s.out ? ";text-decoration:line-through" : ""}`)}>{s.who ?? "sem titular"}</span>
@@ -1393,6 +1395,6 @@ function PromptDialog({ title, label, initial, aviso, onClose, onSubmit }: { tit
   return <div className="shows-dialog-backdrop"><div className="shows-dialog" role="dialog" aria-modal="true" aria-label={title}>
     <header className="shows-dialog-header"><h2>{title}</h2><button onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
     <div className="shows-dialog-content">{aviso && <p style={css("margin:0 0 10px;font-size:13px;line-height:1.5;color:var(--asa-ink-medium)")}>{aviso}</p>}<form id="ldd-prompt-form" onSubmit={submit} className="shows-form"><label>{label}<textarea required rows={label === "Motivo" ? 3 : 1} value={value} onChange={(e) => setValue(e.target.value)} autoFocus placeholder={label === "Motivo" ? "Fica registrado no histórico" : undefined}/></label></form></div>
-    <footer className="shows-dialog-footer"><button form="ldd-prompt-form" className="shows-primary" disabled={!value.trim()}>Confirmar</button></footer>
+    <footer className="shows-dialog-footer"><button type="button" className="shows-secondary" onClick={onClose}>Cancelar</button><button form="ldd-prompt-form" className="shows-primary" disabled={!value.trim()}>Confirmar</button></footer>
   </div></div>;
 }

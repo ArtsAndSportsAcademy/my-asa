@@ -1138,7 +1138,7 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, b
     const faltam = dia.areas.filter((a) => !a.pronta);
     const published = dia.escala && dia.escala.status !== "DRAFT";
     if (tab === "prog") note = "Programação é o molde: muda os próximos dias que ainda não foram publicados. Dia publicado não muda sozinho.";
-    else if (!dia.escala) note = "Gere o dia para criar a Escala e os Livros dos Shows programados como rascunho.";
+    else if (!dia.escala) note = isAdm ? "Gere o dia para criar a Escala e os Livros dos Shows programados como rascunho." : "Este dia ainda não foi gerado. Quem gera a Escala e os Livros é a Administração.";
     else if (dia.escala.alteradaDesde) note = "Mudou depois de publicada · quem faz só recebe a mudança quando você republicar";
     else if (published) note = `Publicada${dia.escala.publishedAt ? ` às ${hhmm(dia.escala.publishedAt)}` : ""} · ${dia.areas.length} ${dia.areas.length === 1 ? "área" : "áreas"} · a mesma escalação está no Livro do Dia`;
     else note = `Rascunho · ${prontas.length} de ${dia.areas.length} ${dia.areas.length === 1 ? "parte enviada" : "partes enviadas"}${faltam.length ? ` · falta ${faltam.map((a) => a.name).join(", ")}` : ""}${faltam.filter((a) => a.prontaTirada).map((a) => ` · ${a.name}: marca tirada por ${a.prontaTirada!.por ?? "alguém"} às ${hhmm(a.prontaTirada!.em)}`).join("")} · publica a Administração`;
@@ -1168,7 +1168,7 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, b
   return <footer className="esc-pad ge-barra" style={css("display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 20px;border-top:1px solid var(--asa-border-soft);")}>
     {areas.length > 0 && <div className="ge-areas" style={css("display:flex;flex-wrap:wrap;gap:6px;width:100%")}>
       {areas.map((a) => {
-        const chip = "display:inline-flex;align-items:center;gap:6px;flex:none;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;padding:3px 9px;border-radius:999px;background:" + (a.pronta ? "var(--asa-teal-pale)" : "var(--asa-amber-paper)") + ";color:" + (a.pronta ? "var(--asa-teal-dark)" : "var(--asa-badge-fg)");
+        const chip = "display:inline-flex;align-items:center;gap:6px;flex:none;font-size:12px;font-weight:700;white-space:nowrap;padding:3px 9px;border-radius:999px;background:" + (a.pronta ? "var(--asa-teal-pale)" : "var(--asa-amber-paper)") + ";color:" + (a.pronta ? "var(--asa-teal-dark)" : "var(--asa-badge-fg)");
         const label = `${a.name} · ${a.pronta ? `enviada${a.pronta.por ? ` (${a.pronta.por})` : ""}` : a.prontaTirada ? "voltou a ser editada" : "falta enviar"}`;
         // Administração pode marcar qualquer área (ex.: Produção, cuja supervisão não fica num local só).
         return isAdm && dia && (!dia.escala || dia.escala.status === "DRAFT")
