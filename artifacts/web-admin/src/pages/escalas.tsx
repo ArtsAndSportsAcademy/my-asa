@@ -1176,10 +1176,10 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, b
           : <span key={a.id} style={css(chip)}>{label}</span>;
       })}
     </div>}
-    <span style={css("font-size:12px;color:var(--asa-label)")}>{note}</span>
-    <span style={css("flex:1")}/>
+    <span className="ge-barra-nota" style={css("font-size:12px;color:var(--asa-label)")}>{note}</span>
+    <span className="ge-barra-folga" style={css("flex:1")}/>
     {/* Ações de apoio primeiro, à esquerda; a ação principal (gerar, marcar pronta, publicar) sempre por último, à direita. */}
-    <div style={css("display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;margin-left:auto")}>
+    <div className="ge-barra-acoes" style={css("display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;margin-left:auto")}>
       {apoio.length > 0 && <MenuMais itens={apoio}/>}
       {[...actions].sort((a, b) => Number(principais.has(String((a as { key?: string }).key))) - Number(principais.has(String((b as { key?: string }).key))))}</div>
   </footer>;

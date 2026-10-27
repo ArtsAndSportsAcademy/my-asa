@@ -85,7 +85,13 @@
 .ge-barra{position:sticky;bottom:0;z-index:20;background:rgba(255,255,255,.86)!important;-webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%)}
 /* botões de ação do rodapé (gerar, enviar a parte, publicar): sempre com 44 px de altura para o toque */
 .ge-barra>div button.esc-hit{min-height:44px}
-@media(max-width:720px){.ge-barra{bottom:calc(64px + env(safe-area-inset-bottom,0px));padding:8px 14px!important}.ge-barra .ge-areas{display:none!important}}
+@media(max-width:720px){.ge-barra{bottom:calc(64px + env(safe-area-inset-bottom,0px));padding:8px 14px!important;gap:6px!important}.ge-barra .ge-areas{display:none!important}
+/* No celular a barra não pode comer a grade: a nota vai a no máximo 2 linhas e as ações ficam numa linha só, a principal ocupando o resto. */
+.ge-barra .ge-barra-nota{flex:1 1 100%;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.35}
+.ge-barra .ge-barra-folga{display:none}
+.ge-barra .ge-barra-acoes{flex:1 1 100%;flex-wrap:nowrap!important;margin-left:0!important}
+.ge-barra .ge-barra-acoes>button{flex:1 1 auto;min-width:0}
+.ge-barra .ge-barra-acoes>:not(:last-child),.ge-barra .ge-barra-acoes>:not(:last-child) button{flex:none;white-space:nowrap}}
 
 /* ---------- menu do bloco e desfazer ---------- */
 .ge-menu-fundo{position:fixed;inset:0;z-index:60;background:transparent}

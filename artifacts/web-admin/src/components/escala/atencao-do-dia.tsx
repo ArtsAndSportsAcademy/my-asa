@@ -50,7 +50,7 @@ export function AtencaoDoDia({ dia, vazios, grupos, canEdit, editableAreaIds, ti
       <img src="/asa/aviso-importante.webp" alt="" style={css("width:28px;height:28px;object-fit:contain;flex:none")}/>
       <h2>Atenção do dia</h2>
       <span className="ge-aten-n" aria-label={plural(total, "coisa para ver", "coisas para ver")}>{total}</span>
-      <span style={css("flex:1;min-width:0;font-size:12.5px;color:var(--asa-amber-dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap")}>{resumo}</span>
+      <span style={css("flex:1;min-width:0;font-size:12.5px;line-height:1.35;color:var(--asa-amber-dark);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical")}>{resumo}</span>
       <span style={css("flex:none;font-size:12px;font-weight:700;color:var(--asa-amber-mid)")}>{aberto ? "fechar" : "ver"}</span>
     </summary>
 
