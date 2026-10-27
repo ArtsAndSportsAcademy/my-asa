@@ -160,5 +160,7 @@
 @media(max-width:720px){
   .ge-filtros[data-aberto="false"]{display:none}
   .ge-filtros[data-aberto="true"]{display:flex;flex-direction:column;gap:9px;flex:1 1 100%}
+  .ge-filtros>input{flex:none!important;width:100%;box-sizing:border-box}
+  .ge-filtros>span{flex:none!important}
   .ge-aten{padding:8px 12px}
 }

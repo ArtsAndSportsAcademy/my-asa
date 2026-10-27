@@ -1,6 +1,6 @@
 import { type CSSProperties, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
-import { X } from "lucide-react";
+import { Plus, Printer, X } from "lucide-react";
 import { ApiError, customFetch } from "@workspace/api-client-react";
 import { css } from "@/lib/dc-style";
 import { GerarMesDialog } from "@/components/gerar-mes-dialog";
@@ -223,9 +223,9 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
     return () => { document.removeEventListener("keydown", fecharComEsc); document.removeEventListener("pointerdown", fecharAoTocarFora); };
   }, [opMenu]);
 
-  // Cabeçalho do shell: "somente leitura" (Direção) e o seletor de local, como no quadro.
-  useEffect(() => {
-    onHeader?.(<div style={css("position:relative;display:flex;align-items:center;gap:12px")}>
+  // O seletor de local (e o aviso "somente leitura" da Direção): no computador mora no cabeçalho do shell; no telefone o cabeçalho some
+  // e o mesmo seletor entra na barra do dia, para a grade subir (uma linha a menos, ~70 px).
+  const seletorDeLocal = (noTelefone: boolean) => <div className={noTelefone ? "esc-db-local esc-so-tel" : "esc-hdr-local"} style={css("position:relative;display:flex;align-items:center;gap:12px")}>
       {isDir && <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--asa-readonly-fg);background:var(--asa-readonly-bg);padding:5px 10px;border-radius:999px;")}>somente leitura</span>}
       <button type="button" className="esc-hit" aria-haspopup="menu" aria-expanded={opMenu} disabled={isMem || locais.length < 2} onClick={() => setOpMenu((v) => !v)}
         style={css("display:flex;flex:none;white-space:nowrap;align-items:center;gap:8px;border:1px solid var(--asa-line);background:#fff;border-radius:999px;padding:6px 12px;font-size:13.5px;font-weight:600;color:var(--asa-ink-medium);font-family:Manrope,sans-serif;" + (!isMem && locais.length > 1 ? "cursor:pointer;" : "cursor:default;") + (isMem ? "opacity:.75;" : ""))}>
@@ -237,7 +237,11 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
         {locais.map((l) => <button key={l.id} type="button" role="menuitem" onClick={() => { setLocalId(l.id); guardarLocal(l.id); setOpMenu(false); }}
           style={css("text-align:left;border:none;background:" + (localId === l.id ? "var(--asa-show-bg)" : "none") + ";color:" + (localId === l.id ? "var(--asa-purple)" : "var(--asa-ink-medium)") + ";border-radius:8px;padding:8px 10px;font-size:12px;font-weight:" + (localId === l.id ? "700" : "600") + ";cursor:pointer;font-family:Manrope,sans-serif;min-height:44px")}>{l.name}</button>)}
       </div>}
-    </div>);
+    </div>;
+
+  // Cabeçalho do shell: "somente leitura" (Direção) e o seletor de local, como no quadro.
+  useEffect(() => {
+    onHeader?.(seletorDeLocal(false));
     return () => onHeader?.(null);
   }, [operationLabel, locais, localId, opMenu, isDir, isMem]);
 
@@ -429,32 +433,36 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
   const carregandoTela = loading || (!isMem && !review && !locaisProntos);
   const status = carregandoTela && !dia ? "carregando…" : error && !dia ? "não carregou" : statusLabel(dia);
   const S = STATUS[isMem ? (carregandoTela && !minha ? "carregando…" : error && !minha ? "não carregou" : minha?.publicada ? "publicada" : "sem escala") : status];
-  const dateBar = <div className="esc-pad" style={css("display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:14px 20px 12px;background:#fff;position:relative;" + (isMem ? "border-bottom:1px solid var(--asa-border-soft);" : ""))}>
-    <div style={css("display:flex;align-items:center;gap:4px")}>
+  const dateBar = <div className="esc-pad esc-db" style={css("display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:14px 20px 12px;background:#fff;position:relative;" + (isMem ? "border-bottom:1px solid var(--asa-border-soft);" : ""))}>
+    {!isMem && seletorDeLocal(true)}
+    <div className="esc-db-nav" style={css("display:flex;align-items:center;gap:4px")}>
       <button type="button" className="esc-hit" aria-label="Dia anterior" onClick={() => { setDate(addDays(date, -1)); setCal(false); }} style={css("width:30px;height:30px;border-radius:9px;border:1px solid var(--asa-line);background:#fff;color:var(--asa-label);font-size:13px;cursor:pointer")}>‹</button>
       <button type="button" className="esc-hit" aria-label="Próximo dia" onClick={() => { setDate(addDays(date, 1)); setCal(false); }} style={css("width:30px;height:30px;border-radius:9px;border:1px solid var(--asa-line);background:#fff;color:var(--asa-label);font-size:13px;cursor:pointer")}>›</button>
     </div>
-    <div style={css("display:flex;flex-direction:column;gap:3px;flex:0 1 auto;min-width:0;max-width:100%")}>
+    <div className="esc-db-titulo" style={css("display:flex;flex-direction:column;gap:3px;flex:0 1 auto;min-width:0;max-width:100%")}>
       <div style={css("display:flex;align-items:baseline;gap:2px 9px;flex-wrap:wrap")}>
         <span style={css("font-family:Outfit,sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.02em;white-space:nowrap")}>{WEEKDAY_LONG[weekdayOf(date)]}</span>
-        <span style={css("font-size:13.5px;color:var(--asa-ink-muted);font-weight:500;white-space:nowrap")}>{fullDate(date)}</span>
+        <span className="esc-db-longa" style={css("font-size:13.5px;color:var(--asa-ink-muted);font-weight:500;white-space:nowrap")}>{fullDate(date)}</span>
+        <span className="esc-so-tel" style={css("font-size:14px;color:var(--asa-ink-muted);font-weight:600;white-space:nowrap")}>{date.slice(8, 10)}/{date.slice(5, 7)}</span>
         <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:var(--asa-show-bg);color:var(--asa-purple);")}>{relOf(date)}</span>
       </div>
-      <div style={css("display:flex;align-items:center;gap:9px;font-size:12px;color:var(--asa-label);flex-wrap:wrap")}>
+      <div className="esc-db-sub" style={css("display:flex;align-items:center;gap:9px;font-size:12px;color:var(--asa-label);flex-wrap:wrap")}>
         <span>{operationLabel}</span>
         <span>·</span>
         <span>{isMem ? (carregandoTela && !minha ? "carregando…" : error && !minha ? "não carregou" : minha?.publicada ? plural(meusBlocos.length, "bloco seu", "blocos seus") : "ainda não publicada") : dia ? plural(dia.pessoas.filter((p) => !p.folga).length, "pessoa no dia", "pessoas no dia") : "—"}</span>
       </div>
     </div>
-    <span style={css("flex:1")}/>
-    <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:5px 10px;border-radius:999px;background:" + S.bg + ";color:" + S.fg + ";")}>{isMem ? (carregandoTela && !minha ? "carregando…" : error && !minha ? "não carregou" : minha?.publicada ? "publicada" : "sem escala") : status}</span>
-    <div style={css("display:flex;align-items:center;gap:6px;border:1px solid var(--asa-line);border-radius:999px;padding:3px;background:var(--asa-fade);flex:none;white-space:nowrap")}>
+    <span className="esc-db-folga" style={css("flex:1")}/>
+    <span className="esc-db-status" style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:5px 10px;border-radius:999px;background:" + S.bg + ";color:" + S.fg + ";")}>{isMem ? (carregandoTela && !minha ? "carregando…" : error && !minha ? "não carregou" : minha?.publicada ? "publicada" : "sem escala") : status}</span>
+    <div className="esc-db-acoes">
+    <div className="esc-db-pills" style={css("display:flex;align-items:center;gap:6px;border:1px solid var(--asa-line);border-radius:999px;padding:3px;background:var(--asa-fade);flex:none;white-space:nowrap")}>
       <button type="button" className="esc-hit" onClick={() => { setDate(todayISO()); setCal(false); }} style={css(date === todayISO() ? pillOn : pillOff)}>Hoje</button>
       <button type="button" className="esc-hit" onClick={() => { setDate(addDays(todayISO(), 1)); setCal(false); }} style={css(date === addDays(todayISO(), 1) ? pillOn : pillOff)}>Amanhã</button>
       <button type="button" className="esc-hit" aria-expanded={cal} onClick={() => setCal((v) => !v)} style={css(cal ? pillOn : pillOff)}>Calendário</button>
     </div>
-    {!isMem && !review && localId && <a className="esc-hit" href={`/imprimir?local=${encodeURIComponent(localId)}&data=${date}`} target="_blank" rel="noreferrer" style={css("flex:none;white-space:nowrap;border:1px solid var(--asa-line);background:#fff;color:var(--asa-ink-medium);border-radius:999px;padding:6px 13px;font-size:12px;font-weight:700;font-family:Manrope,sans-serif;text-decoration:none")}>Imprimir o dia</a>}
-    {(isAdm || areasMinhas.length > 0) && tab === "escala" && dia?.escala && <button type="button" className="esc-hit" disabled={saving} onClick={() => setManual({ bloco: null })} style={css(btn("primary") + "min-height:44px;white-space:nowrap")}>+ Atividade só deste dia</button>}
+    {!isMem && !review && localId && <a className="esc-hit" href={`/imprimir?local=${encodeURIComponent(localId)}&data=${date}`} target="_blank" rel="noreferrer" style={css("flex:none;white-space:nowrap;border:1px solid var(--asa-line);background:#fff;color:var(--asa-ink-medium);border-radius:999px;padding:6px 13px;font-size:12px;font-weight:700;font-family:Manrope,sans-serif;text-decoration:none")}aria-label="Imprimir o dia"><span className="esc-lbl-pc">Imprimir o dia</span><Printer className="esc-so-tel" size={18} aria-hidden="true"/></a>}
+    {(isAdm || areasMinhas.length > 0) && tab === "escala" && dia?.escala && <button type="button" className="esc-hit" disabled={saving} onClick={() => setManual({ bloco: null })} style={css(btn("primary") + "min-height:44px;white-space:nowrap")}aria-label="Atividade só deste dia"><span className="esc-lbl-pc">+ Atividade só deste dia</span><Plus className="esc-so-tel" size={20} aria-hidden="true"/></button>}
+    </div>
     {cal && <Calendario date={date} onPick={(d) => { setDate(d); setCal(false); }}/>}
   </div>;
 

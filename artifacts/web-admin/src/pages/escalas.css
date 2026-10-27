@@ -69,3 +69,28 @@
 @media (max-width: 720px) {
   .esc-bloco-link { min-height: 44px; align-items: center !important; }
 }
+
+/* 26/10 (pacote N, telefone): a barra do dia fica em três linhas curtas para a grade subir — local e situação; dia e setas; Hoje/Amanhã/Calendário
+   com Imprimir e "+ Atividade" só com ícone. No computador nada muda (os blocos "esc-so-tel" ficam escondidos e as ações usam display:contents). */
+.esc-so-tel{display:none!important}
+.esc-db-acoes{display:contents}
+@media(max-width:720px){
+  .asa-header.ldd-shell-header:has(.esc-hdr-local){display:none}
+  .esc-so-tel{display:inline-flex!important}
+  .esc-db-local.esc-so-tel{display:flex!important}
+  .esc-lbl-pc,.esc-db-longa,.esc-db-sub,.esc-db-folga{display:none!important}
+  .esc-db{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 8px!important;align-items:center;padding:8px 16px 6px!important}
+  .esc-db-local{grid-column:1 / 3;grid-row:1;min-width:0;flex-wrap:wrap;gap:6px 8px!important}
+  .esc-db-status{grid-column:3;grid-row:1}
+  .esc-db-nav{grid-column:1;grid-row:2}
+  .esc-db-titulo{grid-column:2 / 4;grid-row:2}
+  .esc-db-titulo>div:first-child{flex-wrap:nowrap!important;gap:6px!important;align-items:center!important}
+  .esc-db-titulo>div:first-child>span:first-child{font-size:19px!important}
+  .esc-db-acoes{display:flex;grid-column:1 / 4;grid-row:3;gap:8px;align-items:center}
+  .esc-db-pills{flex:1 1 auto;min-width:0;justify-content:space-between}
+  .esc-db-acoes>a,.esc-db-acoes>button{flex:none;width:44px;height:44px;min-height:44px!important;padding:0!important;display:inline-flex!important;align-items:center;justify-content:center;border-radius:999px!important}
+  .esc-db-nav button{width:40px!important;height:40px!important}
+  .esc-db-pills button{min-height:38px}
+  .esc-db-local>button{min-height:40px}
+  .esc-tabs button{min-height:44px}
+}
