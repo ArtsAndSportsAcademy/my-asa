@@ -82,6 +82,8 @@ export type BlocoDia = {
   cedeu?: { userId: string; para: string }[];
   /** Bloco geral encurtado para quem tem atividade específica no começo ou no fim dele: o horário original e o que cortou. */
   encurtado?: { original: { inicio: string; fim: string | null }; por: string[] };
+  /** Como a Programação convoca este bloco: o elenco todo ou uma/mais áreas. A Escala e a folha impressa escrevem "Elenco todo" ou o nome da área em vez da lista de nomes, mesmo quando alguém saiu por outra atividade. */
+  quemRegra?: "todos" | "area"; areaNomes?: string[];
   /** Atividade editada só neste dia (0087): o que a Programação manda (nome, horário, tipo) e quem/por que mudou. Nome, horário e tipo do bloco já são os editados. */
   editadoNoDia?: { original: { rotulo: string; inicio: string; fim: string | null; tipoId: string | null }; motivo: string | null; em: string };
   /** Chamada (0086): este bloco é o horário em que as pessoas da atividade têm que estar prontas. Ocupa tempo (gera choque) ou só informa; `avisar` = entra no aviso de convocação. */
@@ -389,6 +391,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     blocos.push({
       ...base, key: `p:${bloco.id}`, rotulo: bloco.rotulo, inicio, fim: hhmm(bloco.fim), origem: "programacao", regra: bloco.regra,
       pessoaIds, vazio, sinal, blocoId: bloco.id, showBookId: bloco.showBookId, tipoId: bloco.tipoId ?? null, flexivel: bloco.flexivel,
+      ...(bloco.regra === "todos" ? { quemRegra: "todos" as const } : bloco.regra === "area" ? { quemRegra: "area" as const, areaNomes: bloco.areaIds.map((id) => areaName.get(id)).filter((n): n is string => Boolean(n)) } : {}),
       dailyBookId: livro?.id ?? null, dailyBookStatus: livro?.status ?? null, showTipo: livro?.showType ?? null,
       ...(livro ? { vagas: vagas.get(livro.id) ?? [] } : {}),
     });

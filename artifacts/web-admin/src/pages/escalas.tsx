@@ -13,7 +13,7 @@ import { BlocoMenu } from "@/components/escala/bloco-menu";
 import { GradePessoa } from "@/components/escala/grade-pessoa";
 import { ResumoDoDia, trabalhaNoDia } from "@/components/escala/resumo-do-dia";
 import { QuemResumido } from "@/components/escala/quem-resumido";
-import { resumirQuem, type PessoaDoDia } from "@/components/escala/resumo-de-quem";
+import { resumirQuem, resumoDoBloco, type PessoaDoDia } from "@/components/escala/resumo-de-quem";
 import { TIPOS, ehExcecao, faixa, foraDoChoque, quandoDoDia, resolverTipo, textoDoBloco, textoDoEncurtado, toneDoTipo, type TipoDoLocal } from "@/components/escala/tipos";
 import { TipoSelect } from "@/components/escala/tipo-select";
 import { ChamadasDialog, ChamadasLista, gravarChamadas, primeiroErro, resumoDaChamada, type ChamadaDaApi, type ChamadaRascunho } from "@/components/escala/chamadas-editor";
@@ -34,7 +34,7 @@ import "./escalas.css";
 
 type Role = "adm" | "dir" | "sup" | "mem";
 type Regra = "todos" | "ninguem" | "area" | "grupo" | "pessoas" | "livro";
-export type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; origem: "programacao" | "livro" | "manual" | "solicitacao" | "chamada"; regra: Regra | null; pessoaIds: string[]; vazio: boolean; sinal: string | null; showBookId: string | null; dailyBookId: string | null; dailyBookStatus: string | null; blocoId: string | null; allocationId?: string | null; allocationIds?: string[]; vagas?: VagaDoLivro[]; showTipo?: string | null; tipoId?: string | null; horarioDela?: { chaveOriginal: string; inicio: string; fim: string | null }; /** Bloco flexível: janela, sem nomes e sem choque. */ flexivel?: boolean; /** Quem saiu deste bloco geral por ter atividade específica no mesmo horário. */ cedeu?: { userId: string; para: string }[]; /** Bloco geral encurtado para quem tem outra atividade no começo ou no fim dele. */ encurtado?: { original: { inicio: string; fim: string | null }; por: string[] }; /** Atividade editada só neste dia (0087): o que a Programação manda e quando foi editada (versão, para dois navegadores não se atropelarem). */ editadoNoDia?: { original: { rotulo: string; inicio: string; fim: string | null; tipoId: string | null }; motivo: string | null; em: string }; /** Chamada (0086): horário em que as pessoas da atividade têm que estar prontas. */ chamada?: { chamadaId: string; nome: string; ocupaTempo: boolean; avisar: boolean; dona: "sessao" | "bloco" | "dia"; atividade: { key: string; rotulo: string; inicio: string } } };
+export type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; origem: "programacao" | "livro" | "manual" | "solicitacao" | "chamada"; regra: Regra | null; pessoaIds: string[]; vazio: boolean; sinal: string | null; showBookId: string | null; dailyBookId: string | null; dailyBookStatus: string | null; blocoId: string | null; allocationId?: string | null; allocationIds?: string[]; vagas?: VagaDoLivro[]; showTipo?: string | null; tipoId?: string | null; horarioDela?: { chaveOriginal: string; inicio: string; fim: string | null }; /** Bloco flexível: janela, sem nomes e sem choque. */ flexivel?: boolean; /** Quem saiu deste bloco geral por ter atividade específica no mesmo horário. */ cedeu?: { userId: string; para: string }[]; /** Bloco geral encurtado para quem tem outra atividade no começo ou no fim dele. */ encurtado?: { original: { inicio: string; fim: string | null }; por: string[] }; /** Como a Programação convoca o bloco: elenco todo ou áreas (a lista de nomes vira o rótulo curto). */ quemRegra?: "todos" | "area"; areaNomes?: string[]; /** Atividade editada só neste dia (0087): o que a Programação manda e quando foi editada (versão, para dois navegadores não se atropelarem). */ editadoNoDia?: { original: { rotulo: string; inicio: string; fim: string | null; tipoId: string | null }; motivo: string | null; em: string }; /** Chamada (0086): horário em que as pessoas da atividade têm que estar prontas. */ chamada?: { chamadaId: string; nome: string; ocupaTempo: boolean; avisar: boolean; dona: "sessao" | "bloco" | "dia"; atividade: { key: string; rotulo: string; inicio: string } } };
 /** Personagem de um bloco que vem de Livro do Dia: quem o faz hoje (ou ninguém, se a vaga está aberta). */
 type VagaDoLivro = { assignmentId: string; personagem: string; userId: string | null };
 /** Uma mexida no bloco; com `assignmentId`, vale para aquele personagem e não para "a primeira vaga aberta". */
@@ -758,8 +758,10 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
             {faixas.flatMap((f) => f.blocos.map((b, gi) => {
               const who = b.pessoaIds.filter((id) => team === "todos" || dia.pessoas.find((p) => p.id === id)?.areaId === team);
               // Com um grupo escolhido, "todo" e "área" se medem dentro dele; sem filtro, contra o dia inteiro.
-              const resumo = resumirQuem(who, team === "todos" ? pessoasDoDia : pessoasDoDia.filter((p) => p.areaId === team));
-              const resumido = resumo.tipo === "todos" || resumo.tipo === "area";
+              // A chamada de um show grande diz "Elenco do show: N pessoas", como o próprio show; não repete a lista inteira.
+              const paiDaChamada = b.chamada ? dia.blocos.find((x) => x.key === b.chamada!.atividade.key) : undefined;
+              const resumo = resumoDoBloco(b, who, team === "todos" ? pessoasDoDia : pessoasDoDia.filter((p) => p.areaId === team), paiDaChamada?.vagas?.length ?? 0);
+              const resumido = resumo.tipo === "todos" || resumo.tipo === "area" || (Boolean(b.chamada) && resumo.tipo === "show-grande");
               return <tr key={b.key}>
                 <td style={css("border-right:1px solid var(--asa-line-soft);border-bottom:1px solid var(--asa-purple-airy);padding:12px 14px;vertical-align:middle;background:var(--asa-card-faint);width:150px;")}>
                   {gi === 0 && <div style={css("display:flex;flex-direction:column;gap:1px")}><span style={css("font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--asa-ink-medium)")}>{faixa(f)}</span></div>}
@@ -767,7 +769,7 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
                 <td style={css("border-bottom:1px solid var(--asa-purple-airy);border-right:1px solid var(--asa-purple-lift);padding:10px 12px;vertical-align:middle;width:260px;")}>{blockEl(b, "display:inline-flex;font-size:15px;padding:9px 13px;border-radius:9px;")}</td>
                 <td style={css("border-bottom:1px solid var(--asa-purple-airy);padding:10px 12px;vertical-align:middle;")}>
                   <div style={css("display:flex;flex-wrap:wrap;gap:7px;align-items:center")}>
-                    {b.flexivel ? <span style={css("font-size:14px;font-weight:600;color:var(--asa-ink-medium)")}>{`Cada pessoa cumpre dentro da janela, sem horário fixo · ${plural(who.length, "pessoa", "pessoas")}`}</span>
+                    {b.flexivel ? <span style={css("font-size:14px;font-weight:600;color:var(--asa-ink-medium)")}>{`Cada um cumpre dentro da janela · ${plural(who.length, "pessoa", "pessoas")}`}</span>
                     : b.regra === "livro" ? <ShowLinha bloco={b} data={dia.date} nomeDe={personName} pessoasDoDia={pessoasDoDia}/> : <>
                     {resumido
                       ? <QuemResumido resumo={resumo}/>

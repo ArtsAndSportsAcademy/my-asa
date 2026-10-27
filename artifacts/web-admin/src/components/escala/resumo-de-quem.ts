@@ -71,3 +71,17 @@ export function resumirQuem(pessoaIds: string[], doDia: PessoaDoDia[], posicoes 
 
   return { tipo: "lista", rotulo: "", extras: [], nomes };
 }
+
+/**
+ * O resumo de um BLOCO. Quando a Programação convoca o elenco todo ou uma área, a frase é essa (nunca a lista de nomes), mesmo que alguém tenha saído
+ * por ter outra atividade no mesmo horário (decisão de 27/10/2026: "Acrobacia: elenco todo" e "Patinadores", não 21 nomes). Os nomes continuam em "ver nomes".
+ * Os demais blocos seguem a conta de sempre (`resumirQuem`).
+ */
+export function resumoDoBloco(b: { quemRegra?: "todos" | "area"; areaNomes?: string[] }, pessoaIds: string[], doDia: PessoaDoDia[], posicoes = 0): ResumoDeQuem {
+  const base = resumirQuem(pessoaIds, doDia, posicoes);
+  if (posicoes > LIMITE_POSICOES_SHOW_PEQUENO || !b.quemRegra) return base;
+  const n = base.nomes.length;
+  if (b.quemRegra === "todos") return { ...base, tipo: "todos", rotulo: `Elenco todo (${n})`, extras: [] };
+  const nome = b.areaNomes?.length ? emLista(b.areaNomes) : "";
+  return nome ? { ...base, tipo: "area", rotulo: nome, extras: [] } : base;
+}

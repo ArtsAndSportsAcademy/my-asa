@@ -3,7 +3,7 @@ import { Redirect } from "wouter";
 import { customFetch } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/useAuth";
 import { sampleDia, sampleLocais } from "@/lib/review-escala";
-import { resumirQuem, type PessoaDoDia } from "@/components/escala/resumo-de-quem";
+import { resumoDoBloco, resumirQuem, type PessoaDoDia } from "@/components/escala/resumo-de-quem";
 import { textoDaJanela } from "@/components/escala/tipos";
 
 /**
@@ -13,7 +13,7 @@ import { textoDaJanela } from "@/components/escala/tipos";
  * Rascunho sai marcado como rascunho.
  */
 type Vaga = { assignmentId: string; personagem: string; userId: string | null };
-type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; regra: string | null; pessoaIds: string[]; vazio: boolean; sinal: string | null; vagas?: Vaga[]; flexivel?: boolean };
+type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; regra: string | null; pessoaIds: string[]; vazio: boolean; sinal: string | null; vagas?: Vaga[]; flexivel?: boolean; quemRegra?: "todos" | "area"; areaNomes?: string[]; encurtado?: unknown; horarioDela?: unknown; cedeu?: unknown[]; chamada?: { nome: string; atividade: { key: string } } };
 type Dia = {
   date: string; location: { id: string; name: string };
   escala: { status: string; version: number; publishedAt: string | null; alteradaDesde: string | null } | null;
@@ -77,13 +77,17 @@ export default function PrintDayPage() {
   // Quem trabalha no dia (mesma conta da tela): sem folga, ou chamado na folga e com bloco. É a base do "Elenco todo" e da área.
   const doDia: PessoaDoDia[] = (dia?.pessoas ?? []).filter((p) => !p.folga || (p.chamadaNaFolga && (dia?.blocos ?? []).some((b) => b.pessoaIds.includes(p.id))))
     .map((p) => ({ id: p.id, name: p.name, areaId: p.areaId ?? null, areaName: p.areaName }));
-  const porAtividade = (dia?.blocos ?? []).filter((b) => b.pessoaIds.length || b.vazio).sort((a, b) => a.inicio.localeCompare(b.inicio) || a.rotulo.localeCompare(b.rotulo, "pt-BR"))
+  // Folha por atividade, simples: sem a linha extra de quem teve o horário cortado (trecho encurtado ou horário só dele) e sem linha própria de chamada
+  // (a chamada sai embaixo da atividade a que pertence).
+  const chamadasDe = new Map<string, { nome: string; inicio: string; fim: string | null }[]>();
+  for (const b of dia?.blocos ?? []) if (b.chamada) chamadasDe.set(b.chamada.atividade.key, [...(chamadasDe.get(b.chamada.atividade.key) ?? []), { nome: b.chamada.nome, inicio: b.inicio, fim: b.fim }]);
+  const porAtividade = (dia?.blocos ?? []).filter((b) => !b.chamada && !b.encurtado && !b.horarioDela && (b.pessoaIds.length || b.vazio || b.cedeu?.length)).sort((a, b) => a.inicio.localeCompare(b.inicio) || a.rotulo.localeCompare(b.rotulo, "pt-BR"))
     .map((b) => {
       const comVaga = new Set<string>();
       const personagens = (b.vagas ?? []).map((v) => { const quem = v.userId && b.pessoaIds.includes(v.userId) ? v.userId : null; if (quem) comVaga.add(quem); return { personagem: v.personagem, nome: quem ? nomeDe.get(quem) ?? "—" : null }; });
       const semVaga = b.pessoaIds.filter((id) => !comVaga.has(id)).map((id) => nomeDe.get(id) ?? "—").sort(nomeOrdem);
-      const resumo = resumirQuem(b.pessoaIds, doDia, b.vagas?.length ?? 0);
-      return { bloco: b, personagens, semVaga, resumo, semNinguem: (b.vagas ?? []).filter((v) => !v.userId).length };
+      const resumo = resumoDoBloco(b, b.pessoaIds, doDia, b.vagas?.length ?? 0);
+      return { bloco: b, personagens, semVaga, resumo, semNinguem: (b.vagas ?? []).filter((v) => !v.userId).length, chamadas: [...(chamadasDe.get(b.key) ?? [])].sort((x, y) => x.inicio.localeCompare(y.inicio)) };
     });
   const colunas = [porPessoa.slice(0, Math.ceil(porPessoa.length / 2)), porPessoa.slice(Math.ceil(porPessoa.length / 2))];
   const fora = (dia?.pessoas ?? []).filter((p) => p.folga);
@@ -108,10 +112,10 @@ export default function PrintDayPage() {
     {loading ? <p>Carregando escala…</p> : error ? <p role="alert">{error}</p> : <>
       {modo === "pessoa"
         ? <div className="print-columns grid grid-cols-2 gap-5">{colunas.map((coluna, i) => <table className="w-full text-sm" key={i}><thead><tr><th>Pessoa</th><th>Blocos do dia</th></tr></thead><tbody>{coluna.map((p) => <tr key={p.id}><td><strong>{p.name}</strong><div>{p.areaName ?? ""}</div></td><td>{p.blocos.map((b) => <div key={b.key}>{b.flexivel ? null : <>{b.inicio}{b.fim ? `–${b.fim}` : ""} · </>}{texto(b)}{personagensDe(b, p.id).length > 0 && <strong> — {personagensDe(b, p.id).join(", ")}</strong>}</div>)}</td></tr>)}</tbody></table>)}</div>
-        : <table className="w-full text-sm"><thead><tr><th>Horário</th><th>Atividade</th><th>Quem</th></tr></thead><tbody>{porAtividade.map(({ bloco: b, personagens, semVaga, resumo, semNinguem }) => <tr key={b.key}>
+        : <table className="w-full text-sm"><thead><tr><th>Horário</th><th>Atividade</th><th>Quem</th></tr></thead><tbody>{porAtividade.map(({ bloco: b, personagens, semVaga, resumo, semNinguem, chamadas }) => <tr key={b.key}>
             <td style={{ whiteSpace: "nowrap" }}>{b.inicio}{b.fim ? `–${b.fim}` : ""}</td>
-            <td><strong>{texto(b)}</strong></td>
-            <td>{b.flexivel ? <em>Cada pessoa cumpre dentro da janela, sem horário fixo</em> : b.vazio ? <em>Sem ninguém escalado</em> : resumo.tipo === "show-grande"
+            <td><strong>{texto(b)}</strong>{chamadas.length > 0 && <div style={{ fontSize: "0.85em" }}>{chamadas.map((c) => `${c.nome} ${c.inicio}${c.fim ? `–${c.fim}` : ""}`).join(" · ")}</div>}</td>
+            <td>{b.flexivel ? <em>Cada um cumpre dentro da janela</em> : b.vazio ? <em>Sem ninguém escalado</em> : resumo.tipo === "show-grande"
               ? <div><strong>{resumo.rotulo}</strong>{mostrarNomes ? <> — {resumo.nomes.join(" · ")}</> : " · ver Livro do Dia"}</div>
               : !personagens.length && (resumo.tipo === "todos" || resumo.tipo === "area") ? <div>{mostrarNomes ? <><strong>{resumo.rotulo}</strong>: {resumo.nomes.join(" · ")}</> : resumo.rotulo}</div> : <>
               {personagens.map((v, i) => <div key={i}>{v.personagem}: {v.nome ? <strong>{v.nome}</strong> : <em>vaga sem ninguém</em>}</div>)}
@@ -119,7 +123,7 @@ export default function PrintDayPage() {
             </>}</td>
           </tr>)}</tbody></table>}
       {modo === "pessoa" ? !porPessoa.length && <p>Nenhuma pessoa escalada neste dia.</p> : !porAtividade.length && <p>Nenhuma atividade neste dia.</p>}
-      {fora.length > 0 && <p className="mt-4"><strong>Fora o dia todo:</strong> {fora.map((p) => `${p.name} (${FOLGA[p.folga ?? ""] ?? "fora"})`).join(" · ")}</p>}
+      {fora.length > 0 && <p className="mt-4"><strong>Fora o dia todo:</strong> {fora.map((p) => p.name).join(" · ")}</p>}
       {modo === "pessoa" && vazios.length > 0 && <p className="mt-2"><strong>Blocos sem ninguém:</strong> {vazios.map((b) => `${b.inicio} ${texto(b)}`).join(" · ")}</p>}
     </>}
   </main>;

@@ -27,8 +27,6 @@ export function ResumoDoDia({ data, pessoas, blocos, blocosDe, pessoasComChoque,
   const semAtividade = trabalham.filter((p) => blocosDe(p.id).length === 0);
   const comExcecao = trabalham.filter((p) => blocosDe(p.id).some(ehExcecao));
   const semNinguem = blocos.filter((b) => b.regra !== "ninguem" && (b.vazio || b.vagas?.some((v) => !v.userId))).length;
-  const porMotivo = new Map<string, Pessoa[]>();
-  for (const p of fora) { const m = motivoDaFolga(p); porMotivo.set(m, [...(porMotivo.get(m) ?? []), p]); }
 
   return <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
     <div className="ge-resumo" role="group" aria-label="Resumo do dia">
@@ -45,10 +43,7 @@ export function ResumoDoDia({ data, pessoas, blocos, blocosDe, pessoasComChoque,
         <span style={{ color: "var(--asa-purple)", fontWeight: 700 }}>{fora.length ? "ver todos" : ""}</span>
       </summary>
       {fora.length > 0 && <div className="ge-fora-lista">
-        {[...porMotivo.entries()].map(([motivo, lista]) => <div key={motivo}>
-          <h4>{`${motivo} (${lista.length})`}</h4>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{lista.map((p) => <span key={p.id} className="ge-pilula">{p.name}{p.areaName ? ` · ${p.areaName}` : ""}</span>)}</div>
-        </div>)}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{fora.map((p) => <span key={p.id} className="ge-pilula" title={motivoDaFolga(p)}>{p.name}{p.areaName ? ` · ${p.areaName}` : ""}</span>)}</div>
         <span style={{ fontSize: 12, color: "var(--asa-label)" }}>Folga vence a escala: quem está aqui só entra se for chamado de propósito, com motivo escrito.</span>
       </div>}
     </details>
