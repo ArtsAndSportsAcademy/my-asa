@@ -44,6 +44,9 @@ export default function PrintDayPage() {
   const [dia, setDia] = useState<Dia | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  // Edição só desta impressão: o texto da folha vira editável na tela (apagar nomes, escrever o que quiser). Nada disso é salvo nem muda a Escala.
+  const [editando, setEditando] = useState(false);
+  const [versaoDaFolha, setVersaoDaFolha] = useState(0);
 
   useEffect(() => {
     if (review) { setLocais(sampleLocais); setLocationId((atual) => atual || sampleLocais[0]?.id || ""); return; }
@@ -95,16 +98,20 @@ export default function PrintDayPage() {
 
   return <main className="print-day max-w-5xl mx-auto p-6">
     <div className="print-controls flex flex-wrap gap-3 mb-5 items-center">
-      <label>Local <select value={locationId} onChange={(e) => setLocationId(e.target.value)}>{locais.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</select></label>
-      <label>Dia <input type="date" value={date} onChange={(e) => setDate(e.target.value)}/></label>
+      <label>Local <select value={locationId} disabled={editando} onChange={(e) => setLocationId(e.target.value)}>{locais.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</select></label>
+      <label>Dia <input type="date" value={date} disabled={editando} onChange={(e) => setDate(e.target.value)}/></label>
       <span role="group" aria-label="Como imprimir">
-        <button type="button" className="print-button" aria-pressed={modo === "pessoa"} style={{ fontWeight: modo === "pessoa" ? 700 : 400 }} onClick={() => setModo("pessoa")}>Por pessoa</button>{" "}
-        <button type="button" className="print-button" aria-pressed={modo === "atividade"} style={{ fontWeight: modo === "atividade" ? 700 : 400 }} onClick={() => setModo("atividade")}>Por atividade</button>
+        <button type="button" className="print-button" disabled={editando} aria-pressed={modo === "pessoa"} style={{ fontWeight: modo === "pessoa" ? 700 : 400 }} onClick={() => setModo("pessoa")}>Por pessoa</button>{" "}
+        <button type="button" className="print-button" disabled={editando} aria-pressed={modo === "atividade"} style={{ fontWeight: modo === "atividade" ? 700 : 400 }} onClick={() => setModo("atividade")}>Por atividade</button>
       </span>
-      {modo === "atividade" && <label><input type="checkbox" checked={mostrarNomes} onChange={(e) => setMostrarNomes(e.target.checked)}/> Escrever o nome de todo mundo</label>}
+      {modo === "atividade" && <label><input type="checkbox" checked={mostrarNomes} disabled={editando} onChange={(e) => setMostrarNomes(e.target.checked)}/> Escrever o nome de todo mundo</label>}
+      <button type="button" className="print-button" disabled={!dia || loading} aria-pressed={editando} onClick={() => setEditando((v) => !v)}>{editando ? "Terminar de editar" : "Editar este texto"}</button>
+      {editando && <button type="button" className="print-button" onClick={() => setVersaoDaFolha((n) => n + 1)}>Voltar ao original</button>}
       <button type="button" className="print-button" disabled={!dia || loading} onClick={() => window.print()}>Imprimir a escala do dia</button>
       <a href="/escalas">Voltar para Escalas</a>
     </div>
+    {editando && <p className="print-controls" role="status" style={{ margin: "0 0 12px", padding: "10px 12px", border: "1px dashed #6b4fd6", borderRadius: 10, fontSize: 13 }}>Você está editando só esta impressão: clique no texto para apagar nomes ou escrever o que quiser. Nada disso é salvo e a Escala não muda. Ao recarregar a página, a folha volta ao que o app montou.</p>}
+    <div key={versaoDaFolha} className={editando ? "print-folha-editavel" : undefined} contentEditable={editando} suppressContentEditableWarning spellCheck={false} data-testid="folha-do-dia">
     <h1 className="text-2xl font-semibold">Atividade do dia · {dia?.location.name ?? "…"} · {modo === "atividade" ? "por atividade" : "por pessoa"}</h1>
     <p className="my-3">{longDate(date)} · {publicada ? `publicada${dia?.escala?.publishedAt ? ` às ${new Date(dia.escala.publishedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" })}` : ""} · versão ${dia?.escala?.version}` : "sem publicação"} · impressa em {new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" })}</p>
     {!loading && dia && !publicada && <p className="print-warning" role="alert">RASCUNHO — esta escala ainda não foi publicada e pode mudar.</p>}
@@ -126,5 +133,7 @@ export default function PrintDayPage() {
       {fora.length > 0 && <p className="mt-4"><strong>Pessoas de folga:</strong> {fora.map((p) => p.name).join(" · ")}</p>}
       {modo === "pessoa" && vazios.length > 0 && <p className="mt-2"><strong>Blocos sem ninguém:</strong> {vazios.map((b) => `${b.inicio} ${texto(b)}`).join(" · ")}</p>}
     </>}
+    </div>
+    <style>{`@media screen { .print-folha-editavel { outline: 2px dashed #6b4fd6; outline-offset: 6px; background: #fffdf2; cursor: text; } }`}</style>
   </main>;
 }
