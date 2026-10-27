@@ -470,6 +470,16 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
       bloco.sinal = bloco.vazio ? (bloco.sinal ?? "Ajuste do dia deixou este bloco sem ninguém") : null;
     }
   }
+  // Folga vence também na vaga do show: quem está de folga e não foi chamado de propósito neste bloco (chamada entra em `pessoaIds` pelo ajuste)
+  // não ocupa a vaga na Escala, mesmo que o Livro do Dia ainda guarde o nome dela (titular fixado antes da folga). A vaga aparece "sem ninguém"
+  // — a grade, a impressão, o painel e o contador passam a concordar com a Minha escala. O Livro do Dia não é alterado.
+  for (const bloco of blocos) {
+    if (!bloco.vagas?.length) continue;
+    const ficam = new Set(bloco.pessoaIds);
+    if (bloco.vagas.some((v) => v.userId && !present.has(v.userId) && !ficam.has(v.userId))) {
+      bloco.vagas = bloco.vagas.map((v) => v.userId && !present.has(v.userId) && !ficam.has(v.userId) ? { ...v, userId: null } : v);
+    }
+  }
   // Horário só da pessoa (0080): a pessoa sai da atividade no horário de todos e entra num bloco só da pessoa, com o mesmo nome e o
   // horário novo. Assim a grade, o choque, o Meu Dia e a convocação enxergam um bloco comum. Sem efeito se ela já não estava na atividade
   // (saiu por outro ajuste, entrou em folga): o horário volta a valer sozinho se ela voltar.

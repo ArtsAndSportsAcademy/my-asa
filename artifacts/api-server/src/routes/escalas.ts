@@ -738,7 +738,9 @@ async function gravarAjuste(
   )).limit(1);
   if (!viaLivro && anterior?.action === action) return;
   if (anterior) await tx.update(escalaBlocoAjustesTable).set({ active: false, endedBy: actor.sub, endedAt: new Date() }).where(eq(escalaBlocoAjustesTable.id, anterior.id));
-  const [ajuste] = viaLivro ? [null] : await tx.insert(escalaBlocoAjustesTable).values({
+  // Chamada na folga numa vaga de show também grava o ajuste: é ele que diz à Escala que a pessoa foi chamada de propósito (com motivo);
+  // sem ele, a folga vence e a pessoa que acabou de ser posta na vaga some do bloco.
+  const [ajuste] = viaLivro && !(deFolga && action === "ADICIONAR") ? [null] : await tx.insert(escalaBlocoAjustesTable).values({
     scaleId: scale.id, sourceKey, userId, action, createdBy: actor.sub,
     motivo: motivo?.trim() || null, mesmoDeFolga: deFolga && action === "ADICIONAR",
   }).returning();
