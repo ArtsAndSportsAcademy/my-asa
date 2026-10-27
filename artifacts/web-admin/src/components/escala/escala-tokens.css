@@ -16,6 +16,8 @@
   --esc-t-grafite-bg:#c9ced6;--esc-t-grafite-fg:#1f2933;--esc-t-grafite-bd:#a3abb7;
   --esc-t-dourado-bg:#f6e27a;--esc-t-dourado-fg:#5c4700;--esc-t-dourado-bd:#e3c93f;
   --esc-t-rubi-bg:#f5a3a3;--esc-t-rubi-fg:#6b0b0b;--esc-t-rubi-bd:#ec7f7f;
+  /* chamada: cor própria, mais clara que as atividades (é um aviso de hora, não um bloco de trabalho) */
+  --esc-t-chamada-bg:#fff1c7;--esc-t-chamada-fg:#5e4300;--esc-t-chamada-bd:#e8c35a;
   --esc-choque:#a8221b;--esc-excecao:#b06e00;
 }
 

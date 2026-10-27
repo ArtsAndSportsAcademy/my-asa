@@ -108,7 +108,10 @@ export async function chamadasDoDia(blocos: BlocoDia[], date: string, scaleId: s
   for (const id of showIds) sessoesPorShow.set(id, await eligibleSessionsDoDia(id, date));
   const sessaoIds = [...sessoesPorShow.values()].flat().map((s) => s.id);
   const blocoIds = [...new Set(base.map((b) => b.blocoId).filter((id): id is string => Boolean(id)))];
-  const chavesManuais = base.filter((b) => b.origem === "manual").map((b) => b.key);
+  // A mesma atividade só deste dia, criada para várias pessoas, é um bloco só com várias entradas; a chamada pode ter sido guardada com a chave de
+  // qualquer uma delas, então vale a chave de todas.
+  const chavesDoManual = (b: BlocoDia) => new Set((b.allocationIds?.length ? b.allocationIds : b.allocationId ? [b.allocationId] : []).map((id) => `m:${id}`));
+  const chavesManuais = base.filter((b) => b.origem === "manual").flatMap((b) => [...chavesDoManual(b)]);
   const donas = [
     sessaoIds.length ? inArray(escalaChamadasTable.sessionId, sessaoIds) : undefined,
     blocoIds.length ? inArray(escalaChamadasTable.programacaoBlocoId, blocoIds) : undefined,
@@ -132,7 +135,7 @@ export async function chamadasDoDia(blocos: BlocoDia[], date: string, scaleId: s
       const sessoes = (sessoesPorShow.get(b.showBookId) ?? []).filter((s) => hhmm(s.startTime) === b.inicio);
       for (const s of sessoes) for (const c of rows.filter((r) => r.sessionId === s.id)) empurra(c, b, "sessao");
     }
-    if (b.origem === "manual") for (const c of rows.filter((r) => r.scaleId === scaleId && r.blocoKey === b.key)) empurra(c, b, "dia");
+    if (b.origem === "manual") { const chaves = chavesDoManual(b); for (const c of rows.filter((r) => r.scaleId === scaleId && r.blocoKey && chaves.has(r.blocoKey))) empurra(c, b, "dia"); }
   }
   return saida.sort((a, b) => a.inicio.localeCompare(b.inicio) || a.fim.localeCompare(b.fim) || a.nome.localeCompare(b.nome, "pt-BR"));
 }

@@ -11,7 +11,7 @@ import http from "node:http";
 import { eq, inArray, or } from "drizzle-orm";
 import {
   agendaEventsTable, areaLocalSupervisorsTable, areasTable, dailyBookAssignmentsTable, dailyBookBlocksTable, dailyBookPositionsTable, dailyBookScenesTable,
-  dailyBooksTable, db, escalaAreasProntasTable, escalaBlocoAjustesTable, escalaChamadasTable, folgasTable, historyEventsTable, locationsTable,
+  dailyBooksTable, db, escalaAreasProntasTable, notificationOutboxTable, escalaBlocoAjustesTable, escalaChamadasTable, folgasTable, historyEventsTable, locationsTable,
   operationLocationsTable, operationalChangesTable, operationsTable, organizationsTable, pool, programacaoBlocosTable, programacoesTable,
   scaleAllocationsTable, scalesTable, sessionsTable, showBookBlocksTable, showBookLinesTable, showBookRolesTable, showBookScenesTable, showBooksTable,
   userRolesTable, usersTable,
@@ -28,7 +28,7 @@ function assert(condition: boolean, message: string) {
 }
 
 type Chamada = { id: string; nome: string; inicio: string; fim: string; ocupaTempo: boolean; avisar: boolean; dona: string; atividade: { key: string; rotulo: string; inicio: string }; pessoaIds: string[] };
-type Dia = { blocos: { key: string; rotulo: string; pessoaIds: string[] }[]; chamadas: Chamada[] };
+type Dia = { blocos: { key: string; rotulo: string; origem: string; inicio: string; fim: string | null; pessoaIds: string[]; chamada?: { nome: string; ocupaTempo: boolean; avisar: boolean } }[]; chamadas: Chamada[] };
 
 /** As regras puras, sem banco. */
 function conferirRegraPura() {
@@ -106,8 +106,8 @@ async function run() {
     const base = `http://127.0.0.1:${address.port}/api`;
     const as = (u: { id: string }, role: string, organizationId = org!.id, operationId = operation!.id) => {
       const token = signAccessToken({ sub: u.id, jti: `${tag}_${u.id}`, organizationId, role, operationIds: [operationId] });
-      return async (method: string, path: string, body?: unknown) => {
-        const r = await fetch(`${base}${path}`, { method, signal: AbortSignal.timeout(60_000), headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
+      return async (method: string, path: string, body?: unknown, headers: Record<string, string> = {}) => {
+        const r = await fetch(`${base}${path}`, { method, signal: AbortSignal.timeout(60_000), headers: { authorization: `Bearer ${token}`, "content-type": "application/json", ...headers }, body: body === undefined ? undefined : JSON.stringify(body) });
         const text = await r.text();
         return { status: r.status, text, body: (() => { try { return JSON.parse(text) as Record<string, any>; } catch { return {}; } })() };
       };
@@ -156,6 +156,29 @@ async function run() {
     assert(daAula.length === 1 && daAula[0]!.dona === "bloco" && daAula[0]!.inicio === "08:50" && daAula[0]!.fim === "09:00" && daAula[0]!.pessoaIds.slice().sort().join() === [sup.id, julia.id, carol.id].sort().join(), "a chamada da aula (bloco da Programação) vai a quem a aula convoca (as três pessoas com área)");
     assert((await dia(asDir)).chamadas.length === 3, "a Direção vê as chamadas do dia");
 
+    // ── F3: a chamada é uma linha do dia, como qualquer atividade ──
+    const blocosDeChamada = d.blocos.filter((b) => b.origem === "chamada");
+    assert(blocosDeChamada.length === 3, "as três chamadas viram blocos do dia (origem 'chamada')");
+    const aqueceu = blocosDeChamada.find((b) => b.rotulo === "Aquecimento · SHOW");
+    assert(Boolean(aqueceu) && aqueceu!.inicio === "13:00" && aqueceu!.fim === "13:30" && aqueceu!.chamada?.ocupaTempo === true, "a chamada do show leva o nome da atividade no rótulo e a janela no horário");
+    assert(blocosDeChamada.find((b) => b.rotulo === "Call do show · SHOW")?.chamada?.ocupaTempo === false, "a chamada que só informa continua marcada como 'não ocupa tempo' no bloco");
+    assert([julia.id, carol.id].every((id) => aqueceu!.pessoaIds.includes(id)), "quem faz o show está no bloco da chamada");
+    assert([200, 403].includes((await asJulia("GET", `/escalas/dia?locationId=${local!.id}&date=${date}`)).status), "o Elenco abre a Escala do dia sem erro de servidor");
+
+    // ── F3: publicar leva a chamada dentro do aviso de convocação ──
+    const escalaF3 = (await dia()) as Dia & { escala: { id: string; version: number } };
+    assert((await asAdmin("POST", "/escalas/dia/pronta", { locationId: local!.id, date, areaId: patinadores!.id, pronta: true })).status === 200, "a área envia a sua parte");
+    const escalaF3b = (await dia()) as Dia & { escala: { id: string; version: number } };
+    const publicou = await asAdmin("POST", `/escalas/${escalaF3.escala.id}/publicar`, { expectedVersion: escalaF3b.escala.version });
+    assert(publicou.status === 200, `a Administração publica a Escala com chamadas${publicou.status === 200 ? "" : ` (veio ${publicou.status}: ${publicou.text.slice(0, 160)})`}`);
+    const avisos = (await db.select().from(notificationOutboxTable).where(inArray(notificationOutboxTable.userId, [julia.id, carol.id])))
+      .map((row) => ({ userId: row.userId, ...(row.payload as { type: string; message: string }) })).filter((a) => a.type === "scale.published");
+    const aviso = avisos.find((a) => a.userId === julia.id);
+    assert(Boolean(aviso) && /Chamadas: .*Aquecimento 13:00 \(SHOW\)/.test(aviso!.message), `o aviso de convocação lista as chamadas (veio: ${aviso?.message})`);
+    assert(/Call do show 13:45 \(SHOW\)/.test(aviso!.message), "o aviso lista cada chamada marcada para avisar, em ordem de horário");
+    assert(!/blocos?, a partir de 13/.test(aviso!.message), "a chamada não vira o 'a partir de' do aviso (vale a primeira atividade de verdade)");
+    await db.update(scalesTable).set({ status: "DRAFT", publishedAt: null, alteradaDesde: null }).where(eq(scalesTable.id, escalaF3.escala.id));
+
     // ── folga vence: quem está de folga não recebe a chamada ──
     await db.insert(folgasTable).values({ userId: carol.id, operationId: operation!.id, type: "DAY_OFF", startDate: date, endDate: date, createdBy: admin.id });
     d = await dia();
@@ -196,6 +219,37 @@ async function run() {
     assert(!(await dia()).chamadas.some((c) => c.chamadaId === alvo.id), "chamada tirada sai do dia");
     const volta = await asAdmin("PATCH", `/escalas/chamadas/${alvo.id}`, { active: true });
     assert(volta.status === 200 && (await dia()).chamadas.some((c) => c.chamadaId === alvo.id), "restaurar a chamada a devolve ao dia");
+
+    // ── atividade só deste dia: a chamada é da Escala daquele dia ──
+    const escalaDoDia = (await dia()) as Dia & { escala: { id: string; version: number } };
+    const entrada = await asAdmin("POST", `/scales/${escalaDoDia.escala.id}/entries`, { memberIds: [julia.id, carol.id], date, label: "ENSAIO EXTRA", startTime: "16:00", endTime: "16:30" }, { "if-match": String(escalaDoDia.escala.version) });
+    const entradaIds = (entrada.body.entries as { id: string }[] | undefined)?.map((e) => e.id) ?? [];
+    assert(entrada.status === 201 && entradaIds.length === 2, "atividade só deste dia criada para duas pessoas (um bloco, duas entradas)");
+    const chaveDia = `m:${entradaIds[0]}`;
+    const dono = { scaleId: escalaDoDia.escala.id, blocoKey: chaveDia };
+    const doDia = await asSup("POST", "/escalas/chamadas", { ...dono, nome: "Chegada", modo: "antes", minutosAntes: 10 });
+    assert(doDia.status === 201 && doDia.body.chamada.janela?.inicio === "15:50", "a Supervisão do local cria a chamada de uma atividade só deste dia (10 min antes das 16:00 = 15:50)");
+    assert((await asDir("POST", "/escalas/chamadas", { ...dono, nome: "Direção", modo: "antes", minutosAntes: 5 })).status === 403, "a Direção não cria chamada de atividade do dia");
+    assert((await asJulia("POST", "/escalas/chamadas", { ...dono, nome: "Elenco", modo: "antes", minutosAntes: 5 })).status === 403, "o Elenco não cria chamada de atividade do dia");
+    assert((await asAdmin("POST", "/escalas/chamadas", { ...dono, nome: "Tarde", modo: "fixo", horaFixa: "16:10" })).status === 400, "chamada depois do início da atividade do dia é recusada");
+    assert((await asAdmin("POST", "/escalas/chamadas", { scaleId: escalaDoDia.escala.id, blocoKey: `m:${julia.id}`, nome: "Falsa", modo: "antes", minutosAntes: 5 })).status === 404, "chave de atividade que não existe nesta Escala dá 404");
+    assert((await asAdmin("POST", "/escalas/chamadas", { scaleId: escalaDoDia.escala.id, blocoKey: "p:qualquer", nome: "Falsa", modo: "antes", minutosAntes: 5 })).status === 404, "chave que não é de atividade só do dia dá 404");
+    d = await dia();
+    const chegadaDoDia = d.chamadas.find((c) => c.atividade.rotulo === "ENSAIO EXTRA");
+    assert(Boolean(chegadaDoDia) && chegadaDoDia!.dona === "dia" && chegadaDoDia!.inicio === "15:50" && chegadaDoDia!.fim === "16:00" && chegadaDoDia!.pessoaIds.slice().sort().join() === [julia.id, carol.id].sort().join(), "o dia traz a chamada da atividade do dia, para as pessoas dela");
+    const segundaChave = await asAdmin("POST", "/escalas/chamadas", { scaleId: escalaDoDia.escala.id, blocoKey: `m:${entradaIds[1]}`, nome: "Chegada 2", modo: "antes", minutosAntes: 20 });
+    assert(segundaChave.status === 201 && (await dia()).chamadas.some((c) => c.nome === "Chegada 2" && c.atividade.rotulo === "ENSAIO EXTRA"), "a chamada vale mesmo guardada com a chave de qualquer entrada do mesmo bloco");
+    const porQualquerChave = await asAdmin("GET", `/escalas/chamadas?scaleId=${escalaDoDia.escala.id}&blocoKey=m:${entradaIds[1]}`);
+    assert(porQualquerChave.status === 200 && porQualquerChave.body.chamadas.length === 2, "ler as chamadas da atividade pela chave de qualquer entrada do bloco devolve todas (as entradas irmãs são a mesma dona)");
+    assert((await asOutra("GET", `/escalas/chamadas?scaleId=${escalaDoDia.escala.id}&blocoKey=${chaveDia}`)).status === 404, "outra organização não lê chamada de atividade do dia (404)");
+    // Escala já publicada: mexer na chamada do dia marca 'alterada depois de publicada' (a Administração republica).
+    await db.update(scalesTable).set({ status: "PUBLISHED", publishedAt: new Date() }).where(eq(scalesTable.id, escalaDoDia.escala.id));
+    const antesDaMarca = (await db.select().from(scalesTable).where(eq(scalesTable.id, escalaDoDia.escala.id)))[0]!;
+    assert(antesDaMarca.alteradaDesde === null, "a Escala publicada ainda não está marcada como alterada");
+    const tiraDoDia = await asAdmin("DELETE", `/escalas/chamadas/${doDia.body.chamada.id}`);
+    const depoisDaMarca = (await db.select().from(scalesTable).where(eq(scalesTable.id, escalaDoDia.escala.id)))[0]!;
+    assert(tiraDoDia.status === 200 && depoisDaMarca.alteradaDesde !== null && depoisDaMarca.version === antesDaMarca.version + 1, "tirar uma chamada do dia numa Escala publicada a marca como alterada depois de publicada");
+    await db.update(scalesTable).set({ status: "DRAFT", publishedAt: null, alteradaDesde: null }).where(eq(scalesTable.id, escalaDoDia.escala.id));
 
     // ── limite ──
     for (let i = 0; i < 8; i += 1) await db.insert(escalaChamadasTable).values({ organizationId: org!.id, sessionId: sessao2!.id, nome: `Extra ${i}`, modo: "antes", minutosAntes: 5 + i, duracaoMin: 5, createdBy: admin.id });

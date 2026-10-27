@@ -14,8 +14,9 @@ import { GradePessoa } from "@/components/escala/grade-pessoa";
 import { ResumoDoDia, trabalhaNoDia } from "@/components/escala/resumo-do-dia";
 import { QuemResumido } from "@/components/escala/quem-resumido";
 import { resumirQuem, type PessoaDoDia } from "@/components/escala/resumo-de-quem";
-import { TIPOS, ehExcecao, faixa, quandoDoDia, resolverTipo, textoDoBloco, textoDoEncurtado, toneDoTipo, type TipoDoLocal } from "@/components/escala/tipos";
+import { TIPOS, ehExcecao, faixa, foraDoChoque, quandoDoDia, resolverTipo, textoDoBloco, textoDoEncurtado, toneDoTipo, type TipoDoLocal } from "@/components/escala/tipos";
 import { TipoSelect } from "@/components/escala/tipo-select";
+import { ChamadasDialog, ChamadasLista, gravarChamadas, primeiroErro, resumoDaChamada, type ChamadaDaApi, type ChamadaRascunho } from "@/components/escala/chamadas-editor";
 import { TiposDialog } from "@/components/escala/tipos-dialog";
 import "@/components/escala/escala-tokens.css";
 import { diaQueAEscalaAbre, type ViradaDoDia } from "@/lib/dia-da-escala";
@@ -32,7 +33,7 @@ import "./escalas.css";
 
 type Role = "adm" | "dir" | "sup" | "mem";
 type Regra = "todos" | "ninguem" | "area" | "grupo" | "pessoas" | "livro";
-export type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; origem: "programacao" | "livro" | "manual" | "solicitacao"; regra: Regra | null; pessoaIds: string[]; vazio: boolean; sinal: string | null; showBookId: string | null; dailyBookId: string | null; dailyBookStatus: string | null; blocoId: string | null; allocationId?: string | null; allocationIds?: string[]; vagas?: VagaDoLivro[]; showTipo?: string | null; tipoId?: string | null; horarioDela?: { chaveOriginal: string; inicio: string; fim: string | null }; /** Bloco flexível: janela, sem nomes e sem choque. */ flexivel?: boolean; /** Quem saiu deste bloco geral por ter atividade específica no mesmo horário. */ cedeu?: { userId: string; para: string }[]; /** Bloco geral encurtado para quem tem outra atividade no começo ou no fim dele. */ encurtado?: { original: { inicio: string; fim: string | null }; por: string[] } };
+export type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; origem: "programacao" | "livro" | "manual" | "solicitacao" | "chamada"; regra: Regra | null; pessoaIds: string[]; vazio: boolean; sinal: string | null; showBookId: string | null; dailyBookId: string | null; dailyBookStatus: string | null; blocoId: string | null; allocationId?: string | null; allocationIds?: string[]; vagas?: VagaDoLivro[]; showTipo?: string | null; tipoId?: string | null; horarioDela?: { chaveOriginal: string; inicio: string; fim: string | null }; /** Bloco flexível: janela, sem nomes e sem choque. */ flexivel?: boolean; /** Quem saiu deste bloco geral por ter atividade específica no mesmo horário. */ cedeu?: { userId: string; para: string }[]; /** Bloco geral encurtado para quem tem outra atividade no começo ou no fim dele. */ encurtado?: { original: { inicio: string; fim: string | null }; por: string[] }; /** Chamada (0086): horário em que as pessoas da atividade têm que estar prontas. */ chamada?: { chamadaId: string; nome: string; ocupaTempo: boolean; avisar: boolean; dona: "sessao" | "bloco" | "dia"; atividade: { key: string; rotulo: string; inicio: string } } };
 /** Personagem de um bloco que vem de Livro do Dia: quem o faz hoje (ou ninguém, se a vaga está aberta). */
 type VagaDoLivro = { assignmentId: string; personagem: string; userId: string | null };
 /** Uma mexida no bloco; com `assignmentId`, vale para aquele personagem e não para "a primeira vaga aberta". */
@@ -43,7 +44,7 @@ type Area = { id: string; name: string; supervisores: { id: string; name: string
 export type Mexida = { pessoaId: string; pessoaNome: string; pessoaAreaNome: string | null; porId: string; porNome: string; porAreaNome: string | null; em: string; texto: string };
 export type Dia = { date: string; location: { id: string; name: string }; escala: { id: string; status: string; version: number; publishedAt: string | null; alteradaDesde: string | null } | null; programacao: { id: string; nome: string; vigenciaInicio: string; vigenciaFim: string } | null; areas: Area[]; pessoas: Pessoa[]; blocos: Bloco[]; mexidas?: Mexida[]; tipos?: TipoDoLocal[] };
 type Local = { id: string; name: string; podeEditar: boolean; areasSupervisionadas: string[]; viradaDoDia?: ViradaDoDia };
-type ProgBloco = SampleProgramacao["blocos"][number] & { tipoId?: string | null; flexivel?: boolean };
+type ProgBloco = SampleProgramacao["blocos"][number] & { tipoId?: string | null; flexivel?: boolean; chamadas?: ChamadaDaApi[] };
 type Programacao = { id: string; locationId: string; nome: string; vigenciaInicio: string; vigenciaFim: string; active?: boolean; blocos: ProgBloco[] };
 type MinhaLocal = { location: { id: string; name: string }; publishedAt?: string | null; folga?: string | null; confirmada?: boolean; confirmedAt?: string | null; escalaId: string; escalaVersion: number; blocos: Omit<Bloco, "pessoaIds">[]; tipos?: TipoDoLocal[] };
 type Minha = { date: string; publicada: boolean; escalas?: MinhaLocal[]; location?: { id: string; name: string } | null; publishedAt?: string | null; folga?: string | null; confirmada?: boolean; confirmedAt?: string | null; escalaId?: string | null; escalaVersion?: number | null; blocos?: Omit<Bloco, "pessoaIds">[] };
@@ -132,6 +133,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
   const [opMenu, setOpMenu] = useState(false);
   // null = fechado; { bloco: null } = nova atividade; { bloco } = corrigir a atividade daquele bloco.
   const [manual, setManual] = useState<{ bloco: Bloco | null } | null>(null);
+  const [chamadasDoDia, setChamadasDoDia] = useState<Bloco | null>(null);
   const [regrasAbertas, setRegrasAbertas] = useState(false);
   const [gerarMesAberto, setGerarMesAberto] = useState(false);
   // Publicar e republicar pedem confirmação: a janela diz quantas pessoas são avisadas, quais Livros saem juntos e o que ainda pede atenção.
@@ -349,7 +351,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
     } catch (err) { setError(errMsg(err, "Não consegui ajustar esta célula.")); } finally { setSaving(false); }
   };
   /** Atividade só deste dia, fora da Programação: entra como entrada manual da própria Escala. */
-  const criarEntradaManual = async (v: { pessoaIds: string[]; rotulo: string; inicio: string; fim: string; tipoId?: string | null }) => {
+  const criarEntradaManual = async (v: { pessoaIds: string[]; rotulo: string; inicio: string; fim: string; tipoId?: string | null; chamadasNovas?: ChamadaRascunho[] }) => {
     if (!dia?.escala) return;
     setSaving(true); setBusy("manual"); setError("");
     try {
@@ -357,6 +359,11 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
         const r = await customFetch<{ entries?: { id: string }[] }>(`/api/scales/${dia.escala.id}/entries`, { method: "POST", headers: { "if-match": String(dia.escala.version) },
           body: JSON.stringify({ memberIds: v.pessoaIds, date, label: v.rotulo, startTime: v.inicio, endTime: v.fim || null, tipoId: v.tipoId ?? null }) });
         const ids = (r.entries ?? []).map((e) => e.id);
+        // As chamadas da atividade só deste dia ficam ligadas à Escala do dia e ao bloco da atividade (a chave do primeiro registro dela).
+        if (v.chamadasNovas?.length && ids.length) {
+          try { await gravarChamadas({ scaleId: dia.escala.id, blocoKey: `m:${ids[0]}` }, v.chamadasNovas.map((c) => ({ ...c, id: undefined })), []); }
+          catch (err) { setError(`A atividade entrou no dia, mas as chamadas não: ${errMsg(err, "tente de novo")}. Abra a atividade e configure as chamadas por lá.`); }
+        }
         if (ids.length) setDesfazerLote({ texto: `${v.rotulo} entrou no dia para ${plural(v.pessoaIds.length, "pessoa", "pessoas")}.`, escalaId: dia.escala.id, ids });
       }
       setManual(null); setRefresh((n) => n + 1);
@@ -497,7 +504,9 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
     </div>
 
     {manual && dia && manual.bloco && <AtividadeDeHojeDialog tipos={dia.tipos ?? []} pessoas={dia.pessoas} bloco={manual.bloco} saving={busy === "manual"} onClose={() => setManual(null)}
+      onChamadas={!review && dia.escala ? () => setChamadasDoDia(manual.bloco!) : undefined}
       onSubmit={async (v) => { const alvo = manual.bloco!; await editarEntradaManual(alvo.allocationIds?.length ? alvo.allocationIds : [alvo.allocationId!], v); }}/>}
+    {chamadasDoDia && dia?.escala && <ChamadasDialog dona={{ scaleId: dia.escala.id, blocoKey: chamadasDoDia.key }} titulo={`Chamadas · ${chamadasDoDia.rotulo} ${chamadasDoDia.inicio}`} inicioDaAtividade={chamadasDoDia.inicio} onClose={() => setChamadasDoDia(null)} onSalvou={() => setRefresh((n) => n + 1)}/>}
     {manual && dia && !manual.bloco && <AtividadeLoteDialog tipos={dia.tipos ?? []} pessoas={dia.pessoas} areas={dia.areas} blocos={dia.blocos} areasQueSupervisiona={isAdm ? null : areasMinhas} saving={busy === "manual"} onClose={() => setManual(null)} onSubmit={criarEntradaManual}/>}
     {desfazerLote && <div className="ge-desfazer" role="status"><span>{desfazerLote.texto}</span><button type="button" onClick={() => void desfazerAtividade()}>Desfazer</button></div>}
 
@@ -615,7 +624,7 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
     const out: ConflitoDaPessoa[] = [];
     for (const p of dia.pessoas) {
       // Bloco flexível (almoço) é janela: nunca cruza com nada.
-      const list = dia.blocos.filter((b) => !b.flexivel && b.pessoaIds.includes(p.id)).sort((x, y) => x.inicio.localeCompare(y.inicio));
+      const list = dia.blocos.filter((b) => !foraDoChoque(b) && b.pessoaIds.includes(p.id)).sort((x, y) => x.inicio.localeCompare(y.inicio));
       for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
         const a = list[i], b = list[j];
         const fimA = a.fim ?? a.inicio;
@@ -756,7 +765,8 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
                     {b.encurtado && <span style={css("font-size:12px;color:var(--asa-label)")}>{`${textoDoEncurtado(b)} (o bloco de todos vai das ${b.encurtado.original.inicio}${b.encurtado.original.fim ? ` às ${b.encurtado.original.fim}` : ""}).`}</span>}
                     {b.horarioDela && <span style={css("font-size:12px;color:var(--asa-label)")}>{`Horário só desta pessoa · era ${faixa(b.horarioDela)}`}</span>}
                     {canEdit && b.horarioDela && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => void onHorario({ ...b, key: b.horarioDela!.chaveOriginal }, b.pessoaIds[0]!, null)}>Voltar ao normal</button>}
-                    {canEdit && !b.horarioDela && b.regra !== "ninguem" && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setAjustando(b)}>Ajustar</button>}
+                    {b.chamada && <span style={css("font-size:12px;color:var(--asa-label)")}>{`${b.chamada.ocupaTempo ? "Ocupa o tempo de quem recebe" : "Só informa a hora, não ocupa tempo"} · segue quem faz ${b.chamada.atividade.rotulo}`}</span>}
+                    {canEdit && !b.horarioDela && !b.chamada && b.regra !== "ninguem" && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setAjustando(b)}>Ajustar</button>}
                     {onEditManual && b.origem === "manual" && b.allocationId && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => onEditManual(b)}>Mudar horário</button>}
                     {onRemoveManual && b.origem === "manual" && b.allocationId && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setConfirmarGrade({ titulo: "Tirar do dia", texto: `"${b.rotulo}" das ${b.inicio} sai do dia para ${b.pessoaIds.length === 1 ? "1 pessoa" : `${b.pessoaIds.length} pessoas`}. A Programação não muda.`, acao: "Tirar do dia", onSim: () => void onRemoveManual(b.allocationIds?.length ? b.allocationIds : [b.allocationId!]) })}>Tirar do dia</button>}
                   </div>
@@ -1196,14 +1206,16 @@ function MinhaEscala({ minha, date, onHoje, onConfirm, saving }: { minha: Minha;
 }
 
 function MinhaEscalaLocal({ minha, date, onHoje, onConfirm, saving }: { minha: MinhaLocal; date: string; onHoje: () => void; onConfirm: () => Promise<void>; saving: boolean }) {
-  const primeiro = minha.blocos[0];
-  const ultimo = minha.blocos[minha.blocos.length - 1];
+  // O resumo do dia conta atividades: a chamada é aviso de hora, não bloco (e o check-in abre na primeira atividade de verdade).
+  const reais = minha.blocos.filter((b) => !b.chamada);
+  const primeiro = reais[0];
+  const ultimo = reais[reais.length - 1];
   return <div style={css("display:flex;flex-direction:column;gap:12px;max-width:640px;padding-bottom:18px")}>
     <div style={css("display:flex;align-items:center;gap:13px;background:linear-gradient(120deg,var(--asa-deep),var(--asa-hero-to));border-radius:16px;padding:15px 18px;color:#fff")}>
       <img src="/asa/lembrete.webp" alt="" style={css("width:58px;height:58px;object-fit:contain;flex:none")}/>
       <div style={css("display:flex;flex-direction:column;gap:4px")}>
         <span style={css("font-family:Outfit,sans-serif;font-size:17px;font-weight:600")}>{minha.folga ? `Você está de folga ${relOf(date)}` : `Sua escala de ${relOf(date)} saiu`}</span>
-        <span style={css("font-size:13px;color:var(--asa-hero-text);line-height:1.45")}>{minha.folga ? "Folga é o dia inteiro — você não entra em nenhum bloco." : primeiro ? `${plural(minha.blocos.length, "bloco", "blocos")}, entrada ${primeiro.inicio} e saída ${ultimo.fim ?? ultimo.inicio}. O check-in abre no seu primeiro horário — ${primeiro.inicio} — e vale para o dia inteiro.` : "Nenhum bloco seu neste dia."}</span>
+        <span style={css("font-size:13px;color:var(--asa-hero-text);line-height:1.45")}>{minha.folga ? "Folga é o dia inteiro — você não entra em nenhum bloco." : primeiro ? `${plural(reais.length, "bloco", "blocos")}, entrada ${primeiro.inicio} e saída ${ultimo.fim ?? ultimo.inicio}. O check-in abre no seu primeiro horário — ${primeiro.inicio} — e vale para o dia inteiro.` : "Nenhum bloco seu neste dia."}</span>
       </div>
     </div>
     <div style={css("display:flex;align-items:center;gap:11px;border:1px solid " + (minha.confirmada ? "var(--asa-prep-bd)" : "var(--asa-late-amber-bd)") + ";background:" + (minha.confirmada ? "var(--asa-swap-ok-bg)" : "var(--asa-late-bg)") + ";border-radius:13px;padding:12px 14px;")}>
@@ -1258,6 +1270,7 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
   const [confirmar, setConfirmar] = useState<{ titulo: string; texto: string; acao: string; onSim: () => void } | null>(null);
   const [error, setError] = useState("");
   const [tick, setTick] = useState(0);
+  const [chamadasDoBloco, setChamadasDoBloco] = useState<ProgBloco | null>(null);
   const [rascunho, setRascunho] = useState<{ blocoId: string; campos: Partial<ProgBloco> } | null>(null);
   const [salvando, setSalvando] = useState(false), [erroBloco, setErroBloco] = useState("");
   const [salvoAntes, setSalvoAntes] = useState<{ bloco: ProgBloco; antes: Partial<ProgBloco> } | null>(null);
@@ -1391,15 +1404,21 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
     const r = await customFetch<{ programacao: Programacao }>("/api/programacoes", { method: "POST", body: JSON.stringify({ locationId: localId, nome, vigenciaInicio: inicio, vigenciaFim: fim }) });
     setProgId(r.programacao.id); setTick((n) => n + 1);
   };
-  const criarBloco = async (value: Omit<ProgBloco, "id" | "programacaoId" | "order" | "active" | "grupoIds"> & { weekdays?: number[] }) => {
+  const criarBloco = async (valor: Omit<ProgBloco, "id" | "programacaoId" | "order" | "active" | "grupoIds"> & { weekdays?: number[]; chamadasNovas?: ChamadaRascunho[] }) => {
     if (!prog) return;
+    const { chamadasNovas, ...value } = valor;
     const dias = value.weekdays?.length ? value.weekdays : [value.weekday];
     if (review) {
       const criados: ProgBloco[] = dias.map((weekday, i) => ({ ...value, weekday, id: `${prog.id}-new-${Date.now()}-${i}`, programacaoId: prog.id, order: prog.blocos.length + i, active: true, grupoIds: [] }));
       const next = list.map((p) => p.id === prog.id ? { ...p, blocos: [...p.blocos, ...criados] } : p); saveSampleProgramacoes(localId, next as SampleProgramacao[]); setList(next); setSel(criados[0]!.id); onChanged(); return;
     }
-    const r = await customFetch<{ bloco: ProgBloco }>(`/api/programacoes/${prog.id}/blocos`, { method: "POST", body: JSON.stringify({ ...value, weekdays: dias }) });
+    const r = await customFetch<{ bloco: ProgBloco; blocos?: ProgBloco[] }>(`/api/programacoes/${prog.id}/blocos`, { method: "POST", body: JSON.stringify({ ...value, weekdays: dias }) });
     setSel(r.bloco.id); setTick((n) => n + 1); onChanged();
+    // As chamadas vão para cada bloco criado (um por dia da semana). Se alguma recusar, o bloco já existe: avisa e a pessoa acrescenta pelo painel do bloco.
+    if (chamadasNovas?.length) {
+      try { for (const b of r.blocos ?? [r.bloco]) await gravarChamadas({ programacaoBlocoId: b.id }, chamadasNovas.map((c) => ({ ...c, id: undefined })), []); setTick((n) => n + 1); }
+      catch (err) { setError(`O bloco foi criado, mas as chamadas não: ${err instanceof ApiError && err.data && typeof (err.data as { message?: unknown }).message === "string" ? (err.data as { message: string }).message : "tente de novo"}. Abra o bloco e configure as chamadas por lá.`); }
+    }
   };
 
   const estado = prog ? estadoDe(prog) : "encerrado";
@@ -1541,6 +1560,11 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
           </div>
           {!quem.length && <span style={css("font-size:12px;color:var(--asa-label);font-style:italic")}>{isShow ? "O Livro do Dia deste show ainda não tem ninguém para este dia." : "Nenhuma pessoa nesta regra — o bloco existe na programação, mas ninguém é convocado. Na escala ele aparece vazio e sinalizado."}</span>}
         </div>
+        {!review && !bloco.id.includes("-new-") && <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:9px;border-top:1px solid var(--asa-book-fade);padding-top:12px")}>
+          <span style={css("font-size:12.5px;font-weight:700;color:var(--asa-ink-dark)")}>Chamadas</span>
+          <span style={css("font-size:12px;color:var(--asa-label);flex:1;min-width:140px;overflow-wrap:anywhere")}>{bloco.chamadas?.length ? bloco.chamadas.map((c) => resumoDaChamada(c, bloco.inicio)).join(" · ") : "Nenhuma chamada neste bloco."}</span>
+          <button type="button" className="esc-hit esc-rodape-sec" style={css("min-height:44px;padding:0 14px;border-radius:10px;cursor:pointer;font:700 13px Manrope,sans-serif;border:1px solid var(--asa-purple-border,#d8cef6);background:#fff;color:var(--asa-purple)")} onClick={() => setChamadasDoBloco(bloco)}>{canEdit ? "Configurar chamadas" : "Ver chamadas"}</button>
+        </div>}
         {canEdit && <div style={css("display:flex;justify-content:flex-end")}>
           <button type="button" className="esc-hit" onClick={() => setConfirmar({ titulo: "Tirar do molde", texto: `"${textoDoBloco(bloco)}" sai de ${WEEKDAY_LONG[bloco.weekday]} e dos dias que ainda não foram publicados. Ele fica guardado e você pode devolver depois.`, acao: "Tirar do molde", onSim: () => void salvarBloco(bloco, { active: false }) })} style={css("border:1px solid var(--asa-line);background:#fff;color:var(--asa-label);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:Manrope,sans-serif;flex:none;")}>tirar do molde</button>
         </div>}
@@ -1557,6 +1581,7 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
     {dialog === "molde" && <FormDialog title="Novo molde" onClose={() => setDialog(null)} onSubmit={async (f) => { await criarMolde(f.nome, f.inicio, f.fim); setDialog(null); }}
       fields={[{ name: "nome", label: "Nome (Natal, Normal, Baixa…)", type: "text" }, { name: "inicio", label: "Vigência — início", type: "date" }, { name: "fim", label: "Vigência — fim", type: "date" }]}/>}
     {confirmar && <ConfirmDialog {...confirmar} onClose={() => setConfirmar(null)}/>}
+    {chamadasDoBloco && <ChamadasDialog dona={{ programacaoBlocoId: chamadasDoBloco.id }} titulo={`Chamadas · ${textoDoBloco(chamadasDoBloco)}`} inicioDaAtividade={chamadasDoBloco.inicio.slice(0, 5)} onClose={() => setChamadasDoBloco(null)} onSalvou={() => { setTick((n) => n + 1); onChanged(); }}/>}
     {dialog === "duplicar" && prog && <FormDialog title="Duplicar molde" onClose={() => setDialog(null)} onSubmit={async (f) => { await duplicarMolde(f.nome, f.inicio, f.fim); setDialog(null); }}
       inicial={{ nome: `${prog.nome} (cópia)`, inicio: prog.vigenciaFim, fim: prog.vigenciaFim }} nota={`Copia os ${prog.blocos.filter((b) => b.active).length} blocos deste molde para a nova vigência. O molde atual não muda.`}/>}
     {dialog === "vigencia" && prog && <FormDialog title="Nome e vigência do molde" onClose={() => setDialog(null)} onSubmit={async (f) => { await mudarMolde(f.nome, f.inicio, f.fim); setDialog(null); }}
@@ -1587,8 +1612,9 @@ function FormDialog({ title, fields = CAMPOS_MOLDE, inicial, nota, onClose, onSu
   </div></div>;
 }
 
-function BlocoDialog({ tipos, weekday, vocabulario, areas, shows, pessoas, onClose, onSubmit }: { tipos: TipoDoLocal[]; weekday: number; vocabulario: string[]; areas: Area[]; shows: { id: string; title: string }[]; pessoas: Pessoa[]; onClose: () => void; onSubmit: (v: Omit<ProgBloco, "id" | "programacaoId" | "order" | "active" | "grupoIds"> & { weekdays?: number[] }) => Promise<void> }) {
+function BlocoDialog({ tipos, weekday, vocabulario, areas, shows, pessoas, onClose, onSubmit }: { tipos: TipoDoLocal[]; weekday: number; vocabulario: string[]; areas: Area[]; shows: { id: string; title: string }[]; pessoas: Pessoa[]; onClose: () => void; onSubmit: (v: Omit<ProgBloco, "id" | "programacaoId" | "order" | "active" | "grupoIds"> & { weekdays?: number[]; chamadasNovas?: ChamadaRascunho[] }) => Promise<void> }) {
   useFecharComEsc(onClose);
+  const [chamadasNovas, setChamadasNovas] = useState<ChamadaRascunho[]>([]);
   const [rotulo, setRotulo] = useState("");
   const [inicio, setInicio] = useState("");
   const [fim, setFim] = useState("");
@@ -1607,8 +1633,10 @@ function BlocoDialog({ tipos, weekday, vocabulario, areas, shows, pessoas, onClo
     if (salvando) return;
     if (!dias.length) { setError("Escolha pelo menos um dia da semana."); return; }
     if (flexivel && !fim) { setError("Uma janela flexível precisa de hora de fim (por exemplo, almoço entre 11:00 e 13:00)."); return; }
+    const erroDeChamada = primeiroErro(chamadasNovas, inicio || null);
+    if (erroDeChamada) { setError(`Chamadas: ${erroDeChamada}`); return; }
     setSalvando(true); setError("");
-    try { await onSubmit({ weekday: dias[0]!, weekdays: dias, rotulo: rotulo.trim(), inicio, fim: fim || null, regra: regra as ProgBloco["regra"], showBookId: regra === "livro" ? showBookId || null : null, tipoId, flexivel: flexivel && regra !== "livro", areaIds: regra === "area" ? areaIds : [], pessoaIds: regra === "pessoas" ? pessoaIds : [] }); }
+    try { await onSubmit({ chamadasNovas, weekday: dias[0]!, weekdays: dias, rotulo: rotulo.trim(), inicio, fim: fim || null, regra: regra as ProgBloco["regra"], showBookId: regra === "livro" ? showBookId || null : null, tipoId, flexivel: flexivel && regra !== "livro", areaIds: regra === "area" ? areaIds : [], pessoaIds: regra === "pessoas" ? pessoaIds : [] }); }
     catch (err) { setError(err instanceof ApiError && err.data && typeof (err.data as { message?: unknown }).message === "string" ? (err.data as { message: string }).message : err instanceof ApiError && err.data && typeof (err.data as { error?: unknown }).error === "string" ? (err.data as { error: string }).error : "Não consegui criar o bloco."); }
     finally { setSalvando(false); }
   };
@@ -1632,6 +1660,11 @@ function BlocoDialog({ tipos, weekday, vocabulario, areas, shows, pessoas, onClo
       {regra === "livro" && <label>Show<select required value={showBookId} onChange={(e) => setShowBookId(e.target.value)}><option value="">Escolha o show</option>{shows.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}</select></label>}
       {regra === "area" && <fieldset style={css("border:none;padding:0;display:flex;flex-wrap:wrap;gap:7px")}>{areas.map((a) => { const on = areaIds.includes(a.id); return <button key={a.id} type="button" onClick={() => setAreaIds(on ? areaIds.filter((x) => x !== a.id) : [...areaIds, a.id])} style={css(on ? chipOn : chipOff)}>{a.name}</button>; })}</fieldset>}
       {regra === "pessoas" && <fieldset style={css("border:none;padding:0;display:flex;flex-wrap:wrap;gap:7px;max-height:150px;overflow:auto")}>{pessoas.map((p) => { const on = pessoaIds.includes(p.id); return <button key={p.id} type="button" onClick={() => setPessoaIds(on ? pessoaIds.filter((x) => x !== p.id) : [...pessoaIds, p.id])} style={css(on ? chipOn : chipOff)}>{p.name}</button>; })}</fieldset>}
+      <details open={chamadasNovas.length > 0} style={css("border-top:1px solid var(--asa-book-fade);padding-top:10px")}>
+        <summary style={css("cursor:pointer;min-height:44px;display:flex;align-items:center;font-size:13px;font-weight:700;color:var(--asa-ink-dark)")}>{chamadasNovas.length ? `Chamadas (${chamadasNovas.length})` : "Tem chamada?"}</summary>
+        {regra === "livro" && <p style={css("font-size:12px;color:var(--asa-label);margin:0 0 8px")}>As chamadas do próprio show ficam na tela do show. As daqui valem só para este bloco.</p>}
+        <ChamadasLista valor={chamadasNovas} onChange={setChamadasNovas} inicioDaAtividade={inicio || null} desabilitado={salvando}/>
+      </details>
       {error && <p role="alert" style={css("font-size:12px;color:var(--asa-error-fg)")}>{error}</p>}
     </form></div>
     <footer className="shows-dialog-footer">
@@ -1642,7 +1675,7 @@ function BlocoDialog({ tipos, weekday, vocabulario, areas, shows, pessoas, onClo
 }
 
 /* ---------- atividade só de hoje (entrada manual da Escala) ---------- */
-function AtividadeDeHojeDialog({ tipos, pessoas, bloco, saving, onClose, onSubmit }: { tipos: TipoDoLocal[]; pessoas: Pessoa[]; bloco: Bloco | null; saving: boolean; onClose: () => void; onSubmit: (v: { pessoaIds: string[]; rotulo: string; inicio: string; fim: string; tipoId: string | null }) => Promise<void> }) {
+function AtividadeDeHojeDialog({ tipos, pessoas, bloco, saving, onClose, onChamadas, onSubmit }: { tipos: TipoDoLocal[]; pessoas: Pessoa[]; bloco: Bloco | null; saving: boolean; onClose: () => void; onChamadas?: () => void; onSubmit: (v: { pessoaIds: string[]; rotulo: string; inicio: string; fim: string; tipoId: string | null }) => Promise<void> }) {
   useFecharComEsc(onClose);
   // Com `bloco`, o diálogo corrige a atividade que já existe: só o horário e o nome mudam.
   const corrigindo = Boolean(bloco);
@@ -1684,6 +1717,7 @@ function AtividadeDeHojeDialog({ tipos, pessoas, bloco, saving, onClose, onSubmi
       <label>Começa às<input type="time" value={inicio} onChange={(e) => setInicio(e.target.value)} required/></label>
       <label>Termina às (opcional)<input type="time" value={fim} onChange={(e) => setFim(e.target.value)}/></label>
       <label>Tipo (dá a cor na Escala)<TipoSelect tipos={tipos} value={tipoId} onChange={setTipoId}/></label>
+      {corrigindo && onChamadas && <button type="button" className="shows-secondary" style={css("align-self:flex-start;min-height:44px")} onClick={onChamadas}>Chamadas desta atividade</button>}
     </form></div>
     <footer className="shows-dialog-footer">
       <button type="button" onClick={onClose} className="shows-secondary">Cancelar</button>

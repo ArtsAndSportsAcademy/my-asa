@@ -46,7 +46,8 @@ export function tipoDoBloco(b: Pick<Bloco, "rotulo" | "regra">): TipoKey {
  * Cor e nome do tipo de um bloco, nesta ordem: o tipo escolhido (Programação ou atividade só de hoje); senão o palpite pelo nome, mapeado
  * para o tipo do local que nasceu daquele tipo pronto (com o nome e a cor que a Administração deu); senão os sete de fábrica.
  */
-export function resolverTipo(b: Pick<Bloco, "rotulo" | "regra"> & { tipoId?: string | null }, tipos?: TipoDoLocal[]): { cor: string; nome: string } {
+export function resolverTipo(b: Pick<Bloco, "rotulo" | "regra"> & { tipoId?: string | null; chamada?: Bloco["chamada"] }, tipos?: TipoDoLocal[]): { cor: string; nome: string } {
+  if (b.chamada) return { cor: "chamada", nome: "Chamada" }; // a chamada tem cor própria, igual em todo local: não é um tipo que a Administração escolhe
   const escolhido = b.tipoId ? tipos?.find((t) => t.id === b.tipoId) : undefined;
   if (escolhido) return { cor: escolhido.cor, nome: escolhido.nome };
   const palpite = tipoDoBloco(b);
@@ -55,7 +56,9 @@ export function resolverTipo(b: Pick<Bloco, "rotulo" | "regra"> & { tipoId?: str
 }
 
 /** Atividade que foge do padrão do dia: entrada manual, horário só de uma pessoa, pedido aprovado ou bloco de poucas pessoas escolhidas à mão. */
-export const ehExcecao = (b: Bloco) => b.origem === "manual" || b.origem === "solicitacao" || Boolean(b.horarioDela) || (b.regra === "pessoas" && b.pessoaIds.length <= 3);
+export const ehExcecao = (b: Bloco) => !b.chamada && (b.origem === "manual" || b.origem === "solicitacao" || Boolean(b.horarioDela) || (b.regra === "pessoas" && b.pessoaIds.length <= 3));
+/** Fora da conta do choque: a janela flexível (almoço) e a chamada que só informa. A chamada que ocupa tempo conta como qualquer atividade. */
+export const foraDoChoque = (b: Pick<Bloco, "flexivel" | "chamada">) => Boolean(b.flexivel) || Boolean(b.chamada && !b.chamada.ocupaTempo);
 
 /**
  * Só o primeiro nome cabe em coluna e em resumo; quando duas pessoas da lista começam igual, entra a inicial

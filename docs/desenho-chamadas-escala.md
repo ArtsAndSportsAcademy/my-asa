@@ -60,6 +60,22 @@ Todo editor é uma janela com rodapé Cancelar / Salvar, vale a 375 px e fecha c
 - **Ajuste de propósito:** na F1 as chamadas vêm numa **lista à parte** (`dia.chamadas`) e **não** entram ainda em `dia.blocos`. Motivo: o choque, a prioridade e o aviso de convocação só passam a contá-las **na F3**, junto com a tela que as mostra. Assim, quando a F1 for promovida, as chamadas antigas (que viram "só informa") **não aparecem nem mudam nada** na Escala de ninguém.
 - **Fica para a F2:** a chamada de **atividade só deste dia** (a tabela já tem onde guardá-la, mas a rota e o editor vêm na F2).
 
+## 7c. F2 — o que foi construído (27/10/2026, local, nada enviado)
+- **O mesmo editor nos três lugares** (`components/escala/chamadas-editor.tsx`): cada chamada tem nome (com sugestões Chamada, Aquecimento, Call do show), horário (minutos antes ou hora fixa), duração, "ocupa tempo" e "avisar"; mostra a prévia "Das 13:45 às 14:00" e avisa quando a chamada não cabe antes do início. Janela com Cancelar e "Salvar chamadas", fecha com Esc, vale a 375 px (alvos de 44 px, sem rolagem lateral). Quem só lê (Direção) vê a lista sem "Tirar" nem "+ Chamada".
+- **Tela do show:** na janela da sessão, no lugar do antigo "Horário de chamada separado", entra "Chamadas" com o resumo e o botão "Configurar chamadas"; a linha da sessão lista "Aquecimento 13:00–13:30 · Call do show 13:45–14:00"; dentro da janela, "Copiar para as outras sessões do show".
+- **Programação:** o painel do bloco ganhou a linha "Chamadas" com "Configurar chamadas" (ou "Ver chamadas" para quem só lê); a janela "Novo bloco" ganhou "Tem chamada?" (as chamadas vão para cada bloco criado, um por dia da semana).
+- **Atividade só deste dia:** a janela de criar ganhou "Tem chamada?"; a de corrigir ganhou "Chamadas desta atividade". A chamada fica ligada à Escala do dia; se a Escala já estava publicada, mexer na chamada a marca como "alterada depois de publicada".
+- **API:** a chamada de atividade só do dia (Escala + chave do bloco; as entradas "irmãs" da mesma atividade contam como a mesma dona); a lista de sessões e a de Programação devolvem as chamadas junto.
+- **Ainda não faz efeito na Escala:** as chamadas só aparecem na Escala, na Minha escala, no Meu Dia, na impressão, no choque e no aviso na **F3**.
+
+## 7d. F3 — o que foi construído (27/10/2026, local, nada enviado)
+- **A chamada é uma linha do dia.** A Escala do dia passa a trazer cada chamada como bloco (`origem: "chamada"`), com rótulo "Aquecimento · SHOW", a janela dela e as pessoas da atividade a que pertence. Entra **antes** da prioridade: a que **ocupa tempo** é atividade específica e corta só o trecho que cruza de um bloco geral; a que **só informa** não toma ninguém de bloco nenhum e não entra na conta do choque.
+- **Quem vai segue a atividade, no fim de tudo:** trocar alguém no Livro, tirar alguém do bloco, folga e horário só de uma pessoa levam a chamada junto. Chamada de atividade sem ninguém não aparece. `dia.chamadas` continua existindo, agora montada a partir desses blocos.
+- **Aviso:** a mensagem de quem recebe a escala publicada ganha "Chamadas: Aquecimento 13:00 (SHOW); Call do show 13:45 (SHOW)" (só as marcadas para avisar). A chamada não conta como bloco nem vira o "a partir de". Como a chamada é bloco do dia, a republicação já avisa quem teve chamada mudada.
+- **Onde se vê:** Escala por atividade (linha âmbar, com "só informa a hora" ou "ocupa o tempo de quem recebe"); por pessoa (bloco curto âmbar; o menu do bloco explica que ela acompanha a atividade e onde mudar); Minha escala e Meu Dia (linha própria antes do show; o check-in e a saudação continuam contando a partir da primeira atividade de verdade); impressão (linha por chamada); Livro do Dia (as chamadas da sessão no cabeçalho, no lugar da hora de chamada antiga).
+- **O que não se faz com uma chamada:** ajustar quem vai (segue a atividade), mudar o horário só de uma pessoa (409 com frase), "saiu a partir de" (a chamada sai junto com a atividade).
+- **Ao promover:** as chamadas antigas migradas (0086, "só informa") passam a aparecer como linha "Chamada · SHOW" na Escala de cada dia com show.
+
 ## 8. Etapas de construção (cada uma com testes e conferência em tela, 4 perfis, 375 e 1360 px)
 - **F1 · Dados e leitura:** migração, rotas, a Escala monta as chamadas, choque e prioridade. Sem tela de edição ainda (dá para criar por API em teste).
 - **F2 · Editor:** o mini-editor nos três lugares (show, Programação, atividade de hoje).

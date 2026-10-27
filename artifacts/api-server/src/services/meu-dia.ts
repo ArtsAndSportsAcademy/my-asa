@@ -141,7 +141,8 @@ const chegou = (rows: { status: string }[] | undefined) => (rows ?? []).some((r)
 /** Check-in em falta: pessoa cujo primeiro bloco já começou e ainda não marcou presença. */
 function faltandoCheckIn(dia: EscalaDia, feitos: Map<string, { status: string }[]>, agora: number, pessoas: Set<string> | null) {
   const primeiro = new Map<string, BlocoDia>();
-  for (const b of [...dia.blocos].sort((x, y) => x.inicio.localeCompare(y.inicio))) for (const p of b.pessoaIds) if (!primeiro.has(p)) primeiro.set(p, b);
+  // A chamada é aviso de hora, não turno: o check-in continua contando a partir da primeira atividade.
+  for (const b of [...dia.blocos].filter((x) => !x.chamada).sort((x, y) => x.inicio.localeCompare(y.inicio))) for (const p of b.pessoaIds) if (!primeiro.has(p)) primeiro.set(p, b);
   return [...primeiro].filter(([p, b]) => (!pessoas || pessoas.has(p)) && min(b.inicio) <= agora && !chegou(feitos.get(p))).map(([p, b]) => ({ pessoa: p, bloco: b }));
 }
 
@@ -177,15 +178,16 @@ async function elenco(actor: { sub: string; organizationId: string; role: string
   const jaChegou = feitos.find((r) => r.status === "CHECKED_IN" || r.status === "LATE");
   const local = pub?.location.name ?? dias.hoje?.location.name ?? "";
 
-  const alvo = meus.find((b) => fimDe(b) > agora) ?? null;
+  const alvo = meus.find((b) => !b.chamada && fimDe(b) > agora) ?? null;
+  const primeiroReal = meus.find((b) => !b.chamada);
   let saudacao: Parte["saudacao"];
   if (folga) saudacao = { titulo: saudar(agora, nome), texto: "Hoje é o seu dia de folga. Nenhum bloco para você — descansa.", mascote: "sonolenta", acao: { label: "Ver minha escala", href: APP_ROUTES.escalas } };
   else if (!meus.length) saudacao = { titulo: saudar(agora, nome), texto: pub ? "Você não tem nenhum bloco na escala de hoje." : "A escala de hoje ainda não foi publicada. Quando sair, seu dia aparece aqui.", mascote: "sonolenta", acao: { label: "Ver minha escala", href: APP_ROUTES.escalas } };
   else if (jaChegou) saudacao = { titulo: "Tudo certo por aqui!", texto: `Check-in feito${jaChegou.at ? ` às ${new Intl.DateTimeFormat("pt-BR", { timeZone: OPERATIONAL_TIME_ZONE, hour: "2-digit", minute: "2-digit" }).format(jaChegou.at)}` : ""}${jaChegou.status === "LATE" ? ", com atraso avisado" : ""} — bom trabalho hoje!`, mascote: "tarefa-concluida", acao: { label: "Ver minha escala", href: APP_ROUTES.escalas } };
   // Depois do primeiro bloco, "você entra às 09:00" lido às 12h soa como atraso: o texto acompanha a hora.
-  else if (alvo) saudacao = { titulo: saudar(agora, nome), texto: min(meus[0]!.inicio) <= agora
-    ? `Seu dia começou às ${meus[0]!.inicio} (${texto(meus[0]!)}) e o check-in ainda não foi feito. Faz por aqui mesmo — leva um toque.`
-    : `Você entra às ${meus[0]!.inicio} em ${texto(meus[0]!)}. Faz o check-in por aqui mesmo — leva um toque.`, mascote: "bom-dia", acao: { label: "Fazer check-in", checkIn: { scaleId: alvo.scaleId, sourceKey: alvo.key, date: hoje } } };
+  else if (alvo) saudacao = { titulo: saudar(agora, nome), texto: min(primeiroReal!.inicio) <= agora
+    ? `Seu dia começou às ${primeiroReal!.inicio} (${texto(primeiroReal!)}) e o check-in ainda não foi feito. Faz por aqui mesmo — leva um toque.`
+    : `Você entra às ${primeiroReal!.inicio} em ${texto(primeiroReal!)}. Faz o check-in por aqui mesmo — leva um toque.`, mascote: "bom-dia", acao: { label: "Fazer check-in", checkIn: { scaleId: alvo.scaleId, sourceKey: alvo.key, date: hoje } } };
   else saudacao = { titulo: saudar(agora, nome), texto: "Seus blocos de hoje já terminaram.", mascote: "tarefa-concluida", acao: { label: "Ver minha escala", href: APP_ROUTES.escalas } };
 
   // Uma saudação por bloco seria enganosa quando há dois turnos no mesmo dia.

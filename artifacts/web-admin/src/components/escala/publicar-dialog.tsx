@@ -4,6 +4,7 @@ import { customFetch } from "@workspace/api-client-react";
 import { css } from "@/lib/dc-style";
 import { useFecharComEsc } from "@/lib/fechar-com-esc";
 import type { Dia } from "@/pages/escalas";
+import { foraDoChoque } from "./tipos";
 import "./escala-tokens.css";
 
 /** Um show do dia como a API o resume para a janela de publicar: só o que importa para avisar (vagas sem ninguém). */
@@ -45,7 +46,7 @@ export function PublicarDialog({ dia, dataLonga, republicar, review, ocupado, on
   const choques = useMemo(() => {
     const out: { pessoa: string; a: string; b: string }[] = [];
     for (const p of dia.pessoas) {
-      const seus = dia.blocos.filter((b) => !b.flexivel && b.pessoaIds.includes(p.id)).sort((x, y) => x.inicio.localeCompare(y.inicio));
+      const seus = dia.blocos.filter((b) => !foraDoChoque(b) && b.pessoaIds.includes(p.id)).sort((x, y) => x.inicio.localeCompare(y.inicio));
       for (let i = 0; i < seus.length; i++) for (let j = i + 1; j < seus.length; j++) {
         const a = seus[i]!, b = seus[j]!;
         if (b.inicio < (a.fim ?? a.inicio) || (b.inicio === a.inicio && b.fim && a.fim)) out.push({ pessoa: p.name, a: a.rotulo, b: b.rotulo });

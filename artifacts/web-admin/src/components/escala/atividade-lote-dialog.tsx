@@ -3,8 +3,9 @@ import { X } from "lucide-react";
 import { css } from "@/lib/dc-style";
 import { useFecharComEsc } from "@/lib/fechar-com-esc";
 import type { Bloco, Pessoa } from "@/pages/escalas";
-import { fimEmMinutos, minutosDe, textoDoBloco, type TipoDoLocal } from "./tipos";
+import { fimEmMinutos, foraDoChoque, minutosDe, textoDoBloco, type TipoDoLocal } from "./tipos";
 import { TipoSelect } from "./tipo-select";
+import { ChamadasLista, primeiroErro, type ChamadaRascunho } from "./chamadas-editor";
 import "./escala-tokens.css";
 
 const plural = (n: number, um: string, muitos: string) => `${n} ${n === 1 ? um : muitos}`;
@@ -20,7 +21,7 @@ export type AtividadeLoteProps = {
   areasQueSupervisiona: string[] | null;
   saving: boolean;
   onClose: () => void;
-  onSubmit: (v: { pessoaIds: string[]; rotulo: string; inicio: string; fim: string; tipoId: string | null }) => Promise<void>;
+  onSubmit: (v: { pessoaIds: string[]; rotulo: string; inicio: string; fim: string; tipoId: string | null; chamadasNovas?: ChamadaRascunho[] }) => Promise<void>;
   /** Tipos de atividade do local: o tipo escolhido dá a cor da atividade na Escala (sem escolha, a tela adivinha pelo nome). */
   tipos: TipoDoLocal[];
 };
@@ -35,6 +36,7 @@ export function AtividadeLoteDialog({ tipos, pessoas, areas, blocos, areasQueSup
   const [inicio, setInicio] = useState("");
   const [fim, setFim] = useState("");
   const [erro, setErro] = useState("");
+  const [chamadasNovas, setChamadasNovas] = useState<ChamadaRascunho[]>([]);
 
   const trabalham = useMemo(() => pessoas.filter((p) => !p.folga), [pessoas]);
   const deFolga = pessoas.filter((p) => p.folga);
@@ -50,7 +52,7 @@ export function AtividadeLoteDialog({ tipos, pessoas, areas, blocos, areasQueSup
     const achados: { pessoa: Pessoa; com: Bloco }[] = [];
     for (const p of trabalham) {
       if (!marcadas.has(p.id)) continue;
-      const com = blocos.find((b) => !b.flexivel && b.pessoaIds.includes(p.id) && minutosDe(b.inicio) < z && a < fimEmMinutos(b));
+      const com = blocos.find((b) => !foraDoChoque(b) && b.pessoaIds.includes(p.id) && minutosDe(b.inicio) < z && a < fimEmMinutos(b));
       if (com) achados.push({ pessoa: p, com });
     }
     return achados;
@@ -62,8 +64,10 @@ export function AtividadeLoteDialog({ tipos, pessoas, areas, blocos, areasQueSup
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pronto || saving) return;
+    const erroDeChamada = primeiroErro(chamadasNovas, inicio);
+    if (erroDeChamada) { setErro(`Chamadas: ${erroDeChamada}`); return; }
     setErro("");
-    try { await onSubmit({ pessoaIds: escolhidas, rotulo: rotulo.trim(), inicio, fim, tipoId }); } catch { setErro("Não consegui pôr a atividade no dia. Nada foi alterado; tente de novo."); }
+    try { await onSubmit({ pessoaIds: escolhidas, rotulo: rotulo.trim(), inicio, fim, tipoId, chamadasNovas }); } catch { setErro("Não consegui pôr a atividade no dia. Nada foi alterado; tente de novo."); }
   };
   const campo = "width:100%;box-sizing:border-box;min-height:44px;border:1px solid var(--asa-line-soft);border-radius:10px;padding:8px 12px;font:600 13px Manrope,sans-serif;color:var(--asa-ink-dark)";
   const atalho = (ativo: boolean) => "min-height:44px;border-radius:999px;padding:6px 13px;font-size:12px;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap;" + (ativo ? "border:1px solid var(--asa-ink-dark);background:var(--asa-ink-dark);color:#fff;font-weight:700;" : "border:1px solid var(--asa-line);background:#fff;color:var(--asa-ink-medium);font-weight:600;");
@@ -101,6 +105,10 @@ export function AtividadeLoteDialog({ tipos, pessoas, areas, blocos, areasQueSup
       <label>Tipo (dá a cor na Escala)<TipoSelect tipos={tipos} value={tipoId} onChange={setTipoId}/></label>
       {fim !== "" && HORA.test(inicio) && fim <= inicio && <span role="alert" style={css("font-size:12px;color:var(--asa-ausente-fg)")}>O fim precisa ser depois do início.</span>}
       {parecShow && <span style={css("font-size:12px;color:var(--asa-label);line-height:1.45")}>Show é do Livro do Dia: quem faz cada posição é decidido lá. Aqui entra só atividade que não é show.</span>}
+      <details open={chamadasNovas.length > 0} style={css("border-top:1px solid var(--asa-book-fade);padding-top:10px")}>
+        <summary style={css("cursor:pointer;min-height:44px;display:flex;align-items:center;font-size:13px;font-weight:700;color:var(--asa-ink-dark)")}>{chamadasNovas.length ? `Chamadas (${chamadasNovas.length})` : "Tem chamada?"}</summary>
+        <ChamadasLista valor={chamadasNovas} onChange={setChamadasNovas} inicioDaAtividade={HORA.test(inicio) ? inicio : null} desabilitado={saving}/>
+      </details>
 
       <section aria-label="Prévia" aria-live="polite" style={css("border:1px solid var(--asa-lavender);background:var(--asa-purple-dawn);border-radius:11px;padding:10px 12px;font-size:12.5px;line-height:1.5;color:var(--asa-ink-dark)")}>
         <strong>Prévia</strong>

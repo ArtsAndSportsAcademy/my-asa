@@ -55,7 +55,7 @@ export type BlocoDia = {
   rotulo: string;
   inicio: string;
   fim: string | null;
-  origem: "programacao" | "livro" | "manual" | "solicitacao";
+  origem: "programacao" | "livro" | "manual" | "solicitacao" | "chamada";
   regra: RegraBloco | null;
   pessoaIds: string[];
   vazio: boolean;
@@ -81,6 +81,8 @@ export type BlocoDia = {
   cedeu?: { userId: string; para: string }[];
   /** Bloco geral encurtado para quem tem atividade específica no começo ou no fim dele: o horário original e o que cortou. */
   encurtado?: { original: { inicio: string; fim: string | null }; por: string[] };
+  /** Chamada (0086): este bloco é o horário em que as pessoas da atividade têm que estar prontas. Ocupa tempo (gera choque) ou só informa; `avisar` = entra no aviso de convocação. */
+  chamada?: { chamadaId: string; nome: string; ocupaTempo: boolean; avisar: boolean; dona: ChamadaDoDia["dona"]; atividade: ChamadaDoDia["atividade"] };
 };
 
 export type VagaDoLivro = { assignmentId: string; personagem: string; userId: string | null };
@@ -444,6 +446,10 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     }
   }
 
+  // Chamadas (0086): cada uma vira um bloco do dia, com as pessoas da atividade a que pertence. Entram ANTES da prioridade: a que ocupa tempo é
+  // atividade específica e corta o bloco geral só do trecho que cruza; a que só informa não toma ninguém de ninguém (nem gera choque).
+  for (const c of await chamadasDoDia(blocos, date, scale?.id ?? null)) blocos.push(blocoDeChamada(c, base));
+
   aplicarPrioridade(blocos);
 
   // Quem foi chamado mesmo estando de folga: a grade mostra a marca e o motivo, e a decisão
@@ -508,6 +514,11 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
       bloco.vazio = false; bloco.sinal = null;
     }
   }
+  // A chamada vai a quem faz a atividade DEPOIS de tudo (folga, ajustes do dia, prioridade, horário só da pessoa): trocar alguém no Livro, tirar
+  // alguém do bloco ou cortar o trecho de um bloco geral leva a chamada junto. Chamada de atividade sem ninguém não aparece.
+  const pessoasDaAtividade = (chave: string) => new Set(blocos.filter((b) => !b.chamada && (b.key === chave || b.key.startsWith(`t:${chave}:`) || b.key.startsWith(`h:${chave}:`))).flatMap((b) => b.pessoaIds));
+  for (const b of blocos) if (b.chamada) b.pessoaIds = [...pessoasDaAtividade(b.chamada.atividade.key)];
+  for (let i = blocos.length - 1; i >= 0; i -= 1) if (blocos[i]!.chamada && !blocos[i]!.pessoaIds.length) blocos.splice(i, 1);
   blocos.sort((a, b) => a.inicio.localeCompare(b.inicio) || (a.fim ?? "").localeCompare(b.fim ?? ""));
 
   // "Pronta" só se pede de quem tem a ver com o local neste dia (decisão de 17/10/2026): área com gente
@@ -538,7 +549,19 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     }),
     blocos,
     tipos: await tiposDoLocal(locationId),
-    chamadas: await chamadasDoDia(blocos, date, scale?.id ?? null),
+    chamadas: blocos.filter((b) => b.chamada).map((b) => ({
+      key: b.chamada!.chamadaId + ":" + b.chamada!.atividade.key, chamadaId: b.chamada!.chamadaId, nome: b.chamada!.nome, inicio: b.inicio, fim: b.fim!,
+      ocupaTempo: b.chamada!.ocupaTempo, avisar: b.chamada!.avisar, dona: b.chamada!.dona, atividade: b.chamada!.atividade, pessoaIds: b.pessoaIds,
+    })),
+  };
+}
+
+/** O bloco do dia de uma chamada. O rótulo leva o nome da atividade ("Aquecimento · SHOW"): na grade, na impressão e no celular a chamada de um show não se confunde com a de outro. */
+function blocoDeChamada(c: ChamadaDoDia, base: { dailyBookId: null; dailyBookStatus: null; showBookId: null; blocoId: null; allocationId: null }): BlocoDia {
+  return {
+    ...base, key: c.key, rotulo: `${c.nome} · ${c.atividade.rotulo}`, inicio: c.inicio, fim: c.fim, origem: "chamada", regra: "pessoas",
+    pessoaIds: [...c.pessoaIds], vazio: false, sinal: null,
+    chamada: { chamadaId: c.chamadaId, nome: c.nome, ocupaTempo: c.ocupaTempo, avisar: c.avisar, dona: c.dona, atividade: c.atividade },
   };
 }
 
@@ -568,7 +591,8 @@ export function blocosSeCruzam(a: Pick<BlocoDia, "inicio" | "fim">, b: Pick<Bloc
  */
 export function aplicarPrioridade(blocos: BlocoDia[]) {
   const geral = (b: BlocoDia) => b.origem === "programacao" && !b.flexivel && (b.regra === "todos" || b.regra === "area");
-  const especifico = (b: BlocoDia) => !b.flexivel && (b.origem !== "programacao" || b.regra === "pessoas" || b.regra === "livro");
+  // Chamada que só informa não toma ninguém de bloco geral; a que ocupa tempo é atividade específica como outra qualquer.
+  const especifico = (b: BlocoDia) => !b.flexivel && !(b.chamada && !b.chamada.ocupaTempo) && (b.origem !== "programacao" || b.regra === "pessoas" || b.regra === "livro");
   const minutos = (hora: string) => { const [h, m] = hora.split(":").map(Number); return h! * 60 + (m || 0); };
   const hora = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
   const especificos = blocos.filter(especifico).sort((a, b) => a.inicio.localeCompare(b.inicio));

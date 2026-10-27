@@ -6,6 +6,7 @@ import { useFecharComEsc } from "@/lib/fechar-com-esc";
 import { StageMap, layoutFrame, stageMapApi, type StageDefinition, type StageFormat, type StageSide } from "@/components/stage-map";
 import exampleData from "../../../../design_handoff_my_asa/dados-de-exemplo.json";
 import { css } from "@/lib/dc-style";
+import { resumoDaChamada } from "@/components/escala/chamadas-editor";
 import { AjusteCelulaDialog, type Bloco as BlocoDaEscala, type Dia as DiaDaEscala } from "./escalas";
 import { mensagemDoErro } from "@/lib/mensagem-do-erro";
 import { markSampleEscalaAlterada, sampleEscalaPublicada } from "@/lib/review-escala";
@@ -132,7 +133,7 @@ function sampleSourceFor(index: number): ShowSource | null {
     ],
   }));
   const callTimes: Record<string, string> = {};
-  show.sessoes.forEach((s) => { if (s.chamada) callTimes[s.inicio] = s.chamada; });
+  show.sessoes.forEach((s) => { if (s.chamada) callTimes[s.inicio] = `chamada ${s.chamada}`; });
   return { id: `sample-show-${index}`, title: show.nome, kind, version: 1, stageFormat: (show.formato_palco || "NONE") as StageFormat, scenes, callTimes };
 }
 
@@ -382,10 +383,15 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
       if (!opened.showBookId) { setSource(null); setCharactersToday([]); setFormations([]); return; }
       const [showResult, sessionsResult] = await Promise.all([
         customFetch<{ showBook: ShowBookApi }>(`/api/show-books/${opened.showBookId}`).catch(() => null),
-        customFetch<{ sessions: { startTime: string; callTime?: string | null }[] }>(`/api/show-books/${opened.showBookId}/sessions`).catch(() => ({ sessions: [] as { startTime: string; callTime?: string | null }[] })),
+        customFetch<{ sessions: { startTime: string; callTime?: string | null; chamadas?: (Parameters<typeof resumoDaChamada>[0] & { active?: boolean })[] }[] }>(`/api/show-books/${opened.showBookId}/sessions`).catch(() => ({ sessions: [] as { startTime: string; callTime?: string | null; chamadas?: (Parameters<typeof resumoDaChamada>[0] & { active?: boolean })[] }[] })),
       ]);
       const callTimes: Record<string, string> = {};
-      sessionsResult.sessions.forEach((s) => { if (s.callTime) callTimes[time(s.startTime)] = time(s.callTime); });
+      // As chamadas de cada sessão (0086) vêm com nome e janela; sem nenhuma, vale a hora de chamada antiga.
+      sessionsResult.sessions.forEach((s) => {
+        const ativas = (s.chamadas ?? []).filter((c) => c.active !== false);
+        if (ativas.length) callTimes[time(s.startTime)] = ativas.map((c) => resumoDaChamada(c, time(s.startTime))).join(" · ");
+        else if (s.callTime) callTimes[time(s.startTime)] = `chamada ${time(s.callTime)}`;
+      });
       setSource(showResult ? sourceFromShowBook(showResult.showBook, callTimes) : null);
       // 09/10: quem faz hoje é quem está escalado neste Livro do Dia (vaga a vaga, já com equilíbrio,
       // folgas e ajustes da Escala) — não um novo cálculo por personagem, que repetia a mesma pessoa.
@@ -871,7 +877,7 @@ function HojeTab(props: {
                 <span style={css("font-size:13px;font-weight:600;line-height:1.25")}>{sessions.length === 1 ? "sessão única" : `${ORDINAL[i] ?? `${i + 1}ª`} sessão`}</span>
                 {aviso && <span style={css("font-size:12px;color:var(--asa-amber);line-height:1.4;text-wrap:pretty")}>{aviso}</span>}
               </span>
-              {chamada && <span style={css("flex:none;font-size:12px;color:var(--asa-label);font-family:'JetBrains Mono',monospace")}>chamada {chamada}</span>}
+              {chamada && <span style={css("flex:none;max-width:55%;font-size:12px;color:var(--asa-label);font-family:'JetBrains Mono',monospace;text-align:right;overflow-wrap:anywhere")}>{chamada}</span>}
             </div>;
           })}
           {!sessions.length && (book.programacaoHoje?.length

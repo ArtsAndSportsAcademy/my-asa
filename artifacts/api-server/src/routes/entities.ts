@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
-import { and, eq, gte, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, ne, sql } from "drizzle-orm";
 import {
   agendaEventsTable,
+  escalaChamadasTable,
   characterCastTable,
   charactersTable,
   dailyBookAssignmentsTable,
@@ -21,6 +22,7 @@ import { canManageShowBook, canViewShowBook } from "../lib/show-responsibility.j
 import { resolveCharacterForDate } from "../services/character-rotation.js";
 import { operationalDate } from "../lib/operational-date.js";
 import { listAreaLocalScopes, canSupervisorAccessPerson } from "../services/area-local-scope.js";
+import { janelaDaChamada } from "../services/escala-chamadas.js";
 
 const router: IRouter = Router();
 const WRITERS = new Set(["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]);
@@ -363,7 +365,18 @@ router.get("/show-books/:showId/sessions", requireAuth, requireOrganization, asy
   // A ficha precisa exibir sessões desativadas para que a supervisão possa
   // reativá-las; as rotinas operacionais continuam filtrando `active = true`.
   const sessions = await db.select().from(sessionsTable).where(eq(sessionsTable.showId, show.id)).orderBy(sessionsTable.startTime);
-  res.json({ sessions });
+  // As chamadas de cada sessão (0086) vão junto: a tela do show lista "Aquecimento 13:00–13:30 · Call do show 13:45–14:00" sem uma ida a mais.
+  const chamadas = sessions.length ? await db.select().from(escalaChamadasTable).where(and(inArray(escalaChamadasTable.sessionId, sessions.map((s) => s.id)), eq(escalaChamadasTable.active, true))).orderBy(asc(escalaChamadasTable.ordem), asc(escalaChamadasTable.createdAt)) : [];
+  res.json({
+    sessions: sessions.map((s) => ({
+      ...s,
+      chamadas: chamadas.filter((c) => c.sessionId === s.id).map((c) => ({
+        id: c.id, nome: c.nome, modo: c.modo, horaFixa: c.horaFixa ? c.horaFixa.slice(0, 5) : null, minutosAntes: c.minutosAntes, duracaoMin: c.duracaoMin,
+        ocupaTempo: c.ocupaTempo, avisar: c.avisar, ordem: c.ordem, active: c.active, updatedAt: c.updatedAt,
+        janela: janelaDaChamada({ modo: c.modo, horaFixa: c.horaFixa ? c.horaFixa.slice(0, 5) : null, minutosAntes: c.minutosAntes, duracaoMin: c.duracaoMin }, s.startTime.slice(0, 5)),
+      })),
+    })),
+  });
 });
 
 /**

@@ -50,7 +50,9 @@ export function BlocoMenu({ bloco, pessoa, ancora, data, temChoque, excecao, tip
         {temChoque && <span style={{ display: "block", color: "var(--esc-choque)", fontWeight: 700 }}>Choque de horário com outra atividade dela</span>}
         {excecao && <span style={{ display: "block", color: "var(--esc-excecao)", fontWeight: 700 }}>Exceção ao padrão do dia</span>}
       </div>
-      {ehShow
+      {bloco.chamada
+        ? <p style={{ margin: 0, padding: "4px 12px 8px", fontSize: 12, lineHeight: 1.5, color: "var(--asa-ink-muted)" }}>{`${bloco.chamada.ocupaTempo ? "Esta chamada ocupa o tempo de quem a recebe." : "Esta chamada só informa a hora; não ocupa tempo."} Ela acompanha ${bloco.chamada.atividade.rotulo}: quem faz a atividade recebe a chamada. Para mudar a hora ou o nome, use "Chamadas" na própria atividade (no show, na Programação ou na atividade do dia).`}</p>
+        : ehShow
         ? <>
           <Link href={hrefLivro} role="menuitem">Abrir o Livro do Dia<small>É lá que se vê e se muda quem faz cada posição</small></Link>
           <button type="button" role="menuitem" disabled>Mudar o horário só desta pessoa<small>Show não muda de horário. Para tirar a pessoa do show, use o Livro.</small></button>

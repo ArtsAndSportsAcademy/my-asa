@@ -1,0 +1,22 @@
+/* Editor de chamadas (a mesma lista na tela do show, na Programação e na atividade só de hoje). Alvos de toque de 44 px; no telefone tudo vira uma coluna. */
+.ch-lista{display:flex;flex-direction:column;gap:12px;min-width:0}
+.ch-vazio{margin:0;font-size:13px;line-height:1.5;color:var(--asa-label,#6b6482)}
+.ch-card{display:flex;flex-direction:column;gap:10px;margin:0;padding:12px;border:1px solid var(--asa-line-soft,#e4def2);border-radius:12px;background:#fff;min-width:0}
+.ch-card:disabled{opacity:.7}
+.ch-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px}
+.ch-tirar{display:inline-flex;align-items:center;gap:4px;min-height:44px;padding:0 10px;border:0;background:transparent;color:var(--asa-error-fg,#a12c2c);font:700 13px Manrope,sans-serif;cursor:pointer}
+.ch-campo{display:flex;flex-direction:column;gap:4px;min-width:0;font-size:12px;font-weight:600;color:var(--asa-label,#6b6482)}
+.ch-campo input,.ch-campo select{box-sizing:border-box;width:100%;min-width:0;min-height:44px;padding:8px 10px;border:1px solid var(--asa-line-soft,#e4def2);border-radius:10px;background:#fff;color:var(--asa-ink-dark,#1b1535);font:600 14px Manrope,sans-serif}
+.ch-linha{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr);gap:10px}
+.ch-marcas{display:flex;flex-direction:column;gap:2px;font-size:13px;color:var(--asa-ink-dark,#1b1535)}
+.ch-marcas label{display:flex;align-items:center;gap:8px;min-height:44px;flex-wrap:wrap}
+.ch-marcas input{width:20px;height:20px;flex:none}
+.ch-marcas small{color:var(--asa-label,#6b6482);font-size:12px}
+.ch-previa{margin:0;font-size:12.5px;font-weight:700;color:var(--asa-purple,#6c2bf2)}
+.ch-erro{margin:0;font-size:12.5px;line-height:1.45;color:var(--asa-error-fg,#a12c2c)}
+.ch-ok{margin:8px 0 0;font-size:12.5px;line-height:1.45;color:var(--asa-ok-fg,#0f5a2d)}
+.ch-mais,.ch-copiar{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 14px;border:1px dashed var(--asa-purple,#6c2bf2);border-radius:10px;background:#fff;color:var(--asa-purple,#6c2bf2);font:700 13px Manrope,sans-serif;cursor:pointer}
+.ch-mais:disabled,.ch-copiar:disabled{opacity:.5;cursor:default}
+.ch-copiar{margin-top:10px;border-style:solid}
+.ch-dialog .shows-dialog-content{display:flex;flex-direction:column;min-width:0}
+@media(max-width:720px){.ch-linha{grid-template-columns:minmax(0,1fr)}}

@@ -29,6 +29,7 @@ import {
   programacaoBlocosTable,
   programacoesTable,
   REGRAS_BLOCO,
+  scaleAllocationsTable,
   scalesTable,
   showBooksTable,
   usersTable,
@@ -329,6 +330,7 @@ router.post("/escalas/dia/horario", requireAuth, requireOrganization, async (req
     const bloco = original ?? dia?.blocos.find((b) => b.horarioDela?.chaveOriginal === sourceKey && b.pessoaIds.includes(userId));
     if (!original && !(desfazer && bloco)) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Esta atividade não está mais na Escala do dia. Atualize a tela." }); return; }
     const alvo = original ?? bloco!;
+    if (alvo.chamada) { res.status(409).json({ error: "HORARIO_DE_CHAMADA", message: "O horário de uma chamada se muda na própria chamada (no show, na Programação ou na atividade do dia), não só para uma pessoa." }); return; }
     if (!desfazer && (alvo.origem === "livro" || alvo.regra === "livro")) {
       res.status(409).json({ error: "HORARIO_DE_SHOW", message: "Horário de show não muda aqui: o show tem hora marcada. Se for exceção, a pessoa sai do show pelo Livro do Dia." }); return;
     }
@@ -428,7 +430,7 @@ async function planejarSaida(actor: Actor, { locationId, date, userId, corte }: 
   const limite = emMinutos(corte);
   const passos: PassoDaSaida[] = [];
   for (const bloco of dia.blocos) {
-    if (!bloco.pessoaIds.includes(userId)) continue;
+    if (!bloco.pessoaIds.includes(userId) || bloco.chamada) continue; // a chamada segue a atividade: saindo dela, a chamada sai junto
     const inicio = emMinutos(bloco.inicio), fim = bloco.fim ? emMinutos(bloco.fim) : inicio + 30;
     if (fim <= limite) continue; // já terminou antes da hora: não muda
     const sourceKey = bloco.horarioDela?.chaveOriginal ?? bloco.key;
@@ -931,14 +933,22 @@ export async function publicarOuRepublicar(req: any, res: any, republicar: boole
     // Publicar é o que convoca: cada pessoa recebe o aviso na mesma transação (fila durável, sem duplicar).
     const quando = dataPorExtenso(scale.periodStart);
     for (const userId of avisar) {
-      const blocos = convocacao[userId] ?? [];
+      // A chamada vai junto no aviso ("Chamadas: Aquecimento 13:00") mas não conta como bloco nem vira o "a partir de".
+      const doDia = (dia?.blocos ?? []).filter((b) => b.pessoaIds.includes(userId));
+      const chamadasAvisadas = doDia.filter((b) => b.chamada?.avisar).sort((a, b) => a.inicio.localeCompare(b.inicio))
+        .map((b) => `${b.chamada!.nome} ${b.inicio} (${b.chamada!.atividade.rotulo})`);
+      const reais = new Set(doDia.filter((b) => !b.chamada).map((b) => `${b.inicio}|${b.fim ?? ""}|${b.rotulo}`));
+      const blocos = (convocacao[userId] ?? []).filter((a) => reais.has(a));
+      const soChamadas = !blocos.length && (convocacao[userId] ?? []).length > 0;
       const primeiro = blocos[0]?.split("|");
+      const lembrete = chamadasAvisadas.length ? ` Chamadas: ${chamadasAvisadas.join("; ")}.` : "";
       await enqueueNotification(tx as never, {
         // Troca de última hora (republicar a escala do próprio dia) atravessa o silêncio noturno.
         userId, type: republicar ? "scale.republished" : "scale.published", category: "schedule", priority: republicar ? (scale.periodStart === operationalDate(now) ? "CRITICAL" : "IMPORTANT") : "NORMAL",
         title: republicar ? `Sua escala de ${quando} mudou` : `Sua escala de ${quando} saiu`,
-        message: !blocos.length ? `Você não está mais na escala de ${quando} em ${dia?.location.name ?? "seu local"}.`
-          : `${dia?.location.name ?? "Seu local"} · ${blocos.length === 1 ? "1 bloco" : `${blocos.length} blocos`}, a partir de ${primeiro?.[0] ?? ""} (${primeiro?.[2] ?? ""}).`,
+        message: (!blocos.length && !soChamadas) ? `Você não está mais na escala de ${quando} em ${dia?.location.name ?? "seu local"}.`
+          : !blocos.length ? `${dia?.location.name ?? "Seu local"}.${lembrete}`.trim()
+          : `${dia?.location.name ?? "Seu local"} · ${blocos.length === 1 ? "1 bloco" : `${blocos.length} blocos`}, a partir de ${primeiro?.[0] ?? ""} (${primeiro?.[2] ?? ""}).${lembrete}`,
         entityType: "scale", entityId: scale.id, actionUrl: APP_ROUTES.escalas,
       }, now, { deduplicationKey: `escala:${scale.id}:v${next.version}:${userId}` });
     }
@@ -1104,7 +1114,10 @@ router.get("/programacoes", requireAuth, requireOrganization, async (req, res) =
   // Blocos tirados do molde continuam na resposta (active: false) para a tela poder devolvê-los.
   const blocos = programacoes.length ? await db.select().from(programacaoBlocosTable).where(inArray(programacaoBlocosTable.programacaoId, programacoes.map((p) => p.id)))
     .orderBy(asc(programacaoBlocosTable.weekday), asc(programacaoBlocosTable.inicio), asc(programacaoBlocosTable.order)) : [];
-  res.json({ programacoes: programacoes.map((p) => ({ ...p, blocos: blocos.filter((b) => b.programacaoId === p.id) })), podeEditar: await canManageLocal(actor, locationId), tipos: await tiposDoLocal(locationId), podeEditarTipos: actor.role === "ADMIN" });
+  // As chamadas de cada bloco (0086) vão junto: o painel do bloco lista "Chegada 08:50–09:00" sem uma ida a mais ao servidor.
+  const chamadas = blocos.length ? await db.select().from(escalaChamadasTable).where(and(inArray(escalaChamadasTable.programacaoBlocoId, blocos.map((b) => b.id)), eq(escalaChamadasTable.active, true))).orderBy(asc(escalaChamadasTable.ordem), asc(escalaChamadasTable.createdAt)) : [];
+  const comChamadas = (b: (typeof blocos)[number]) => ({ ...b, chamadas: chamadas.filter((c) => c.programacaoBlocoId === b.id).map((c) => chamadaParaTela(c, b.inicio.slice(0, 5))) });
+  res.json({ programacoes: programacoes.map((p) => ({ ...p, blocos: blocos.filter((b) => b.programacaoId === p.id).map(comChamadas) })), podeEditar: await canManageLocal(actor, locationId), tipos: await tiposDoLocal(locationId), podeEditarTipos: actor.role === "ADMIN" });
 });
 
 router.post("/programacoes", requireAuth, requireOrganization, async (req, res) => {
@@ -1232,11 +1245,34 @@ router.patch("/programacoes/:id/blocos/:blocoId", requireAuth, requireOrganizati
 
 // ─── Chamadas (0086) ─────────────────────────────────────────────────────────
 
-type DonaDeChamada = { tipo: "sessao" | "bloco"; id: string; inicio: string; nome: string; podeEditar: boolean; podeVer: boolean; showId?: string };
+type DonaDeChamada = { tipo: "sessao" | "bloco" | "dia"; id: string; inicio: string; nome: string; podeEditar: boolean; podeVer: boolean; showId?: string; blocoKey?: string; blocoKeys?: string[] };
 const FRASE_CHAMADA_SEM_ACESSO = "Chamadas são da Administração, do responsável pelo show e da Supervisão do local. A Direção só lê.";
 
 /** A dona de uma chamada (sessão do show ou bloco da Programação), com o início da atividade e o que este perfil pode. Responde o erro sozinha. */
-async function donaDaChamada(actor: Actor & { operationIds?: string[] }, ref: { sessionId?: unknown; programacaoBlocoId?: unknown }, res: import("express").Response): Promise<DonaDeChamada | null> {
+async function donaDaChamada(actor: Actor & { operationIds?: string[] }, ref: { sessionId?: unknown; programacaoBlocoId?: unknown; scaleId?: unknown; blocoKey?: unknown }, res: import("express").Response): Promise<DonaDeChamada | null> {
+  // Atividade só deste dia: a dona é a Escala do dia + a chave do bloco manual ("m:<id da entrada>").
+  if (typeof ref.scaleId === "string" && ref.scaleId) {
+    const chave = typeof ref.blocoKey === "string" ? ref.blocoKey : "";
+    const naoAchou = () => { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Atividade deste dia não encontrada." }); return null; };
+    if (!UUID.test(ref.scaleId) || !/^m:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(chave)) return naoAchou();
+    const [escala] = await db.select({ id: scalesTable.id, locationId: scalesTable.locationId }).from(scalesTable).innerJoin(operationsTable, eq(scalesTable.operationId, operationsTable.id))
+      .where(and(eq(scalesTable.id, ref.scaleId), eq(operationsTable.organizationId, actor.organizationId))).limit(1);
+    if (!escala) return naoAchou();
+    const [entrada] = await db.select({ label: scaleAllocationsTable.manualLabel, startTime: scaleAllocationsTable.startTime, endTime: scaleAllocationsTable.endTime }).from(scaleAllocationsTable)
+      .where(and(eq(scaleAllocationsTable.id, chave.slice(2)), eq(scaleAllocationsTable.scaleId, escala.id), eq(scaleAllocationsTable.active, true))).limit(1);
+    if (!entrada?.label || !entrada.startTime) return naoAchou();
+    // A mesma atividade criada para várias pessoas é um bloco só com várias entradas: a chamada vale para o bloco, não para a entrada, então as
+    // entradas "irmãs" (mesmo nome e horário) são a mesma dona. Assim não importa com qual delas a chamada foi guardada.
+    const irmas = await db.select({ id: scaleAllocationsTable.id }).from(scaleAllocationsTable).where(and(
+      eq(scaleAllocationsTable.scaleId, escala.id), eq(scaleAllocationsTable.active, true), eq(scaleAllocationsTable.manualLabel, entrada.label),
+      eq(scaleAllocationsTable.startTime, entrada.startTime), sql`${scaleAllocationsTable.endTime} IS NOT DISTINCT FROM ${entrada.endTime}`,
+    ));
+    const chaves = [...new Set([chave, ...irmas.map((i) => `m:${i.id}`)])];
+    const podeEditar = Boolean(escala.locationId) && (await canManageLocal(actor, escala.locationId!));
+    const podeVer = podeEditar || (Boolean(escala.locationId) && (await canReadLocal(actor, escala.locationId!)));
+    if (!podeVer) { res.status(403).json({ error: "ACESSO_NEGADO", message: FRASE_CHAMADA_SEM_ACESSO }); return null; }
+    return { tipo: "dia", id: escala.id, blocoKey: chave, blocoKeys: chaves, inicio: entrada.startTime.slice(0, 5), nome: `${entrada.label} ${entrada.startTime.slice(0, 5)}`, podeEditar, podeVer };
+  }
   if (typeof ref.sessionId === "string" && ref.sessionId) {
     if (!UUID.test(ref.sessionId)) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Sessão não encontrada." }); return null; }
     const [row] = await db.select({
@@ -1261,10 +1297,21 @@ async function donaDaChamada(actor: Actor & { operationIds?: string[] }, ref: { 
     if (!podeVer) { res.status(403).json({ error: "ACESSO_NEGADO", message: FRASE_CHAMADA_SEM_ACESSO }); return null; }
     return { tipo: "bloco", id: bloco.id, inicio: bloco.inicio.slice(0, 5), nome: `${bloco.rotulo} ${bloco.inicio.slice(0, 5)}`, podeEditar, podeVer };
   }
-  res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "Diga de qual sessão do show (sessionId) ou de qual bloco da Programação (programacaoBlocoId) é a chamada." });
+  res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "Diga de qual sessão do show (sessionId), de qual bloco da Programação (programacaoBlocoId) ou de qual atividade só deste dia (scaleId e blocoKey) é a chamada." });
   return null;
 }
-const donaWhere = (dona: DonaDeChamada) => dona.tipo === "sessao" ? eq(escalaChamadasTable.sessionId, dona.id) : eq(escalaChamadasTable.programacaoBlocoId, dona.id);
+const donaWhere = (dona: DonaDeChamada) => dona.tipo === "sessao" ? eq(escalaChamadasTable.sessionId, dona.id)
+  : dona.tipo === "bloco" ? eq(escalaChamadasTable.programacaoBlocoId, dona.id)
+  : and(eq(escalaChamadasTable.scaleId, dona.id), inArray(escalaChamadasTable.blocoKey, dona.blocoKeys ?? [dona.blocoKey!]))!;
+const donaValores = (dona: DonaDeChamada) => dona.tipo === "sessao" ? { sessionId: dona.id } : dona.tipo === "bloco" ? { programacaoBlocoId: dona.id } : { scaleId: dona.id, blocoKey: dona.blocoKey! };
+/** Chamada de atividade só de um dia mexe na Escala daquele dia: se ela já foi publicada, marca "alterada depois de publicada" (a Administração republica). */
+async function marcarEscalaAlteradaSePublicada(tx: typeof db, dona: DonaDeChamada) {
+  if (dona.tipo !== "dia") return;
+  const [sc] = await tx.select({ status: scalesTable.status, version: scalesTable.version, alteradaDesde: scalesTable.alteradaDesde }).from(scalesTable).where(eq(scalesTable.id, dona.id)).limit(1);
+  if (sc && (sc.status === "PUBLISHED" || sc.status === "REPUBLISHED")) {
+    await tx.update(scalesTable).set({ alteradaDesde: sc.alteradaDesde ?? new Date(), updatedAt: new Date(), version: sc.version + 1 }).where(eq(scalesTable.id, dona.id));
+  }
+}
 const chamadaParaTela = (c: EscalaChamada, inicioDaAtividade: string) => ({
   id: c.id, nome: c.nome, modo: c.modo, horaFixa: c.horaFixa ? c.horaFixa.slice(0, 5) : null, minutosAntes: c.minutosAntes, duracaoMin: c.duracaoMin,
   ocupaTempo: c.ocupaTempo, avisar: c.avisar, ordem: c.ordem, active: c.active, updatedAt: c.updatedAt,
@@ -1295,22 +1342,21 @@ router.post("/escalas/chamadas", requireAuth, requireOrganization, async (req, r
   if (ativas.length >= MAXIMO_DE_CHAMADAS) { res.status(409).json({ error: "MUITAS_CHAMADAS", message: FRASE_CHAMADA_MUITAS }); return; }
   const criada = await db.transaction(async (tx) => {
     const [row] = await tx.insert(escalaChamadasTable).values({
-      organizationId: actor.organizationId, createdBy: actor.sub,
-      ...(dona.tipo === "sessao" ? { sessionId: dona.id } : { programacaoBlocoId: dona.id }),
+      organizationId: actor.organizationId, createdBy: actor.sub, ...donaValores(dona),
       ...lida.valor, horaFixa: lida.valor.horaFixa, ordem: lida.valor.ordem || ativas.length + 1,
     }).returning();
+    await marcarEscalaAlteradaSePublicada(tx as unknown as typeof db, dona);
     await writeHistoryEvent({ category: "SCALE", action: "chamada.criada", title: "Chamada criada", narrative: `Chamada "${row!.nome}" criada em ${dona.nome} (${row!.modo === "fixo" ? `às ${row!.horaFixa!.slice(0, 5)}` : `${row!.minutosAntes} min antes`}, ${row!.duracaoMin} min, ${row!.ocupaTempo ? "ocupa tempo" : "só informa"}${row!.avisar ? ", avisa" : ""}).`, entityType: "escala_chamada", entityId: row!.id, actorId: actor.sub, orgId: actor.organizationId, afterState: { chamada: row } }, tx as unknown as HistoryExecutor);
     return row!;
   });
   res.status(201).json({ chamada: chamadaParaTela(criada, dona.inicio), chamadas: await chamadasDaDona(dona) });
 });
 
-/** Lê uma chamada pelo id e resolve a dona. Chamada de atividade só de um dia é da Escala do dia (outra rota, mais adiante). */
+/** Lê uma chamada pelo id e resolve a dona (sessão do show, bloco da Programação ou atividade só de um dia). */
 async function chamadaComDona(actor: Actor, id: string, res: import("express").Response) {
   const [chamada] = UUID.test(id) ? await db.select().from(escalaChamadasTable).where(and(eq(escalaChamadasTable.id, id), eq(escalaChamadasTable.organizationId, actor.organizationId))).limit(1) : [];
   if (!chamada) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Chamada não encontrada." }); return null; }
-  if (!chamada.sessionId && !chamada.programacaoBlocoId) { res.status(409).json({ error: "CHAMADA_DO_DIA", message: "Esta chamada é de uma atividade só de um dia: ela se edita na Escala daquele dia." }); return null; }
-  const dona = await donaDaChamada(actor, { sessionId: chamada.sessionId ?? undefined, programacaoBlocoId: chamada.programacaoBlocoId ?? undefined }, res);
+  const dona = await donaDaChamada(actor, { sessionId: chamada.sessionId ?? undefined, programacaoBlocoId: chamada.programacaoBlocoId ?? undefined, scaleId: chamada.scaleId ?? undefined, blocoKey: chamada.blocoKey ?? undefined }, res);
   return dona ? { chamada, dona } : null;
 }
 
@@ -1333,6 +1379,7 @@ router.patch("/escalas/chamadas/:id", requireAuth, requireOrganization, async (r
     const [row] = await tx.update(escalaChamadasTable).set({ ...lida.valor, active: ativa, updatedAt: new Date() })
       .where(and(eq(escalaChamadasTable.id, chamada.id), sql`date_trunc('milliseconds', ${escalaChamadasTable.updatedAt}) = ${chamada.updatedAt}`)).returning();
     if (!row) return null;
+    await marcarEscalaAlteradaSePublicada(tx as unknown as typeof db, dona);
     const acao = chamada.active && !ativa ? "chamada.removida" : !chamada.active && ativa ? "chamada.restaurada" : "chamada.alterada";
     await writeHistoryEvent({ category: "SCALE", action: acao, title: acao === "chamada.removida" ? "Chamada tirada" : acao === "chamada.restaurada" ? "Chamada restaurada" : "Chamada alterada", narrative: `Chamada "${row.nome}" ${acao === "chamada.removida" ? "tirada de" : acao === "chamada.restaurada" ? "voltou para" : "alterada em"} ${dona.nome}${acao === "chamada.removida" ? " (sem exclusão: dá para restaurar)" : ""}.`, entityType: "escala_chamada", entityId: row.id, actorId: actor.sub, orgId: actor.organizationId, beforeState: { chamada }, afterState: { chamada: row } }, tx as unknown as HistoryExecutor);
     return row;
@@ -1351,6 +1398,7 @@ router.delete("/escalas/chamadas/:id", requireAuth, requireOrganization, async (
   if (chamada.active) {
     await db.transaction(async (tx) => {
       const [row] = await tx.update(escalaChamadasTable).set({ active: false, updatedAt: new Date() }).where(eq(escalaChamadasTable.id, chamada.id)).returning();
+      await marcarEscalaAlteradaSePublicada(tx as unknown as typeof db, dona);
       await writeHistoryEvent({ category: "SCALE", action: "chamada.removida", title: "Chamada tirada", narrative: `Chamada "${chamada.nome}" tirada de ${dona.nome} (sem exclusão: dá para restaurar).`, entityType: "escala_chamada", entityId: chamada.id, actorId: actor.sub, orgId: actor.organizationId, beforeState: { chamada }, afterState: { chamada: row } }, tx as unknown as HistoryExecutor);
     });
   }
