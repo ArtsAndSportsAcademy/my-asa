@@ -1092,7 +1092,7 @@ function ScenePanel(props: Parameters<typeof HojeTab>[0] & { scene: DScene; slot
           style={css("align-self:flex-start;border:1px solid var(--asa-purple-border);background:#fff;color:var(--asa-purple);border-radius:999px;padding:5px 14px;font:700 12px Manrope,sans-serif;cursor:pointer;min-height:44px")}>{props.escolhendo === abertaId ? "Abrindo…" : "Escolher"}</button>}
       </div>
       {canEdit && !out && <button type="button" className="ldd-hit" disabled={saving} onClick={() => props.onTogglePosition(s.position)} title={s.out ? "restaurar esta posição no dia" : "tirar esta posição do dia"} aria-label={`${s.out ? "Restaurar" : "Tirar"} ${s.label} do dia`}
-        style={css("border:none;background:transparent;color:var(--asa-label);font-size:14px;line-height:1;cursor:pointer;padding:2px 4px;flex:none")}>{s.out ? "↺" : "×"}</button>}
+        style={css("border:none;background:transparent;color:var(--asa-label);font-size:20px;line-height:1;cursor:pointer;padding:0;flex:none;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center")}>{s.out ? "↺" : "×"}</button>}
     </div>;
   };
   const groups = [
