@@ -6,6 +6,7 @@ import { usersTable } from "./identity.js";
 import { showBooksTable } from "./showbook.js";
 import { scalesTable } from "./scale.js";
 import { areasTable } from "./areas.js";
+import { sessionsTable } from "./block2.js";
 
 /**
  * Programação — o molde da Escala de um local (tela 15, aba Programação).
@@ -138,6 +139,48 @@ export const escalaBlocoAjustesTable = pgTable("escala_bloco_ajustes", {
   index("escala_bloco_ajustes_scale_source_idx").on(table.scaleId, table.sourceKey),
 ]);
 
+/** Como o horário de uma chamada se diz: um horário fixo ("13:00") ou "X minutos antes" do início da atividade. */
+export const MODOS_DE_CHAMADA = ["fixo", "antes"] as const;
+export type ModoDeChamada = typeof MODOS_DE_CHAMADA[number];
+
+/**
+ * Chamadas (0086): o horário em que as pessoas de um show ou de uma atividade têm que estar prontas ("Aquecimento 13:00", "Call do show 13:45").
+ * Uma atividade pode ter várias. Quem vai NÃO se guarda aqui: são as pessoas da atividade a que a chamada pertence (o Livro do Dia, no caso do show).
+ * A chamada pertence a UMA dona: uma sessão do show, um bloco da Programação, ou uma atividade só de um dia (a Escala daquele dia + a chave do bloco).
+ *   modo `fixo`  → `horaFixa`;  modo `antes` → `minutosAntes` do início da atividade (acompanha o horário se ele mudar).
+ *   ocupaTempo   → a pessoa está ocupada e a chamada gera choque; falso = só informa.
+ *   avisar       → a chamada entra no aviso de convocação.
+ * Nunca se apaga: `active = false` tira a chamada (e dá para voltar).
+ */
+export const escalaChamadasTable = pgTable("escala_chamadas", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizationsTable.id),
+  sessionId: uuid("session_id").references(() => sessionsTable.id),
+  programacaoBlocoId: uuid("programacao_bloco_id").references(() => programacaoBlocosTable.id),
+  scaleId: uuid("scale_id").references(() => scalesTable.id, { onDelete: "cascade" }),
+  blocoKey: text("bloco_key"),
+  nome: text("nome").notNull(),
+  modo: text("modo").$type<ModoDeChamada>().notNull(),
+  horaFixa: time("hora_fixa"),
+  minutosAntes: integer("minutos_antes"),
+  duracaoMin: integer("duracao_min").notNull().default(15),
+  ocupaTempo: boolean("ocupa_tempo").notNull().default(true),
+  avisar: boolean("avisar").notNull().default(true),
+  ordem: integer("ordem").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  createdBy: uuid("created_by").references(() => usersTable.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  check("escala_chamadas_modo_ck", sql`${table.modo} IN ('fixo','antes')`),
+  check("escala_chamadas_horario_ck", sql`(${table.modo} = 'fixo' AND ${table.horaFixa} IS NOT NULL) OR (${table.modo} = 'antes' AND ${table.minutosAntes} BETWEEN 1 AND 600)`),
+  check("escala_chamadas_duracao_ck", sql`${table.duracaoMin} BETWEEN 5 AND 240`),
+  check("escala_chamadas_dona_ck", sql`(CASE WHEN ${table.sessionId} IS NOT NULL THEN 1 ELSE 0 END) + (CASE WHEN ${table.programacaoBlocoId} IS NOT NULL THEN 1 ELSE 0 END) + (CASE WHEN ${table.scaleId} IS NOT NULL AND ${table.blocoKey} IS NOT NULL THEN 1 ELSE 0 END) = 1`),
+  index("escala_chamadas_sessao_idx").on(table.sessionId).where(sql`${table.sessionId} IS NOT NULL`),
+  index("escala_chamadas_bloco_idx").on(table.programacaoBlocoId).where(sql`${table.programacaoBlocoId} IS NOT NULL`),
+  index("escala_chamadas_escala_idx").on(table.scaleId).where(sql`${table.scaleId} IS NOT NULL`),
+]);
+
 /** Leitura confirmada da versão publicada da Escala pela própria pessoa. */
 export const escalaConfirmacoesTable = pgTable("escala_confirmacoes", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -154,3 +197,4 @@ export type ProgramacaoBloco = typeof programacaoBlocosTable.$inferSelect;
 export type EscalaAreaPronta = typeof escalaAreasProntasTable.$inferSelect;
 export type EscalaBlocoAjuste = typeof escalaBlocoAjustesTable.$inferSelect;
 export type EscalaConfirmacao = typeof escalaConfirmacoesTable.$inferSelect;
+export type EscalaChamada = typeof escalaChamadasTable.$inferSelect;

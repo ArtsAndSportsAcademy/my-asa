@@ -43,6 +43,7 @@ import {
 } from "@workspace/db";
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
 import { isNotSessionBlock, listSessionBlocks } from "./session-blocks.js";
+import { chamadasDoDia, type ChamadaDoDia } from "./escala-chamadas.js";
 import { enqueueNotification } from "./undo.js";
 import { operationalDate } from "../lib/operational-date.js";
 import { APP_ROUTES } from "../lib/app-routes.js";
@@ -97,6 +98,8 @@ export type EscalaDia = {
   blocos: BlocoDia[];
   /** Os tipos de atividade do local (inclusive os arquivados, que ainda pintam o que já os usa). Vazio = o local ainda não tem lista. */
   tipos?: TipoDoLocal[];
+  /** As chamadas do dia (0086): "Aquecimento 13:00", "Call do show 13:45". Cada uma leva as pessoas da atividade a que pertence. Lidas ao vivo. */
+  chamadas?: ChamadaDoDia[];
 };
 
 /** Os tipos de atividade de um local, na ordem da lista. */
@@ -535,6 +538,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     }),
     blocos,
     tipos: await tiposDoLocal(locationId),
+    chamadas: await chamadasDoDia(blocos, date, scale?.id ?? null),
   };
 }
 

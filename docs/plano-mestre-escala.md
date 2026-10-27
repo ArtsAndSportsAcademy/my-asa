@@ -13,7 +13,7 @@ Regra de uso: o que mudar de estado muda **aqui primeiro**. Código só com o "p
 | Livro do Dia: "Trazer as novidades do Livro do Show", vagas editáveis (Escolher/Tirar), "Ver quem faz o quê" | plano de 26/10 (já promovido em parte) |
 
 ## 2. Feito, enviado ao GitHub e **ainda NÃO promovido**
-Ramo `codex/escala-mais-facil`, até `0b313a6`. **Ordem: migração 0085, depois API, depois site.**
+Ramo `codex/escala-mais-facil`, até `ab5cb72`. **Ordem: migração 0085, depois o site, depois a API** (a ordem mudou por causa do "Conferido" que sai da API, seção 3; o commit `831f1e6` e o `2aeea26` ainda não foram enviados).
 | Commit | O quê | Vai em |
 |---|---|---|
 | `f432842` | Erro de banco responde 503 e não derruba a sessão (A1) | API |
@@ -27,15 +27,23 @@ Ramo `codex/escala-mais-facil`, até `0b313a6`. **Ordem: migração 0085, depois
 
 Antes de promover: rodar a bateria de testes de novo (um arquivo por vez) e conferir o que ainda não foi visto na tela (ver seção 6).
 
-## 3. Em andamento agora
-- **E, ajuste do trecho** (sessão `bloco-flexivel`): a atividade específica corta só o trecho que cruza o bloco geral (gelo 08:40–11:00 + ensaio 10:00–11:00 → gelo até 10:00); choque entre duas específicas é só aviso. Novo commit, sem migração.
-- **M + N** (sessão `escala-limpa`): tirar o "Conferido" do app inteiro; Escala abre por atividade e a grade vira o centro da tela. Sem migração; **a API perde as rotas de conferir, então a ordem de promoção importa** (API e site juntos, ou site primeiro e API depois).
+## 3. Feito e commitado, **ainda não enviado ao GitHub** (26/10, noite)
+- `831f1e6` **E, trecho:** a atividade específica corta só o trecho que cruza o bloco geral (gelo 08:40–11:00 + ensaio 10:00–11:00 → gelo até 10:00; a tela diz "Treino de gelo até 10:00 · ENSAIO às 10:00"); no meio do bloco, sai do geral inteiro; choque entre duas específicas é só aviso. Sem migração.
+- `2aeea26` **M + N:** o "Conferido" saiu do app inteiro (cartões, faixa, botão, conferência guiada, aviso ao publicar, rotas); a Escala abre por atividade e a grade está no topo, com letra de 14 a 15 px. Sem migração. **A API perde as rotas de conferir: promover o SITE primeiro e a API logo depois.**
+- `c2a52ff` **Cabeçalho compacto no celular** (até 720 px): a grade passou de ~920 px para ~307 px do topo a 375 px (321 e 353 px a 414 px). Visto: Administração, Supervisão e Direção com dados, a 360, 375 e 414 px. Não visto: Elenco com escala publicada, "Atenção do dia" aberta com dados, toque em aparelho de verdade. Botões "Hoje/Amanhã/Calendário" e visões têm 29–38 px de altura visível (área de toque de 44 px ao redor): pode ainda parecer pequeno. Sem migração.
+- `12f43a8` **Consertos pequenos da conferência no computador:** rodapé da Programação, papéis do Livro do Dia, "hoje" → "do dia", Direção sem "Gere o dia…", etiquetas das áreas em uma linha.
+- `36f402e` **Folga vence também na vaga do show:** a Escala não mostra mais gente de folga ocupando personagem (defeito antigo, desde 23/10); chamada de propósito com motivo continua aparecendo.
+- `2c0460b` **Conferência da sessão principal (27/10):** a Supervisão agora corrige ("Mudar horário", "Tirar do dia") a atividade só do dia que criou; o "×" do Livro do Dia ganhou 44 px de toque.
+- **Conferência da sessão principal (26/10 à noite):** os 20 arquivos de teste de API passaram; tsc (db, API, site), build e verificação de nomes passaram; vistas na tela, com dados, Administração (1360 e 375 px), Supervisão, Direção e Elenco (375 px), Livro do Dia (375 px) e impressão. **Não visto:** Supervisão, Direção e Elenco a 1360 px; Programação com "Janela flexível" a 375 px; janelas Ajustar/Mudar horário/Publicar abertas; "chamado na folga" na janela de Publicar; Meu Dia com dois locais; PDF de verdade; toque em aparelho.
+- **Segunda rodada de conferência (27/10, sessão principal), tudo visto na tela com dados:** Administração, Supervisão, Direção e Elenco a 1360 e 375 px; janelas Ajustar, Mudar horário, Publicar (com "chamada na folga" e vagas sem ninguém), Novo bloco com "Janela flexível" (1360 e 375); Programação; recusas da Supervisão e da Direção em português; Meu Dia com dois locais (contador subiu de 4 para 5); PDFs de verdade (1 página por atividade, com nomes e por pessoa; controles não saem no papel). Consertado: barra de baixo e "Atenção do dia" no celular (barra de ~216 para ~91 px). **Ainda não visto:** toque em aparelho de verdade; o app instalado (PWA).
+- **Para decidir depois:** "saída 13:30" na Minha escala vem do fim da janela do almoço, que não é a saída real da pessoa; a grade a 375 px começa a ~400 px do topo quando há "Atenção do dia", e a barra de baixo ocupa ~20% da altura; "Hoje/Amanhã/Calendário" e as abas medem 29–42 px de altura.
+- A senha das contas `teste.*` do banco de teste foi redefinida e gravada só em `artifacts/api-server/scripts/empresa-de-teste.local.json` (checkout principal, ignorado pelo git).
 
 ## 4. Falta fazer (ordem sugerida)
 | # | Pacote | Tam. | Migração | Observação |
 |---|---|---|---|---|
 | 1 | **Promover** o que está na seção 2 e 3; depois renomear os tipos já existentes em produção (janela "Tipos de atividade"); "Trazer as novidades" no Teatro 11:30 e Boas Vindas do dia 22; "Refazer" no Opening de terça | — | 0085 | só quem constrói o app roda em produção; antes, `DB_POOL_MAX=3` na API (ver `docs/quando-o-app-cai.md`) |
-| 2 | **F. Chamadas** (várias por show, configuráveis; ocupa tempo ou só informativa; aviso; quem = Livro do Dia) | G | **0086** | **desenhar a tela de configuração antes** e mostrar à usuária |
+| 2 | **F. Chamadas** (desenho aprovado em 27/10 em `docs/desenho-chamadas-escala.md`; **F1 construída e commitada localmente em 27/10**: migração 0086, rotas e leitura na Escala; faltam F2 editor e F3 telas e aviso) (várias por show, configuráveis; ocupa tempo ou só informativa; aviso; quem = Livro do Dia) | G | **0086** | **desenhar a tela de configuração antes** e mostrar à usuária |
 | 3 | **Fase 2 do plano de construção: semana e equilíbrio** (gerar a semana; visão "Semana" só leitura com a contagem de shows de elenco limitado; interruptor "Conta para o equilíbrio" por show) | G | **0087** (era 0085 no plano antigo) | é o "plano esquecido" do rodízio por semana; **pergunta nova: qual a regra de "limitado"** |
 | 4 | **G. Tempo disponível** (aviso a partir de 30 min, configurável em Locais) | M | **0088** | só Supervisão e Administração veem |
 | 5 | **H. Etapa 8: copiar de outro dia** (mostra quem ficou de fora e por quê) | M | não | |
