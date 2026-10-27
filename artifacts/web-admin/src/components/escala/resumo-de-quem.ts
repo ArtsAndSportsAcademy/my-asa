@@ -2,7 +2,7 @@
  * Resumo de "quem faz" um bloco, igual na Escala (visão "Por atividade") e na folha impressa.
  * Lista de 30 nomes não se lê no papel nem no celular; quando o bloco é do elenco todo, de uma área
  * inteira ou de um show grande, a frase curta diz o mesmo. Regras da usuária (26/10/2026):
- *  1. 80% ou mais das pessoas que trabalham no dia → "Elenco todo (N)".
+ *  1. 80% ou mais das pessoas que trabalham no dia → "Elenco do dia".
  *  2. 80% ou mais de UMA área (das pessoas dela que trabalham no dia) → o nome da área; quem é de fora
  *     entra pelo nome ("Bailarinos e Fulano"). Quem faltou não aparece: a folga já tem lista própria.
  *  3. Show com mais de 12 posições no Livro do Dia → "Elenco do show: N pessoas" (o papel diz "ver Livro do Dia").
@@ -11,7 +11,7 @@
 export type PessoaDoDia = { id: string; name: string; areaId: string | null; areaName: string | null };
 export type ResumoDeQuem = {
   tipo: "todos" | "area" | "show-grande" | "lista";
-  /** Frase pronta para mostrar ("Elenco todo (28)", "Bailarinos e Bel", "Elenco do show: 21 pessoas"). Vazia quando não há ninguém. */
+  /** Frase pronta para mostrar ("Elenco do dia", "Bailarinos e Bel", "Elenco do show: 21 pessoas"). Vazia quando não há ninguém. */
   rotulo: string;
   /** Nomes de quem está no bloco mas é de fora da área resumida (só no tipo "area"). */
   extras: string[];
@@ -51,7 +51,7 @@ export function resumirQuem(pessoaIds: string[], doDia: PessoaDoDia[], posicoes 
 
   const doBloco = ids.map((id) => porId.get(id)).filter((p): p is PessoaDoDia => Boolean(p));
   if (doBloco.length >= MINIMO_PARA_RESUMIR && temFracao(doBloco.length, doDia.length)) {
-    return { tipo: "todos", rotulo: `Elenco todo (${ids.length})`, extras: [], nomes };
+    return { tipo: "todos", rotulo: "Elenco do dia", extras: [], nomes };
   }
 
   const contagem = new Map<string, { nome: string; noDia: number; noBloco: number }>();
@@ -81,7 +81,7 @@ export function resumoDoBloco(b: { quemRegra?: "todos" | "area"; areaNomes?: str
   const base = resumirQuem(pessoaIds, doDia, posicoes);
   if (posicoes > LIMITE_POSICOES_SHOW_PEQUENO || !b.quemRegra) return base;
   const n = base.nomes.length;
-  if (b.quemRegra === "todos") return { ...base, tipo: "todos", rotulo: `Elenco todo (${n})`, extras: [] };
+  if (b.quemRegra === "todos") return { ...base, tipo: "todos", rotulo: "Elenco do dia", extras: [] };
   const nome = b.areaNomes?.length ? emLista(b.areaNomes) : "";
   return nome ? { ...base, tipo: "area", rotulo: nome, extras: [] } : base;
 }

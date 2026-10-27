@@ -18,17 +18,17 @@ test("bloco vazio devolve lista sem rótulo", () => {
   assert.deepEqual(r, { tipo: "lista", rotulo: "", extras: [], nomes: [] });
 });
 
-test("100% do dia é Elenco todo, com o número entre parênteses", () => {
+test("100% do dia é Elenco do dia, sem número", () => {
   const r = resumirQuem(pessoas.map((p) => p.id), pessoas);
   assert.equal(r.tipo, "todos");
-  assert.equal(r.rotulo, "Elenco todo (20)");
+  assert.equal(r.rotulo, "Elenco do dia");
   assert.equal(r.nomes.length, 20);
 });
 
 test("80% exato ainda é Elenco todo (16 de 20)", () => {
   const r = resumirQuem(pessoas.slice(0, 16).map((p) => p.id), pessoas);
   assert.equal(r.tipo, "todos");
-  assert.equal(r.rotulo, "Elenco todo (16)");
+  assert.equal(r.rotulo, "Elenco do dia");
 });
 
 test("79% não é Elenco todo (19 de 24)", () => {

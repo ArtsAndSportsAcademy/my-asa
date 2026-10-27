@@ -204,7 +204,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
         }
         const r = await customFetch<{ dia: Dia; areasSupervisionadas: string[] }>(`/api/escalas/dia?locationId=${localId}&date=${date}`);
         if (!cancelled) { setDia(r.dia); setAreasMinhas(r.areasSupervisionadas); }
-      } catch { if (!cancelled) setError(isMem ? "Não consegui carregar a sua escala." : "Não consegui montar a Escala do dia."); }
+      } catch { if (!cancelled) setError(isMem ? "Não consegui carregar a sua escala." : "Não consegui montar a Atividade do dia."); }
       finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
@@ -497,7 +497,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       </div>
       : dateBar}
     {!isMem && <div className="esc-tabs esc-pad" role="tablist" style={css("display:flex;align-items:center;padding:0 20px;border-bottom:1px solid var(--asa-border-soft);background:#fff;")}>
-      {([["escala", "Escala do dia"], ["prog", "Programação"], ["minha", "Minha escala"]] as const).map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={tab === key} className="esc-hit" onClick={() => setTab(key)}
+      {([["escala", "Atividade do dia"], ["prog", "Programação"], ["minha", "Minha escala"]] as const).map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={tab === key} className="esc-hit" onClick={() => setTab(key)}
         style={css("border:none;background:none;cursor:pointer;font-family:Manrope,sans-serif;font-size:13px;padding:11px 2px 10px;margin-right:22px;white-space:nowrap;" + (tab === key ? "font-weight:700;color:var(--asa-ink-dark);box-shadow:inset 0 -2px 0 0 var(--asa-purple);" : "font-weight:600;color:var(--asa-label);"))}>{label}</button>)}
     </div>}
 

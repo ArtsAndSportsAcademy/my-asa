@@ -2,7 +2,7 @@ import { css } from "@/lib/dc-style";
 import type { ResumoDeQuem } from "./resumo-de-quem";
 import "./escala-tokens.css";
 
-/** "Elenco todo (28)" ou "Bailarinos e Bel": a frase curta, e ao tocar abre os nomes de todo mundo do bloco. */
+/** "Elenco do dia" ou "Bailarinos e Bel": a frase curta, e ao tocar abre os nomes de todo mundo do bloco. */
 export function QuemResumido({ resumo }: { resumo: ResumoDeQuem }) {
   const n = resumo.nomes.length;
   return <details className="ge-show" style={css("font-size:14px;color:var(--asa-ink-medium);min-width:0")}>

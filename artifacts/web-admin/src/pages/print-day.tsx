@@ -105,7 +105,7 @@ export default function PrintDayPage() {
       <button type="button" className="print-button" disabled={!dia || loading} onClick={() => window.print()}>Imprimir a escala do dia</button>
       <a href="/escalas">Voltar para Escalas</a>
     </div>
-    <h1 className="text-2xl font-semibold">Escala do dia · {dia?.location.name ?? "…"} · {modo === "atividade" ? "por atividade" : "por pessoa"}</h1>
+    <h1 className="text-2xl font-semibold">Atividade do dia · {dia?.location.name ?? "…"} · {modo === "atividade" ? "por atividade" : "por pessoa"}</h1>
     <p className="my-3">{longDate(date)} · {publicada ? `publicada${dia?.escala?.publishedAt ? ` às ${new Date(dia.escala.publishedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" })}` : ""} · versão ${dia?.escala?.version}` : "sem publicação"} · impressa em {new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" })}</p>
     {!loading && dia && !publicada && <p className="print-warning" role="alert">RASCUNHO — esta escala ainda não foi publicada e pode mudar.</p>}
     {dia?.escala?.alteradaDesde && <p className="print-warning" role="alert">Mudou depois da publicação e ainda não foi republicada.</p>}
@@ -123,7 +123,7 @@ export default function PrintDayPage() {
             </>}</td>
           </tr>)}</tbody></table>}
       {modo === "pessoa" ? !porPessoa.length && <p>Nenhuma pessoa escalada neste dia.</p> : !porAtividade.length && <p>Nenhuma atividade neste dia.</p>}
-      {fora.length > 0 && <p className="mt-4"><strong>Fora o dia todo:</strong> {fora.map((p) => p.name).join(" · ")}</p>}
+      {fora.length > 0 && <p className="mt-4"><strong>Pessoas de folga:</strong> {fora.map((p) => p.name).join(" · ")}</p>}
       {modo === "pessoa" && vazios.length > 0 && <p className="mt-2"><strong>Blocos sem ninguém:</strong> {vazios.map((b) => `${b.inicio} ${texto(b)}`).join(" · ")}</p>}
     </>}
   </main>;
