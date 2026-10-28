@@ -42,19 +42,20 @@ Antes de promover: rodar a bateria de testes de novo (um arquivo por vez) e conf
 ## 4. Falta fazer (ordem sugerida)
 | # | Pacote | Tam. | Migração | Observação |
 |---|---|---|---|---|
+| 0 | **O. Equipe por local na Programação** (seção 10): é o que falta para a Escala ser entregue às Supervisões; vem antes de G, H e J | G | **0088** | decidido em 28/10; código só com o "pode começar" |
 | 1 | **Promover** o que está na seção 2 e 3; depois renomear os tipos já existentes em produção (janela "Tipos de atividade"); "Trazer as novidades" no Teatro 11:30 e Boas Vindas do dia 22; "Refazer" no Opening de terça | — | 0085 | só quem constrói o app roda em produção; antes, `DB_POOL_MAX=3` na API (ver `docs/quando-o-app-cai.md`) |
 | 2 | **F. Chamadas** (desenho aprovado em 27/10 em `docs/desenho-chamadas-escala.md`; **F1 construída e commitada localmente em 27/10**: migração 0086, rotas e leitura na Escala; faltam F2 editor e F3 telas e aviso) (várias por show, configuráveis; ocupa tempo ou só informativa; aviso; quem = Livro do Dia) | G | **0086** | **desenhar a tela de configuração antes** e mostrar à usuária |
-| 3 | **Fase 2 do plano de construção: semana e equilíbrio** (gerar a semana; visão "Semana" só leitura com a contagem de shows de elenco limitado; interruptor "Conta para o equilíbrio" por show) | G | **0087** (era 0085 no plano antigo) | é o "plano esquecido" do rodízio por semana; **pergunta nova: qual a regra de "limitado"** |
-| 4 | **G. Tempo disponível** (aviso a partir de 30 min, configurável em Locais) | M | **0088** | só Supervisão e Administração veem |
+| 3 | **Fase 2 do plano de construção: semana e equilíbrio** (gerar a semana; visão "Semana" só leitura com a contagem de shows de elenco limitado; interruptor "Conta para o equilíbrio" por show) | G | **0090** (a 0087 virou "Editar neste dia" e a 0088 a equipe por local) | é o "plano esquecido" do rodízio por semana; **pergunta nova: qual a regra de "limitado"** |
+| 4 | **G. Tempo disponível** (aviso a partir de 30 min, configurável em Locais) | M | **0089** | só Supervisão e Administração veem |
 | 5 | **H. Etapa 8: copiar de outro dia** (mostra quem ficou de fora e por quê) | M | não | |
 | 6 | **I. Formações no Livro do Dia** (criar do zero, renomear, arquivar) | M–G | talvez | conferir antes na tela com um show de mapa de palco |
 | 7 | **J. Menos cliques** (cadastro de várias pessoas, ligar vários personagens ao show, repetir horários nas sessões, bloco em vários horários) | M cada | não | |
 | 8 | **Fase 3: relatório do mês** | G | ? | só depois de um mês real de uso; definir o que entra e quem vê |
 
-A numeração das migrações é a prevista; a primeira livre hoje é a **0086**.
+A numeração das migrações é a prevista; a primeira livre hoje (28/10) é a **0088**.
 
 ## 5. Em espera (depende da Babi)
-- **K. "Onde a pessoa trabalha no dia"** (Snow de manhã, Acqua à tarde, hotéis à noite), com choque considerando o **deslocamento entre parques** e os tempos entre Snow, Acqua e hotéis. A mensagem está pronta, mas a usuária ainda não quer enviar.
+- **K. "Onde a pessoa trabalha no dia":** a parte da equipe por local virou o pacote **O** (seção 10, decidida em 28/10). Continua em espera só o **tempo de deslocamento** entre Snow, Acqua e hotéis (O5).
 - **Pessoa em duas áreas** (Amanda e Antônio): depende de K.
 - **Regra de "limitado"** para a Fase 2 (quais shows contam para o equilíbrio).
 
@@ -80,3 +81,56 @@ Português simples; dizer o que **não** foi visto; só commitar os arquivos da 
 ## 9. Atualização de 27/10/2026 — chamadas e "Editar neste dia"
 - **Chamadas (F1, F2, F3):** feitas, enviadas ao GitHub e a **migração 0086 já aplicada em produção** (backup antes). Falta promover a **API e depois o site**. Detalhes em `docs/desenho-chamadas-escala.md` (seções 7b a 7d).
 - **Editar a atividade só neste dia (migração 0087, só no banco de teste; NÃO enviado):** na Escala por atividade, o botão "Editar neste dia" muda o **nome, o horário (para todos) e o tipo/cor** de uma atividade que vem da Programação, só naquela data. "Voltar ao normal" devolve o que a Programação manda. Quem pode: Administração e Supervisão do local; Direção só lê. Show não entra (nome e horário vêm do Livro do Show). Escala publicada marca "alterada depois de publicada" e avisa; dois navegadores: 409 com frase (`baseEditadaEm`). A chamada "X minutos antes" acompanha o horário novo. Rota `POST /escalas/dia/editar`; tabela `escala_bloco_edicoes`; teste `escala-editar-atividade-no-dia.test.ts`. **Fica de fora:** nome e tipo das atividades "só deste dia" (já têm "Mudar horário"). **Ordem para promover: migração 0087, depois API, depois site.**
+
+- **28/10/2026, em produção (visto na conta, só leitura):** a API e o site com tudo até `c9b509b` estão no ar: "Snowland não abre quartas" aparece no dia fechado e "também na Acquamotion" na grade. Chamadas e "Editar neste dia" também.
+
+## 10. Equipe por local na Programação (pacote O, decidido em 28/10/2026)
+
+### O problema (visto na conta real em 28 e 29/10)
+O app não sabe **em que local cada pessoa trabalha**. Para ele, "todo mundo" é o elenco inteiro e "Bailarinos" são todos os bailarinos,
+de qualquer local. Daí vieram três defeitos que a usuária encontrou montando a Escala de verdade:
+1. **Almoço:** a janela "todo mundo" de Snowland punha a galera da Acqua no almoço de Snowland (e vice-versa).
+2. **Miguelito nos dois locais:** escalado em Snowland o dia todo, entrou também no Musical 13:30 da Acqua, porque está no elenco do
+   Livro do Show de lá; ao gerar o dia, o Livro não sabia que ele estava em Snowland.
+3. **Cada local lista as mesmas 32 pessoas**, e quem é do outro local aparece "sem nada" (mitigado em `c9b509b` com "No outro local").
+
+A **Supervisão por local já existe e está certa** (Snowland: Vitinho, Deb, Rodrigo; Acqua: Tef nos Bailarinos). Não é preciso mexer nela.
+
+### O que foi decidido (não reabrir)
+- **A equipe mora dentro da Programação de cada local** (por temporada): a Programação de Snowland "Natal" diz quem trabalha em Snowland e
+  em que dias da semana. Muda sozinha quando muda a temporada; o "Duplicar molde" copia a equipe junto.
+- **Um dia pode ter horário (opcional):** "segunda, Snowland até 13:00" e "segunda, Acqua a partir de 14:00". Sem horário = o dia inteiro.
+- **Blocos gerais** (todo mundo, a área, o grupo, a janela de almoço) pegam **a equipe do local naquele dia e naquele horário**.
+- **Shows** pegam o elenco do Livro **de onde for**, desde que a pessoa esteja **livre naquele horário**. Se tiver atividade no seu local
+  na mesma hora, conta como indisponível (como folga) e entra a reserva; a tela diz por quê ("Miguelito está em Snowland das 08:40 às 17:00").
+  Se estiver livre, vai, e a Escala mostra "vem da Snowland para o show".
+- **Hotéis (Bella, Buona, Exclusive) não têm equipe**, em qualquer horário (há show de hotel de manhã): vale a regra dos shows.
+- **Imprevisto do dia:** um clique na Escala ("trazer para cá hoje", "mandar para a Acqua hoje"), só naquela data, com motivo opcional,
+  sem mexer na Programação. Entra no Registro e avisa a Supervisão do outro local.
+- **Quem mexe:** a Administração em tudo; a Supervisão na equipe e nos imprevistos do **seu** local. Direção só lê; Elenco não vê a tela.
+- **Pessoa sem equipe marcada em lugar nenhum:** continua como hoje (aparece em todos os locais). Nada quebra antes de preencher.
+- **Mesma pessoa marcada em dois locais no mesmo dia e horário:** só avisa, nunca bloqueia (pode ser de propósito).
+- **Primeira vez:** o app **sugere** a equipe olhando as Escalas já feitas ("o Miguel teve atividade em Snowland às segundas, quartas e
+  quintas"); a usuária confere e confirma. Marcar em lote: escolher várias pessoas e "Snowland, todos os dias".
+
+### Passos (cada um entra no ar sozinho, nesta ordem)
+| # | O quê | Onde | Migração |
+|---|---|---|---|
+| O1 | **Banco:** tabela `programacao_equipe` (programação, pessoa, dia da semana, de/até opcional, ativo) e `escala_local_do_dia` (imprevisto: pessoa, data, local de destino, motivo, ativo). Remoção lógica nas duas; rollback em `lib/db/drizzle/rollback/` | `lib/db` | **0088** |
+| O2 | **API da equipe:** ler e gravar a equipe da Programação (em lote), com Registro e conferência de versão (409 com frase se outra pessoa salvou antes); sugestão a partir das Escalas já feitas; "Duplicar molde" leva a equipe; recusas em português (Supervisão de outro local, Direção, Elenco) | `routes/programacao`, `services` | — |
+| O3 | **A regra na Escala do dia** (`montarEscalaDoDia`): blocos gerais só com a equipe do local e do horário; imprevistos do dia por cima; quem não tem equipe em lugar nenhum segue como hoje. A faixa "No outro local" passa a usar isso | `services/escala-dia.ts` | — |
+| O4 | **A regra no Livro do Dia:** ao gerar o dia, quem tem atividade no seu local no horário do show conta como indisponível (`getUnavailableUserIds` ganha o horário) e a reserva entra; frase do porquê. Show de hotel segue a mesma regra | `services/line-resolver.ts`, geração do dia | — |
+| O5 | **Choque entre locais** na Atenção do dia: a mesma pessoa em dois locais no mesmo horário. Tempo de deslocamento **fica para quando a Babi disser** os tempos | `escala-dia`, `atencao-do-dia.tsx` | — |
+| O6 | **Tela da equipe:** aba "Equipe" na Programação de cada local: lista do elenco × 7 dias, marcar em lote, horário opcional por dia, botão "Sugerir pelas Escalas feitas", rodapé Cancelar/Salvar, Esc fecha; 375 e 1360 px | `pages/escalas.tsx` (aba Programação) | — |
+| O7 | **Imprevisto na Escala do dia:** "Trazer para cá hoje" (na lista "No outro local") e "Mandar para outro local hoje" (no painel "Dia de Fulano"); desfazer; aviso no sino à Supervisão do outro local; escala publicada marca "alterada depois de publicada" | `pages/escalas.tsx`, rota nova | — |
+| O8 | **Conferência:** testes de API (equipe, regra dos blocos, Livro com horário, imprevisto, permissões, versões), bateria relacionada, tela nos 4 perfis a 375 e 1360, impressão por local | testes | — |
+
+**Ordem para promover (quem constrói o app):** backup → migração 0088 → API → site. Depois, montar a equipe de Snowland e da Acqua com a
+sugestão automática e conferir uma quinta-feira real (o Miguelito só em Snowland; o almoço de Snowland sem a Acqua).
+
+### Riscos e o que fica de fora
+- **Desempenho:** a Escala do dia já faz uma leitura por local (`comOutrosLocais`); a regra do horário no Livro vai olhar a Escala do
+  outro local. Medir no banco de teste e, se pesar, guardar o resultado do dia.
+- **Escala já publicada** antes da equipe existir não muda sozinha: a mudança espera a republicação, como sempre (crivo 6).
+- **Fora:** tempo de deslocamento (O5, espera a Babi); "uma escala só" com todos os locais na mesma grade (vem depois, com a equipe
+  pronta); pessoa em duas áreas (Amanda e Antônio).
