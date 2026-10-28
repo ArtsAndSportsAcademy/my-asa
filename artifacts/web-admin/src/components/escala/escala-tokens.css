@@ -178,7 +178,11 @@
    No telefone os números ficam depois da grade e só a folga sobe (ver escalas.tsx, parte="fora"). */
 .ge-faixa{display:flex;flex-direction:column;gap:6px}
 @media(min-width:721px){
-  .ge-faixa[data-parte="tudo"]{padding:8px 10px;border:1px solid var(--asa-line-soft);border-radius:14px;background:#fff}
+  .ge-faixa[data-parte="tudo"]{flex-direction:row;flex-wrap:wrap;align-items:center;gap:2px 14px;padding:6px 10px;border:1px solid var(--asa-line-soft);border-radius:14px;background:#fff}
+  .ge-faixa[data-parte="tudo"] .ge-fora{flex:1 1 280px;min-width:0}
+  .ge-faixa[data-parte="tudo"] .ge-fora[open]{flex-basis:100%}
+  .ge-aten{padding:4px 12px}
+  .ge-aten-topo{min-height:36px!important}
   .ge-faixa .ge-resumo{gap:6px}
   .ge-faixa .ge-num{flex-direction:row;align-items:baseline;gap:6px;min-height:32px;padding:5px 12px;border-radius:999px;font-size:12.5px;letter-spacing:.005em;transition:transform .1s ease-out,box-shadow .15s}
   .ge-faixa .ge-num b{font-size:16px;font-variant-numeric:tabular-nums}
