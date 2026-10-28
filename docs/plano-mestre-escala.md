@@ -55,7 +55,7 @@ Antes de promover: rodar a bateria de testes de novo (um arquivo por vez) e conf
 A numeração das migrações é a prevista; a primeira livre hoje (28/10) é a **0088**.
 
 ## 5. Em espera (depende da Babi)
-- **K. "Onde a pessoa trabalha no dia":** a parte da equipe por local virou o pacote **O** (seção 10, decidida em 28/10). Continua em espera só o **tempo de deslocamento** entre Snow, Acqua e hotéis (O5).
+- **K. "Onde a pessoa trabalha no dia":** virou o pacote **O** (seção 10, decidido em 28/10), inclusive o tempo de deslocamento, que é configurável e não espera mais a Babi.
 - **Pessoa em duas áreas** (Amanda e Antônio): depende de K.
 - **Regra de "limitado"** para a Fase 2 (quais shows contam para o equilíbrio).
 
@@ -110,17 +110,18 @@ A **Supervisão por local já existe e está certa** (Snowland: Vitinho, Deb, Ro
 - **Quem mexe:** a Administração em tudo; a Supervisão na equipe e nos imprevistos do **seu** local. Direção só lê; Elenco não vê a tela.
 - **Pessoa sem equipe marcada em lugar nenhum:** continua como hoje (aparece em todos os locais). Nada quebra antes de preencher.
 - **Mesma pessoa marcada em dois locais no mesmo dia e horário:** só avisa, nunca bloqueia (pode ser de propósito).
+- **Tempo de deslocamento é configurável** (28/10): a Administração escreve, em Locais, quantos minutos leva de um local a outro; não espera a Babi.
 - **Primeira vez:** o app **sugere** a equipe olhando as Escalas já feitas ("o Miguel teve atividade em Snowland às segundas, quartas e
   quintas"); a usuária confere e confirma. Marcar em lote: escolher várias pessoas e "Snowland, todos os dias".
 
 ### Passos (cada um entra no ar sozinho, nesta ordem)
 | # | O quê | Onde | Migração |
 |---|---|---|---|
-| O1 | **Banco:** tabela `programacao_equipe` (programação, pessoa, dia da semana, de/até opcional, ativo) e `escala_local_do_dia` (imprevisto: pessoa, data, local de destino, motivo, ativo). Remoção lógica nas duas; rollback em `lib/db/drizzle/rollback/` | `lib/db` | **0088** |
+| O1 | **Banco:** tabela `programacao_equipe` (programação, pessoa, dia da semana, de/até opcional, ativo), `escala_local_do_dia` (imprevisto: pessoa, data, local de destino, motivo, ativo) e `locais_deslocamento` (de um local a outro, minutos). Remoção lógica; rollback em `lib/db/drizzle/rollback/` | `lib/db` | **0088** |
 | O2 | **API da equipe:** ler e gravar a equipe da Programação (em lote), com Registro e conferência de versão (409 com frase se outra pessoa salvou antes); sugestão a partir das Escalas já feitas; "Duplicar molde" leva a equipe; recusas em português (Supervisão de outro local, Direção, Elenco) | `routes/programacao`, `services` | — |
 | O3 | **A regra na Escala do dia** (`montarEscalaDoDia`): blocos gerais só com a equipe do local e do horário; imprevistos do dia por cima; quem não tem equipe em lugar nenhum segue como hoje. A faixa "No outro local" passa a usar isso | `services/escala-dia.ts` | — |
 | O4 | **A regra no Livro do Dia:** ao gerar o dia, quem tem atividade no seu local no horário do show conta como indisponível (`getUnavailableUserIds` ganha o horário) e a reserva entra; frase do porquê. Show de hotel segue a mesma regra | `services/line-resolver.ts`, geração do dia | — |
-| O5 | **Choque entre locais** na Atenção do dia: a mesma pessoa em dois locais no mesmo horário. Tempo de deslocamento **fica para quando a Babi disser** os tempos | `escala-dia`, `atencao-do-dia.tsx` | — |
+| O5 | **Choque entre locais e deslocamento** na Atenção do dia: a mesma pessoa em dois locais no mesmo horário, ou sem o tempo de ir de um ao outro ("Miguelito sai de Snowland às 13:00 e o show da Acqua é às 13:10; a ida leva 30 min"). **O tempo é configurável** em Locais, por par de locais (Snowland ↔ Acqua, Snowland ↔ Bella…), pela Administração; par sem tempo = só confere se cruza. Só avisa, nunca bloqueia; no Livro do Dia, quem não chega a tempo conta como indisponível e entra a reserva | `escala-dia`, `atencao-do-dia.tsx`, `locais.tsx` | — |
 | O6 | **Tela da equipe:** aba "Equipe" na Programação de cada local: lista do elenco × 7 dias, marcar em lote, horário opcional por dia, botão "Sugerir pelas Escalas feitas", rodapé Cancelar/Salvar, Esc fecha; 375 e 1360 px | `pages/escalas.tsx` (aba Programação) | — |
 | O7 | **Imprevisto na Escala do dia:** "Trazer para cá hoje" (na lista "No outro local") e "Mandar para outro local hoje" (no painel "Dia de Fulano"); desfazer; aviso no sino à Supervisão do outro local; escala publicada marca "alterada depois de publicada" | `pages/escalas.tsx`, rota nova | — |
 | O8 | **Conferência:** testes de API (equipe, regra dos blocos, Livro com horário, imprevisto, permissões, versões), bateria relacionada, tela nos 4 perfis a 375 e 1360, impressão por local | testes | — |
@@ -132,5 +133,5 @@ sugestão automática e conferir uma quinta-feira real (o Miguelito só em Snowl
 - **Desempenho:** a Escala do dia já faz uma leitura por local (`comOutrosLocais`); a regra do horário no Livro vai olhar a Escala do
   outro local. Medir no banco de teste e, se pesar, guardar o resultado do dia.
 - **Escala já publicada** antes da equipe existir não muda sozinha: a mudança espera a republicação, como sempre (crivo 6).
-- **Fora:** tempo de deslocamento (O5, espera a Babi); "uma escala só" com todos os locais na mesma grade (vem depois, com a equipe
+- **Fora:** "uma escala só" com todos os locais na mesma grade (vem depois, com a equipe
   pronta); pessoa em duas áreas (Amanda e Antônio).
