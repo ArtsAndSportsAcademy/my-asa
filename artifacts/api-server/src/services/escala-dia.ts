@@ -101,13 +101,31 @@ export type EscalaDia = {
   escala: { id: string; status: string; version: number; publishedAt: Date | null; alteradaDesde: Date | null } | null;
   programacao: { id: string; nome: string; vigenciaInicio: string; vigenciaFim: string } | null;
   areas: { id: string; name: string; supervisores: { id: string; name: string }[]; pronta: { por: string | null; em: Date } | null; /** A parte já foi enviada e a marca saiu depois: quem tirou e quando (a tela explica por que a área voltou a faltar). */ prontaTirada?: { por: string | null; em: Date } | null }[];
-  pessoas: { id: string; name: string; areaId: string | null; areaName: string | null; folga: string | null; chamadaNaFolga?: { motivo: string | null; decidida: boolean } }[];
+  pessoas: { id: string; name: string; areaId: string | null; areaName: string | null; folga: string | null; chamadaNaFolga?: { motivo: string | null; decidida: boolean };
+    /** Atividades que a pessoa tem hoje em OUTRO local (fora o almoço e os blocos de "todos"): a Escala deste local a mostra "no outro local" e não como pessoa sem nada. */
+    noutroLocal?: { localId: string; localNome: string; inicio: string; fim: string | null; atividades: number }[] }[];
   blocos: BlocoDia[];
+  /** O local não abre neste dia da semana (ou está fechado): sem Escala feita, a Programação não é projetada e a Escala não pode ser gerada. */
+  fechado?: { motivo: string };
   /** Os tipos de atividade do local (inclusive os arquivados, que ainda pintam o que já os usa). Vazio = o local ainda não tem lista. */
   tipos?: TipoDoLocal[];
   /** As chamadas do dia (0086): "Aquecimento 13:00", "Call do show 13:45". Cada uma leva as pessoas da atividade a que pertence. Lidas ao vivo. */
   chamadas?: ChamadaDoDia[];
 };
+
+/** O local está fechado neste dia (fechado de vez, ou não abre neste dia da semana)? Devolve a frase que a Escala mostra, ou null se abre. */
+export async function diaFechadoDoLocal(locationId: string, date: string, executor: Exec = db): Promise<{ motivo: string } | null> {
+  const [l] = await executor.select({ name: locationsTable.name, closed: locationsTable.closed, closedReason: locationsTable.closedReason, operatingDays: locationsTable.operatingDays })
+    .from(locationsTable).where(eq(locationsTable.id, locationId)).limit(1);
+  if (!l) return null;
+  if (l.closed) return { motivo: l.closedReason ? `${l.name} está fechado: ${l.closedReason}` : `${l.name} está fechado.` };
+  const dias = l.operatingDays ?? [];
+  if (dias.length && !dias.includes(weekdayOf(date))) {
+    const nome = ["domingos", "segundas", "terças", "quartas", "quintas", "sextas", "sábados"][weekdayOf(date)];
+    return { motivo: `${l.name} não abre ${nome}. Não há o que escalar aqui neste dia.` };
+  }
+  return null;
+}
 
 /** Os tipos de atividade de um local, na ordem da lista. */
 export async function tiposDoLocal(locationId: string, executor: Exec = db): Promise<TipoDoLocal[]> {
@@ -301,12 +319,12 @@ async function vagasDoLivro(dailyBookId: string, executor: Exec = db): Promise<V
   return rows;
 }
 
-export async function montarEscalaDoDia(organizationId: string, locationId: string, date: string, options: { publishedOnly?: boolean } = {}): Promise<EscalaDia | null> {
+export async function montarEscalaDoDia(organizationId: string, locationId: string, date: string, options: { publishedOnly?: boolean; /** Só a tela da Escala pede: marca quem já tem atividade em outro local hoje (custa uma leitura por local). */ comOutrosLocais?: boolean } = {}): Promise<EscalaDia | null> {
   const [location] = await db.select({ id: locationsTable.id, name: locationsTable.name }).from(locationsTable)
     .where(and(eq(locationsTable.id, locationId), eq(locationsTable.organizationId, organizationId))).limit(1);
   if (!location) return null;
 
-  const [scale, people, supervisors] = await Promise.all([
+  const [scale, people, supervisors, fechado] = await Promise.all([
     findEscalaDoDia(locationId, date, db, options.publishedOnly),
     db.select({ id: usersTable.id, name: usersTable.name, areaId: usersTable.areaId }).from(usersTable).where(and(
       eq(usersTable.organizationId, organizationId), isNotNull(usersTable.areaId),
@@ -315,6 +333,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     db.select({ areaId: areaLocalSupervisorsTable.areaId, id: usersTable.id, name: usersTable.name }).from(areaLocalSupervisorsTable)
       .innerJoin(usersTable, eq(areaLocalSupervisorsTable.supervisorId, usersTable.id))
       .where(and(eq(areaLocalSupervisorsTable.locationId, locationId), eq(areaLocalSupervisorsTable.active, true))),
+    diaFechadoDoLocal(locationId, date),
   ]);
 
   const areaIds = [...new Set([...people.map((p) => p.areaId), ...supervisors.map((s) => s.areaId)].filter((id): id is string => Boolean(id)))];
@@ -344,7 +363,8 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     eq(programacoesTable.locationId, locationId), eq(programacoesTable.active, true),
     lte(programacoesTable.vigenciaInicio, date), gte(programacoesTable.vigenciaFim, date),
   )).orderBy(asc(sql`${programacoesTable.vigenciaFim} - ${programacoesTable.vigenciaInicio}`), desc(programacoesTable.createdAt)).limit(1);
-  const blocosMolde = programacao ? await db.select().from(programacaoBlocosTable).where(and(
+  // Local fechado neste dia e sem Escala feita: a Programação não vira atividade (ninguém pode ser escalado onde o local não abre).
+  const blocosMolde = programacao && !(fechado && !scale) ? await db.select().from(programacaoBlocosTable).where(and(
     eq(programacaoBlocosTable.programacaoId, programacao.id), eq(programacaoBlocosTable.weekday, weekdayOf(date)), eq(programacaoBlocosTable.active, true),
   )).orderBy(asc(programacaoBlocosTable.inicio), asc(programacaoBlocosTable.order)) : [];
 
@@ -551,9 +571,31 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
   const todasAsAreas: { id: string; name: string }[] = areas;
   const areasDoLocal = todasAsAreas.filter((a) => comGenteEscalada.has(a.id) || supervisors.some((s) => s.areaId === a.id) || prontas.some((p) => p.areaId === a.id));
 
+  // Quem já tem atividade em OUTRO local hoje (fora o almoço e os blocos de "todos"): a Escala deste local diz onde a pessoa está, em vez de mostrá-la sem nada.
+  const noutroLocal = new Map<string, NonNullable<EscalaDia["pessoas"][number]["noutroLocal"]>>();
+  if (options.comOutrosLocais) {
+    const outros = await db.select({ id: locationsTable.id }).from(locationsTable)
+      .where(and(eq(locationsTable.organizationId, organizationId), ne(locationsTable.id, locationId), eq(locationsTable.closed, false)));
+    const dias = await Promise.all(outros.map((o) => montarEscalaDoDia(organizationId, o.id, date, { publishedOnly: options.publishedOnly })));
+    for (const dia of dias) {
+      if (!dia || dia.fechado) continue;
+      const porPessoa = new Map<string, { inicio: string; fim: string | null; atividades: number }>();
+      for (const b of dia.blocos) {
+        if (b.flexivel || b.regra === "todos" || b.regra === "ninguem") continue;
+        for (const id of b.pessoaIds) {
+          const atual = porPessoa.get(id);
+          const fim = b.fim ?? b.inicio;
+          porPessoa.set(id, atual ? { inicio: b.inicio < atual.inicio ? b.inicio : atual.inicio, fim: (atual.fim ?? "") > fim ? atual.fim : fim, atividades: atual.atividades + 1 } : { inicio: b.inicio, fim, atividades: 1 });
+        }
+      }
+      for (const [id, v] of porPessoa) noutroLocal.set(id, [...(noutroLocal.get(id) ?? []), { localId: dia.location.id, localNome: dia.location.name, ...v }]);
+    }
+  }
+
   return {
     date,
     location,
+    ...(fechado ? { fechado } : {}),
     escala: scale ? { id: scale.id, status: scale.status, version: scale.version, publishedAt: scale.publishedAt, alteradaDesde: scale.alteradaDesde } : null,
     programacao: programacao ? { id: programacao.id, nome: programacao.nome, vigenciaInicio: programacao.vigenciaInicio, vigenciaFim: programacao.vigenciaFim } : null,
     areas: areasDoLocal.map((a) => {
@@ -567,6 +609,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
         id: p.id, name: p.name, areaId: p.areaId, areaName: p.areaId ? areaName.get(p.areaId) ?? null : null,
         folga: folgaOf.get(p.id) ?? null,
         ...(chamada ? { chamadaNaFolga: chamada } : {}),
+        ...(noutroLocal.has(p.id) ? { noutroLocal: noutroLocal.get(p.id)! } : {}),
       };
     }),
     blocos,

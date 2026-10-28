@@ -85,6 +85,7 @@ export function GradePessoa({ colunas, blocosDe, temChoque, tipos, mexidoPor, so
           <small>{pessoa.areaName ?? "sem área"}</small>
           {choque && <span className="ge-aviso ge-aviso-choque">choque</span>}
           {pessoa.chamadaNaFolga && <span className="ge-aviso ge-aviso-folga">chamado na folga</span>}
+          {pessoa.noutroLocal?.length ? <span className="ge-aviso ge-aviso-outro" title={pessoa.noutroLocal.map((o) => `${o.localNome} ${o.inicio}${o.fim ? `–${o.fim}` : ""}`).join(" e ")}>{`${blocos.every((b) => b.flexivel) ? "só na" : "também na"} ${pessoa.noutroLocal[0]!.localNome}`}</span> : null}
           {mexidoPor?.(pessoa.id) && <span className="ge-aviso ge-aviso-mexida">{`ajustado por ${mexidoPor(pessoa.id)!.split(" ")[0]}`}</span>}
         </button>;
       })}

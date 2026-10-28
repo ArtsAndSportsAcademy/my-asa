@@ -33,6 +33,7 @@
 .ge-aviso-choque{background:#fde3e1;color:var(--esc-choque)}
 .ge-aviso-folga{background:#fff0d4;color:#8f5200}
 .ge-aviso-mexida{background:#ece5fb;color:#431a82}
+.ge-aviso-outro{background:#e1eefc;color:#0b3a6b}
 .ge-corner{position:sticky;top:0;left:0;z-index:8;background:#fff;border-bottom:1px solid var(--asa-line-soft)}
 .ge-axis{position:sticky;left:0;z-index:5;background:#fff;height:var(--ge-h)}
 .ge-axis i{position:absolute;right:6px;font:600 13px 'JetBrains Mono',monospace;font-style:normal;color:var(--asa-label);transform:translateY(-50%)}

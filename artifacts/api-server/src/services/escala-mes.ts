@@ -19,7 +19,7 @@ import { operationalDate } from "../lib/operational-date.js";
 import { conferirConflitosDosLivros, generateDailyBookDraftForScale } from "../routes/daily-book.js";
 import { eligibleSessions, eligibleSessionsDoDia } from "./session-blocks.js";
 import { janelaDoMes, lembrarOuLer, LeiturasDoMes } from "./leituras-do-mes.js";
-import { findEscalaDoDia, operationForLocation } from "./escala-dia.js";
+import { diaFechadoDoLocal, findEscalaDoDia, operationForLocation } from "./escala-dia.js";
 
 export type ActorMes = { sub: string; role: string; organizationId: string };
 const weekdayOf = (date: string) => new Date(`${date}T12:00:00Z`).getUTCDay();
@@ -71,6 +71,10 @@ export async function gerarDiaDoLocal(actor: ActorMes, location: { id: string; n
   const locationId = location.id;
   let scale = await findEscalaDoDia(locationId, date);
   if (scale && scale.status !== "DRAFT") return { ok: false, status: 409, error: "ESCALA_JA_PUBLICADA", message: "O dia já foi publicado; use republicação para uma alteração posterior." };
+  if (!scale) {
+    const fechado = await diaFechadoDoLocal(locationId, date);
+    if (fechado) return { ok: false, status: 409, error: "LOCAL_FECHADO", message: fechado.motivo };
+  }
   const operationId = scale?.operationId ?? await lembrarOuLer(leituras, `operacao-do-local:${locationId}`, () => operationForLocation(locationId));
   if (!operationId) return { ok: false, status: 409, error: "LOCAL_SEM_OPERACAO", message: "Este local ainda não está ligado a uma operação." };
   if (!scale) {

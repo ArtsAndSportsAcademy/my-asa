@@ -22,9 +22,13 @@ export type ResumoDoDiaProps = {
 /** Quem entra na grade: quem trabalha no dia, mais quem foi chamado de propósito na folga. */
 export const trabalhaNoDia = (p: Pessoa, blocosDe: (id: string) => Bloco[]) => !p.folga || Boolean(p.chamadaNaFolga && blocosDe(p.id).length);
 
+/** Quem tem atividade em outro local hoje e aqui só tem o almoço (janela de todos): a Escala deste local diz onde a pessoa está em vez de contá-la como escalada. */
+export const soNoutroLocal = (p: Pessoa, blocosDe: (id: string) => Bloco[]) => Boolean(p.noutroLocal?.length) && blocosDe(p.id).every((b) => b.flexivel);
+
 export function ResumoDoDia({ data, pessoas, blocos, blocosDe, pessoasComChoque, motivoDaFolga, soExcecoes, onSoExcecoes, onIrParaAtencao, parte = "tudo" }: ResumoDoDiaProps) {
   const quando = quandoDoDia(data);
-  const trabalham = pessoas.filter((p) => trabalhaNoDia(p, blocosDe));
+  const noutroLocal = pessoas.filter((p) => trabalhaNoDia(p, blocosDe) && soNoutroLocal(p, blocosDe));
+  const trabalham = pessoas.filter((p) => trabalhaNoDia(p, blocosDe) && !soNoutroLocal(p, blocosDe));
   const fora = pessoas.filter((p) => !trabalhaNoDia(p, blocosDe));
   const semAtividade = trabalham.filter((p) => blocosDe(p.id).length === 0);
   const comExcecao = trabalham.filter((p) => blocosDe(p.id).some(ehExcecao));
@@ -48,6 +52,11 @@ export function ResumoDoDia({ data, pessoas, blocos, blocosDe, pessoasComChoque,
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{fora.map((p) => <span key={p.id} className="ge-pilula" title={motivoDaFolga(p)}>{p.name}{p.areaName ? ` · ${p.areaName}` : ""}</span>)}</div>
         <span style={{ fontSize: 12, color: "var(--asa-label)" }}>Folga vence a escala: quem está aqui só entra se for chamado de propósito, com motivo escrito.</span>
       </div>}
+    </details>}
+    {parte !== "numeros" && noutroLocal.length > 0 && <details className="ge-fora">
+      <summary><strong>{`No outro local ${quando} (${noutroLocal.length})`}</strong><span>{noutroLocal.slice(0, 3).map(nomesCurtos(pessoas)).join(", ")}{noutroLocal.length > 3 ? ` e mais ${noutroLocal.length - 3}` : ""}</span><span style={{ color: "var(--asa-purple)", fontWeight: 700 }}>ver onde</span></summary>
+      <div className="ge-fora-lista"><div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{noutroLocal.map((p) => <span key={p.id} className="ge-pilula">{`${p.name} · ${p.noutroLocal!.map((o) => `${o.localNome} ${o.inicio}${o.fim ? `–${o.fim}` : ""}`).join(" e ")}`}</span>)}</div>
+        <span style={{ fontSize: 12, color: "var(--asa-label)" }}>Estão escaladas em outro local hoje, então não entram na contagem daqui. O almoço continua valendo.</span></div>
     </details>}
     {parte !== "numeros" && semAtividade.length > 0 && <details className="ge-fora">
       <summary><strong>{`Sem atividade ${quando} (${semAtividade.length})`}</strong><span style={{ color: "var(--asa-purple)", fontWeight: 700 }}>ver quem</span></summary>

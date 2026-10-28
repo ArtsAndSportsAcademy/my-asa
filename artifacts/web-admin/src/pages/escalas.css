@@ -106,3 +106,7 @@
 .esc-cell-adjust{transition:transform .1s ease-out,background-color .12s}
 .esc-cell-adjust:not(:disabled):active{transform:scale(.96)}
 @media (prefers-reduced-motion:reduce){.esc-cell-adjust,.esc-tab-atividade tbody tr td{transition:none}}
+
+/* Dia em que o local não abre: uma frase clara no lugar da faixa do dia (os números não fazem sentido onde não há o que escalar). */
+.esc-fechado{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border:1px solid #d9d4e8;border-radius:14px;background:#f5f3fa;color:#3d3559;font-size:12.5px;line-height:1.45}
+.esc-fechado strong{font:600 14px Outfit,sans-serif;color:var(--asa-ink-dark)}

@@ -11,7 +11,7 @@ import {
 import { AtencaoDoDia, type ConflitoDaPessoa, type GrupoDeConflito } from "@/components/escala/atencao-do-dia";
 import { BlocoMenu } from "@/components/escala/bloco-menu";
 import { GradePessoa } from "@/components/escala/grade-pessoa";
-import { ResumoDoDia, trabalhaNoDia } from "@/components/escala/resumo-do-dia";
+import { ResumoDoDia, soNoutroLocal, trabalhaNoDia } from "@/components/escala/resumo-do-dia";
 import { QuemResumido } from "@/components/escala/quem-resumido";
 import { resumirQuem, resumoDoBloco, type PessoaDoDia } from "@/components/escala/resumo-de-quem";
 import { TIPOS, ehExcecao, faixa, foraDoChoque, quandoDoDia, resolverTipo, textoDoBloco, textoDoEncurtado, toneDoTipo, type TipoDoLocal } from "@/components/escala/tipos";
@@ -39,11 +39,11 @@ export type Bloco = { key: string; rotulo: string; inicio: string; fim: string |
 type VagaDoLivro = { assignmentId: string; personagem: string; userId: string | null };
 /** Uma mexida no bloco; com `assignmentId`, vale para aquele personagem e não para "a primeira vaga aberta". */
 type Mudanca = { userId: string; action: "ADICIONAR" | "REMOVER"; assignmentId?: string };
-export type Pessoa = { id: string; name: string; areaId: string | null; areaName: string | null; folga: string | null; chamadaNaFolga?: { motivo: string | null; decidida: boolean } };
+export type Pessoa = { id: string; name: string; areaId: string | null; areaName: string | null; folga: string | null; chamadaNaFolga?: { motivo: string | null; decidida: boolean }; noutroLocal?: { localId: string; localNome: string; inicio: string; fim: string | null; atividades: number }[] };
 type Area = { id: string; name: string; supervisores: { id: string; name: string }[]; pronta: { por: string | null; em: string } | null; prontaTirada?: { por: string | null; em: string } | null };
 /** Alguém de outra área mexeu na escala desta pessoa: quem mexeu e o quê, para a Supervisão da pessoa ver. */
 export type Mexida = { pessoaId: string; pessoaNome: string; pessoaAreaNome: string | null; porId: string; porNome: string; porAreaNome: string | null; em: string; texto: string };
-export type Dia = { date: string; location: { id: string; name: string }; escala: { id: string; status: string; version: number; publishedAt: string | null; alteradaDesde: string | null } | null; programacao: { id: string; nome: string; vigenciaInicio: string; vigenciaFim: string } | null; areas: Area[]; pessoas: Pessoa[]; blocos: Bloco[]; mexidas?: Mexida[]; tipos?: TipoDoLocal[] };
+export type Dia = { date: string; location: { id: string; name: string }; escala: { id: string; status: string; version: number; publishedAt: string | null; alteradaDesde: string | null } | null; programacao: { id: string; nome: string; vigenciaInicio: string; vigenciaFim: string } | null; areas: Area[]; pessoas: Pessoa[]; blocos: Bloco[]; mexidas?: Mexida[]; tipos?: TipoDoLocal[]; fechado?: { motivo: string } };
 type Local = { id: string; name: string; podeEditar: boolean; areasSupervisionadas: string[]; viradaDoDia?: ViradaDoDia };
 type ProgBloco = SampleProgramacao["blocos"][number] & { tipoId?: string | null; flexivel?: boolean; chamadas?: ChamadaDaApi[] };
 type Programacao = { id: string; locationId: string; nome: string; vigenciaInicio: string; vigenciaFim: string; active?: boolean; blocos: ProgBloco[] };
@@ -199,7 +199,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
         if (!localId) return;
         if (review) {
           const d = sampleDia(localId, date) as Dia;
-          if (!cancelled) { setDia({ ...d, mexidas: mexidasDeAmostra(d) }); setAreasMinhas(role === "sup" ? sampleAreasSupervisionadas(me, localId) : []); }
+          if (!cancelled) { setDia({ ...extrasDeAmostra({ ...d, mexidas: mexidasDeAmostra(d) }) }); setAreasMinhas(role === "sup" ? sampleAreasSupervisionadas(me, localId) : []); }
           return;
         }
         const r = await customFetch<{ dia: Dia; areasSupervisionadas: string[] }>(`/api/escalas/dia?locationId=${localId}&date=${date}`);
@@ -534,6 +534,17 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
   </section>;
 }
 
+/** Só no modo amostra: `?fechado=1` mostra o dia em que o local não abre; `?outro=1` põe duas pessoas "no outro local" (a Escala diz onde estão em vez de contá-las). */
+function extrasDeAmostra(d: Dia): Dia {
+  const q = new URLSearchParams(window.location.search);
+  if (q.get("fechado") === "1") return { ...d, escala: null, blocos: [], fechado: { motivo: `${d.location.name} não abre quartas. Não há o que escalar aqui neste dia.` } };
+  if (q.get("outro") !== "1") return d;
+  const dois = d.pessoas.filter((p) => !p.folga).slice(-2).map((p) => p.id);
+  return { ...d,
+    pessoas: d.pessoas.map((p) => dois.includes(p.id) ? { ...p, noutroLocal: [{ localId: "outro", localNome: "Acquamotion", inicio: "08:40", fim: "16:00", atividades: 6 }] } : p),
+    blocos: d.blocos.map((b) => ({ ...b, pessoaIds: b.pessoaIds.filter((id) => !dois.includes(id) || b.flexivel) })) };
+}
+
 /** Só no modo amostra: uma mexida de exemplo (de uma Supervisão em pessoa de outra área) para ver como a tela mostra "quem mexeu". */
 function mexidasDeAmostra(d: Dia): Mexida[] {
   const pessoa = d.pessoas.find((p) => !p.folga && p.areaId);
@@ -710,13 +721,14 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
     {achadasFora.map((p) => <div key={`fora-${p.id}`} role="status" style={css("font-size:12.5px;color:var(--asa-ink-medium);background:var(--asa-fade);border:1px solid var(--asa-line);border-radius:12px;padding:9px 13px")}>{`${p.name} está de ${motivoDaFolga(p).toLocaleLowerCase("pt-BR")} ${quandoDoDia(dia.date)} e não aparece na grade.`}</div>)}
     {termo && !achadas.length && <div role="status" style={css("font-size:12.5px;color:var(--asa-label);padding:2px 4px")}>{`Ninguém com "${busca.trim()}" no nome.`}</div>}
 
-    <ResumoDoDia data={dia.date} pessoas={dia.pessoas} blocos={dia.blocos} blocosDe={blocosDe} pessoasComChoque={new Set(conflitos.map((c) => c.pessoaId)).size} motivoDaFolga={motivoDaFolga} soExcecoes={soExcecoes} onSoExcecoes={setSoExcecoes} onIrParaAtencao={irParaAtencao} parte={telefone ? "fora" : "tudo"}/>
+    {dia.fechado && !dia.escala ? <div role="status" className="esc-fechado"><strong>{dia.fechado.motivo}</strong><span>Para abrir este dia, mude os dias de funcionamento em Locais. Atividades de outros locais continuam aparecendo em Meu Dia.</span></div> :
+    <ResumoDoDia data={dia.date} pessoas={dia.pessoas} blocos={dia.blocos} blocosDe={blocosDe} pessoasComChoque={new Set(conflitos.map((c) => c.pessoaId)).size} motivoDaFolga={motivoDaFolga} soExcecoes={soExcecoes} onSoExcecoes={setSoExcecoes} onIrParaAtencao={irParaAtencao} parte={telefone ? "fora" : "tudo"}/>}
 
-    <AtencaoDoDia dia={dia} vazios={vazios} grupos={gruposDeConflito} canEdit={canEdit} editableAreaIds={editableAreaIds} tirando={tirando}
+    {!(dia.fechado && !dia.escala) && <AtencaoDoDia dia={dia} vazios={vazios} grupos={gruposDeConflito} canEdit={canEdit} editableAreaIds={editableAreaIds} tirando={tirando}
       onTirar={(bloco, pessoaId) => { const pessoa = dia.pessoas.find((p) => p.id === pessoaId); return pessoa ? tirarDoBloco(bloco, pessoa) : Promise.resolve(); }}
       onMudarHorario={(pessoaId, nome, bloco, outro) => setMudandoHorario({ pessoaId, nome, bloco, outro })}
       onVoltarHorario={(bloco, pessoaId) => void onHorario({ ...bloco, key: bloco.horarioDela!.chaveOriginal }, pessoaId, null)}
-      onAjustarVazio={setAjustando} onFolgaResolvida={onFolgaResolvida}/>
+      onAjustarVazio={setAjustando} onFolgaResolvida={onFolgaResolvida}/>}
 
     {view === "pessoa" && telefone ? <ul className="esc-cartoes" aria-label="Escala por pessoa">
       {cols.filter((p) => !buscaIds || buscaIds.has(p.id)).map((p) => {
@@ -727,7 +739,7 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
             <span aria-hidden="true" style={css("width:30px;height:30px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--asa-violet),var(--asa-indigo));")}>{initials(p.name)}</span>
             <div style={css("display:flex;flex-direction:column;gap:1px;min-width:0")}>
               <strong style={css("font-size:13.5px;color:var(--asa-ink-dark);overflow-wrap:anywhere")}>{p.name}</strong>
-              <span style={css("font-size:12px;color:var(--asa-label)")}>{`${p.areaName ?? "sem área"} · ${plural(lista.length, "bloco", "blocos")}`}{p.chamadaNaFolga ? " · chamado na folga" : ""}{mexidoPor(p.id) ? ` · ajustado por ${mexidoPor(p.id)}` : ""}</span>
+              <span style={css("font-size:12px;color:var(--asa-label)")}>{`${p.areaName ?? "sem área"} · ${plural(lista.length, "bloco", "blocos")}`}{p.chamadaNaFolga ? " · chamado na folga" : ""}{p.noutroLocal?.length ? ` · ${soNoutroLocal(p, blocosDe) ? "só na" : "também na"} ${p.noutroLocal[0]!.localNome}` : ""}{mexidoPor(p.id) ? ` · ajustado por ${mexidoPor(p.id)}` : ""}</span>
             </div>
           </header>
           {lista.length ? <ul className="esc-cartao-blocos">
@@ -808,7 +820,7 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
     </div>}
 
 
-    {telefone && <div className="ge-depois"><ResumoDoDia data={dia.date} pessoas={dia.pessoas} blocos={dia.blocos} blocosDe={blocosDe} pessoasComChoque={new Set(conflitos.map((c) => c.pessoaId)).size} motivoDaFolga={motivoDaFolga} soExcecoes={soExcecoes} onSoExcecoes={setSoExcecoes} onIrParaAtencao={irParaAtencao} parte="numeros"/></div>}
+    {telefone && !(dia.fechado && !dia.escala) && <div className="ge-depois"><ResumoDoDia data={dia.date} pessoas={dia.pessoas} blocos={dia.blocos} blocosDe={blocosDe} pessoasComChoque={new Set(conflitos.map((c) => c.pessoaId)).size} motivoDaFolga={motivoDaFolga} soExcecoes={soExcecoes} onSoExcecoes={setSoExcecoes} onIrParaAtencao={irParaAtencao} parte="numeros"/></div>}
 
     {pessoaSelecionada && <section style={css("display:flex;flex-direction:column;gap:8px;background:#fff;border:1px solid var(--asa-line);border-radius:14px;padding:12px 14px")} aria-label={`Dia de ${pessoaSelecionada.name}`}>
       <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:8px")}>
@@ -1172,6 +1184,7 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, b
     const faltam = dia.areas.filter((a) => !a.pronta);
     const published = dia.escala && dia.escala.status !== "DRAFT";
     if (tab === "prog") note = "Programação é o molde: muda os próximos dias que ainda não foram publicados. Dia publicado não muda sozinho.";
+    else if (!dia.escala && dia.fechado) note = "Local fechado neste dia: não há Escala para gerar.";
     else if (!dia.escala) note = isAdm ? "Gere o dia para criar a Escala e os Livros dos Shows programados como rascunho." : "Este dia ainda não foi gerado. Quem gera a Escala e os Livros é a Administração.";
     else if (dia.escala.alteradaDesde) note = "Mudou depois de publicada · quem faz só recebe a mudança quando você republicar";
     else if (published) note = `Publicada${dia.escala.publishedAt ? ` às ${hhmm(dia.escala.publishedAt)}` : ""} · ${dia.areas.length} ${dia.areas.length === 1 ? "área" : "áreas"} · a mesma escalação está no Livro do Dia`;
@@ -1179,11 +1192,11 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, b
     // O mês inteiro de uma vez, em rascunho: a Administração confere depois e publica dia a dia.
     if (tab === "escala" && isAdm && onRegras) apoio.push({ key: "regras", label: "Regras do local", onClick: onRegras, disabled: saving });
     if (tab === "escala" && isAdm && onGerarMes) apoio.push({ key: "gerar-mes", label: "Gerar o mês", onClick: onGerarMes, disabled: saving });
-    if (tab === "escala" && isAdm && !dia.escala) actions.push(<button key="generate" type="button" className="esc-hit" disabled={saving} onClick={onGerar} style={css(btn("primary"))}>{busy === "gerar" ? "Gerando Escala e Livros…" : "Gerar Escala e Livros"}</button>);
+    if (tab === "escala" && isAdm && !dia.escala && !dia.fechado) actions.push(<button key="generate" type="button" className="esc-hit" disabled={saving} onClick={onGerar} style={css(btn("primary"))}>{busy === "gerar" ? "Gerando Escala e Livros…" : "Gerar Escala e Livros"}</button>);
     // Show que entrou na Programação depois da geração fica sem Livro: dá para gerar o que falta.
     const semLivro = dia.escala ? dia.blocos.filter((b) => b.regra === "livro" && !b.dailyBookId).length : 0;
     if (tab === "escala" && isAdm && semLivro > 0) actions.push(<button key="gerar-faltam" type="button" className="esc-hit" disabled={saving} onClick={onGerar} style={css(btn("primary"))}>{busy === "gerar" ? "Gerando…" : `Gerar ${semLivro === 1 ? "o Livro que falta" : `os ${semLivro} Livros que faltam`}`}</button>);
-    if (tab === "escala" && !isDir && !published) {
+    if (tab === "escala" && !isDir && !published && !(dia.fechado && !dia.escala)) {
       // Quem cuida de mais de uma área marca todas de uma vez.
       const minhasPendentes = areasMinhas.map((id) => dia.areas.find((a) => a.id === id)).filter((a): a is Area => Boolean(a) && !a!.pronta);
       if (minhasPendentes.length > 1) actions.push(<button key="todas" type="button" className="esc-hit" disabled={saving} onClick={() => onPronta(minhasPendentes.map((a) => a.id), true)} style={css(btn("primary"))}>{busy === "pronta:todas" ? "Enviando…" : `Enviar minhas ${minhasPendentes.length} partes`}</button>);
@@ -1197,7 +1210,7 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, b
     }
     if (tab === "escala" && isAdm && dia.escala?.alteradaDesde) actions.push(<button key="repub" type="button" className="esc-hit" disabled={saving} onClick={() => onPublicar(true)} style={css(btn("primary"))}>{busy === "publicar" ? "Republicando…" : "Republicar conjunto"}</button>);
   }
-  const areas = !isMem && tab === "escala" && dia ? dia.areas : [];
+  const areas = !isMem && tab === "escala" && dia && !(dia.fechado && !dia.escala) ? dia.areas : [];
   const principais = new Set(["generate", "gerar-faltam", "todas", "pub", "repub", "confirmar", ...areasMinhas]);
   return <footer className="esc-pad ge-barra" style={css("display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 20px;border-top:1px solid var(--asa-border-soft);")}>
     {areas.length > 0 && <div className="ge-areas" style={css("display:flex;flex-wrap:wrap;gap:6px;width:100%")}>

@@ -71,7 +71,7 @@ async function supervisedAreas(actor: Actor, locationId: string) {
 }
 /** A Escala do dia como a tela a recebe: a montada na leitura mais `mexidas`, quem da Supervisão mexeu em pessoa de OUTRA área (ver escala-mexidas.ts). */
 async function diaParaTela(organizationId: string, locationId: string, date: string) {
-  const dia = await montarEscalaDoDia(organizationId, locationId, date);
+  const dia = await montarEscalaDoDia(organizationId, locationId, date, { comOutrosLocais: true });
   return dia ? { ...dia, mexidas: await mexidasDoDia(dia.escala?.id) } : dia;
 }
 /** Vê a grade inteira do local: Administração e Direção em qualquer local;
@@ -111,7 +111,7 @@ router.get("/escalas/dia", requireAuth, requireOrganization, async (req, res) =>
   if (!locationId || !(await locationInOrg(locationId, actor.organizationId))) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
   if (!(await canReadLocal(actor, locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: "A escala deste local não está no seu acesso" }); return; }
   try {
-    const dia = await montarEscalaDoDia(actor.organizationId, locationId, date);
+    const dia = await montarEscalaDoDia(actor.organizationId, locationId, date, { comOutrosLocais: true });
     // Mudança que não passou por ajuste nem pelo Livro (ex.: bloco novo na Programação) também pede republicação.
     if (dia?.escala && escalaPublicada(dia.escala.status) && !dia.escala.alteradaDesde && (await comoPublicada(dia)).mudouDesdeAPublicacao) {
       dia.escala = { ...dia.escala, alteradaDesde: dia.escala.publishedAt ?? new Date() };
