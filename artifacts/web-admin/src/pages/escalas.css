@@ -94,3 +94,15 @@
   .esc-db-local>button{min-height:40px}
   .esc-tabs button{min-height:44px}
 }
+
+/* 27/10 (revisão do visual): "Por atividade" no computador mais baixa e mais calma. Os botões de cada linha viram pílulas sem
+   borda tracejada, a linha realça ao passar o mouse e todo botão responde ao toque na hora (aperta 3%). */
+@media(min-width:721px){
+  .esc-tab-atividade .esc-cell-adjust{border-color:transparent;background:#f3ecff;min-height:26px;padding:4px 10px}
+  .esc-tab-atividade .esc-cell-adjust:hover{background:#e8dcff}
+  .esc-tab-atividade tbody tr td:not(:first-child){transition:background-color .12s}
+  .esc-tab-atividade tbody tr:hover td:not(:first-child){background:#fbf9ff}
+}
+.esc-cell-adjust{transition:transform .1s ease-out,background-color .12s}
+.esc-cell-adjust:not(:disabled):active{transform:scale(.96)}
+@media (prefers-reduced-motion:reduce){.esc-cell-adjust,.esc-tab-atividade tbody tr td{transition:none}}

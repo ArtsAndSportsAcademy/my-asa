@@ -172,3 +172,21 @@
   .ge-filtros>span{flex:none!important}
   .ge-aten{padding:8px 12px}
 }
+
+/* ---------- faixa do dia, no topo (revisão de 27/10: números pequenos e quem não trabalha à vista) ----------
+   No computador a faixa é uma linha só: cinco números lado a lado e, logo abaixo, "Não trabalham hoje".
+   No telefone os números ficam depois da grade e só a folga sobe (ver escalas.tsx, parte="fora"). */
+.ge-faixa{display:flex;flex-direction:column;gap:6px}
+@media(min-width:721px){
+  .ge-faixa[data-parte="tudo"]{padding:8px 10px;border:1px solid var(--asa-line-soft);border-radius:14px;background:#fff}
+  .ge-faixa .ge-resumo{gap:6px}
+  .ge-faixa .ge-num{flex-direction:row;align-items:baseline;gap:6px;min-height:32px;padding:5px 12px;border-radius:999px;font-size:12.5px;letter-spacing:.005em;transition:transform .1s ease-out,box-shadow .15s}
+  .ge-faixa .ge-num b{font-size:16px;font-variant-numeric:tabular-nums}
+  .ge-faixa .ge-fora summary{min-height:34px}
+}
+.ge-faixa .ge-fora{padding:0 4px}
+.ge-faixa .ge-fora summary strong{font-weight:700;color:var(--asa-ink-dark)}
+.ge-faixa .ge-fora[data-vazio="true"] summary strong{font-weight:600;color:var(--asa-label)}
+.ge-faixa[data-parte="fora"]{gap:0}
+.ge-num:not(:disabled):active{transform:scale(.97)}
+@media (prefers-reduced-motion:reduce){.ge-num:not(:disabled):active,.esc-cell-adjust:active{transform:none}}

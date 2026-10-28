@@ -710,6 +710,8 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
     {achadasFora.map((p) => <div key={`fora-${p.id}`} role="status" style={css("font-size:12.5px;color:var(--asa-ink-medium);background:var(--asa-fade);border:1px solid var(--asa-line);border-radius:12px;padding:9px 13px")}>{`${p.name} está de ${motivoDaFolga(p).toLocaleLowerCase("pt-BR")} ${quandoDoDia(dia.date)} e não aparece na grade.`}</div>)}
     {termo && !achadas.length && <div role="status" style={css("font-size:12.5px;color:var(--asa-label);padding:2px 4px")}>{`Ninguém com "${busca.trim()}" no nome.`}</div>}
 
+    <ResumoDoDia data={dia.date} pessoas={dia.pessoas} blocos={dia.blocos} blocosDe={blocosDe} pessoasComChoque={new Set(conflitos.map((c) => c.pessoaId)).size} motivoDaFolga={motivoDaFolga} soExcecoes={soExcecoes} onSoExcecoes={setSoExcecoes} onIrParaAtencao={irParaAtencao} parte={telefone ? "fora" : "tudo"}/>
+
     <AtencaoDoDia dia={dia} vazios={vazios} grupos={gruposDeConflito} canEdit={canEdit} editableAreaIds={editableAreaIds} tirando={tirando}
       onTirar={(bloco, pessoaId) => { const pessoa = dia.pessoas.find((p) => p.id === pessoaId); return pessoa ? tirarDoBloco(bloco, pessoa) : Promise.resolve(); }}
       onMudarHorario={(pessoaId, nome, bloco, outro) => setMudandoHorario({ pessoaId, nome, bloco, outro })}
@@ -763,17 +765,17 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
               const resumo = resumoDoBloco(b, who, team === "todos" ? pessoasDoDia : pessoasDoDia.filter((p) => p.areaId === team), paiDaChamada?.vagas?.length ?? 0);
               const resumido = resumo.tipo === "todos" || resumo.tipo === "area" || (Boolean(b.chamada) && resumo.tipo === "show-grande");
               return <tr key={b.key}>
-                <td style={css("border-right:1px solid var(--asa-line-soft);border-bottom:1px solid var(--asa-purple-airy);padding:12px 14px;vertical-align:middle;background:var(--asa-card-faint);width:150px;")}>
+                <td style={css("border-right:1px solid var(--asa-line-soft);border-bottom:1px solid var(--asa-purple-airy);padding:8px 12px;vertical-align:middle;background:var(--asa-card-faint);width:124px;")}>
                   {gi === 0 && <div style={css("display:flex;flex-direction:column;gap:1px")}><span style={css("font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--asa-ink-medium)")}>{faixa(f)}</span></div>}
                 </td>
-                <td style={css("border-bottom:1px solid var(--asa-purple-airy);border-right:1px solid var(--asa-purple-lift);padding:10px 12px;vertical-align:middle;width:260px;")}>{blockEl(b, "display:inline-flex;font-size:15px;padding:9px 13px;border-radius:9px;")}</td>
-                <td style={css("border-bottom:1px solid var(--asa-purple-airy);padding:10px 12px;vertical-align:middle;")}>
+                <td style={css("border-bottom:1px solid var(--asa-purple-airy);border-right:1px solid var(--asa-purple-lift);padding:6px 12px;vertical-align:middle;width:236px;")}>{blockEl(b, "display:inline-flex;font-size:14px;padding:6px 11px;border-radius:9px;")}</td>
+                <td style={css("border-bottom:1px solid var(--asa-purple-airy);padding:6px 12px;vertical-align:middle;")}>
                   <div style={css("display:flex;flex-wrap:wrap;gap:7px;align-items:center")}>
                     {b.flexivel ? <span style={css("font-size:14px;font-weight:600;color:var(--asa-ink-medium)")}>{`Cada um cumpre dentro da janela · ${plural(who.length, "pessoa", "pessoas")}`}</span>
                     : b.regra === "livro" ? <ShowLinha bloco={b} data={dia.date} nomeDe={personName} pessoasDoDia={pessoasDoDia}/> : <>
                     {resumido
                       ? <QuemResumido resumo={resumo}/>
-                      : who.map((id) => <span key={id} style={css("display:inline-flex;align-items:center;gap:5px;border:1px solid var(--asa-line);background:#fff;border-radius:999px;padding:5px 13px 5px 5px;font-size:14px;font-weight:600;color:var(--asa-ink-medium);")}>
+                      : who.map((id) => <span key={id} style={css("display:inline-flex;align-items:center;gap:5px;border:1px solid var(--asa-line);background:#fff;border-radius:999px;padding:3px 11px 3px 3px;font-size:13.5px;font-weight:600;color:var(--asa-ink-medium);")}>
                         <span style={css("width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--asa-violet),var(--asa-indigo));")}>{initials(personName(id))[0]}</span>
                         <span>{personName(id)}</span>
                       </span>)}
@@ -805,10 +807,8 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
       <span className="ge-leg-estado"><i style={{ boxShadow: "inset 0 0 0 2px var(--esc-excecao)" }}/>exceção</span>
     </div>}
 
-    <div className="ge-depois">
-    <ResumoDoDia data={dia.date} pessoas={dia.pessoas} blocos={dia.blocos} blocosDe={blocosDe} pessoasComChoque={new Set(conflitos.map((c) => c.pessoaId)).size} motivoDaFolga={motivoDaFolga} soExcecoes={soExcecoes} onSoExcecoes={setSoExcecoes} onIrParaAtencao={irParaAtencao}/>
 
-    </div>
+    {telefone && <div className="ge-depois"><ResumoDoDia data={dia.date} pessoas={dia.pessoas} blocos={dia.blocos} blocosDe={blocosDe} pessoasComChoque={new Set(conflitos.map((c) => c.pessoaId)).size} motivoDaFolga={motivoDaFolga} soExcecoes={soExcecoes} onSoExcecoes={setSoExcecoes} onIrParaAtencao={irParaAtencao} parte="numeros"/></div>}
 
     {pessoaSelecionada && <section style={css("display:flex;flex-direction:column;gap:8px;background:#fff;border:1px solid var(--asa-line);border-radius:14px;padding:12px 14px")} aria-label={`Dia de ${pessoaSelecionada.name}`}>
       <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:8px")}>
