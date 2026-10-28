@@ -100,15 +100,24 @@ A **Supervisão por local já existe e está certa** (Snowland: Vitinho, Deb, Ro
 - **A equipe mora dentro da Programação de cada local** (por temporada): a Programação de Snowland "Natal" diz quem trabalha em Snowland e
   em que dias da semana. Muda sozinha quando muda a temporada; o "Duplicar molde" copia a equipe junto.
 - **Um dia pode ter horário (opcional):** "segunda, Snowland até 13:00" e "segunda, Acqua a partir de 14:00". Sem horário = o dia inteiro.
-- **Blocos gerais** (todo mundo, a área, o grupo, a janela de almoço) pegam **a equipe do local naquele dia e naquele horário**.
+- **Blocos gerais** (só "todo mundo", "a área" e a janela de almoço) pegam **a equipe do local naquele dia e naquele horário**.
+  Bloco de **grupo** (equipe cadastrada) e de **pessoas** escolhidas pelo nome **não filtram pelo local**: quem foi nomeado fica.
 - **Shows** pegam o elenco do Livro **de onde for**, desde que a pessoa esteja **livre naquele horário**. Se tiver atividade no seu local
   na mesma hora, conta como indisponível (como folga) e entra a reserva; a tela diz por quê ("Miguelito está em Snowland das 08:40 às 17:00").
   Se estiver livre, vai, e a Escala mostra "vem da Snowland para o show".
 - **Hotéis (Bella, Buona, Exclusive) não têm equipe**, em qualquer horário (há show de hotel de manhã): vale a regra dos shows.
 - **Imprevisto do dia:** um clique na Escala ("trazer para cá hoje", "mandar para a Acqua hoje"), só naquela data, com motivo opcional,
-  sem mexer na Programação. Entra no Registro e avisa a Supervisão do outro local.
+  sem mexer na Programação. Entra no Registro e avisa a Supervisão do outro local. **Tem "a partir de" e "até" opcionais** (28/10):
+  sem horário vale o dia inteiro; trazido às 15h, a pessoa não entra no almoço das 12h. **Se o outro local não tem Supervisão,
+  o aviso vai para a Administração.**
 - **Quem mexe:** a Administração em tudo; a Supervisão na equipe e nos imprevistos do **seu** local. Direção só lê; Elenco não vê a tela.
-- **Pessoa sem equipe marcada em lugar nenhum:** continua como hoje (aparece em todos os locais). Nada quebra antes de preencher.
+- **Pessoa sem nenhuma marca de equipe na temporada:** continua como hoje (aparece em todos os locais). Nada quebra antes de preencher.
+- **A regra é por pessoa, não por dia** (28/10): quem tem marca em algum local na temporada e está **sem marca naquele dia** não entra em
+  blocos gerais de nenhum local. Pode entrar em show, se estiver livre, e pelo imprevisto do dia. A Atenção do dia mostra
+  **"Fulano sem local hoje"**.
+- **Nada muda escondido** (28/10): em **rascunho**, os blocos gerais se recalculam sozinhos, mas o Livro do Dia só muda com
+  "Refazer este dia" ou "Trazer as novidades". Em dia **publicado**, nada muda até a republicação, e a Administração é avisada de que há
+  o que republicar (inclusive pelo Livro).
 - **Mesma pessoa marcada em dois locais no mesmo dia e horário:** só avisa, nunca bloqueia (pode ser de propósito).
 - **Tempo de deslocamento é configurável** (28/10): a Administração escreve, em Locais, quantos minutos leva de um local a outro; não espera a Babi.
 - **Primeira vez:** o app **sugere** a equipe olhando as Escalas já feitas ("o Miguel teve atividade em Snowland às segundas, quartas e
@@ -119,14 +128,14 @@ A **Supervisão por local já existe e está certa** (Snowland: Vitinho, Deb, Ro
 |---|---|---|---|
 | O1 | **Banco:** tabela `programacao_equipe` (programação, pessoa, dia da semana, de/até opcional, ativo), `escala_local_do_dia` (imprevisto: pessoa, data, local de destino, motivo, ativo) e `locais_deslocamento` (de um local a outro, minutos). Remoção lógica; rollback em `lib/db/drizzle/rollback/` | `lib/db` | **0088** |
 | O2 | **API da equipe:** ler e gravar a equipe da Programação (em lote), com Registro e conferência de versão (409 com frase se outra pessoa salvou antes); sugestão a partir das Escalas já feitas; "Duplicar molde" leva a equipe; recusas em português (Supervisão de outro local, Direção, Elenco) | `routes/programacao`, `services` | — |
-| O3 | **A regra na Escala do dia** (`montarEscalaDoDia`): blocos gerais só com a equipe do local e do horário; imprevistos do dia por cima; quem não tem equipe em lugar nenhum segue como hoje. A faixa "No outro local" passa a usar isso | `services/escala-dia.ts` | — |
+| O3 | **A regra na Escala do dia** (`montarEscalaDoDia`): blocos gerais ("todo mundo" e "área") só com a equipe do local e do horário; imprevistos do dia por cima; quem tem marca na temporada mas não naquele dia sai dos blocos gerais e aparece em "sem local hoje"; quem não tem marca nenhuma segue como hoje. A faixa "No outro local" passa a usar isso | `services/escala-dia.ts` | — |
 | O4 | **A regra no Livro do Dia:** ao gerar o dia, quem tem atividade no seu local no horário do show conta como indisponível (`getUnavailableUserIds` ganha o horário) e a reserva entra; frase do porquê. Show de hotel segue a mesma regra | `services/line-resolver.ts`, geração do dia | — |
 | O5 | **Choque entre locais e deslocamento** na Atenção do dia: a mesma pessoa em dois locais no mesmo horário, ou sem o tempo de ir de um ao outro ("Miguelito sai de Snowland às 13:00 e o show da Acqua é às 13:10; a ida leva 30 min"). **O tempo é configurável** em Locais, por par de locais (Snowland ↔ Acqua, Snowland ↔ Bella…), pela Administração; par sem tempo = só confere se cruza. Só avisa, nunca bloqueia; no Livro do Dia, quem não chega a tempo conta como indisponível e entra a reserva | `escala-dia`, `atencao-do-dia.tsx`, `locais.tsx` | — |
 | O6 | **Tela da equipe:** aba "Equipe" na Programação de cada local: lista do elenco × 7 dias, marcar em lote, horário opcional por dia, botão "Sugerir pelas Escalas feitas", rodapé Cancelar/Salvar, Esc fecha; 375 e 1360 px | `pages/escalas.tsx` (aba Programação) | — |
-| O7 | **Imprevisto na Escala do dia:** "Trazer para cá hoje" (na lista "No outro local") e "Mandar para outro local hoje" (no painel "Dia de Fulano"); desfazer; aviso no sino à Supervisão do outro local; escala publicada marca "alterada depois de publicada" | `pages/escalas.tsx`, rota nova | — |
+| O7 | **Imprevisto na Escala do dia:** "Trazer para cá hoje" (na lista "No outro local") e "Mandar para outro local hoje" (no painel "Dia de Fulano"), com "a partir de" e "até" opcionais; desfazer; aviso no sino à Supervisão do outro local (Administração se o local não tem Supervisão); escala publicada marca "alterada depois de publicada" | `pages/escalas.tsx`, rota nova | — |
 | O8 | **Conferência:** testes de API (equipe, regra dos blocos, Livro com horário, imprevisto, permissões, versões), bateria relacionada, tela nos 4 perfis a 375 e 1360, impressão por local | testes | — |
 
-**Ordem para promover (quem constrói o app):** backup → migração 0088 → API → site. Depois, montar a equipe de Snowland e da Acqua com a
+**Ordem para promover (quem constrói o app):** backup → migração 0088 → API → site. (Conferido em 28/10: a 0087, "Editar neste dia", já está aplicada em produção, então a 0088 é a próxima da fila.) Depois, montar a equipe de Snowland e da Acqua com a
 sugestão automática e conferir uma quinta-feira real (o Miguelito só em Snowland; o almoço de Snowland sem a Acqua).
 
 ### Riscos e o que fica de fora
