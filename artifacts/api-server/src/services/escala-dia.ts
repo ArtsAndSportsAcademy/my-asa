@@ -25,6 +25,7 @@ import {
   escalaAreasProntasTable,
   escalaBlocoAjustesTable,
   escalaBlocoEdicoesTable,
+  escalaLocalDoDiaTable,
   escalaTiposTable,
   folgasTable,
   historyEventsTable,
@@ -109,6 +110,8 @@ export type EscalaDia = {
   blocos: BlocoDia[];
   /** Quem tem equipe marcada na temporada mas nenhuma neste dia da semana (e nenhum imprevisto): fica fora dos blocos gerais de todos os locais. A Atenção do dia escreve "Fulano sem local hoje". */
   semLocalHoje?: string[];
+  /** Mudanças de local só desta data (imprevisto do dia): onde a pessoa trabalha hoje em vez do que a Programação manda. Vivas, da casa toda; a tela filtra. */
+  imprevistos?: { id: string; pessoaId: string; localId: string; localNome: string; inicio: string | null; fim: string | null; motivo: string | null; porNome: string | null }[];
   /** Pessoas em duas coisas em locais diferentes que não cabem (mesmo horário, ou sem o tempo de ida cadastrado em Locais). Só quando a casa usa equipe; só avisa. */
   choquesEntreLocais?: ChoqueEntreLocais[];
   /** O local não abre neste dia da semana (ou está fechado): sem Escala feita, a Programação não é projetada e a Escala não pode ser gerada. */
@@ -605,6 +608,15 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     }
   }
 
+  const imprevistosDoDia = (await db.select({
+    id: escalaLocalDoDiaTable.id, pessoaId: escalaLocalDoDiaTable.userId, localId: escalaLocalDoDiaTable.locationId, localNome: locationsTable.name,
+    inicio: escalaLocalDoDiaTable.inicio, fim: escalaLocalDoDiaTable.fim, motivo: escalaLocalDoDiaTable.motivo, porNome: usersTable.name,
+  }).from(escalaLocalDoDiaTable)
+    .innerJoin(locationsTable, eq(locationsTable.id, escalaLocalDoDiaTable.locationId))
+    .leftJoin(usersTable, eq(usersTable.id, escalaLocalDoDiaTable.createdBy))
+    .where(and(eq(escalaLocalDoDiaTable.organizationId, organizationId), eq(escalaLocalDoDiaTable.data, date), eq(escalaLocalDoDiaTable.active, true))))
+    .map((i) => ({ ...i, inicio: hhmm(i.inicio), fim: hhmm(i.fim) }));
+
   return {
     date,
     location,
@@ -627,6 +639,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     }),
     blocos,
     ...(choquesDosLocais ? { choquesEntreLocais: choquesDosLocais } : {}),
+    ...(imprevistosDoDia.length ? { imprevistos: imprevistosDoDia } : {}),
     ...(equipe.ativa ? { semLocalHoje: people.filter((p) => present.has(p.id) && equipe.semLocalHoje(p.id)).map((p) => p.id) } : {}),
     tipos: await tiposDoLocal(locationId),
     chamadas: blocos.filter((b) => b.chamada).map((b) => ({

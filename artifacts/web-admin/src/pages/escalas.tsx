@@ -19,6 +19,7 @@ import { TipoSelect } from "@/components/escala/tipo-select";
 import { ChamadasDialog, ChamadasLista, gravarChamadas, primeiroErro, resumoDaChamada, type ChamadaDaApi, type ChamadaRascunho } from "@/components/escala/chamadas-editor";
 import { TiposDialog } from "@/components/escala/tipos-dialog";
 import { EquipeDialog } from "@/components/escala/equipe-dialog";
+import { LocalDoDiaDialog, type MudarDeLocal } from "@/components/escala/local-do-dia-dialog";
 import { EditarAtividadeDialog, type EdicaoDaAtividade } from "@/components/escala/editar-atividade-dialog";
 import "@/components/escala/escala-tokens.css";
 import { diaQueAEscalaAbre, type ViradaDoDia } from "@/lib/dia-da-escala";
@@ -46,7 +47,11 @@ type Area = { id: string; name: string; supervisores: { id: string; name: string
 export type Mexida = { pessoaId: string; pessoaNome: string; pessoaAreaNome: string | null; porId: string; porNome: string; porAreaNome: string | null; em: string; texto: string };
 export type Dia = { date: string; location: { id: string; name: string }; escala: { id: string; status: string; version: number; publishedAt: string | null; alteradaDesde: string | null } | null; programacao: { id: string; nome: string; vigenciaInicio: string; vigenciaFim: string } | null; areas: Area[]; pessoas: Pessoa[]; blocos: Bloco[]; mexidas?: Mexida[]; tipos?: TipoDoLocal[]; fechado?: { motivo: string };
   /** Equipe por local (pacote O): quem tem equipe na temporada mas nenhuma neste dia, e quem está em duas coisas em locais diferentes que não cabem. */
-  semLocalHoje?: string[]; choquesEntreLocais?: ChoqueEntreLocais[] };
+  semLocalHoje?: string[]; choquesEntreLocais?: ChoqueEntreLocais[];
+  /** Mudanças de local só deste dia (imprevisto): onde a pessoa trabalha hoje em vez do que a Programação manda. */
+  imprevistos?: ImprevistoDoDia[] };
+export type ImprevistoDoDia = { id: string; pessoaId: string; localId: string; localNome: string; inicio: string | null; fim: string | null; motivo: string | null; porNome: string | null };
+type LocalDoDiaApi = { mover: (v: MudarDeLocal & { userId: string }) => Promise<{ erro: string | null; imprevistoId?: string }>; desfazer: (id: string) => Promise<string | null>; locais: { id: string; name: string }[] };
 export type ChoqueEntreLocais = { pessoaId: string; tipo: "mesmo_horario" | "sem_tempo"; aqui: { key: string; rotulo: string; inicio: string; fim: string | null }; la: { key: string; localId: string; localNome: string; rotulo: string; inicio: string; fim: string | null }; minutosDeIda?: number; minutosDeFolga?: number };
 type Local = { id: string; name: string; podeEditar: boolean; areasSupervisionadas: string[]; viradaDoDia?: ViradaDoDia };
 type ProgBloco = SampleProgramacao["blocos"][number] & { tipoId?: string | null; flexivel?: boolean; semSessao?: boolean; chamadas?: ChamadaDaApi[] };
@@ -341,6 +346,29 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       return frase;
     } finally { setSaving(false); setBusy(""); }
   };
+  /** Imprevisto do dia (pacote O): mudar uma pessoa de local só por hoje, e desfazer. Devolvem a frase do erro (a janela a mostra) ou null. */
+  const moverDeLocal = async (v: MudarDeLocal & { userId: string }): Promise<{ erro: string | null; imprevistoId?: string }> => {
+    if (!dia || !localId) return { erro: null };
+    if (review) return { erro: "No modo de amostra não dá para mudar a pessoa de local. Abra com a conta de teste para ver." };
+    setSaving(true); setBusy("ajuste"); setError("");
+    try {
+      const r = await customFetch<{ imprevistoId?: string }>("/api/escalas/dia/local-do-dia", { method: "POST", body: JSON.stringify({ locationId: localId, date, userId: v.userId, destinoId: v.destinoId, origemId: v.origemId, inicio: v.inicio, fim: v.fim, motivo: v.motivo || undefined }) });
+      setRefresh((n) => n + 1);
+      return { erro: null, imprevistoId: r.imprevistoId };
+    } catch (err) { return { erro: errMsg(err, "Não consegui mudar a pessoa de local agora. Nada foi alterado; tente de novo.") }; }
+    finally { setSaving(false); setBusy(""); }
+  };
+  const desfazerImprevisto = async (id: string): Promise<string | null> => {
+    if (!dia || !localId) return null;
+    if (review) return "No modo de amostra não há o que desfazer.";
+    setSaving(true); setBusy("ajuste"); setError("");
+    try {
+      await customFetch("/api/escalas/dia/local-do-dia/desfazer", { method: "POST", body: JSON.stringify({ id, locationId: localId }) });
+      setRefresh((n) => n + 1);
+      return null;
+    } catch (err) { const frase = errMsg(err, "Não consegui desfazer agora. Nada foi alterado; tente de novo."); setError(frase); return frase; }
+    finally { setSaving(false); setBusy(""); }
+  };
   /** Editar a atividade só neste dia (0087): nome, horário para todos e tipo. Devolve a frase do erro (a janela a mostra) ou null. */
   const editarAtividade = async (bloco: Bloco, edicao: EdicaoDaAtividade | null): Promise<string | null> => {
     if (!dia || !localId) return null;
@@ -519,7 +547,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       </div>}
       {carregandoTela && !error && !dia && !minha && <div aria-busy="true" style={css("padding:16px;text-align:center;font-size:12.5px;color:var(--asa-label);background:#fff;border:1px dashed var(--asa-line-soft);border-radius:12px")}>Montando a escala…</div>}
       {showMinha && minha && <MinhaEscala minha={minha} date={date} onHoje={() => setDate(todayISO())} onConfirm={confirmarEscala} saving={saving}/>}
-      {!isMem && tab === "escala" && dia && <EscalaGrid dia={dia} review={review} canEdit={isAdm || areasMinhas.length > 0} editableAreaIds={null} onAdjust={ajustarCelulaEmLote} onHorario={mudarHorario} onEditarAtividade={editarAtividade} onRemoveManual={isAdm || areasMinhas.length > 0 ? removerEntradaManual : undefined} onEditManual={isAdm || areasMinhas.length > 0 ? ((b) => setManual({ bloco: b })) : undefined} onFolgaResolvida={folgaResolvida} saiu={saiuApi}/>} 
+      {!isMem && tab === "escala" && dia && <EscalaGrid dia={dia} review={review} canEdit={isAdm || areasMinhas.length > 0} editableAreaIds={null} onAdjust={ajustarCelulaEmLote} onHorario={mudarHorario} onEditarAtividade={editarAtividade} onRemoveManual={isAdm || areasMinhas.length > 0 ? removerEntradaManual : undefined} onEditManual={isAdm || areasMinhas.length > 0 ? ((b) => setManual({ bloco: b })) : undefined} onFolgaResolvida={folgaResolvida} saiu={saiuApi} localDoDia={isAdm || areasMinhas.length > 0 ? { mover: moverDeLocal, desfazer: desfazerImprevisto, locais: locais.filter((l) => l.id !== localId) } : undefined}/>} 
       {!isMem && tab === "prog" && localId && <ProgramacaoTab review={review} localId={localId} localName={operationLabel} date={date} dia={dia} canEdit={Boolean(local?.podeEditar)} onChanged={() => setRefresh((n) => n + 1)}/>}
     </div>
 
@@ -614,7 +642,7 @@ function useTelefone() {
 }
 
 /* ---------- aba Escala: grade pessoas × horários ---------- */
-function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario, onEditarAtividade, onRemoveManual, onEditManual, onFolgaResolvida, saiu }: { saiu?: SaiuApi; review: boolean; dia: Dia; canEdit: boolean; editableAreaIds: string[] | null; onHorario: (bloco: Bloco, pessoaId: string, horario: { inicio: string; fim: string | null; motivo?: string } | null) => Promise<string | null>; onAdjust: (bloco: Bloco, mudancas: Mudanca[], motivo?: string) => Promise<void>; onEditarAtividade?: (bloco: Bloco, edicao: EdicaoDaAtividade | null) => Promise<string | null>; onRemoveManual?: (allocationIds: string[]) => Promise<void>; onEditManual?: (bloco: Bloco) => void; onFolgaResolvida?: (userId: string) => Promise<void> }) {
+function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario, onEditarAtividade, onRemoveManual, onEditManual, onFolgaResolvida, saiu, localDoDia }: { saiu?: SaiuApi; localDoDia?: LocalDoDiaApi; review: boolean; dia: Dia; canEdit: boolean; editableAreaIds: string[] | null; onHorario: (bloco: Bloco, pessoaId: string, horario: { inicio: string; fim: string | null; motivo?: string } | null) => Promise<string | null>; onAdjust: (bloco: Bloco, mudancas: Mudanca[], motivo?: string) => Promise<void>; onEditarAtividade?: (bloco: Bloco, edicao: EdicaoDaAtividade | null) => Promise<string | null>; onRemoveManual?: (allocationIds: string[]) => Promise<void>; onEditManual?: (bloco: Bloco) => void; onFolgaResolvida?: (userId: string) => Promise<void> }) {
   const [view, setView] = useState<"pessoa" | "atividade">("atividade");
   const [team, setTeam] = useState("todos");
   const [busca, setBusca] = useState("");
@@ -629,6 +657,7 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
   const [confirmarGrade, setConfirmarGrade] = useState<{ titulo: string; texto: string; acao: string; onSim: () => void } | null>(null);
   const [tirando, setTirando] = useState("");
   const [saindo, setSaindo] = useState<{ pessoa: Pessoa; aPartirDe: string } | null>(null);
+  const [mudandoLocal, setMudandoLocal] = useState<{ modo: "trazer" | "mandar"; pessoa: Pessoa; origem: { id: string; name: string } | null } | null>(null);
   const telefone = useTelefone();
   const blocosDe = useCallback((pid: string) => dia.blocos.filter((b) => b.pessoaIds.includes(pid)), [dia.blocos]);
   const trabalham = useMemo(() => dia.pessoas.filter((p) => trabalhaNoDia(p, blocosDe)), [dia.pessoas, blocosDe]);
@@ -726,13 +755,13 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
     {termo && !achadas.length && <div role="status" style={css("font-size:12.5px;color:var(--asa-label);padding:2px 4px")}>{`Ninguém com "${busca.trim()}" no nome.`}</div>}
 
     {dia.fechado && !dia.escala ? <div role="status" className="esc-fechado"><strong>{dia.fechado.motivo}</strong><span>Para abrir este dia, mude os dias de funcionamento em Locais. Atividades de outros locais continuam aparecendo em Meu Dia.</span></div> :
-    <ResumoDoDia data={dia.date} pessoas={dia.pessoas} blocos={dia.blocos} blocosDe={blocosDe} pessoasComChoque={new Set(conflitos.map((c) => c.pessoaId)).size} motivoDaFolga={motivoDaFolga} soExcecoes={soExcecoes} onSoExcecoes={setSoExcecoes} onIrParaAtencao={irParaAtencao} parte={telefone ? "fora" : "tudo"}/>}
+    <ResumoDoDia data={dia.date} pessoas={dia.pessoas} blocos={dia.blocos} blocosDe={blocosDe} pessoasComChoque={new Set(conflitos.map((c) => c.pessoaId)).size} motivoDaFolga={motivoDaFolga} soExcecoes={soExcecoes} onSoExcecoes={setSoExcecoes} onIrParaAtencao={irParaAtencao} parte={telefone ? "fora" : "tudo"} onTrazer={localDoDia ? ((p) => setMudandoLocal({ modo: "trazer", pessoa: p, origem: p.noutroLocal?.[0] ? { id: p.noutroLocal[0].localId, name: p.noutroLocal[0].localNome } : null })) : undefined}/>}
 
     {!(dia.fechado && !dia.escala) && <AtencaoDoDia dia={dia} vazios={vazios} grupos={gruposDeConflito} canEdit={canEdit} editableAreaIds={editableAreaIds} tirando={tirando}
       onTirar={(bloco, pessoaId) => { const pessoa = dia.pessoas.find((p) => p.id === pessoaId); return pessoa ? tirarDoBloco(bloco, pessoa) : Promise.resolve(); }}
       onMudarHorario={(pessoaId, nome, bloco, outro) => setMudandoHorario({ pessoaId, nome, bloco, outro })}
       onVoltarHorario={(bloco, pessoaId) => void onHorario({ ...bloco, key: bloco.horarioDela!.chaveOriginal }, pessoaId, null)}
-      onAjustarVazio={setAjustando} onFolgaResolvida={onFolgaResolvida}/>}
+      onAjustarVazio={setAjustando} onFolgaResolvida={onFolgaResolvida} onDesfazerImprevisto={localDoDia ? ((imprevistoId) => void localDoDia.desfazer(imprevistoId)) : undefined}/>}
 
     {view === "pessoa" && telefone ? <ul className="esc-cartoes" aria-label="Escala por pessoa">
       {cols.filter((p) => !buscaIds || buscaIds.has(p.id)).map((p) => {
@@ -830,6 +859,7 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
       <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:8px")}>
         <h3 style={css("margin:0;font:600 15px Outfit,sans-serif;color:var(--asa-ink-dark);flex:1;min-width:140px")}>{`Dia de ${pessoaSelecionada.name}`}</h3>
         {saiu && podeMexer(pessoaSelecionada) && <button type="button" className="esc-cell-adjust esc-hit" style={{ minHeight: 44 }} onClick={() => setSaindo({ pessoa: pessoaSelecionada, aPartirDe: blocosDe(pessoaSelecionada.id).sort((a, b) => a.inicio.localeCompare(b.inicio))[0]?.inicio ?? "12:00" })}>Saiu ou não vem…</button>}
+        {localDoDia && localDoDia.locais.length > 0 && podeMexer(pessoaSelecionada) && !pessoaSelecionada.folga && <button type="button" className="esc-cell-adjust esc-hit" style={{ minHeight: 44 }} onClick={() => setMudandoLocal({ modo: "mandar", pessoa: pessoaSelecionada, origem: null })}>Mandar para outro local hoje…</button>}
         <button type="button" className="esc-cell-adjust esc-hit" style={{ minHeight: 44 }} onClick={() => setSelecionada(null)}>Fechar</button>
       </div>
       {blocosDe(pessoaSelecionada.id).sort((a, b) => a.inicio.localeCompare(b.inicio)).map((b) => <div key={b.key} style={css("display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600")}>
@@ -850,6 +880,17 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
       onSaiu={saiu && podeMexer(menu.pessoa) ? () => { const { bloco, pessoa } = menu; setMenu(null); setSaindo({ pessoa, aPartirDe: bloco.inicio }); } : undefined}/>}
     {saindo && saiu && <SaiuDialog pessoa={saindo.pessoa} inicialAPartirDe={saindo.aPartirDe} api={saiu} onClose={() => setSaindo(null)}
       onFeito={(saiuId, texto) => { setSaindo(null); setDesfazer({ texto, acao: async () => { await saiu.desfazer(saiuId); } }); }}/>}
+    {mudandoLocal && localDoDia && <LocalDoDiaDialog modo={mudandoLocal.modo} pessoa={mudandoLocal.pessoa} data={dia.date} localAtual={dia.location} origem={mudandoLocal.origem} destinos={localDoDia.locais} onClose={() => setMudandoLocal(null)}
+      onConfirmar={async (v) => {
+        const { erro, imprevistoId } = await localDoDia.mover({ ...v, userId: mudandoLocal.pessoa.id });
+        if (!erro) {
+          const { pessoa, modo } = mudandoLocal;
+          const para = modo === "trazer" ? dia.location.name : localDoDia.locais.find((l) => l.id === v.destinoId)?.name ?? "outro local";
+          setMudandoLocal(null);
+          setDesfazer({ texto: `${pessoa.name} trabalha em ${para} só hoje.`, acao: async () => { if (imprevistoId) await localDoDia.desfazer(imprevistoId); } });
+        }
+        return erro;
+      }}/>}
     {confirmarGrade && <ConfirmDialog {...confirmarGrade} onClose={() => setConfirmarGrade(null)}/>}
     {mudandoHorario && <HorarioDialog nome={mudandoHorario.nome} bloco={mudandoHorario.bloco} outro={mudandoHorario.outro} onClose={() => setMudandoHorario(null)} onSalvar={async (horario) => {
       const erro = await onHorario(mudandoHorario.bloco.horarioDela ? { ...mudandoHorario.bloco, key: mudandoHorario.bloco.horarioDela.chaveOriginal } : mudandoHorario.bloco, mudandoHorario.pessoaId, horario);

@@ -19,6 +19,8 @@ import {
   escalaBlocoAjustesTable,
   escalaChamadasTable,
   escalaConfirmacoesTable,
+  escalaLocalDoDiaTable,
+  folgasTable,
   escalaTiposTable,
   escalaBlocoEdicoesTable,
   operationsTable,
@@ -41,8 +43,8 @@ import { fraseDeRecusaPorPerfil, requireAuth, requireOrganization } from "../mid
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
 import { operationalDate } from "../lib/operational-date.js";
 import { requestLogger } from "../lib/logger.js";
-import { marcarEscalasPublicadasPelaEquipe } from "../services/escala-equipe-aviso.js";
-import { avisarRepublicacaoPendente, avisarTodasAsAreasEnviaram, comoPublicada, convocacaoPorPessoa, escalaPublicada, findEscalaDoDia, montarEscalaDoDia, operationForLocation, pessoasAfetadas, tiposDoLocal } from "../services/escala-dia.js";
+import { avisarImprevistoDeLocal, marcarEscalasDoDiaPeloImprevisto, marcarEscalasPublicadasPelaEquipe } from "../services/escala-equipe-aviso.js";
+import { avisarRepublicacaoPendente, avisarTodasAsAreasEnviaram, comoPublicada, convocacaoPorPessoa, diaFechadoDoLocal, escalaPublicada, findEscalaDoDia, montarEscalaDoDia, operationForLocation, pessoasAfetadas, tiposDoLocal } from "../services/escala-dia.js";
 import { FRASE_NOME_DE_TIPO, TIPOS_PRONTOS, nomeDeTipoEmUso, nomeDeTipoValido, recusaDoTipo } from "../services/escala-tipos.js";
 import { ultimoRetratoFolgas } from "../services/folgas-publicadas.js";
 import { FRASE_LOCAL_SEM_OPERACAO, descartarMes, descartaveisDoMes, gerarDiaDoLocal, gerarMes, restaurarDescarte, resumoDoMes, validarMes } from "../services/escala-mes.js";
@@ -1382,6 +1384,105 @@ router.put("/programacoes/:id/equipe", requireAuth, requireOrganization, async (
   if (resultado.tipo === "mudou") { res.status(409).json({ error: "VERSAO_MUDOU", message: FRASE_EQUIPE_MUDOU, ...atual }); return; }
   if (resultado.tipo === "fora") { res.status(400).json({ error: "PESSOA_FORA_DO_ELENCO", message: `${resultado.quantas === 1 ? "Uma pessoa não está" : `${resultado.quantas} pessoas não estão`} no elenco ativo (a equipe só leva quem tem área e está ativo). Nada foi salvo.` }); return; }
   res.json({ ...atual, mudou: resultado.tipo === "gravou", entraram: resultado.tipo === "gravou" ? resultado.entraram : 0, sairam: resultado.tipo === "gravou" ? resultado.sairam : 0 });
+});
+
+/** "em 30/10, a partir das 15:00": quando vale o imprevisto, para o Registro e para o aviso. */
+const quandoDoImprevisto = (date: string, inicio: string | null, fim: string | null) =>
+  `em ${date.slice(8, 10)}/${date.slice(5, 7)}${inicio && fim ? `, das ${inicio} às ${fim}` : inicio ? `, a partir das ${inicio}` : fim ? `, até as ${fim}` : ""}`;
+
+/**
+ * Imprevisto do dia (pacote O, O7): "trazer o Fulano para cá hoje" / "mandar para a Acqua hoje". Vale só naquela data (e, se quiser, só de `inicio` a `fim`;
+ * sem horário = o dia inteiro), não mexe na Programação e some com "desfazer". `locationId` é o local da tela; `destinoId` é onde a pessoa trabalha no dia;
+ * `origemId`, quando se sabe, é onde ela estaria. Quem pode: a Administração, ou a Supervisão do destino ou da origem. Folga vence: quem está de folga não é
+ * movida por aqui. Entra no Registro, avisa a Supervisão do outro local (a Administração, se não houver) e marca "alterada depois de publicada" as Escalas
+ * publicadas que deixarem de bater.
+ */
+router.post("/escalas/dia/local-do-dia", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  const { locationId, date, userId, destinoId, origemId, inicio, fim, motivo } = req.body ?? {};
+  if (typeof locationId !== "string" || typeof date !== "string" || !DATE.test(date) || typeof userId !== "string" || typeof destinoId !== "string") {
+    res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "locationId, date, userId e destinoId são obrigatórios." }); return;
+  }
+  const de = typeof inicio === "string" && inicio ? inicio : null, ate = typeof fim === "string" && fim ? fim : null;
+  if ((de && !HORA.test(de)) || (ate && !HORA.test(ate))) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "Os horários precisam estar no formato 08:30." }); return; }
+  if (de && ate && ate <= de) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "O fim precisa ser depois do início." }); return; }
+  const origem = typeof origemId === "string" && origemId ? origemId : null;
+  if (origem === destinoId) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "A pessoa já trabalha neste local. Escolha outro local." }); return; }
+  const porque = typeof motivo === "string" && motivo.trim() ? motivo.trim().slice(0, 300) : null;
+  try {
+    const [tela, destino, daOrigem] = await Promise.all([locationInOrg(locationId, actor.organizationId), locationInOrg(destinoId, actor.organizationId), origem ? locationInOrg(origem, actor.organizationId) : Promise.resolve(null)]);
+    if (!tela || !destino || (origem && !daOrigem)) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
+    const gerePorDestino = await canManageLocal(actor, destinoId), gerePorOrigem = origem ? await canManageLocal(actor, origem) : false;
+    if (!gerePorDestino && !gerePorOrigem) {
+      res.status(403).json({ error: "ACESSO_NEGADO", message: `${fraseDeRecusaPorPerfil(["ADMIN", "SUPERVISOR_A"], actor.role)} Mudar uma pessoa de local só por hoje é da Administração e da Supervisão de um dos dois locais.` }); return;
+    }
+    const fechado = await diaFechadoDoLocal(destinoId, date);
+    if (fechado) { res.status(409).json({ error: "LOCAL_FECHADO", message: `${destino.name} não abre neste dia (${fechado.motivo}). Escolha outro local.` }); return; }
+    const pessoa = (await elencoDaOrganizacao(actor.organizationId)).find((p) => p.id === userId);
+    if (!pessoa) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Pessoa não encontrada no elenco ativo." }); return; }
+    const [folga] = await db.select({ id: folgasTable.id }).from(folgasTable).where(and(eq(folgasTable.userId, userId), eq(folgasTable.status, "ACTIVE"), lte(folgasTable.startDate, date), gte(folgasTable.endDate, date))).limit(1);
+    if (folga) { res.status(409).json({ error: "PESSOA_DE_FOLGA", message: `${pessoa.nome} está de folga neste dia. Folga vence a escala: só entra quem for chamado de propósito, com motivo escrito, pelo Ajustar.` }); return; }
+    const [igual] = await db.select({ id: escalaLocalDoDiaTable.id, inicio: escalaLocalDoDiaTable.inicio, fim: escalaLocalDoDiaTable.fim }).from(escalaLocalDoDiaTable).where(and(
+      eq(escalaLocalDoDiaTable.userId, userId), eq(escalaLocalDoDiaTable.data, date), eq(escalaLocalDoDiaTable.locationId, destinoId), eq(escalaLocalDoDiaTable.active, true),
+    ));
+    if (igual && (igual.inicio?.slice(0, 5) ?? null) === de && (igual.fim?.slice(0, 5) ?? null) === ate) { res.json({ mudou: false, dia: await diaParaTela(actor.organizationId, locationId, date) }); return; }
+    const quando = quandoDoImprevisto(date, de, ate);
+    const nomesDosLocais = new Map<string, string>([[tela.id, tela.name], [destino.id, destino.name], ...(daOrigem ? [[daOrigem.id, daOrigem.name] as [string, string]] : [])]);
+    const criado = await db.transaction(async (tx) => {
+      const [linha] = await tx.insert(escalaLocalDoDiaTable).values({ organizationId: actor.organizationId, userId, data: date, locationId: destinoId, inicio: de, fim: ate, motivo: porque, createdBy: actor.sub }).returning();
+      await writeHistoryEvent({
+        category: "SCALE", action: "escala.local_do_dia_criado", title: "Pessoa mudada de local só por um dia",
+        narrative: `${pessoa.nome} trabalha em ${destino.name} ${quando}${daOrigem ? ` (em vez de ${daOrigem.name})` : ""}. A Programação não muda.${porque ? ` Motivo: ${porque}` : ""}`,
+        entityType: "escala_local_do_dia", entityId: linha!.id, actorId: actor.sub, orgId: actor.organizationId,
+        afterState: { pessoaId: userId, destinoId, origemId: origem, data: date, inicio: de, fim: ate }, ...(porque ? { metadata: { reason: porque } } : {}),
+      }, tx as unknown as HistoryExecutor);
+      const actorLocalIds = [...(gerePorDestino ? [destinoId] : []), ...(gerePorOrigem && origem ? [origem] : [])];
+      await avisarImprevistoDeLocal(tx as unknown as typeof db, { imprevistoId: linha!.id, organizationId: actor.organizationId, actorId: actor.sub, actorAdmin: actor.role === "ADMIN", actorLocalIds,
+        pessoa: { id: userId, name: pessoa.nome, areaId: pessoa.areaId }, destinoId, origemId: origem, nomesDosLocais, date, faixa: quando, motivo: porque, telaLocalId: locationId });
+      return linha!;
+    });
+    // Escala já publicada que deixou de bater passa a pedir republicação. Depois de gravar: se falhar, o imprevisto fica salvo e o erro vai para o log.
+    try { await marcarEscalasDoDiaPeloImprevisto(actor.organizationId, actor.sub, date, [destinoId, ...(origem ? [origem] : []), locationId], `${pessoa.nome} trabalha em ${destino.name} ${quando}`); }
+    catch (err) { requestLogger("scale", req.requestId, req.correlationId).error({ err, imprevistoId: criado.id }, "Imprevisto salvo, mas não consegui conferir as Escalas publicadas"); }
+    res.json({ mudou: true, imprevistoId: criado.id, dia: await diaParaTela(actor.organizationId, locationId, date) });
+  } catch (err) {
+    requestLogger("scale", req.requestId, req.correlationId).error({ err }, "Falha ao mudar a pessoa de local só por hoje");
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não consegui mudar a pessoa de local agora. Nada foi alterado; tente de novo." });
+  }
+});
+
+/** Desfaz um imprevisto do dia: a pessoa volta ao que a Programação manda. Quem pode: a Administração, a Supervisão do destino ou quem o criou. */
+router.post("/escalas/dia/local-do-dia/desfazer", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  const { id, locationId } = req.body ?? {};
+  if (typeof id !== "string" || typeof locationId !== "string") { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "id e locationId são obrigatórios." }); return; }
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Esta mudança de local não existe mais. Atualize a tela." }); return; }
+  try {
+    const [linha] = await db.select().from(escalaLocalDoDiaTable).where(and(eq(escalaLocalDoDiaTable.id, id), eq(escalaLocalDoDiaTable.organizationId, actor.organizationId))).limit(1);
+    if (!linha) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Esta mudança de local não existe mais. Atualize a tela." }); return; }
+    if (!(actor.role === "ADMIN" || linha.createdBy === actor.sub || await canManageLocal(actor, linha.locationId))) {
+      res.status(403).json({ error: "ACESSO_NEGADO", message: `${fraseDeRecusaPorPerfil(["ADMIN", "SUPERVISOR_A"], actor.role)} Desfazer uma mudança de local é da Administração, da Supervisão do local de destino ou de quem a fez.` }); return;
+    }
+    if (!linha.active) { res.json({ mudou: false, dia: await diaParaTela(actor.organizationId, locationId, linha.data) }); return; }
+    const [destino] = await db.select({ name: locationsTable.name }).from(locationsTable).where(eq(locationsTable.id, linha.locationId)).limit(1);
+    const [pessoa] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, linha.userId)).limit(1);
+    const quando = quandoDoImprevisto(linha.data, linha.inicio?.slice(0, 5) ?? null, linha.fim?.slice(0, 5) ?? null);
+    await db.transaction(async (tx) => {
+      await tx.update(escalaLocalDoDiaTable).set({ active: false, endedBy: actor.sub, endedAt: new Date() }).where(eq(escalaLocalDoDiaTable.id, linha.id));
+      await writeHistoryEvent({
+        category: "SCALE", action: "escala.local_do_dia_desfeito", title: "Mudança de local de um dia desfeita",
+        narrative: `${pessoa?.name ?? "A pessoa"} voltou ao que a Programação manda: a ida para ${destino?.name ?? "outro local"} ${quando} foi desfeita.`,
+        entityType: "escala_local_do_dia", entityId: linha.id, actorId: actor.sub, orgId: actor.organizationId,
+        beforeState: { pessoaId: linha.userId, destinoId: linha.locationId, data: linha.data, inicio: linha.inicio, fim: linha.fim },
+      }, tx as unknown as HistoryExecutor);
+    });
+    try { await marcarEscalasDoDiaPeloImprevisto(actor.organizationId, actor.sub, linha.data, [linha.locationId, locationId], `${pessoa?.name ?? "A pessoa"} voltou ao que a Programação manda (a ida para ${destino?.name ?? "outro local"} foi desfeita)`); }
+    catch (err) { requestLogger("scale", req.requestId, req.correlationId).error({ err, imprevistoId: linha.id }, "Imprevisto desfeito, mas não consegui conferir as Escalas publicadas"); }
+    res.json({ mudou: true, dia: await diaParaTela(actor.organizationId, locationId, linha.data) });
+  } catch (err) {
+    requestLogger("scale", req.requestId, req.correlationId).error({ err }, "Falha ao desfazer a mudança de local");
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não consegui desfazer agora. Nada foi alterado; tente de novo." });
+  }
 });
 
 router.post("/programacoes/:id/blocos", requireAuth, requireOrganization, async (req, res) => {

@@ -24,10 +24,12 @@ export type AtencaoDoDiaProps = {
   onVoltarHorario: (bloco: Bloco, pessoaId: string) => void;
   onAjustarVazio: (bloco: Bloco) => void;
   onFolgaResolvida?: (pessoaId: string) => Promise<void>;
+  /** Quem pode mexer: "Desfazer" ao lado de cada mudança de local só de hoje. */
+  onDesfazerImprevisto?: (imprevistoId: string) => void;
 };
 
 /** Tudo o que pede olhar no dia, em um cartão só: some quando não há nada. */
-export function AtencaoDoDia({ dia, vazios, grupos, canEdit, editableAreaIds, tirando, onTirar, onMudarHorario, onVoltarHorario, onAjustarVazio, onFolgaResolvida }: AtencaoDoDiaProps) {
+export function AtencaoDoDia({ dia, vazios, grupos, canEdit, editableAreaIds, tirando, onTirar, onMudarHorario, onVoltarHorario, onAjustarVazio, onFolgaResolvida, onDesfazerImprevisto }: AtencaoDoDiaProps) {
   const chamadas = dia.pessoas.filter((p) => p.chamadaNaFolga && !p.chamadaNaFolga.decidida);
   const alterada = dia.escala?.alteradaDesde ?? null;
   const semProgramacao = !dia.programacao;
@@ -35,13 +37,15 @@ export function AtencaoDoDia({ dia, vazios, grupos, canEdit, editableAreaIds, ti
   const nomeDe = new Map(dia.pessoas.map((p) => [p.id, p.name]));
   const choques = dia.choquesEntreLocais ?? [];
   const semLocal = (dia.semLocalHoje ?? []).filter((id) => nomeDe.has(id));
-  const total = (choques.length ? 1 : 0) + (semLocal.length ? 1 : 0) + (mexidas.length ? 1 : 0) + (vazios.length ? 1 : 0) + grupos.length + chamadas.length + (alterada ? 1 : 0) + (semProgramacao ? 1 : 0);
+  const imprevistos = (dia.imprevistos ?? []).filter((i) => nomeDe.has(i.pessoaId));
+  const total = (imprevistos.length ? 1 : 0) + (choques.length ? 1 : 0) + (semLocal.length ? 1 : 0) + (mexidas.length ? 1 : 0) + (vazios.length ? 1 : 0) + grupos.length + chamadas.length + (alterada ? 1 : 0) + (semProgramacao ? 1 : 0);
   const [aberto, setAberto] = useState(false);
   useEffect(() => { const abrir = () => setAberto(true); window.addEventListener("ge-abrir-atencao", abrir); return () => window.removeEventListener("ge-abrir-atencao", abrir); }, []);
   if (!total) return null;
   const resumo = [
     vazios.length ? plural(vazios.length, "bloco com lugar sem ninguém", "blocos com lugar sem ninguém") : "",
     grupos.length ? plural(new Set(grupos.flatMap((g) => g.pessoas.map((c) => c.pessoaId))).size, "pessoa em dois lugares", "pessoas em dois lugares") : "",
+    imprevistos.length ? plural(imprevistos.length, "mudança de local só de hoje", "mudanças de local só de hoje") : "",
     choques.length ? plural(new Set(choques.map((c) => c.pessoaId)).size, "pessoa que não cabe em dois locais", "pessoas que não cabem em dois locais") : "",
     semLocal.length ? plural(semLocal.length, "pessoa sem local hoje", "pessoas sem local hoje") : "",
     chamadas.length ? plural(chamadas.length, "chamada na folga", "chamadas na folga") : "",
@@ -58,6 +62,19 @@ export function AtencaoDoDia({ dia, vazios, grupos, canEdit, editableAreaIds, ti
       <span style={css("flex:1;min-width:0;font-size:12.5px;line-height:1.35;color:var(--asa-amber-dark);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical")}>{resumo}</span>
       <span style={css("flex:none;font-size:12px;font-weight:700;color:var(--asa-amber-mid)")}>{aberto ? "fechar" : "ver"}</span>
     </summary>
+
+    {imprevistos.length > 0 && <div style={css("display:flex;flex-direction:column;gap:8px;background:#fff;border:1px solid var(--asa-line-soft);border-radius:14px;padding:11px 13px;")}>
+      <div style={css("display:flex;flex-direction:column;gap:2px")}>
+        <span style={css("font-family:Outfit,sans-serif;font-size:14px;font-weight:600;color:var(--asa-ink-dark)")}>Mudanças de local só de hoje</span>
+        <span style={css("font-size:12px;color:var(--asa-label);line-height:1.45")}>Valem só nesta data e não mexem na Programação. Dá para desfazer.</span>
+      </div>
+      <ul style={css("margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px")}>
+        {imprevistos.map((i) => <li key={i.id} style={css("display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:12.5px;line-height:1.5;color:var(--asa-ink-medium);border:1px solid var(--asa-line-soft);background:var(--asa-lavender-chalk, #faf8fe);border-radius:12px;padding:6px 11px")}>
+          <span style={css("flex:1 1 220px;min-width:0")}><strong style={css("color:var(--asa-ink-dark)")}>{nomeDe.get(i.pessoaId)}</strong>{` trabalha em ${i.localNome}${i.inicio && i.fim ? ` das ${i.inicio} às ${i.fim}` : i.inicio ? ` a partir das ${i.inicio}` : i.fim ? ` até as ${i.fim}` : " o dia inteiro"}`}{i.motivo ? ` · ${i.motivo}` : ""}{i.porNome ? ` · por ${i.porNome}` : ""}</span>
+          {canEdit && onDesfazerImprevisto && <button type="button" className="esc-cell-adjust esc-hit" style={{ minHeight: 44 }} aria-label={`Desfazer a mudança de local de ${nomeDe.get(i.pessoaId)}`} onClick={() => onDesfazerImprevisto(i.id)}>Desfazer</button>}
+        </li>)}
+      </ul>
+    </div>}
 
     {choques.length > 0 && <div style={css("display:flex;flex-direction:column;gap:8px;background:#fff;border:1px solid var(--asa-rose-surface);border-radius:14px;padding:11px 13px;")}>
       <div style={css("display:flex;flex-direction:column;gap:2px")}>

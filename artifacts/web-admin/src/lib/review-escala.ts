@@ -203,16 +203,21 @@ export function sampleDia(localId: string, date: string) {
       sinal: `Horário só desta pessoa: era ${original.inicio}${original.fim ? `–${original.fim}` : ""}`, horarioDela: { chaveOriginal: original.key, inicio: original.inicio, fim: original.fim } });
     if (!original.pessoaIds.length) { original.vazio = false; original.sinal = null; }
   }
+  if (new URLSearchParams(window.location.search).get("choques") === "1" && pessoas.length > 3) for (const b of blocos) b.pessoaIds = b.pessoaIds.filter((id) => id !== pessoas[3]!.id);
   blocos.sort((a, b) => a.inicio.localeCompare(b.inicio) || (a.fim ?? "").localeCompare(b.fim ?? ""));
   return {
     date, location,
     escala: state ? { id: `sample-escala-${localId}-${date}`, status: state.status, version: state.version, publishedAt: state.publishedAt, alteradaDesde: state.alteradaDesde } : null,
     programacao: prog ? { id: prog.id, nome: prog.nome, vigenciaInicio: prog.vigenciaInicio, vigenciaFim: prog.vigenciaFim } : null,
     areas: sampleAreasDoLocal(localId).map((a) => ({ ...a, pronta: state?.prontas[a.id] ? { por: state.prontas[a.id].por, em: state.prontas[a.id].em } : null })),
-    pessoas, blocos,
+    pessoas: new URLSearchParams(window.location.search).get("choques") === "1" && pessoas.length > 3
+      ? pessoas.map((p, i) => i === 3 ? { ...p, noutroLocal: [{ localId: "sample-outro", localNome: "Acquamotion", inicio: "09:00", fim: "17:00", atividades: 4 }] } : p)
+      : pessoas,
+    blocos,
     // Revisão da equipe por local (pacote O): `?choques=1` mostra, na Atenção do dia, uma pessoa que não cabe em dois locais e uma sem local hoje.
     ...(new URLSearchParams(window.location.search).get("choques") === "1" && pessoas.length > 1 && blocos.length > 1 ? {
       semLocalHoje: [pessoas[1]!.id],
+      imprevistos: pessoas.length > 2 ? [{ id: "sample-imprevisto", pessoaId: pessoas[2]!.id, localId: "sample-outro", localNome: "Acquamotion", inicio: "15:00", fim: null, motivo: "faltou gente no treino", porNome: "Administração" }] : [],
       choquesEntreLocais: [{ pessoaId: pessoas[0]!.id, tipo: "sem_tempo" as const, aqui: { key: blocos[0]!.key, rotulo: blocos[0]!.rotulo, inicio: blocos[0]!.inicio, fim: blocos[0]!.fim },
         la: { key: "sample-la", localId: "sample-outro", localNome: "Acquamotion", rotulo: "Aula", inicio: "11:15", fim: "12:00" }, minutosDeIda: 30, minutosDeFolga: 15 }],
     } : {}),
