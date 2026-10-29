@@ -162,6 +162,76 @@ export const escalaBlocoEdicoesTable = pgTable("escala_bloco_edicoes", {
   index("escala_bloco_edicoes_scale_idx").on(table.scaleId),
 ]);
 
+/**
+ * Equipe de uma Programação (0088): quem trabalha naquele local, em que dia da semana e, se quiser, de que hora a que hora (vazio = o dia inteiro).
+ * Os blocos "todo mundo" e "área" da Escala do dia pegam só esta equipe. Quem não tem linha em nenhuma Programação segue como antes (aparece em todos os locais).
+ * Nunca se apaga: `active = false` tira a pessoa daquele dia/janela (e dá para voltar).
+ */
+export const programacaoEquipeTable = pgTable("programacao_equipe", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  programacaoId: uuid("programacao_id").notNull().references(() => programacoesTable.id),
+  userId: uuid("user_id").notNull().references(() => usersTable.id),
+  // 0 = domingo … 6 = sábado
+  weekday: integer("weekday").notNull(),
+  inicio: time("inicio"),
+  fim: time("fim"),
+  active: boolean("active").notNull().default(true),
+  createdBy: uuid("created_by").references(() => usersTable.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  check("programacao_equipe_weekday_ck", sql`${table.weekday} BETWEEN 0 AND 6`),
+  check("programacao_equipe_fim_ck", sql`${table.inicio} IS NULL OR ${table.fim} IS NULL OR ${table.fim} > ${table.inicio}`),
+  uniqueIndex("programacao_equipe_active_uq").on(table.programacaoId, table.userId, table.weekday, sql`coalesce(${table.inicio}, time '00:00')`, sql`coalesce(${table.fim}, time '24:00')`).where(sql`${table.active}`),
+  index("programacao_equipe_programacao_weekday_idx").on(table.programacaoId, table.weekday).where(sql`${table.active}`),
+  index("programacao_equipe_user_idx").on(table.userId).where(sql`${table.active}`),
+]);
+
+/**
+ * Imprevisto do dia (0088): "trazer o Fulano para cá hoje" / "mandar para a Acqua hoje". Vale só naquela data e, se quiser, só de `inicio` a `fim`
+ * (vazio = o dia inteiro). `locationId` é o local onde a pessoa trabalha naquele dia. Não mexe na Programação. `active = false` desfaz.
+ */
+export const escalaLocalDoDiaTable = pgTable("escala_local_do_dia", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizationsTable.id),
+  userId: uuid("user_id").notNull().references(() => usersTable.id),
+  data: date("data", { mode: "string" }).notNull(),
+  locationId: uuid("location_id").notNull().references(() => locationsTable.id),
+  inicio: time("inicio"),
+  fim: time("fim"),
+  motivo: text("motivo"),
+  active: boolean("active").notNull().default(true),
+  createdBy: uuid("created_by").notNull().references(() => usersTable.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  endedBy: uuid("ended_by").references(() => usersTable.id),
+  endedAt: timestamp("ended_at", { withTimezone: true }),
+}, (table) => [
+  check("escala_local_do_dia_fim_ck", sql`${table.inicio} IS NULL OR ${table.fim} IS NULL OR ${table.fim} > ${table.inicio}`),
+  uniqueIndex("escala_local_do_dia_active_uq").on(table.userId, table.data, table.locationId, sql`coalesce(${table.inicio}, time '00:00')`, sql`coalesce(${table.fim}, time '24:00')`).where(sql`${table.active}`),
+  index("escala_local_do_dia_local_data_idx").on(table.locationId, table.data).where(sql`${table.active}`),
+  index("escala_local_do_dia_user_data_idx").on(table.userId, table.data).where(sql`${table.active}`),
+]);
+
+/**
+ * Tempo de ida de um local a outro (0088), em minutos. Um par guarda uma linha só: o menor id fica em `locationAId` (Snowland ↔ Acqua é o mesmo
+ * que Acqua ↔ Snowland). Quem grava normaliza a ordem. Par sem linha = só se confere se os horários se cruzam. `active = false` tira o tempo.
+ */
+export const locaisDeslocamentoTable = pgTable("locais_deslocamento", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizationsTable.id),
+  locationAId: uuid("location_a_id").notNull().references(() => locationsTable.id),
+  locationBId: uuid("location_b_id").notNull().references(() => locationsTable.id),
+  minutos: integer("minutos").notNull(),
+  active: boolean("active").notNull().default(true),
+  createdBy: uuid("created_by").references(() => usersTable.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  check("locais_deslocamento_ordem_ck", sql`${table.locationAId} < ${table.locationBId}`),
+  check("locais_deslocamento_minutos_ck", sql`${table.minutos} BETWEEN 0 AND 720`),
+  uniqueIndex("locais_deslocamento_active_uq").on(table.locationAId, table.locationBId).where(sql`${table.active}`),
+]);
+
 /** Como o horário de uma chamada se diz: um horário fixo ("13:00") ou "X minutos antes" do início da atividade. */
 export const MODOS_DE_CHAMADA = ["fixo", "antes"] as const;
 export type ModoDeChamada = typeof MODOS_DE_CHAMADA[number];
@@ -222,3 +292,6 @@ export type EscalaBlocoAjuste = typeof escalaBlocoAjustesTable.$inferSelect;
 export type EscalaConfirmacao = typeof escalaConfirmacoesTable.$inferSelect;
 export type EscalaChamada = typeof escalaChamadasTable.$inferSelect;
 export type EscalaBlocoEdicao = typeof escalaBlocoEdicoesTable.$inferSelect;
+export type ProgramacaoEquipe = typeof programacaoEquipeTable.$inferSelect;
+export type EscalaLocalDoDia = typeof escalaLocalDoDiaTable.$inferSelect;
+export type LocalDeslocamento = typeof locaisDeslocamentoTable.$inferSelect;
