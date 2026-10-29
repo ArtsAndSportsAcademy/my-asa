@@ -45,6 +45,7 @@ import {
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
 import { isNotSessionBlock, listSessionBlocks } from "./session-blocks.js";
 import { chamadasDoDia, chamadasDosBlocos, type ChamadaDoDia } from "./escala-chamadas.js";
+import { lerRegraDaEquipe } from "./escala-equipe-regra.js";
 import { enqueueNotification } from "./undo.js";
 import { operationalDate } from "../lib/operational-date.js";
 import { APP_ROUTES } from "../lib/app-routes.js";
@@ -105,6 +106,8 @@ export type EscalaDia = {
     /** Atividades que a pessoa tem hoje em OUTRO local (fora o almoço e os blocos de "todos"): a Escala deste local a mostra "no outro local" e não como pessoa sem nada. */
     noutroLocal?: { localId: string; localNome: string; inicio: string; fim: string | null; atividades: number }[] }[];
   blocos: BlocoDia[];
+  /** Quem tem equipe marcada na temporada mas nenhuma neste dia da semana (e nenhum imprevisto): fica fora dos blocos gerais de todos os locais. A Atenção do dia escreve "Fulano sem local hoje". */
+  semLocalHoje?: string[];
   /** O local não abre neste dia da semana (ou está fechado): sem Escala feita, a Programação não é projetada e a Escala não pode ser gerada. */
   fechado?: { motivo: string };
   /** Os tipos de atividade do local (inclusive os arquivados, que ainda pintam o que já os usa). Vazio = o local ainda não tem lista. */
@@ -324,7 +327,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     .where(and(eq(locationsTable.id, locationId), eq(locationsTable.organizationId, organizationId))).limit(1);
   if (!location) return null;
 
-  const [scale, people, supervisors, fechado] = await Promise.all([
+  const [scale, people, supervisors, fechado, equipe] = await Promise.all([
     findEscalaDoDia(locationId, date, db, options.publishedOnly),
     db.select({ id: usersTable.id, name: usersTable.name, areaId: usersTable.areaId }).from(usersTable).where(and(
       eq(usersTable.organizationId, organizationId), isNotNull(usersTable.areaId),
@@ -334,6 +337,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
       .innerJoin(usersTable, eq(areaLocalSupervisorsTable.supervisorId, usersTable.id))
       .where(and(eq(areaLocalSupervisorsTable.locationId, locationId), eq(areaLocalSupervisorsTable.active, true))),
     diaFechadoDoLocal(locationId, date),
+    lerRegraDaEquipe(organizationId, date, weekdayOf(date)),
   ]);
 
   const areaIds = [...new Set([...people.map((p) => p.areaId), ...supervisors.map((s) => s.areaId)].filter((id): id is string => Boolean(id)))];
@@ -402,12 +406,13 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
       livro = separados.find((l) => hhmm(l.startTime) === inicio) ?? doShow.find((l) => !l.sessionId) ?? maisPerto;
       if (livro) { cobertos.add(livro.id); pessoaIds = (elenco.get(livro.id) ?? []).filter((id) => present.has(id)); }
       else sinal = "Livro do Dia deste show ainda não gerado";
-    } else if (bloco.regra === "todos") pessoaIds = [...present];
-    else if (bloco.regra === "area") pessoaIds = people.filter((p) => present.has(p.id) && p.areaId && bloco.areaIds.includes(p.areaId)).map((p) => p.id);
+    } else if (bloco.regra === "todos") pessoaIds = [...present].filter((id) => equipe.entra(id, locationId, inicio, hhmm(bloco.fim)));
+    else if (bloco.regra === "area") pessoaIds = people.filter((p) => present.has(p.id) && p.areaId && bloco.areaIds.includes(p.areaId) && equipe.entra(p.id, locationId, inicio, hhmm(bloco.fim))).map((p) => p.id);
     else if (bloco.regra === "grupo") pessoaIds = [...new Set(grupos.filter((g) => bloco.grupoIds.includes(g.teamId)).map((g) => g.userId))].filter((id) => present.has(id));
     else if (bloco.regra === "pessoas") pessoaIds = bloco.pessoaIds.filter((id) => present.has(id));
     const vazio = bloco.regra !== "ninguem" && pessoaIds.length === 0;
-    if (vazio && !sinal) sinal = bloco.regra === "pessoas" && bloco.pessoaIds.length === 0 ? "Sem regra de quem entra — fica vazio até alguém decidir" : "Ninguém disponível para a regra deste bloco hoje";
+    if (vazio && !sinal) sinal = bloco.regra === "pessoas" && bloco.pessoaIds.length === 0 ? "Sem regra de quem entra — fica vazio até alguém decidir"
+      : equipe.ativa && (bloco.regra === "todos" || bloco.regra === "area") ? "Ninguém da equipe deste local neste horário (veja a aba Equipe da Programação)" : "Ninguém disponível para a regra deste bloco hoje";
     blocos.push({
       ...base, key: `p:${bloco.id}`, rotulo: bloco.rotulo, inicio, fim: hhmm(bloco.fim), origem: "programacao", regra: bloco.regra,
       pessoaIds, vazio, sinal, blocoId: bloco.id, showBookId: bloco.showBookId, tipoId: bloco.tipoId ?? null, flexivel: bloco.flexivel,
@@ -613,6 +618,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
       };
     }),
     blocos,
+    ...(equipe.ativa ? { semLocalHoje: people.filter((p) => present.has(p.id) && equipe.semLocalHoje(p.id)).map((p) => p.id) } : {}),
     tipos: await tiposDoLocal(locationId),
     chamadas: blocos.filter((b) => b.chamada).map((b) => ({
       key: b.chamada!.chamadaId + ":" + b.chamada!.atividade.key, chamadaId: b.chamada!.chamadaId, nome: b.chamada!.nome, inicio: b.inicio, fim: b.fim!,

@@ -40,6 +40,8 @@ import {
 import { fraseDeRecusaPorPerfil, requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
 import { operationalDate } from "../lib/operational-date.js";
+import { requestLogger } from "../lib/logger.js";
+import { marcarEscalasPublicadasPelaEquipe } from "../services/escala-equipe-aviso.js";
 import { avisarRepublicacaoPendente, avisarTodasAsAreasEnviaram, comoPublicada, convocacaoPorPessoa, escalaPublicada, findEscalaDoDia, montarEscalaDoDia, operationForLocation, pessoasAfetadas, tiposDoLocal } from "../services/escala-dia.js";
 import { FRASE_NOME_DE_TIPO, TIPOS_PRONTOS, nomeDeTipoEmUso, nomeDeTipoValido, recusaDoTipo } from "../services/escala-tipos.js";
 import { ultimoRetratoFolgas } from "../services/folgas-publicadas.js";
@@ -1360,6 +1362,12 @@ router.put("/programacoes/:id/equipe", requireAuth, requireOrganization, async (
     }, tx as unknown as HistoryExecutor);
     return { tipo: "gravou" as const, entraram: entraram.length, sairam: sairam.length };
   });
+  // Escalas já publicadas que a equipe nova muda passam a pedir republicação (e a Administração é avisada). Depois de gravar: se falhar, a equipe
+  // fica salva e a falha vai para o log; a próxima mexida volta a conferir.
+  if (resultado.tipo === "gravou") {
+    try { await marcarEscalasPublicadasPelaEquipe(actor.organizationId, actor.sub, programacao.nome); }
+    catch (err) { requestLogger("scale", req.requestId, req.correlationId).error({ err, programacaoId: programacao.id }, "Equipe salva, mas não consegui conferir as Escalas publicadas"); }
+  }
   const atual = await equipeParaTela(programacao.id, actor.organizationId);
   if (resultado.tipo === "mudou") { res.status(409).json({ error: "VERSAO_MUDOU", message: FRASE_EQUIPE_MUDOU, ...atual }); return; }
   if (resultado.tipo === "fora") { res.status(400).json({ error: "PESSOA_FORA_DO_ELENCO", message: `${resultado.quantas === 1 ? "Uma pessoa não está" : `${resultado.quantas} pessoas não estão`} no elenco ativo (a equipe só leva quem tem área e está ativo). Nada foi salvo.` }); return; }
