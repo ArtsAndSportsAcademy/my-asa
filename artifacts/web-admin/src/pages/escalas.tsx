@@ -868,7 +868,7 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
 }
 
 /** Restrição de horário e limite de shows do dia são proibição; passar delas à mão é exceção e pede motivo escrito. */
-const CODIGOS_DE_REGRA = ["PESSOA_COM_RESTRICAO_DE_HORARIO", "ACIMA_DO_LIMITE_DO_DIA"];
+const CODIGOS_DE_REGRA = ["PESSOA_COM_RESTRICAO_DE_HORARIO", "ACIMA_DO_LIMITE_DO_DIA", "PESSOA_EM_OUTRO_LOCAL"];
 const recusaPorRegra = (err: unknown): err is ApiError<{ error: string; message?: string }> => err instanceof ApiError && err.status === 409 && CODIGOS_DE_REGRA.includes(String((err.data as { error?: unknown } | null)?.error));
 
 /** Limite de shows por pessoa por dia e intervalo mínimo entre shows: o que o rodízio respeita neste local. */

@@ -28,16 +28,14 @@ export type RegraDaEquipe = {
   semLocalHoje: (userId: string) => boolean;
 };
 
-/** Os dois intervalos [a1,a2) e [b1,b2) se cruzam? Fim vazio = vai até o fim do dia; início vazio = desde o começo. */
-export function janelasSeCruzam(a: { inicio: string | null; fim: string | null }, b: { inicio: string | null; fim: string | null }) {
-  const a1 = a.inicio ?? "00:00", a2 = a.fim ?? "24:00", b1 = b.inicio ?? "00:00", b2 = b.fim ?? "24:00";
-  // Bloco sem fim (um horário só) conta como um ponto: cruza se cai dentro da janela da marca.
-  if (a2 === a1 || b2 === b1) {
-    const ponto = a2 === a1 ? a1 : b1;
-    const janela = a2 === a1 ? { i: b1, f: b2 } : { i: a1, f: a2 };
-    return ponto >= janela.i && ponto < janela.f;
-  }
-  return a1 < b2 && b1 < a2;
+/**
+ * A janela da marca ([inicio, fim), vazio = desde o começo / até o fim do dia) cruza o bloco? Bloco sem fim é um ponto no horário de início:
+ * "Acqua a partir de 14:00" não cruza um bloco das 08:00 que não diz quando termina.
+ */
+export function janelasSeCruzam(janela: { inicio: string | null; fim: string | null }, bloco: { inicio: string | null; fim: string | null }) {
+  const j1 = janela.inicio ?? "00:00", j2 = janela.fim ?? "24:00", b1 = bloco.inicio ?? "00:00";
+  if (!bloco.fim || bloco.fim <= b1) return b1 >= j1 && b1 < j2;
+  return j1 < bloco.fim && b1 < j2;
 }
 
 /** Monta a regra do dia a partir das marcas vigentes e dos imprevistos. Pura: o banco só entra em `lerRegraDaEquipe`. */

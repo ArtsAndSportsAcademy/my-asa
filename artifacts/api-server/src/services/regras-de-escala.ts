@@ -12,8 +12,10 @@ import { eligibleSessionsDoDia } from "./session-blocks.js";
 import { enqueueNotification } from "./undo.js";
 import { janelaDoMes, lembrarOuLer, type LeiturasDoMes } from "./leituras-do-mes.js";
 import { APP_ROUTES } from "../lib/app-routes.js";
+import { lerRegraDaEquipe } from "./escala-equipe-regra.js";
+import { montarEscalaDoDia } from "./escala-dia.js";
 import {
-  agendaEventsTable, dailyBookAssignmentsTable, dailyBooksTable, db, escalaRegrasLocalTable, programacaoBlocosTable,
+  agendaEventsTable, dailyBookAssignmentsTable, dailyBooksTable, db, escalaRegrasLocalTable, locationsTable, programacaoBlocosTable,
   programacoesTable, restricoesHorarioTable, sessionsTable, showBooksTable, userRolesTable, areaLocalSupervisorsTable,
 } from "@workspace/db";
 
@@ -183,7 +185,7 @@ export async function horarioDoLivro(book: { id: string; agendaEventId: string; 
   return horarios.get(book.id) ?? null;
 }
 
-export type RegraDeEscala = "RESTRICAO_HORARIO" | "LIMITE_DO_DIA";
+export type RegraDeEscala = "RESTRICAO_HORARIO" | "LIMITE_DO_DIA" | "ATIVIDADE_EM_OUTRO_LOCAL";
 
 /** O evento do Livro que está sendo gerado, quando quem chama já o tem em mãos (poupa uma leitura por Livro). */
 export type EventoConhecido = {
@@ -256,6 +258,8 @@ export async function carregarRegrasDoDia(input: { eventId: string; userIds: str
     if (impede) barrar(userId, "RESTRICAO_HORARIO", `está com restrição de horário (só pode das ${hhmm(impede.horaInicio)} às ${hhmm(impede.horaFim)}: ${impede.motivo})`);
   }
 
+  if (proprio && locationId) await barrarQuemEstaEmOutroLocal({ locationId, date, userIds, horario: proprio, barrar });
+
   const [regrasDoLocal] = locationId ? await lembrarOuLer(leituras, `regras-do-local:${locationId}`, () => db.select().from(escalaRegrasLocalTable).where(eq(escalaRegrasLocalTable.locationId, locationId)).limit(1)) : [];
   const limite = regrasDoLocal?.limiteShowsDia ?? null;
   const intervalo = regrasDoLocal?.intervaloMinimoMinutos ?? INTERVALO_COLADO_PADRAO_MINUTOS;
@@ -288,6 +292,44 @@ export async function carregarRegrasDoDia(input: { eventId: string; userIds: str
 }
 
 /**
+ * Equipe por local (pacote O, O4): quem tem atividade em OUTRO local no horário do show não pode ser escalada nele, como na folga; entra a reserva.
+ * Só vale quando a casa já usa equipe naquele dia (sem nenhuma marca, nada muda e nada é lido a mais). Olha a Escala do dia dos outros locais, pelas
+ * mesmas atividades da faixa "No outro local": fora o almoço, os blocos de "todo mundo" e as chamadas. A mexida à mão passa, com motivo escrito.
+ */
+async function barrarQuemEstaEmOutroLocal(input: {
+  locationId: string; date: string; userIds: string[]; horario: Horario;
+  barrar: (userId: string, regra: RegraDeEscala, frase: string) => void;
+}) {
+  const { locationId, date, userIds, horario, barrar } = input;
+  const inicioShow = minutosDoDia(horario.start);
+  if (inicioShow === null) return;
+  const fimShow = minutosDoDia(horario.end) ?? inicioShow + DURACAO_PADRAO_MINUTOS;
+  const [local] = await db.select({ organizationId: locationsTable.organizationId }).from(locationsTable).where(eq(locationsTable.id, locationId)).limit(1);
+  if (!local) return;
+  const equipe = await lerRegraDaEquipe(local.organizationId, date, new Date(`${date}T12:00:00Z`).getUTCDay());
+  if (!equipe.ativa) return;
+  const outros = await db.select({ id: locationsTable.id }).from(locationsTable).where(and(eq(locationsTable.organizationId, local.organizationId), ne(locationsTable.id, locationId), eq(locationsTable.closed, false)));
+  const dias = await Promise.all(outros.map((o) => montarEscalaDoDia(local.organizationId, o.id, date)));
+  const quem = new Set(userIds);
+  const jaBarrados = new Set<string>();
+  for (const dia of dias) {
+    if (!dia || dia.fechado) continue;
+    for (const bloco of dia.blocos) {
+      if (bloco.flexivel || bloco.regra === "todos" || bloco.regra === "ninguem" || bloco.origem === "chamada") continue;
+      const inicio = minutosDoDia(bloco.inicio);
+      if (inicio === null) continue;
+      const fim = minutosDoDia(bloco.fim) ?? inicio + DURACAO_PADRAO_MINUTOS;
+      if (!(inicio < fimShow && inicioShow < fim)) continue;
+      for (const userId of bloco.pessoaIds) {
+        if (!quem.has(userId) || jaBarrados.has(userId)) continue;
+        jaBarrados.add(userId);
+        barrar(userId, "ATIVIDADE_EM_OUTRO_LOCAL", `está em ${dia.location.name} nesse horário (${bloco.rotulo}, ${bloco.inicio}${bloco.fim ? `–${bloco.fim}` : ""})`);
+      }
+    }
+  }
+}
+
+/**
  * As regras que a pessoa infringiria ao entrar neste show (vazio = nada impede). Serve à exceção à mão: quem escala
  * mesmo assim precisa escrever o motivo, e o Registro e o aviso à Administração dizem qual regra foi passada.
  */
@@ -301,7 +343,7 @@ export const frasesDasRegras = (regras: { frase: string }[]) => regras.map((r) =
 
 /** Código de erro (HTTP 409) da primeira regra que pede motivo. */
 export const codigoDaExcecao = (regras: { regra: RegraDeEscala }[]) =>
-  regras[0]?.regra === "RESTRICAO_HORARIO" ? "PESSOA_COM_RESTRICAO_DE_HORARIO" : "ACIMA_DO_LIMITE_DO_DIA";
+  regras[0]?.regra === "RESTRICAO_HORARIO" ? "PESSOA_COM_RESTRICAO_DE_HORARIO" : regras[0]?.regra === "ATIVIDADE_EM_OUTRO_LOCAL" ? "PESSOA_EM_OUTRO_LOCAL" : "ACIMA_DO_LIMITE_DO_DIA";
 
 /**
  * Avisa a Administração da operação e a Supervisão da área da pessoa (menos quem passou a regra) de que alguém foi escalado além de uma regra.
