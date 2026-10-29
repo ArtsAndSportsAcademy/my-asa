@@ -45,7 +45,7 @@ type Area = { id: string; name: string; supervisores: { id: string; name: string
 export type Mexida = { pessoaId: string; pessoaNome: string; pessoaAreaNome: string | null; porId: string; porNome: string; porAreaNome: string | null; em: string; texto: string };
 export type Dia = { date: string; location: { id: string; name: string }; escala: { id: string; status: string; version: number; publishedAt: string | null; alteradaDesde: string | null } | null; programacao: { id: string; nome: string; vigenciaInicio: string; vigenciaFim: string } | null; areas: Area[]; pessoas: Pessoa[]; blocos: Bloco[]; mexidas?: Mexida[]; tipos?: TipoDoLocal[]; fechado?: { motivo: string } };
 type Local = { id: string; name: string; podeEditar: boolean; areasSupervisionadas: string[]; viradaDoDia?: ViradaDoDia };
-type ProgBloco = SampleProgramacao["blocos"][number] & { tipoId?: string | null; flexivel?: boolean; chamadas?: ChamadaDaApi[] };
+type ProgBloco = SampleProgramacao["blocos"][number] & { tipoId?: string | null; flexivel?: boolean; semSessao?: boolean; chamadas?: ChamadaDaApi[] };
 type Programacao = { id: string; locationId: string; nome: string; vigenciaInicio: string; vigenciaFim: string; active?: boolean; blocos: ProgBloco[] };
 type MinhaLocal = { location: { id: string; name: string }; publishedAt?: string | null; folga?: string | null; confirmada?: boolean; confirmedAt?: string | null; escalaId: string; escalaVersion: number; blocos: Omit<Bloco, "pessoaIds">[]; tipos?: TipoDoLocal[] };
 type Minha = { date: string; publicada: boolean; escalas?: MinhaLocal[]; location?: { id: string; name: string } | null; publishedAt?: string | null; folga?: string | null; confirmada?: boolean; confirmedAt?: string | null; escalaId?: string | null; escalaVersion?: number | null; blocos?: Omit<Bloco, "pessoaIds">[] };
@@ -1599,8 +1599,8 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
         </div>
         {!review && !bloco.id.includes("-new-") && <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:9px;border-top:1px solid var(--asa-book-fade);padding-top:12px")}>
           <span style={css("font-size:12.5px;font-weight:700;color:var(--asa-ink-dark)")}>Chamadas</span>
-          <span style={css("font-size:12px;color:var(--asa-label);flex:1;min-width:140px;overflow-wrap:anywhere")}>{bloco.chamadas?.length ? bloco.chamadas.map((c) => resumoDaChamada(c, bloco.inicio)).join(" · ") : "Nenhuma chamada neste bloco."}</span>
-          <button type="button" className="esc-hit esc-rodape-sec" style={css("min-height:44px;padding:0 14px;border-radius:10px;cursor:pointer;font:700 13px Manrope,sans-serif;border:1px solid var(--asa-purple-border,#d8cef6);background:#fff;color:var(--asa-purple)")} onClick={() => setChamadasDoBloco(bloco)}>{canEdit ? "Configurar chamadas" : "Ver chamadas"}</button>
+          <span style={css("font-size:12px;color:var(--asa-label);flex:1;min-width:140px;overflow-wrap:anywhere")}>{isShow && bloco.semSessao ? `Este show não tem sessão às ${bloco.inicio.slice(0, 5)}. As chamadas ficam na sessão: cadastre a sessão na tela do show.` : bloco.chamadas?.length ? `${bloco.chamadas.map((c) => resumoDaChamada(c, bloco.inicio)).join(" · ")}${isShow ? " · da sessão do show" : ""}` : isShow ? "Nenhuma chamada na sessão deste show." : "Nenhuma chamada neste bloco."}</span>
+          {!(isShow && bloco.semSessao) && <button type="button" className="esc-hit esc-rodape-sec" style={css("min-height:44px;padding:0 14px;border-radius:10px;cursor:pointer;font:700 13px Manrope,sans-serif;border:1px solid var(--asa-purple-border,#d8cef6);background:#fff;color:var(--asa-purple)")} onClick={() => setChamadasDoBloco(bloco)}>{canEdit ? "Configurar chamadas" : "Ver chamadas"}</button>}
         </div>}
         {canEdit && <div style={css("display:flex;justify-content:flex-end")}>
           <button type="button" className="esc-hit" onClick={() => setConfirmar({ titulo: "Tirar do molde", texto: `"${textoDoBloco(bloco)}" sai de ${WEEKDAY_LONG[bloco.weekday]} e dos dias que ainda não foram publicados. Ele fica guardado e você pode devolver depois.`, acao: "Tirar do molde", onSim: () => void salvarBloco(bloco, { active: false }) })} style={css("border:1px solid var(--asa-line);background:#fff;color:var(--asa-label);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:Manrope,sans-serif;flex:none;")}>tirar do molde</button>
@@ -1673,7 +1673,7 @@ function BlocoDialog({ tipos, weekday, vocabulario, areas, shows, pessoas, onClo
     const erroDeChamada = primeiroErro(chamadasNovas, inicio || null);
     if (erroDeChamada) { setError(`Chamadas: ${erroDeChamada}`); return; }
     setSalvando(true); setError("");
-    try { await onSubmit({ chamadasNovas, weekday: dias[0]!, weekdays: dias, rotulo: rotulo.trim(), inicio, fim: fim || null, regra: regra as ProgBloco["regra"], showBookId: regra === "livro" ? showBookId || null : null, tipoId, flexivel: flexivel && regra !== "livro", areaIds: regra === "area" ? areaIds : [], pessoaIds: regra === "pessoas" ? pessoaIds : [] }); }
+    try { await onSubmit({ chamadasNovas: regra === "livro" ? [] : chamadasNovas, weekday: dias[0]!, weekdays: dias, rotulo: rotulo.trim(), inicio, fim: fim || null, regra: regra as ProgBloco["regra"], showBookId: regra === "livro" ? showBookId || null : null, tipoId, flexivel: flexivel && regra !== "livro", areaIds: regra === "area" ? areaIds : [], pessoaIds: regra === "pessoas" ? pessoaIds : [] }); }
     catch (err) { setError(err instanceof ApiError && err.data && typeof (err.data as { message?: unknown }).message === "string" ? (err.data as { message: string }).message : err instanceof ApiError && err.data && typeof (err.data as { error?: unknown }).error === "string" ? (err.data as { error: string }).error : "Não consegui criar o bloco."); }
     finally { setSalvando(false); }
   };
@@ -1697,11 +1697,10 @@ function BlocoDialog({ tipos, weekday, vocabulario, areas, shows, pessoas, onClo
       {regra === "livro" && <label>Show<select required value={showBookId} onChange={(e) => setShowBookId(e.target.value)}><option value="">Escolha o show</option>{shows.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}</select></label>}
       {regra === "area" && <fieldset style={css("border:none;padding:0;display:flex;flex-wrap:wrap;gap:7px")}>{areas.map((a) => { const on = areaIds.includes(a.id); return <button key={a.id} type="button" onClick={() => setAreaIds(on ? areaIds.filter((x) => x !== a.id) : [...areaIds, a.id])} style={css(on ? chipOn : chipOff)}>{a.name}</button>; })}</fieldset>}
       {regra === "pessoas" && <fieldset style={css("border:none;padding:0;display:flex;flex-wrap:wrap;gap:7px;max-height:150px;overflow:auto")}>{pessoas.map((p) => { const on = pessoaIds.includes(p.id); return <button key={p.id} type="button" onClick={() => setPessoaIds(on ? pessoaIds.filter((x) => x !== p.id) : [...pessoaIds, p.id])} style={css(on ? chipOn : chipOff)}>{p.name}</button>; })}</fieldset>}
-      <details open={chamadasNovas.length > 0} style={css("border-top:1px solid var(--asa-book-fade);padding-top:10px")}>
+      {regra === "livro" ? <p style={css("font-size:12px;color:var(--asa-label);margin:0;border-top:1px solid var(--asa-book-fade);padding-top:10px")}>As chamadas de um show ficam na sessão dele, na tela do show. Depois de criar o bloco, elas aparecem aqui também.</p> : <details open={chamadasNovas.length > 0} style={css("border-top:1px solid var(--asa-book-fade);padding-top:10px")}>
         <summary style={css("cursor:pointer;min-height:44px;display:flex;align-items:center;font-size:13px;font-weight:700;color:var(--asa-ink-dark)")}>{chamadasNovas.length ? `Chamadas (${chamadasNovas.length})` : "Tem chamada?"}</summary>
-        {regra === "livro" && <p style={css("font-size:12px;color:var(--asa-label);margin:0 0 8px")}>As chamadas do próprio show ficam na tela do show. As daqui valem só para este bloco.</p>}
         <ChamadasLista valor={chamadasNovas} onChange={setChamadasNovas} inicioDaAtividade={inicio || null} desabilitado={salvando}/>
-      </details>
+      </details>}
       {error && <p role="alert" style={css("font-size:12px;color:var(--asa-error-fg)")}>{error}</p>}
     </form></div>
     <footer className="shows-dialog-footer">

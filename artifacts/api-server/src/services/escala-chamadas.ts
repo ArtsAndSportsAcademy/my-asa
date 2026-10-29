@@ -7,7 +7,7 @@
  * Quem vai numa chamada NÃO se guarda: são as pessoas da atividade a que ela pertence (no show, as do Livro do Dia).
  */
 import { and, asc, eq, inArray, or } from "drizzle-orm";
-import { db, escalaChamadasTable, MODOS_DE_CHAMADA, type EscalaChamada, type ModoDeChamada } from "@workspace/db";
+import { db, escalaChamadasTable, sessionsTable, MODOS_DE_CHAMADA, type EscalaChamada, type ModoDeChamada } from "@workspace/db";
 import { eligibleSessionsDoDia } from "./session-blocks.js";
 import type { BlocoDia } from "./escala-dia.js";
 
@@ -130,7 +130,8 @@ export async function chamadasDoDia(blocos: BlocoDia[], date: string, scaleId: s
     });
   };
   for (const b of base) {
-    if (b.blocoId) for (const c of rows.filter((r) => r.programacaoBlocoId === b.blocoId)) empurra(c, b, "bloco");
+    // Bloco de show: a chamada é da sessão do show (abaixo), nunca do bloco; assim cadastrar de um lado ou do outro dá no mesmo e nada sai duas vezes.
+    if (b.blocoId && !(b.regra === "livro" && b.showBookId)) for (const c of rows.filter((r) => r.programacaoBlocoId === b.blocoId)) empurra(c, b, "bloco");
     if (b.regra === "livro" && b.showBookId) {
       const sessoes = (sessoesPorShow.get(b.showBookId) ?? []).filter((s) => hhmm(s.startTime) === b.inicio);
       for (const s of sessoes) for (const c of rows.filter((r) => r.sessionId === s.id)) empurra(c, b, "sessao");
@@ -140,17 +141,28 @@ export async function chamadasDoDia(blocos: BlocoDia[], date: string, scaleId: s
   return saida.sort((a, b) => a.inicio.localeCompare(b.inicio) || a.fim.localeCompare(b.fim) || a.nome.localeCompare(b.nome, "pt-BR"));
 }
 
-/** Para o Livro do Dia: as chamadas ativas de cada bloco da Programação, já com a janela ("Aquecimento 13:00–13:15"), por id do bloco. */
-export async function chamadasDosBlocos(blocos: { id: string; inicio: string }[], executor: Exec = db): Promise<Map<string, { nome: string; inicio: string; fim: string; ocupaTempo: boolean }[]>> {
+/**
+ * Para o Livro do Dia: as chamadas ativas de cada bloco da Programação, já com a janela ("Aquecimento 13:00–13:15"), por id do bloco.
+ * Bloco de show (`showBookId`): as chamadas são as da sessão do show que começa na mesma hora.
+ */
+export async function chamadasDosBlocos(blocos: { id: string; inicio: string; showBookId?: string | null }[], executor: Exec = db): Promise<Map<string, { nome: string; inicio: string; fim: string; ocupaTempo: boolean }[]>> {
   const out = new Map<string, { nome: string; inicio: string; fim: string; ocupaTempo: boolean }[]>();
   if (!blocos.length) return out;
-  const inicioDe = new Map(blocos.map((b) => [b.id, b.inicio]));
-  const linhas = await executor.select().from(escalaChamadasTable).where(and(inArray(escalaChamadasTable.programacaoBlocoId, [...inicioDe.keys()]), eq(escalaChamadasTable.active, true))).orderBy(asc(escalaChamadasTable.ordem), asc(escalaChamadasTable.createdAt));
-  for (const c of linhas) {
-    const id = c.programacaoBlocoId; if (!id) continue;
-    const j = janelaDaChamada({ modo: c.modo, horaFixa: hhmm(c.horaFixa), minutosAntes: c.minutosAntes, duracaoMin: c.duracaoMin }, inicioDe.get(id)!);
-    if (!j) continue;
-    (out.get(id) ?? out.set(id, []).get(id)!).push({ nome: c.nome, inicio: j.inicio, fim: j.fim, ocupaTempo: c.ocupaTempo });
+  const showIds = [...new Set(blocos.map((b) => b.showBookId).filter((id): id is string => Boolean(id)))];
+  const sessoes = showIds.length ? await executor.select({ id: sessionsTable.id, showId: sessionsTable.showId, startTime: sessionsTable.startTime }).from(sessionsTable).where(and(inArray(sessionsTable.showId, showIds), eq(sessionsTable.active, true))) : [];
+  const donaDoBloco = (b: { id: string; inicio: string; showBookId?: string | null }) => b.showBookId ? sessoes.find((s) => s.showId === b.showBookId && hhmm(s.startTime) === b.inicio)?.id ?? null : b.id;
+  const donas = [...new Set(blocos.map(donaDoBloco).filter((id): id is string => Boolean(id)))];
+  if (!donas.length) return out;
+  const linhas = await executor.select().from(escalaChamadasTable).where(and(
+    or(inArray(escalaChamadasTable.programacaoBlocoId, donas), inArray(escalaChamadasTable.sessionId, donas)), eq(escalaChamadasTable.active, true),
+  )).orderBy(asc(escalaChamadasTable.ordem), asc(escalaChamadasTable.createdAt));
+  for (const b of blocos) {
+    const dona = donaDoBloco(b);
+    for (const c of linhas.filter((l) => (b.showBookId ? l.sessionId : l.programacaoBlocoId) === dona)) {
+      const j = janelaDaChamada({ modo: c.modo, horaFixa: hhmm(c.horaFixa), minutosAntes: c.minutosAntes, duracaoMin: c.duracaoMin }, b.inicio);
+      if (!j) continue;
+      (out.get(b.id) ?? out.set(b.id, []).get(b.id)!).push({ nome: c.nome, inicio: j.inicio, fim: j.fim, ocupaTempo: c.ocupaTempo });
+    }
   }
   return out;
 }
