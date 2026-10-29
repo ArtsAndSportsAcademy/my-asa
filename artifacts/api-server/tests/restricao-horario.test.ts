@@ -18,6 +18,15 @@ import { collectScheduleCommitments } from "../src/services/schedule-conflicts.j
 import { carregarRegrasDoDia, horarioDoLivro } from "../src/services/regras-de-escala.js";
 import { resolveAssignmentsByRole } from "../src/services/line-resolver.js";
 
+/**
+ * Os dias do cenário são relativos a hoje: o teste nasceu com datas fixas de outubro/2026 e apodrece quando elas passam ("Livro futuro" deixa de ser
+ * futuro). Tudo anda junto na mesma quantidade de semanas, então o dia da semana de cada data continua o do roteiro (26/10/2026 = segunda).
+ */
+const ROTEIRO_SEGUNDA = "2026-10-26";
+const segundaDeHoje = (() => { const d = new Date(`${new Date().toISOString().slice(0, 10)}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + 1); while (d.getUTCDay() !== 1) d.setUTCDate(d.getUTCDate() + 1); return d; })();
+const SEMANAS_DE_DESLOCAMENTO = Math.round((segundaDeHoje.getTime() - new Date(`${ROTEIRO_SEGUNDA}T12:00:00Z`).getTime()) / (7 * 86_400_000));
+const dia = (iso: string) => { const d = new Date(`${iso}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + SEMANAS_DE_DESLOCAMENTO * 7); return d.toISOString().slice(0, 10); };
+
 let passed = 0;
 const failures: string[] = [];
 function assert(condition: boolean, message: string) {
@@ -27,7 +36,7 @@ function assert(condition: boolean, message: string) {
 
 async function run() {
   const tag = `restrhor_${Date.now()}`;
-  const segunda = "2026-10-26"; // segunda-feira → weekday 1
+  const segunda = dia("2026-10-26"); // segunda-feira → weekday 1
   const [org] = await db.insert(organizationsTable).values({ name: `${tag}_org` }).returning();
   const [operation] = await db.insert(operationsTable).values({ organizationId: org!.id, name: `${tag}_op`, status: "ACTIVE" }).returning();
   const [local] = await db.insert(locationsTable).values({ organizationId: org!.id, name: `${tag}_Snowland` }).returning();
@@ -106,7 +115,7 @@ async function run() {
   const duplo = await criarShow("Show duas vezes");
   await db.insert(sessionsTable).values([{ showId: duplo.id, startTime: "14:00", endTime: "14:30" }, { showId: duplo.id, startTime: "18:00", endTime: "18:30" }]);
 
-  const [prog] = await db.insert(programacoesTable).values({ organizationId: org!.id, locationId: local!.id, nome: `${tag}_Natal`, vigenciaInicio: "2026-10-22", vigenciaFim: "2027-01-17", createdBy: admin.id }).returning();
+  const [prog] = await db.insert(programacoesTable).values({ organizationId: org!.id, locationId: local!.id, nome: `${tag}_Natal`, vigenciaInicio: dia("2026-10-22"), vigenciaFim: dia("2027-01-17"), createdBy: admin.id }).returning();
   await db.insert(programacaoBlocosTable).values([
     { programacaoId: prog!.id, weekday: 1, inicio: "11:30", fim: "12:00", rotulo: "TEATRO 11:30", regra: "livro", showBookId: teatro.id },
     { programacaoId: prog!.id, weekday: 1, inicio: "15:30", fim: "16:00", rotulo: "TEATRO 15:30", regra: "livro", showBookId: teatro.id },
@@ -247,14 +256,14 @@ async function run() {
       return { nomes: roles.map((role) => (byRole.get(role.id)?.people ?? []).map((p) => curto(p.name))), linhas, result };
     };
     const [restricaoSofia] = await db.insert(restricoesHorarioTable).values({
-      userId: sofia.id, diasSemana: [1, 2, 3, 4, 5], horaInicio: "15:00", horaFim: "23:59", periodStart: "2026-10-22", periodEnd: "2026-12-18", motivo: "escola", createdBy: admin.id,
+      userId: sofia.id, diasSemana: [1, 2, 3, 4, 5], horaInicio: "15:00", horaFim: "23:59", periodStart: dia("2026-10-22"), periodEnd: dia("2026-12-18"), motivo: "escola", createdBy: admin.id,
     }).returning();
     await db.insert(restricoesHorarioTable).values({
-      userId: julia.id, diasSemana: [0, 1, 2, 3, 4, 5, 6], horaInicio: "15:00", horaFim: "23:59", periodStart: "2026-10-22", periodEnd: "2026-12-18", motivo: "outro compromisso", createdBy: admin.id,
+      userId: julia.id, diasSemana: [0, 1, 2, 3, 4, 5, 6], horaInicio: "15:00", horaFim: "23:59", periodStart: dia("2026-10-22"), periodEnd: dia("2026-12-18"), motivo: "outro compromisso", createdBy: admin.id,
     });
 
     // Restrição de horário (Sofia só à tarde de segunda a sexta).
-    const d1 = "2026-11-02"; // segunda
+    const d1 = dia("2026-11-02"); // segunda
     const m1130 = await evento(teatro.id, d1, "11:30", "12:00");
     const m1530 = await evento(teatro.id, d1, "15:30", "16:00");
     const manhaSeg = await resolver(teatro.id, d1, m1130.id);
@@ -262,8 +271,8 @@ async function run() {
     assert(manhaSeg.nomes[0]?.[0] === "esther" && manhaSeg.nomes[1]?.[0] === "daia", "sem a Sofia, o rodízio segue a ordem: Esther no Jingle e Daia no Bell");
     const tardeSeg = await resolver(teatro.id, d1, m1530.id);
     assert(tardeSeg.nomes[0]?.[0] === "sofia" && tardeSeg.nomes[1]?.[0] === "esther", "segunda às 15:30 a Sofia volta a ser opção e o rodízio a escolhe primeiro");
-    const sabado = await evento(teatro.id, "2026-11-07", "11:30", "12:00");
-    assert((await resolver(teatro.id, "2026-11-07", sabado.id)).nomes[0]?.[0] === "sofia", "no sábado a Sofia pode fazer a sessão da manhã");
+    const sabado = await evento(teatro.id, dia("2026-11-07"), "11:30", "12:00");
+    assert((await resolver(teatro.id, dia("2026-11-07"), sabado.id)).nomes[0]?.[0] === "sofia", "no sábado a Sofia pode fazer a sessão da manhã");
 
     // Vaga com titular bloqueado cai no próximo da fila e a nota diz por quê.
     const titularManha = await evento(comTitular.id, d1, "11:30", "12:00");
@@ -275,12 +284,12 @@ async function run() {
     const semUnica = await resolver(unico.id, d1, unicoManha.id);
     assert(semUnica.linhas[0]?.status === "UNCOVERED" && (semUnica.linhas[0]?.note ?? "").includes("restrição de horário"), "quando só há quem está restrito, a vaga fica descoberta e diz qual regra impediu");
     // Show sem horário: a restrição não é conferida e a geração termina.
-    const domingo = await evento(unico.id, "2026-11-08", null, null);
-    const semHora = await resolver(unico.id, "2026-11-08", domingo.id);
+    const domingo = await evento(unico.id, dia("2026-11-08"), null, null);
+    const semHora = await resolver(unico.id, dia("2026-11-08"), domingo.id);
     assert(semHora.linhas[0]?.status === "COVERED" && semHora.nomes[0]?.[0] === "julia" && semHora.result.semHorario === true, "evento sem horário: a restrição é ignorada, a vaga é preenchida e o resultado avisa 'sem horário'");
 
     // Limite de shows por dia, configurável por local.
-    const d3 = "2026-11-09";
+    const d3 = dia("2026-11-09");
     const m3 = await evento(teatro.id, d3, "15:30", "16:00");
     for (const [showId, inicio, fim] of [[musical.id, "09:00", "09:30"], [sozinho.id, "12:30", "13:00"], [misto.id, "17:30", "18:00"]] as const) {
       await livroDeApoio(showId, d3, inicio, fim, elenco.map((p) => p.id));
@@ -294,7 +303,7 @@ async function run() {
     assert((await resolver(teatro.id, d3, m3.id)).linhas.every((l) => l.status === "COVERED"), "local sem regra cadastrada não tem limite");
 
     // Shows colados: evitar, nunca proibir.
-    const d4 = "2026-11-16";
+    const d4 = dia("2026-11-16");
     const m4 = await evento(teatro.id, d4, "15:30", "16:00");
     await livroDeApoio(sozinho.id, d4, "15:15", "15:20", [sofia.id, esther.id]);
     await livroDeApoio(musical.id, d4, "09:00", "09:30", [daia.id, kaua.id, julia.id, bel.id]);
@@ -304,21 +313,21 @@ async function run() {
     const folgado = await resolver(teatro.id, d4, m4.id);
     assert(folgado.nomes[0]?.[0] === "sofia" && folgado.nomes[1]?.[0] === "esther", "com intervalo mínimo de 5 minutos, 10 minutos entre os shows já não é colado");
     await db.delete(escalaRegrasLocalTable).where(eq(escalaRegrasLocalTable.locationId, local!.id));
-    const d4b = "2026-11-17";
+    const d4b = dia("2026-11-17");
     const m4b = await evento(unico.id, d4b, "15:30", "16:00");
     await livroDeApoio(sozinho.id, d4b, "15:15", "15:20", [julia.id]);
     const colada = await resolver(unico.id, d4b, m4b.id);
     assert(colada.linhas[0]?.status === "COVERED" && colada.nomes[0]?.[0] === "julia", "quem está colada, mas é a única da fila, é escolhida mesmo assim");
 
     // Uma sessão por dia: a carga do dia enxerga a outra sessão do MESMO show; regenerar não conta o próprio Livro.
-    const d7 = "2026-11-23";
+    const d7 = dia("2026-11-23");
     const t1130 = await evento(teatro.id, d7, "11:30", "12:00");
     const t1530 = await evento(teatro.id, d7, "15:30", "16:00");
     const livro1130 = (await db.insert(dailyBooksTable).values({ agendaEventId: t1130.id, showBookId: teatro.id, sessionId: s1130!.id, status: "DRAFT" }).returning())[0]!;
     const posicao1130 = (await db.insert(dailyBookPositionsTable).values({ dailyBookId: livro1130.id, name: `${tag}_apoio` }).returning())[0]!;
     await db.insert(dailyBookAssignmentsTable).values([sofia, esther].map((p) => ({ dailyBookId: livro1130.id, positionId: posicao1130.id, userId: p.id, status: "ASSIGNED" as const })));
     // Restrição encerrada volta a valer como "livre" na próxima leitura, sem regenerar nada (dezembro: sem carga de outros cenários).
-    const dez = "2026-12-07"; // segunda
+    const dez = dia("2026-12-07"); // segunda
     const dez1130 = await evento(teatro.id, dez, "11:30", "12:00");
     assert(!(await resolver(teatro.id, dez, dez1130.id)).nomes.flat().includes("sofia"), "restrição ativa: a Sofia não entra às 11:30");
     await db.update(restricoesHorarioTable).set({ status: "ENDED", endedBy: admin.id, endedAt: new Date() }).where(eq(restricoesHorarioTable.id, restricaoSofia!.id));
@@ -340,7 +349,7 @@ async function run() {
     const emOutroLivro = new Set((livrosDoDia.rows as { userId: string }[]).map((r) => r.userId));
     const alvoLimite = elenco.find((p) => emOutroLivro.has(p.id) && !noLivro1130.has(p.id) && p.id !== julia.id && p.id !== bel.id);
     assert(!noLivro1130.has(alvoRestrito.id) && Boolean(alvoLimite), "o cenário tem quem está fora do Livro das 11:30 para a exceção");
-    await db.insert(restricoesHorarioTable).values({ userId: alvoRestrito.id, diasSemana: [1, 2, 3, 4, 5], horaInicio: "15:00", horaFim: "23:59", periodStart: "2026-10-22", periodEnd: "2026-12-18", motivo: "faculdade", createdBy: admin.id });
+    await db.insert(restricoesHorarioTable).values({ userId: alvoRestrito.id, diasSemana: [1, 2, 3, 4, 5], horaInicio: "15:00", horaFim: "23:59", periodStart: dia("2026-10-22"), periodEnd: dia("2026-12-18"), motivo: "faculdade", createdBy: admin.id });
     const bloco1130 = bloco("TEATRO 11:30")!;
     const ajustar = (fn: typeof asAdmin, userId: string, motivo?: string) => fn("/escalas/dia/ajustes", { method: "POST", body: JSON.stringify({ locationId: local!.id, date: segunda, sourceKey: bloco1130.key, userId, action: "ADICIONAR", ...(motivo ? { motivo } : {}) }) });
     const avisosDe = async (userId: string, tipo: string) => (await pool.query(`select count(*)::int as n from notification_outbox where user_id = $1 and payload->>'type' = $2`, [userId, tipo])).rows[0].n as number;
@@ -349,7 +358,6 @@ async function run() {
     const semMotivoBody = (await semMotivo.json()) as { error?: string; message?: string };
     assert(semMotivo.status === 409 && semMotivoBody.error === "PESSOA_COM_RESTRICAO_DE_HORARIO", "escalar quem tem restrição de horário sem motivo responde 409 PESSOA_COM_RESTRICAO_DE_HORARIO");
     assert(/restrição de horário/.test(semMotivoBody.message ?? "") && /escreva o motivo/.test(semMotivoBody.message ?? ""), "a recusa explica a regra e pede o motivo");
-    assert((await ajustar(asSupOutra, alvoRestrito.id, "sem aula hoje")).status === 403, "Supervisão de outra área não libera a exceção");
     assert((await ajustar(asDir, alvoRestrito.id, "sem aula hoje")).status === 403 && (await ajustar(asJulia, alvoRestrito.id, "sem aula hoje")).status === 403, "Direção e Elenco não liberam a exceção");
     const liberada = await ajustar(asSup, alvoRestrito.id, "sem aula hoje");
     assert(liberada.status === 200, "Supervisão da área da pessoa libera a exceção com motivo");
@@ -358,6 +366,9 @@ async function run() {
     assert(Boolean(comRegra) && JSON.stringify(comRegra!.metadata).includes("sem aula hoje"), "o Registro grava a regra passada e o motivo escrito");
     assert((await avisosDe(admin.id, "escala.excecao_de_regra")) === 1 && (await avisosDe(admin2.id, "escala.excecao_de_regra")) === 1, "a Administração é avisada no sino, um aviso por acontecimento");
     assert((await avisosDe(sup.id, "escala.excecao_de_regra")) === 0, "quem liberou a exceção não recebe aviso de si mesmo");
+    // Decisão de 25/10/2026: a Supervisão com acesso ao local mexe na escala de pessoa de qualquer área. Aqui a pessoa já está no bloco, então é só repetir.
+    assert((await ajustar(asSupOutra, alvoRestrito.id, "sem aula hoje")).status === 200, "Supervisão de outra área, com acesso ao local, também libera a exceção (decisão de 25/10)");
+    assert((await avisosDe(sup.id, "escala.excecao_de_regra")) === 0, "repetir a mesma exceção não gera um segundo aviso (um por acontecimento)");
 
     // Limite do dia: acima do limite só com motivo; quem libera avisa a Administração.
     await db.insert(escalaRegrasLocalTable).values({ locationId: local!.id, limiteShowsDia: 1 });
@@ -384,7 +395,7 @@ async function run() {
 
     // ---------- Passe de correções da revisão independente ----------
     // 1) Exceção à mão acima do limite não pode tirar a pessoa dos outros Livros na releitura viva.
-    const d8 = "2026-11-30";
+    const d8 = dia("2026-11-30");
     await db.insert(escalaRegrasLocalTable).values({ locationId: local!.id, limiteShowsDia: 3 });
     const apoioA = await livroDeApoio(musical.id, d8, "09:00", "09:30", [kaua.id]);
     await livroDeApoio(sozinho.id, d8, "12:30", "13:00", [kaua.id]);
@@ -404,7 +415,7 @@ async function run() {
     assert(horaMisto?.start === "17:00", `Livro do dia de show misto: a hora vem da sessão não separada (17:00), não do bloco da sessão separada (09:00) (veio ${JSON.stringify(horaMisto)})`);
 
     // 3) e 4a) Gerar a terça: sessão que vira separada cancela o Livro do dia sem ajuste; sessão que muda de hora não duplica Livro.
-    const terca = "2026-10-27";
+    const terca = dia("2026-10-27");
     const geradoTerca = await gerarDiaDoLocal(actor, { id: local!.id, name: local!.name }, terca);
     assert(geradoTerca.ok, "gerar a terça funciona");
     const vivos = async (showId: string) => (await livrosDe(showId));
