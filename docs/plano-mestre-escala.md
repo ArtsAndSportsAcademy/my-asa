@@ -135,6 +135,14 @@ A **Supervisão por local já existe e está certa** (Snowland: Vitinho, Deb, Ro
 | O7 | **Imprevisto na Escala do dia:** "Trazer para cá hoje" (na lista "No outro local") e "Mandar para outro local hoje" (no painel "Dia de Fulano"), com "a partir de" e "até" opcionais; desfazer; aviso no sino à Supervisão do outro local (Administração se o local não tem Supervisão); escala publicada marca "alterada depois de publicada" | `pages/escalas.tsx`, rota nova | — |
 | O8 | **Conferência:** testes de API (equipe, regra dos blocos, Livro com horário, imprevisto, permissões, versões), bateria relacionada, tela nos 4 perfis a 375 e 1360, impressão por local | testes | — |
 
+**Andamento (29/10/2026):** O1 pronto (`20fed67`, migração 0088 só no banco de teste). O2 pronto, ainda sem commit. Contrato da API da equipe, para o O3 e o O6:
+- `GET /programacoes/:id/equipe` → `{ equipe: [{id, userId, weekday, inicio, fim}], versao, pessoas: [{id, nome, areaId, areaNome}], podeEditar }`. Lê: Administração, Direção, Supervisão do local.
+- `PUT /programacoes/:id/equipe` com `{ baseVersao, linhas: [{userId, weekday, inicio?, fim?}] }` grava **o conjunto inteiro** (a grade pessoa × dia). `baseVersao` é obrigatório (`null` se a equipe estava vazia). Só mexe no que mudou, o que sai fica inativo e o que volta reativa a mesma linha. 409 `VERSAO_MUDOU` com frase e a equipe nova; 400 se a pessoa não é do elenco (quem tem área e está ativo). Grava: Administração e Supervisão do local. **Desfazer = mandar o conjunto anterior.**
+- `GET /programacoes/:id/equipe/sugestao` → quem teve atividade **própria** do local nas Escalas publicadas das últimas 8 semanas (bloco chamado para 80% ou mais de quem foi convocado no dia conta como "de todo mundo" e não prova nada; um dia é sugerido quando a pessoa tem atividade própria em pelo menos metade das Escalas publicadas daquele dia da semana). Só sugere, não grava.
+- `POST /programacoes` com `copiarDeId` ("Duplicar molde") leva a equipe junto (quem saiu do elenco fica de fora) e responde `equipe: <quantas marcações>`.
+- A versão da equipe é o instante da última mexida nas marcações, **não** `programacoes.version` (renomear a temporada não briga com quem edita a equipe). Corrige o que o plano dizia antes: os blocos não usam `programacoes.version`, usam o próprio "atualizado em".
+- Ainda **não** muda a Escala nem o Livro do Dia: a equipe só passa a valer no O3 e no O4. Por isso o O2 não avisa ninguém no sino; o aviso de "há o que republicar" nasce no O3, quando a equipe passar a mudar a Escala.
+
 **Ordem para promover (quem constrói o app):** backup → migração 0088 → API → site. (Conferido em 28/10: a 0087, "Editar neste dia", já está aplicada em produção, então a 0088 é a próxima da fila.) Depois, montar a equipe de Snowland e da Acqua com a
 sugestão automática e conferir uma quinta-feira real (o Miguelito só em Snowland; o almoço de Snowland sem a Acqua).
 

@@ -28,6 +28,7 @@ import {
   type CorDeTipo,
   locationsTable,
   programacaoBlocosTable,
+  programacaoEquipeTable,
   programacoesTable,
   REGRAS_BLOCO,
   scaleAllocationsTable,
@@ -51,6 +52,7 @@ import { viradaDoLocal } from "../lib/virada-do-dia.js";
 import { mexidasDoDia, novaColeta } from "../services/escala-mexidas.js";
 import { FRASE_CHAMADA_MUITAS, MAXIMO_DE_CHAMADAS, fraseChamadaDepoisDoInicio, janelaDaChamada, lerChamada } from "../services/escala-chamadas.js";
 import { canManageShowBook, canViewShowBook } from "../lib/show-responsibility.js";
+import { FRASE_EQUIPE_MUDOU, FRASE_SEM_VERSAO, copiarEquipe, diferencaDaEquipe, elencoDaOrganizacao, equipeDaProgramacao, lerLinhas, resumoPorPessoa, sugerirEquipe, versaoDaEquipe, type LinhaGuardada } from "../services/escala-equipe.js";
 
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const DIAS_DA_SEMANA = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
@@ -1243,16 +1245,19 @@ router.post("/programacoes", requireAuth, requireOrganization, async (req, res) 
   const created = await db.transaction(async (tx) => {
     const [row] = await tx.insert(programacoesTable).values({ organizationId: actor.organizationId, locationId, nome: nome.trim(), vigenciaInicio, vigenciaFim, createdBy: actor.sub }).returning();
     let copiados: (typeof programacaoBlocosTable.$inferSelect)[] = [];
+    let equipeCopiada = 0;
     if (origem) {
       const blocos = await tx.select().from(programacaoBlocosTable).where(and(eq(programacaoBlocosTable.programacaoId, origem.id), eq(programacaoBlocosTable.active, true)));
       if (blocos.length) {
         copiados = await tx.insert(programacaoBlocosTable).values(blocos.map(({ id: _id, programacaoId: _p, createdAt: _c, updatedAt: _u, ...bloco }) => ({ ...bloco, programacaoId: row!.id }))).returning();
       }
+      // A equipe do local é da temporada, mas a temporada nova costuma ter a mesma gente: "Duplicar molde" leva a equipe junto (quem saiu do elenco fica de fora).
+      equipeCopiada = await copiarEquipe(tx as unknown as typeof db, origem.id, row!.id, actor.organizationId, actor.sub);
     }
-    await writeHistoryEvent({ category: "SCALE", action: "programacao.criada", title: "Programação criada", narrative: origem ? `Programação ${row!.nome} criada a partir de ${origem.nome}, com ${copiados.length} blocos.` : `Programação ${row!.nome} criada.`, entityType: "programacao", entityId: row!.id, actorId: actor.sub, orgId: actor.organizationId, afterState: { programacao: row, copiadaDe: origem?.id ?? null, blocos: copiados.length } }, tx as unknown as HistoryExecutor);
-    return { row: row!, copiados };
+    await writeHistoryEvent({ category: "SCALE", action: "programacao.criada", title: "Programação criada", narrative: origem ? `Programação ${row!.nome} criada a partir de ${origem.nome}, com ${copiados.length} blocos e ${equipeCopiada} marcações de equipe.` : `Programação ${row!.nome} criada.`, entityType: "programacao", entityId: row!.id, actorId: actor.sub, orgId: actor.organizationId, afterState: { programacao: row, copiadaDe: origem?.id ?? null, blocos: copiados.length, equipe: equipeCopiada } }, tx as unknown as HistoryExecutor);
+    return { row: row!, copiados, equipeCopiada };
   });
-  res.status(201).json({ programacao: { ...created.row, blocos: created.copiados } });
+  res.status(201).json({ programacao: { ...created.row, blocos: created.copiados }, equipe: created.equipeCopiada });
 });
 
 router.patch("/programacoes/:id", requireAuth, requireOrganization, async (req, res) => {
@@ -1274,6 +1279,91 @@ router.patch("/programacoes/:id", requireAuth, requireOrganization, async (req, 
     return row!;
   });
   res.json({ programacao: updated });
+});
+
+// ─── Equipe do local na Programação (0088) ───────────────────────────────────
+
+/** Acha a Programação da equipe e confere quem pode: ler (Administração, Direção, Supervisão do local) ou gravar (Administração e Supervisão do local). Responde o erro sozinha. */
+async function programacaoDaEquipe(actor: Actor, id: string, gravar: boolean, res: import("express").Response) {
+  const naoAchou = () => { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Programação não encontrada." }); return null; };
+  if (!UUID.test(id)) return naoAchou();
+  const programacao = await programacaoInOrg(id, actor.organizationId);
+  if (!programacao) return naoAchou();
+  if (gravar ? await canManageLocal(actor, programacao.locationId) : await canReadLocal(actor, programacao.locationId)) return programacao;
+  const local = await locationInOrg(programacao.locationId, actor.organizationId);
+  const frase = SUPERVISOR.includes(actor.role)
+    ? `Você é Supervisão, mas não de ${local?.name ?? "este local"}: a equipe do local é da Administração e da Supervisão dele.`
+    : gravar ? `${fraseDeRecusaPorPerfil(["ADMIN", "SUPERVISOR_A"], actor.role)} A equipe do local é da Administração e da Supervisão dele${actor.role === "DIR" ? "; a Direção só lê" : ""}.`
+      : `${fraseDeRecusaPorPerfil(["ADMIN", "DIR", "SUPERVISOR_A"], actor.role)} A equipe do local é vista pela Administração, pela Direção e pela Supervisão dele.`;
+  res.status(403).json({ error: "ACESSO_NEGADO", message: frase });
+  return null;
+}
+const equipeParaTela = async (programacaoId: string, organizationId: string) => ({
+  equipe: await equipeDaProgramacao(programacaoId), versao: await versaoDaEquipe(programacaoId),
+  pessoas: (await elencoDaOrganizacao(organizationId)).map((p) => ({ id: p.id, nome: p.nome, areaId: p.areaId, areaNome: p.areaNome })),
+});
+
+router.get("/programacoes/:id/equipe", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  const programacao = await programacaoDaEquipe(actor, req.params.id as string, false, res);
+  if (!programacao) return;
+  res.json({ programacaoId: programacao.id, locationId: programacao.locationId, ...(await equipeParaTela(programacao.id, actor.organizationId)), podeEditar: await canManageLocal(actor, programacao.locationId) });
+});
+
+/** Quem a sugestão acha que trabalha neste local, olhando as Escalas publicadas das últimas semanas. É só uma sugestão: nada é gravado. */
+router.get("/programacoes/:id/equipe/sugestao", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  const programacao = await programacaoDaEquipe(actor, req.params.id as string, false, res);
+  if (!programacao) return;
+  res.json(await sugerirEquipe(programacao, actor.organizationId, operationalDate()));
+});
+
+/**
+ * Grava a equipe inteira de uma vez (a grade pessoa × dia): o que já estava igual não é tocado, o que saiu fica inativo e o que volta
+ * reativa a mesma marcação. `baseVersao` é a versão que a tela abriu: se outra pessoa salvou antes, nada é gravado (409) e a resposta já
+ * traz a equipe nova. Desfazer é mandar de volta o conjunto anterior.
+ */
+router.put("/programacoes/:id/equipe", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  const programacao = await programacaoDaEquipe(actor, req.params.id as string, true, res);
+  if (!programacao) return;
+  const corpo = (req.body ?? {}) as { baseVersao?: unknown; linhas?: unknown };
+  const baseOk = corpo.baseVersao === null || (typeof corpo.baseVersao === "string" && !Number.isNaN(Date.parse(corpo.baseVersao)));
+  if (!baseOk) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: FRASE_SEM_VERSAO }); return; }
+  const lidas = lerLinhas(corpo.linhas);
+  if (!lidas.ok) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: lidas.erro }); return; }
+  const elenco = await elencoDaOrganizacao(actor.organizationId);
+  const nomes = new Map(elenco.map((p) => [p.id, p.nome]));
+  const resultado = await db.transaction(async (tx) => {
+    // Trava a Programação enquanto confere e grava: duas pessoas salvando ao mesmo tempo entram uma depois da outra.
+    await tx.execute(sql`select id from ${programacoesTable} where id = ${programacao.id} for update`);
+    const exec = tx as unknown as typeof db;
+    const atual = await versaoDaEquipe(programacao.id, exec);
+    if (atual !== (corpo.baseVersao as string | null)) return { tipo: "mudou" as const };
+    const guardadas = (await tx.select().from(programacaoEquipeTable).where(eq(programacaoEquipeTable.programacaoId, programacao.id))) as LinhaGuardada[];
+    const dif = diferencaDaEquipe(guardadas, lidas.linhas);
+    const fora = [...dif.inserir, ...dif.reativar].filter((l) => !nomes.has(l.userId));
+    if (fora.length) return { tipo: "fora" as const, quantas: new Set(fora.map((l) => l.userId)).size };
+    if (!dif.mudou) return { tipo: "igual" as const };
+    const agora = new Date();
+    if (dif.inserir.length) await tx.insert(programacaoEquipeTable).values(dif.inserir.map((l) => ({ programacaoId: programacao.id, userId: l.userId, weekday: l.weekday, inicio: l.inicio, fim: l.fim, createdBy: actor.sub, createdAt: agora, updatedAt: agora })));
+    const ids = (ls: LinhaGuardada[]) => ls.map((l) => l.id);
+    if (dif.reativar.length) await tx.update(programacaoEquipeTable).set({ active: true, updatedAt: agora }).where(inArray(programacaoEquipeTable.id, ids(dif.reativar)));
+    if (dif.remover.length) await tx.update(programacaoEquipeTable).set({ active: false, updatedAt: agora }).where(inArray(programacaoEquipeTable.id, ids(dif.remover)));
+    const entraram = [...dif.inserir, ...dif.reativar], sairam = dif.remover;
+    const partes = [entraram.length ? `Entraram: ${resumoPorPessoa(entraram, nomes)}.` : "", sairam.length ? `Saíram: ${resumoPorPessoa(sairam, nomes)}.` : ""].filter(Boolean).join(" ");
+    await writeHistoryEvent({
+      category: "SCALE", action: "programacao.equipe_alterada", title: "Equipe do local alterada",
+      narrative: `Equipe da programação ${programacao.nome}: ${entraram.length} marcação(ões) nova(s) e ${sairam.length} retirada(s) (sem exclusão). ${partes}`,
+      entityType: "programacao", entityId: programacao.id, actorId: actor.sub, orgId: actor.organizationId,
+      afterState: { entraram, sairam: sairam.map(({ id: _id, active: _a, ...l }) => l), total: lidas.linhas.length },
+    }, tx as unknown as HistoryExecutor);
+    return { tipo: "gravou" as const, entraram: entraram.length, sairam: sairam.length };
+  });
+  const atual = await equipeParaTela(programacao.id, actor.organizationId);
+  if (resultado.tipo === "mudou") { res.status(409).json({ error: "VERSAO_MUDOU", message: FRASE_EQUIPE_MUDOU, ...atual }); return; }
+  if (resultado.tipo === "fora") { res.status(400).json({ error: "PESSOA_FORA_DO_ELENCO", message: `${resultado.quantas === 1 ? "Uma pessoa não está" : `${resultado.quantas} pessoas não estão`} no elenco ativo (a equipe só leva quem tem área e está ativo). Nada foi salvo.` }); return; }
+  res.json({ ...atual, mudou: resultado.tipo === "gravou", entraram: resultado.tipo === "gravou" ? resultado.entraram : 0, sairam: resultado.tipo === "gravou" ? resultado.sairam : 0 });
 });
 
 router.post("/programacoes/:id/blocos", requireAuth, requireOrganization, async (req, res) => {
