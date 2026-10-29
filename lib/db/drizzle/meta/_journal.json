@@ -324,6 +324,7 @@
     {"idx":85,"version":"7","when":1793584800000,"tag":"0085_bloco_flexivel","breakpoints":true},
     {"idx":86,"version":"7","when":1793671200000,"tag":"0086_chamadas_da_escala","breakpoints":true},
     {"idx":87,"version":"7","when":1793757600000,"tag":"0087_editar_atividade_no_dia","breakpoints":true},
-    {"idx":88,"version":"7","when":1793844000000,"tag":"0088_equipe_por_local","breakpoints":true}
+    {"idx":88,"version":"7","when":1793844000000,"tag":"0088_equipe_por_local","breakpoints":true},
+    {"idx":89,"version":"7","when":1793930400000,"tag":"0089_chamada_do_show_na_sessao","breakpoints":true}
   ]
 }

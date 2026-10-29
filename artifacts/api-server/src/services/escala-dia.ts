@@ -746,7 +746,7 @@ export async function horariosDosShowsNaProgramacao(showBookIds: string[], date:
   )).orderBy(asc(programacaoBlocosTable.inicio), asc(programacaoBlocosTable.order));
   const localDoShow = new Map(shows.map((s) => [s.id, s.locationId]));
   // As chamadas de cada horário vão junto: o Livro do Dia as mostra mesmo quando o show não tem sessões no Livro do Show.
-  const chamadas = await chamadasDosBlocos(blocos.map((b) => ({ id: b.id, inicio: hhmm(b.inicio)! })));
+  const chamadas = await chamadasDosBlocos(blocos.map((b) => ({ id: b.id, inicio: hhmm(b.inicio)!, showBookId: b.showBookId })));
   for (const b of blocos) {
     const showId = b.showBookId;
     // O bloco só vale se a Programação dele é a vigente do local do show (um show não herda bloco de outro local).

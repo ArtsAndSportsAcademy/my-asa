@@ -1228,7 +1228,17 @@ router.get("/programacoes", requireAuth, requireOrganization, async (req, res) =
     .orderBy(asc(programacaoBlocosTable.weekday), asc(programacaoBlocosTable.inicio), asc(programacaoBlocosTable.order)) : [];
   // As chamadas de cada bloco (0086) vão junto: o painel do bloco lista "Chegada 08:50–09:00" sem uma ida a mais ao servidor.
   const chamadas = blocos.length ? await db.select().from(escalaChamadasTable).where(and(inArray(escalaChamadasTable.programacaoBlocoId, blocos.map((b) => b.id)), eq(escalaChamadasTable.active, true))).orderBy(asc(escalaChamadasTable.ordem), asc(escalaChamadasTable.createdAt)) : [];
-  const comChamadas = (b: (typeof blocos)[number]) => ({ ...b, chamadas: chamadas.filter((c) => c.programacaoBlocoId === b.id).map((c) => chamadaParaTela(c, b.inicio.slice(0, 5))) });
+  // Bloco de show ("Livro manda"): a dona da chamada é a sessão do show que começa na mesma hora. Sem essa sessão não há onde guardar: `semSessao`.
+  const showIdsDosBlocos = [...new Set(blocos.filter((b) => b.regra === "livro" && b.showBookId).map((b) => b.showBookId!))];
+  const sessoesDosShows = showIdsDosBlocos.length ? await db.select().from(sessionsTable).where(and(inArray(sessionsTable.showId, showIdsDosBlocos), eq(sessionsTable.active, true))) : [];
+  const chamadasDasSessoes = sessoesDosShows.length ? await db.select().from(escalaChamadasTable).where(and(inArray(escalaChamadasTable.sessionId, sessoesDosShows.map((s) => s.id)), eq(escalaChamadasTable.active, true))).orderBy(asc(escalaChamadasTable.ordem), asc(escalaChamadasTable.createdAt)) : [];
+  const comChamadas = (b: (typeof blocos)[number]) => {
+    if (b.regra === "livro" && b.showBookId) {
+      const sessao = sessoesDosShows.find((s) => s.showId === b.showBookId && s.startTime.slice(0, 5) === b.inicio.slice(0, 5));
+      return { ...b, semSessao: !sessao, chamadas: sessao ? chamadasDasSessoes.filter((c) => c.sessionId === sessao.id).map((c) => chamadaParaTela(c, b.inicio.slice(0, 5))) : [] };
+    }
+    return { ...b, chamadas: chamadas.filter((c) => c.programacaoBlocoId === b.id).map((c) => chamadaParaTela(c, b.inicio.slice(0, 5))) };
+  };
   res.json({ programacoes: programacoes.map((p) => ({ ...p, blocos: blocos.filter((b) => b.programacaoId === p.id).map(comChamadas) })), podeEditar: await canManageLocal(actor, locationId), tipos: await tiposDoLocal(locationId), podeEditarTipos: actor.role === "ADMIN" });
 });
 
@@ -1501,6 +1511,14 @@ async function donaDaChamada(actor: Actor & { operationIds?: string[] }, ref: { 
     const podeEditar = await canManageLocal(actor, programacao.locationId);
     const podeVer = podeEditar || (await canReadLocal(actor, programacao.locationId));
     if (!podeVer) { res.status(403).json({ error: "ACESSO_NEGADO", message: FRASE_CHAMADA_SEM_ACESSO }); return null; }
+    // Bloco de show: a chamada é da sessão do show que começa na mesma hora (um cadastro só: o que se digita aqui aparece na tela do show e vice-versa).
+    if (bloco.regra === "livro" && bloco.showBookId) {
+      const hora = bloco.inicio.slice(0, 5);
+      const sessoes = await db.select({ id: sessionsTable.id, startTime: sessionsTable.startTime }).from(sessionsTable).where(and(eq(sessionsTable.showId, bloco.showBookId), eq(sessionsTable.active, true)));
+      const sessao = sessoes.find((s) => s.startTime.slice(0, 5) === hora);
+      if (!sessao) { res.status(409).json({ error: "SEM_SESSAO", message: `As chamadas de um show ficam na sessão dele, e este show não tem sessão às ${hora}. Cadastre a sessão das ${hora} na tela do show e volte aqui.` }); return null; }
+      return donaDaChamada(actor, { sessionId: sessao.id }, res);
+    }
     return { tipo: "bloco", id: bloco.id, inicio: bloco.inicio.slice(0, 5), nome: `${bloco.rotulo} ${bloco.inicio.slice(0, 5)}`, podeEditar, podeVer };
   }
   res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "Diga de qual sessão do show (sessionId), de qual bloco da Programação (programacaoBlocoId) ou de qual atividade só deste dia (scaleId e blocoKey) é a chamada." });

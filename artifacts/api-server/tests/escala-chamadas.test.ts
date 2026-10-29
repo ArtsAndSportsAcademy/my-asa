@@ -251,6 +251,28 @@ async function run() {
     assert(tiraDoDia.status === 200 && depoisDaMarca.alteradaDesde !== null && depoisDaMarca.version === antesDaMarca.version + 1, "tirar uma chamada do dia numa Escala publicada a marca como alterada depois de publicada");
     await db.update(scalesTable).set({ status: "DRAFT", publishedAt: null, alteradaDesde: null }).where(eq(scalesTable.id, escalaDoDia.escala.id));
 
+    // ── bloco de show: a dona da chamada é a sessão do show que começa na mesma hora (um cadastro só) ──
+    const pelaSessao = (await asAdmin("GET", `/escalas/chamadas?sessionId=${sessao1!.id}`)).body.chamadas as { nome: string }[];
+    const pelaProg = await asAdmin("GET", `/escalas/chamadas?programacaoBlocoId=${showManha.id}`);
+    assert(pelaProg.status === 200 && JSON.stringify(pelaProg.body.chamadas.map((c: { nome: string }) => c.nome)) === JSON.stringify(pelaSessao.map((c) => c.nome)), "abrir as chamadas do bloco de show mostra as da sessão do show (mesmas chamadas)");
+    const peloBloco = await asAdmin("POST", "/escalas/chamadas", { programacaoBlocoId: showManha.id, nome: "Feita pelo bloco", modo: "antes", minutosAntes: 5 });
+    const [gravada] = await db.select().from(escalaChamadasTable).where(eq(escalaChamadasTable.id, peloBloco.body.chamada.id));
+    assert(peloBloco.status === 201 && gravada!.sessionId === sessao1!.id && gravada!.programacaoBlocoId === null, "chamada criada pelo bloco de show é gravada na sessão, não no bloco");
+    assert((await asAdmin("GET", `/escalas/chamadas?sessionId=${sessao1!.id}`)).body.chamadas.some((c: { nome: string }) => c.nome === "Feita pelo bloco"), "o que se digita na Programação aparece na tela do show");
+    const naProg = (await asAdmin("GET", `/programacoes?locationId=${local!.id}`)).body.programacoes[0].blocos.find((b: { id: string }) => b.id === showManha.id) as { semSessao: boolean; chamadas: { nome: string }[] };
+    assert(naProg.semSessao === false && naProg.chamadas.some((c) => c.nome === "Feita pelo bloco"), "a lista da Programação traz as chamadas da sessão no bloco de show");
+    // Chamada antiga presa ao bloco de show não conta mais (senão sairia duas vezes no dia).
+    await db.insert(escalaChamadasTable).values({ organizationId: org!.id, programacaoBlocoId: showManha.id, nome: "Antiga do bloco", modo: "antes", minutosAntes: 20, createdBy: admin.id });
+    d = await dia();
+    assert(d.chamadas.filter((c) => c.nome === "Feita pelo bloco").length === 1, "a chamada do show aparece uma vez só no dia");
+    assert(!d.chamadas.some((c) => c.nome === "Antiga do bloco"), "chamada antiga presa ao bloco de show é ignorada: a dona é a sessão");
+    // Bloco de show sem sessão naquela hora: não há onde guardar, e a frase diz o que fazer.
+    const semSessaoBloco = await bloco({ rotulo: "SHOW NOITE", inicio: "20:00", fim: "20:45", regra: "livro", showBookId: show!.id });
+    const recusa = await asAdmin("POST", "/escalas/chamadas", { programacaoBlocoId: semSessaoBloco.id, nome: "Sem sessão", modo: "antes", minutosAntes: 5 });
+    assert(recusa.status === 409 && /não tem sessão às 20:00/.test(recusa.text) && /tela do show/.test(recusa.text), "bloco de show sem sessão naquela hora: 409 dizendo para cadastrar a sessão na tela do show");
+    const semNaProg = (await asAdmin("GET", `/programacoes?locationId=${local!.id}`)).body.programacoes[0].blocos.find((b: { id: string }) => b.id === semSessaoBloco.id) as { semSessao: boolean };
+    assert(semNaProg.semSessao === true, "a lista da Programação marca o bloco de show sem sessão");
+
     // ── limite ──
     for (let i = 0; i < 8; i += 1) await db.insert(escalaChamadasTable).values({ organizationId: org!.id, sessionId: sessao2!.id, nome: `Extra ${i}`, modo: "antes", minutosAntes: 5 + i, duracaoMin: 5, createdBy: admin.id });
     assert((await asAdmin("POST", "/escalas/chamadas", { sessionId: sessao2!.id, nome: "Uma a mais", modo: "antes", minutosAntes: 3 })).status === 409, "passar do máximo de chamadas por atividade é recusado com frase");
