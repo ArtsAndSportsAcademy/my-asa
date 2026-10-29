@@ -18,6 +18,7 @@ import { TIPOS, ehExcecao, faixa, foraDoChoque, quandoDoDia, resolverTipo, texto
 import { TipoSelect } from "@/components/escala/tipo-select";
 import { ChamadasDialog, ChamadasLista, gravarChamadas, primeiroErro, resumoDaChamada, type ChamadaDaApi, type ChamadaRascunho } from "@/components/escala/chamadas-editor";
 import { TiposDialog } from "@/components/escala/tipos-dialog";
+import { EquipeDialog } from "@/components/escala/equipe-dialog";
 import { EditarAtividadeDialog, type EdicaoDaAtividade } from "@/components/escala/editar-atividade-dialog";
 import "@/components/escala/escala-tokens.css";
 import { diaQueAEscalaAbre, type ViradaDoDia } from "@/lib/dia-da-escala";
@@ -1306,7 +1307,7 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
   const [shows, setShows] = useState<{ id: string; title: string }[]>([]);
   const [tipos, setTipos] = useState<TipoDoLocal[]>([]);
   const [podeEditarTipos, setPodeEditarTipos] = useState(false);
-  const [dialog, setDialog] = useState<"molde" | "bloco" | "duplicar" | "vigencia" | "tipos" | null>(null);
+  const [dialog, setDialog] = useState<"molde" | "bloco" | "duplicar" | "vigencia" | "tipos" | "equipe" | null>(null);
   const [confirmar, setConfirmar] = useState<{ titulo: string; texto: string; acao: string; onSim: () => void } | null>(null);
   const [error, setError] = useState("");
   const [tick, setTick] = useState(0);
@@ -1497,6 +1498,7 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
         </div>
         <span style={css("flex:none;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;padding:3px 9px;border-radius:999px;background:" + (estado === "vigente" ? "var(--asa-teal-pale)" : estado === "agendado" ? "var(--asa-purple-blossom)" : "var(--asa-refeicao-bg)") + ";color:" + (estado === "vigente" ? "var(--asa-teal-dark)" : estado === "agendado" ? "var(--asa-purple)" : "var(--asa-label)"))}>{estado}</span>
         <span style={css("flex:1;min-width:20px")}/>
+        <button type="button" className="esc-cell-adjust esc-hit" style={{ minHeight: 44 }} onClick={() => setDialog("equipe")}>Equipe do local</button>
         {canEdit && <div style={css("display:flex;flex-wrap:wrap;gap:7px")}>
           {podeEditarTipos && !review && <button type="button" className="esc-cell-adjust esc-hit" style={{ minHeight: 44 }} onClick={() => setDialog("tipos")}>Tipos de atividade</button>}
           <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setDialog("vigencia")}>Mudar nome ou vigência</button>
@@ -1626,6 +1628,8 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
       inicial={{ nome: `${prog.nome} (cópia)`, inicio: prog.vigenciaFim, fim: prog.vigenciaFim }} nota={`Copia os ${prog.blocos.filter((b) => b.active).length} blocos deste molde para a nova vigência. O molde atual não muda.`}/>}
     {dialog === "vigencia" && prog && <FormDialog title="Nome e vigência do molde" onClose={() => setDialog(null)} onSubmit={async (f) => { await mudarMolde(f.nome, f.inicio, f.fim); setDialog(null); }}
       inicial={{ nome: prog.nome, inicio: prog.vigenciaInicio, fim: prog.vigenciaFim }} nota="Vale para os dias que ainda não foram publicados."/>}
+    {dialog === "equipe" && prog && <EquipeDialog programacaoId={prog.id} programacaoNome={prog.nome} vigencia={rangeLabel(prog.vigenciaInicio, prog.vigenciaFim)} localName={localName} review={review}
+      pessoasDaAmostra={review ? samplePessoas(localId).map((p) => ({ id: p.id, nome: p.name, areaId: p.areaId ?? null, areaNome: p.areaName ?? null })) : undefined} editavelNaAmostra={canEdit} onClose={() => setDialog(null)} onSaved={() => { setTick((n) => n + 1); onChanged(); }}/>}
     {dialog === "tipos" && podeEditarTipos && <TiposDialog locationId={localId} locationName={localName} onClose={() => setDialog(null)} onChanged={() => { setTick((n) => n + 1); onChanged(); }}/>}
     {dialog === "bloco" && <BlocoDialog tipos={tipos} weekday={wd} vocabulario={vocabularioDoLocal(review ? localId : localName.toLocaleLowerCase("pt-BR"))} areas={areas} shows={shows} onClose={() => setDialog(null)} onSubmit={async (v) => { await criarBloco(v); setDialog(null); }} pessoas={pessoas}/>}
   </div>;
