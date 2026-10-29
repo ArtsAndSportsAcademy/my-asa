@@ -46,6 +46,7 @@ import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.j
 import { isNotSessionBlock, listSessionBlocks } from "./session-blocks.js";
 import { chamadasDoDia, chamadasDosBlocos, type ChamadaDoDia } from "./escala-chamadas.js";
 import { lerRegraDaEquipe } from "./escala-equipe-regra.js";
+import { choquesEntreLocais, lerTempoDeIda, type ChoqueEntreLocais } from "./escala-deslocamento.js";
 import { enqueueNotification } from "./undo.js";
 import { operationalDate } from "../lib/operational-date.js";
 import { APP_ROUTES } from "../lib/app-routes.js";
@@ -108,6 +109,8 @@ export type EscalaDia = {
   blocos: BlocoDia[];
   /** Quem tem equipe marcada na temporada mas nenhuma neste dia da semana (e nenhum imprevisto): fica fora dos blocos gerais de todos os locais. A Atenção do dia escreve "Fulano sem local hoje". */
   semLocalHoje?: string[];
+  /** Pessoas em duas coisas em locais diferentes que não cabem (mesmo horário, ou sem o tempo de ida cadastrado em Locais). Só quando a casa usa equipe; só avisa. */
+  choquesEntreLocais?: ChoqueEntreLocais[];
   /** O local não abre neste dia da semana (ou está fechado): sem Escala feita, a Programação não é projetada e a Escala não pode ser gerada. */
   fechado?: { motivo: string };
   /** Os tipos de atividade do local (inclusive os arquivados, que ainda pintam o que já os usa). Vazio = o local ainda não tem lista. */
@@ -578,6 +581,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
 
   // Quem já tem atividade em OUTRO local hoje (fora o almoço e os blocos de "todos"): a Escala deste local diz onde a pessoa está, em vez de mostrá-la sem nada.
   const noutroLocal = new Map<string, NonNullable<EscalaDia["pessoas"][number]["noutroLocal"]>>();
+  let choquesDosLocais: ChoqueEntreLocais[] | undefined;
   if (options.comOutrosLocais) {
     const outros = await db.select({ id: locationsTable.id }).from(locationsTable)
       .where(and(eq(locationsTable.organizationId, organizationId), ne(locationsTable.id, locationId), eq(locationsTable.closed, false)));
@@ -594,6 +598,10 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
         }
       }
       for (const [id, v] of porPessoa) noutroLocal.set(id, [...(noutroLocal.get(id) ?? []), { localId: dia.location.id, localNome: dia.location.name, ...v }]);
+    }
+    // Choque entre locais (pacote O, O5): só quando a casa já usa equipe, para quem não usa não aparecer alerta novo.
+    if (equipe.ativa && !fechado) {
+      choquesDosLocais = choquesEntreLocais(locationId, blocos, dias.filter((d): d is EscalaDia => Boolean(d) && !d!.fechado).map((d) => ({ id: d.location.id, name: d.location.name, blocos: d.blocos })), await lerTempoDeIda(organizationId));
     }
   }
 
@@ -618,6 +626,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
       };
     }),
     blocos,
+    ...(choquesDosLocais ? { choquesEntreLocais: choquesDosLocais } : {}),
     ...(equipe.ativa ? { semLocalHoje: people.filter((p) => present.has(p.id) && equipe.semLocalHoje(p.id)).map((p) => p.id) } : {}),
     tipos: await tiposDoLocal(locationId),
     chamadas: blocos.filter((b) => b.chamada).map((b) => ({

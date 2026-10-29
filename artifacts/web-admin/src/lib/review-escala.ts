@@ -210,6 +210,12 @@ export function sampleDia(localId: string, date: string) {
     programacao: prog ? { id: prog.id, nome: prog.nome, vigenciaInicio: prog.vigenciaInicio, vigenciaFim: prog.vigenciaFim } : null,
     areas: sampleAreasDoLocal(localId).map((a) => ({ ...a, pronta: state?.prontas[a.id] ? { por: state.prontas[a.id].por, em: state.prontas[a.id].em } : null })),
     pessoas, blocos,
+    // Revisão da equipe por local (pacote O): `?choques=1` mostra, na Atenção do dia, uma pessoa que não cabe em dois locais e uma sem local hoje.
+    ...(new URLSearchParams(window.location.search).get("choques") === "1" && pessoas.length > 1 && blocos.length > 1 ? {
+      semLocalHoje: [pessoas[1]!.id],
+      choquesEntreLocais: [{ pessoaId: pessoas[0]!.id, tipo: "sem_tempo" as const, aqui: { key: blocos[0]!.key, rotulo: blocos[0]!.rotulo, inicio: blocos[0]!.inicio, fim: blocos[0]!.fim },
+        la: { key: "sample-la", localId: "sample-outro", localNome: "Acquamotion", rotulo: "Aula", inicio: "11:15", fim: "12:00" }, minutosDeIda: 30, minutosDeFolga: 15 }],
+    } : {}),
   };
 }
 export const sampleShowsDoLocal = (localId: string) => shows.map((s, i) => ({ id: `sample-show-${i}`, title: s.nome, local: s.local })).filter((s) => s.local === localId);

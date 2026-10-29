@@ -14,6 +14,7 @@ import { janelaDoMes, lembrarOuLer, type LeiturasDoMes } from "./leituras-do-mes
 import { APP_ROUTES } from "../lib/app-routes.js";
 import { lerRegraDaEquipe } from "./escala-equipe-regra.js";
 import { montarEscalaDoDia } from "./escala-dia.js";
+import { lerTempoDeIda, problemaDeIda } from "./escala-deslocamento.js";
 import {
   agendaEventsTable, dailyBookAssignmentsTable, dailyBooksTable, db, escalaRegrasLocalTable, locationsTable, programacaoBlocosTable,
   programacoesTable, restricoesHorarioTable, sessionsTable, showBooksTable, userRolesTable, areaLocalSupervisorsTable,
@@ -292,7 +293,8 @@ export async function carregarRegrasDoDia(input: { eventId: string; userIds: str
 }
 
 /**
- * Equipe por local (pacote O, O4): quem tem atividade em OUTRO local no horário do show não pode ser escalada nele, como na folga; entra a reserva.
+ * Equipe por local (pacote O, O4 e O5): quem tem atividade em OUTRO local no horário do show, ou não chega a tempo (a ida entre os locais, escrita em
+ * Locais, é maior que a folga entre uma coisa e outra), não pode ser escalada nele, como na folga; entra a reserva.
  * Só vale quando a casa já usa equipe naquele dia (sem nenhuma marca, nada muda e nada é lido a mais). Olha a Escala do dia dos outros locais, pelas
  * mesmas atividades da faixa "No outro local": fora o almoço, os blocos de "todo mundo" e as chamadas. A mexida à mão passa, com motivo escrito.
  */
@@ -303,27 +305,29 @@ async function barrarQuemEstaEmOutroLocal(input: {
   const { locationId, date, userIds, horario, barrar } = input;
   const inicioShow = minutosDoDia(horario.start);
   if (inicioShow === null) return;
-  const fimShow = minutosDoDia(horario.end) ?? inicioShow + DURACAO_PADRAO_MINUTOS;
   const [local] = await db.select({ organizationId: locationsTable.organizationId }).from(locationsTable).where(eq(locationsTable.id, locationId)).limit(1);
   if (!local) return;
   const equipe = await lerRegraDaEquipe(local.organizationId, date, new Date(`${date}T12:00:00Z`).getUTCDay());
   if (!equipe.ativa) return;
   const outros = await db.select({ id: locationsTable.id }).from(locationsTable).where(and(eq(locationsTable.organizationId, local.organizationId), ne(locationsTable.id, locationId), eq(locationsTable.closed, false)));
-  const dias = await Promise.all(outros.map((o) => montarEscalaDoDia(local.organizationId, o.id, date)));
+  const [dias, tempoDeIda] = await Promise.all([Promise.all(outros.map((o) => montarEscalaDoDia(local.organizationId, o.id, date))), lerTempoDeIda(local.organizationId)]);
   const quem = new Set(userIds);
   const jaBarrados = new Set<string>();
+  const faixa = (b: { inicio: string; fim: string | null }) => `${b.inicio}${b.fim ? `–${b.fim}` : ""}`;
   for (const dia of dias) {
     if (!dia || dia.fechado) continue;
+    const ida = tempoDeIda(locationId, dia.location.id);
     for (const bloco of dia.blocos) {
       if (bloco.flexivel || bloco.regra === "todos" || bloco.regra === "ninguem" || bloco.origem === "chamada") continue;
-      const inicio = minutosDoDia(bloco.inicio);
-      if (inicio === null) continue;
-      const fim = minutosDoDia(bloco.fim) ?? inicio + DURACAO_PADRAO_MINUTOS;
-      if (!(inicio < fimShow && inicioShow < fim)) continue;
+      // Mesmo horário, ou sem o tempo de ida cadastrado em Locais entre uma coisa e outra.
+      const problema = problemaDeIda({ rotulo: bloco.rotulo, inicio: bloco.inicio, fim: bloco.fim }, { rotulo: "show", inicio: horario.start, fim: horario.end }, ida);
+      if (!problema) continue;
       for (const userId of bloco.pessoaIds) {
         if (!quem.has(userId) || jaBarrados.has(userId)) continue;
         jaBarrados.add(userId);
-        barrar(userId, "ATIVIDADE_EM_OUTRO_LOCAL", `está em ${dia.location.name} nesse horário (${bloco.rotulo}, ${bloco.inicio}${bloco.fim ? `–${bloco.fim}` : ""})`);
+        barrar(userId, "ATIVIDADE_EM_OUTRO_LOCAL", problema.tipo === "mesmo_horario"
+          ? `está em ${dia.location.name} nesse horário (${bloco.rotulo}, ${faixa(bloco)})`
+          : `não chega a tempo: tem ${bloco.rotulo} em ${dia.location.name} (${faixa(bloco)}) e a ida leva ${problema.minutosDeIda} min, mas sobram só ${problema.minutosDeFolga}`);
       }
     }
   }

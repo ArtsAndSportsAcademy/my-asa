@@ -32,13 +32,18 @@ export function AtencaoDoDia({ dia, vazios, grupos, canEdit, editableAreaIds, ti
   const alterada = dia.escala?.alteradaDesde ?? null;
   const semProgramacao = !dia.programacao;
   const mexidas = dia.mexidas ?? [];
-  const total = (mexidas.length ? 1 : 0) + (vazios.length ? 1 : 0) + grupos.length + chamadas.length + (alterada ? 1 : 0) + (semProgramacao ? 1 : 0);
+  const nomeDe = new Map(dia.pessoas.map((p) => [p.id, p.name]));
+  const choques = dia.choquesEntreLocais ?? [];
+  const semLocal = (dia.semLocalHoje ?? []).filter((id) => nomeDe.has(id));
+  const total = (choques.length ? 1 : 0) + (semLocal.length ? 1 : 0) + (mexidas.length ? 1 : 0) + (vazios.length ? 1 : 0) + grupos.length + chamadas.length + (alterada ? 1 : 0) + (semProgramacao ? 1 : 0);
   const [aberto, setAberto] = useState(false);
   useEffect(() => { const abrir = () => setAberto(true); window.addEventListener("ge-abrir-atencao", abrir); return () => window.removeEventListener("ge-abrir-atencao", abrir); }, []);
   if (!total) return null;
   const resumo = [
     vazios.length ? plural(vazios.length, "bloco com lugar sem ninguém", "blocos com lugar sem ninguém") : "",
     grupos.length ? plural(new Set(grupos.flatMap((g) => g.pessoas.map((c) => c.pessoaId))).size, "pessoa em dois lugares", "pessoas em dois lugares") : "",
+    choques.length ? plural(new Set(choques.map((c) => c.pessoaId)).size, "pessoa que não cabe em dois locais", "pessoas que não cabem em dois locais") : "",
+    semLocal.length ? plural(semLocal.length, "pessoa sem local hoje", "pessoas sem local hoje") : "",
     chamadas.length ? plural(chamadas.length, "chamada na folga", "chamadas na folga") : "",
     mexidas.length ? plural(mexidas.length, "mexida de outra área", "mexidas de outras áreas") : "",
     alterada ? "mudou depois de publicada" : "",
@@ -53,6 +58,24 @@ export function AtencaoDoDia({ dia, vazios, grupos, canEdit, editableAreaIds, ti
       <span style={css("flex:1;min-width:0;font-size:12.5px;line-height:1.35;color:var(--asa-amber-dark);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical")}>{resumo}</span>
       <span style={css("flex:none;font-size:12px;font-weight:700;color:var(--asa-amber-mid)")}>{aberto ? "fechar" : "ver"}</span>
     </summary>
+
+    {choques.length > 0 && <div style={css("display:flex;flex-direction:column;gap:8px;background:#fff;border:1px solid var(--asa-rose-surface);border-radius:14px;padding:11px 13px;")}>
+      <div style={css("display:flex;flex-direction:column;gap:2px")}>
+        <span style={css("font-family:Outfit,sans-serif;font-size:14px;font-weight:600;color:var(--asa-rose-fg)")}>Pessoa que não cabe em dois locais</span>
+        <span style={css("font-size:12px;color:var(--asa-label);line-height:1.45")}>A mesma pessoa está em duas coisas em locais diferentes. É um alerta: não bloqueia a publicação, e pode ser de propósito. O tempo de ida entre os locais é escrito pela Administração em Cadastros, Locais.</span>
+      </div>
+      <ul style={css("margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px")}>
+        {choques.map((c) => <li key={`${c.pessoaId}-${c.aqui.key}-${c.la.key}`} style={css("font-size:12.5px;line-height:1.5;color:var(--asa-ink-medium);border:1px solid var(--asa-rose-faint);background:var(--asa-rose-paper);border-radius:12px;padding:8px 11px")}>
+          <strong style={css("color:var(--asa-ink-dark)")}>{nomeDe.get(c.pessoaId) ?? "Pessoa"}</strong>{` está em ${c.aqui.rotulo} (${c.aqui.inicio}${c.aqui.fim ? `–${c.aqui.fim}` : ""}) aqui e em ${c.la.rotulo} (${c.la.inicio}${c.la.fim ? `–${c.la.fim}` : ""}) em ${c.la.localNome}. `}
+          {c.tipo === "mesmo_horario" ? "Os horários se cruzam." : `A ida leva ${c.minutosDeIda} min e a folga entre uma e outra é de ${c.minutosDeFolga} min.`}
+        </li>)}
+      </ul>
+    </div>}
+
+    {semLocal.length > 0 && <div style={css("display:flex;flex-direction:column;gap:6px;background:var(--asa-amber-pale);border:1px solid var(--asa-amber-stripe);border-radius:12px;padding:10px 13px;")}>
+      <span style={css("font-family:Outfit,sans-serif;font-size:14px;font-weight:600;color:var(--asa-amber-dark)")}>Sem local hoje</span>
+      <span style={css("font-size:12.5px;line-height:1.5;color:var(--asa-amber-dark);text-wrap:pretty")}>{`${semLocal.map((id) => nomeDe.get(id)).join(", ")} ${semLocal.length === 1 ? "tem equipe marcada nesta temporada, mas não neste dia da semana" : "têm equipe marcada nesta temporada, mas não neste dia da semana"}. Por isso não entram nos blocos de todo mundo nem de área de nenhum local. Pode entrar em show, se estiver livre, e por um imprevisto do dia.`}</span>
+    </div>}
 
     {mexidas.length > 0 && <div style={css("display:flex;flex-direction:column;gap:6px;background:#fff;border:1px solid var(--asa-line-soft);border-radius:12px;padding:10px 13px;")}>
       <span style={css("font-family:Outfit,sans-serif;font-size:14px;font-weight:600;color:var(--asa-ink-dark)")}>Mexeram em pessoas de outra área</span>

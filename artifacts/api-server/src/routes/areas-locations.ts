@@ -1,12 +1,14 @@
 ﻿import { Router, type IRouter } from "express";
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import {
   areaLocalSupervisorsTable,
   areasTable,
   db,
+  locaisDeslocamentoTable,
   locationsTable,
   operationLocationsTable,
   operationsTable,
+  organizationsTable,
   userRolesTable,
   usersTable,
 } from "@workspace/db";
@@ -17,6 +19,7 @@ import { listAreaLocalScopes } from "../services/area-local-scope.js";
 import { listReadableLocations } from "../services/location-directory.js";
 import { isUniqueViolation } from "../lib/erro-de-banco.js";
 import { exigirUuidNosParametros } from "../lib/uuid.js";
+import { FRASE_DESLOCAMENTO_MUDOU, FRASE_DESLOCAMENTO_SEM_VERSAO, diferencaDosPares, lerPares, paresGuardados, versaoDoDeslocamento } from "../services/escala-deslocamento.js";
 import { VIRADA_PADRAO, fraseDaViradaInvalida, viradaDoLocal } from "../lib/virada-do-dia.js";
 
 const router: IRouter = Router();
@@ -155,6 +158,68 @@ router.get("/locations", requireAuth, requireOrganization, async (req, res) => {
     : [];
   const operacaoDoLocal = new Map(vinculos.map((vinculo) => [vinculo.locationId, vinculo.operationName]));
   res.json({ locations: locations.map((location) => ({ ...location, viradaDoDia: viradaDoLocal(location), operationName: operacaoDoLocal.get(location.id) ?? null })) });
+});
+
+/**
+ * Tempo de ida de um local a outro (pacote O, O5): quantos minutos leva de Snowland à Acqua, por exemplo. A Escala usa para avisar quando uma
+ * pessoa sai de um local e não chega a tempo ao outro, e o Livro do Dia usa para não escalar quem não chega. Lê: Administração, Direção e Supervisão.
+ * Grava: só a Administração, o conjunto inteiro de uma vez, com a versão que a tela abriu (outra pessoa salvou antes = 409 com frase).
+ */
+async function deslocamentoParaTela(organizationId: string, podeEditar: boolean) {
+  const [locais, guardados, versao] = await Promise.all([
+    db.select({ id: locationsTable.id, name: locationsTable.name }).from(locationsTable).where(and(eq(locationsTable.organizationId, organizationId), eq(locationsTable.closed, false))).orderBy(locationsTable.name),
+    paresGuardados(organizationId),
+    versaoDoDeslocamento(organizationId),
+  ]);
+  return { locais, pares: guardados.filter((g) => g.active).map(({ locationAId, locationBId, minutos }) => ({ locationAId, locationBId, minutos })), versao, podeEditar };
+}
+
+router.get("/locations/deslocamento", requireAuth, requireOrganization, async (req, res) => {
+  if (!mayReadReference(req.user!.role)) { res.status(403).json({ error: "ACESSO_NEGADO", message: "O tempo de ida entre locais é da operação: quem vê é a Administração, a Direção e a Supervisão." }); return; }
+  res.json(await deslocamentoParaTela(req.user!.organizationId, req.user!.role === "ADMIN"));
+});
+
+router.put("/locations/deslocamento", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user!;
+  if (actor.role !== "ADMIN") { res.status(403).json({ error: "ACESSO_NEGADO", message: `${actor.role === "DIR" ? "A Direção só lê o tempo de ida entre locais." : "Seu perfil não muda o tempo de ida entre locais."} Quem escreve é a Administração.` }); return; }
+  const corpo = (req.body ?? {}) as { baseVersao?: unknown; pares?: unknown };
+  const baseOk = corpo.baseVersao === null || (typeof corpo.baseVersao === "string" && !Number.isNaN(Date.parse(corpo.baseVersao)));
+  if (!baseOk) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: FRASE_DESLOCAMENTO_SEM_VERSAO }); return; }
+  const lidos = lerPares(corpo.pares);
+  if (!lidos.ok) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: lidos.erro }); return; }
+  const locais = await db.select({ id: locationsTable.id, name: locationsTable.name }).from(locationsTable).where(eq(locationsTable.organizationId, actor.organizationId));
+  const nomes = new Map(locais.map((l) => [l.id, l.name]));
+  if (lidos.pares.some((p) => !nomes.has(p.locationAId) || !nomes.has(p.locationBId))) { res.status(400).json({ error: "LOCAL_INVALIDO", message: "Um dos locais do par não é da sua casa. Nada foi salvo." }); return; }
+  const resultado = await db.transaction(async (tx) => {
+    // Trava a casa enquanto confere e grava: duas pessoas salvando ao mesmo tempo entram uma depois da outra.
+    await tx.execute(sql`select id from ${organizationsTable} where id = ${actor.organizationId} for update`);
+    const exec = tx as unknown as typeof db;
+    if ((await versaoDoDeslocamento(actor.organizationId, exec)) !== (corpo.baseVersao as string | null)) return { tipo: "mudou" as const };
+    const antes = await paresGuardados(actor.organizationId, exec);
+    const dif = diferencaDosPares(antes, lidos.pares);
+    if (!dif.mudou) return { tipo: "igual" as const };
+    const agora = new Date();
+    if (dif.inserir.length) await tx.insert(locaisDeslocamentoTable).values(dif.inserir.map((p) => ({ organizationId: actor.organizationId, locationAId: p.locationAId, locationBId: p.locationBId, minutos: p.minutos, createdBy: actor.sub, createdAt: agora, updatedAt: agora })));
+    for (const p of [...dif.reativar, ...dif.atualizar]) await tx.update(locaisDeslocamentoTable).set({ active: true, minutos: p.novoMinutos, updatedAt: agora }).where(eq(locaisDeslocamentoTable.id, p.id));
+    if (dif.remover.length) await tx.update(locaisDeslocamentoTable).set({ active: false, updatedAt: agora }).where(inArray(locaisDeslocamentoTable.id, dif.remover.map((p) => p.id)));
+    const nomeDoPar = (p: { locationAId: string; locationBId: string }) => `${nomes.get(p.locationAId) ?? "?"} ↔ ${nomes.get(p.locationBId) ?? "?"}`;
+    const partes = [
+      ...dif.inserir.map((p) => `${nomeDoPar(p)}: ${p.minutos} min (novo)`),
+      ...dif.reativar.map((p) => `${nomeDoPar(p)}: ${p.novoMinutos} min (voltou)`),
+      ...dif.atualizar.map((p) => `${nomeDoPar(p)}: de ${p.minutos} para ${p.novoMinutos} min`),
+      ...dif.remover.map((p) => `${nomeDoPar(p)}: tempo retirado (era ${p.minutos} min)`),
+    ];
+    await writeEntityHistory(req, {
+      category: "OPERATIONAL_CHANGE", action: "locations.deslocamento_alterado", title: "Tempo de ida entre locais alterado",
+      narrative: `Tempo de ida entre locais: ${partes.join("; ")}.`,
+      entityType: "organization", entityId: actor.organizationId, actorId: actor.sub, orgId: actor.organizationId,
+      beforeState: { pares: antes.filter((g) => g.active).map(({ locationAId, locationBId, minutos }) => ({ locationAId, locationBId, minutos })) }, afterState: { pares: lidos.pares },
+    }, tx as any);
+    return { tipo: "gravou" as const };
+  });
+  const atual = await deslocamentoParaTela(actor.organizationId, true);
+  if (resultado.tipo === "mudou") { res.status(409).json({ error: "VERSAO_MUDOU", message: FRASE_DESLOCAMENTO_MUDOU, ...atual }); return; }
+  res.json({ ...atual, mudou: resultado.tipo === "gravou" });
 });
 
 /** Qual dia a Escala mostra ao abrir (a partir de que horas abre no dia seguinte e a partir de que horas volta a hoje). Só a Administração muda. */
