@@ -63,6 +63,7 @@
 .eq-rodape{flex-wrap:wrap}
 .eq-contagem,.eq-descartar{flex:1 1 auto;min-width:0;margin-right:auto;font-size:13px;font-weight:600;color:#4a4361;text-align:left}
 .eq-descartar{color:#8a1830}
+.eq-contagem.eq-falta{color:#8a5a00;font-weight:700}
 @media(max-width:720px){
   .shows-dialog.eq-dialog{width:calc(100vw - 32px)}
   .shows-dialog-content.eq-conteudo{padding:12px 10px}

@@ -135,6 +135,7 @@ export function EquipeDialog({ programacaoId, programacaoNome, vigencia, localNa
       return novo;
     });
   };
+  const pendenteNoLote = emLote && marcadas.length > 0 && diasDoLote.length > 0;
   const alternarMarca = (userId: string) => setMarcadas((m) => m.includes(userId) ? m.filter((x) => x !== userId) : [...m, userId]);
   const alternarDiaDoLote = (w: number) => setDiasDoLote((d) => d.includes(w) ? d.filter((x) => x !== w) : [...d, w]);
 
@@ -296,7 +297,12 @@ export function EquipeDialog({ programacaoId, programacaoNome, vigencia, localNa
             <button type="button" className="shows-primary" onClick={onClose}>Descartar</button>
           </>
           : <>
-            <span className="eq-contagem" aria-live="polite">{total === 0 ? "" : `${mudancas.entram ? `${mudancas.entram} ${mudancas.entram === 1 ? "marcação nova" : "marcações novas"}` : ""}${mudancas.entram && mudancas.saem ? " · " : ""}${mudancas.saem ? `${mudancas.saem} ${mudancas.saem === 1 ? "retirada" : "retiradas"}` : ""}`}</span>
+            {/* "Salvar equipe" desligado nunca fica mudo (30/10: a usuária escolheu 6 pessoas e os dias no lote e não sabia que faltava pô-las na grade). */}
+            <span className={`eq-contagem${total === 0 && pendenteNoLote ? " eq-falta" : ""}`} aria-live="polite">{total === 0
+              ? (!podeEditar ? "" : pendenteNoLote
+                ? `Falta um passo: toque em "Marcar em ${localName}", em cima, para pôr ${marcadas.length === 1 ? "a pessoa escolhida" : `as ${marcadas.length} pessoas escolhidas`} nos dias. Depois, Salvar equipe.`
+                : "Nada mudou ainda: toque nos dias de cada pessoa.")
+              : `${mudancas.entram ? `${mudancas.entram} ${mudancas.entram === 1 ? "marcação nova" : "marcações novas"}` : ""}${mudancas.entram && mudancas.saem ? " · " : ""}${mudancas.saem ? `${mudancas.saem} ${mudancas.saem === 1 ? "retirada" : "retiradas"}` : ""}`}</span>
             <button type="button" className="shows-secondary" onClick={tentarFechar} disabled={saving}>{podeEditar ? "Cancelar" : "Fechar"}</button>
             {podeEditar && <button type="button" className="shows-primary" disabled={saving || total === 0 || algumaInvalida} onClick={() => void salvar()}>{saving ? "Salvando…" : "Salvar equipe"}</button>}
           </>}
