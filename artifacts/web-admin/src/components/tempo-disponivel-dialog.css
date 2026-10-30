@@ -1,0 +1,5 @@
+/* Janela "Tempo disponível" (Locais). Reaproveita .cad-dialog, .cad-form e as classes .vd-* da janela da virada; aqui só o que é desta janela. */
+.cad-form.vd-form label.td-liga{display:flex;flex-direction:row;align-items:center;gap:10px;min-height:44px;font-size:14px;font-weight:600;color:#1b1630;cursor:pointer}
+.cad-form.vd-form .td-liga input[type="checkbox"]{width:22px;height:22px;flex:none;accent-color:#6d3ff2}
+.cad-form.vd-form .vd-frase input.td-minutos{width:96px;min-height:44px;border:1px solid #d9d2ea;border-radius:10px;padding:8px 10px;font:600 15px 'JetBrains Mono',monospace;color:#1b1630;background:#fff}
+.cad-form.vd-form .vd-frase input.td-minutos:disabled{opacity:.5}
