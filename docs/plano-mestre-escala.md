@@ -1,66 +1,69 @@
-# Plano mestre da Escala (26/10/2026, noite)
+# Plano mestre da Escala (atualizado em 30/10/2026)
 
-Este é o **único plano vivo**. Ele junta os dois que existiam:
-- `docs/plano-de-construcao-escala-mais-facil.md` (24/10): as Etapas 0 a 8 e as Fases 2 e 3. **O que ele diz que "nada foi feito" está desatualizado.** Fica como histórico e como detalhe da Fase 2.
-- `docs/plano-proximos-passos-escala-2026-10-26.md` (26/10): os pacotes A a L e as decisões da usuária. Fica como detalhe de cada pacote.
+Este é o **único plano vivo**. Os planos antigos ficam como histórico e detalhe:
+- `docs/plano-de-construcao-escala-mais-facil.md` (24/10): as Etapas 0 a 8 e as Fases 2 e 3 (o que ele diz que "nada foi feito" está desatualizado).
+- `docs/plano-proximos-passos-escala-2026-10-26.md` (26/10): os pacotes A a N e as decisões da usuária.
 
-Regra de uso: o que mudar de estado muda **aqui primeiro**. Código só com o "pode começar" da usuária; envio ao GitHub só com o "pode enviar"; produção (migração, API, site) é de quem constrói o app, nessa ordem.
+Regra de uso: o que mudar de estado muda **aqui primeiro**. Código só com o "pode começar" da usuária; envio ao GitHub só com o "pode enviar";
+produção (backup, migração, API, site) é de quem constrói o app, nessa ordem.
 
-## 1. Feito e em produção (migrações até a 0084)
-| O quê | De onde vem |
-|---|---|
-| Etapas 0 a 7: atalho abre o dia certo; Escala com cara de planilha e virada do dia por local; agir no bloco e "Saiu no dia"; Programação enxuta; preencher em lote; Livros do dia na Escala com "Conferido"; tipos de atividade com cores; "Enviar minha parte" e publicar com confirmação | plano de construção |
-| Livro do Dia: "Trazer as novidades do Livro do Show", vagas editáveis (Escolher/Tirar), "Ver quem faz o quê" | plano de 26/10 (já promovido em parte) |
+## 0. Onde estamos (30/10/2026) — leia isto primeiro
+- **Tudo até `da985e4` está em produção** (ramo `codex/escala-mais-facil`; migrações da 0000 à **0089** aplicadas). Nada na `main`.
+- **A próxima migração livre é a 0090.** Ao criar uma, escreva o rollback em `lib/db/drizzle/rollback/` e registre no `meta/_journal.json`.
+- **A equipe por local (pacote O) está no ar, mas ainda vazia em produção:** até alguém preencher a equipe de Snowland e da Acqua na
+  Programação, a Escala segue como antes. Preencher e conferir uma quinta-feira real é o primeiro passo (seção 2, item 1).
+- **Como se trabalha agora:** a usuária constrói cada pacote numa sessão própria e traz para outra sessão **conferir** (ler o diff atrás de
+  defeitos de regra, rodar os testes que tocam o que mudou, olhar a conta real só lendo, relatar do mais grave ao menos grave e corrigir só
+  com o "corrija" dela). Quem constrói: ao terminar, diga o pacote e o intervalo de commits.
 
-## 2. Feito, enviado ao GitHub e **ainda NÃO promovido**
-Ramo `codex/escala-mais-facil`, até `ab5cb72`. **Ordem: migração 0085, depois o site, depois a API** (a ordem mudou por causa do "Conferido" que sai da API, seção 3; o commit `831f1e6` e o `2aeea26` ainda não foram enviados).
-| Commit | O quê | Vai em |
+## 1. Feito e em produção
+| O quê | Migração | Onde está o detalhe |
 |---|---|---|
-| `f432842` | Erro de banco responde 503 e não derruba a sessão (A1) | API |
-| `f19b2c7` | Resumo de "quem faz" na Escala e na impressão (C) | site |
-| `ac42b57`, `82b4ffb`, `f5d5204`, `622a014`, `e2d9014`, `7ee62a2`, `64c5e3d`, `e3edcf4`, `5cd6fb9`, `e1be6c3` | Defeitos A2 a A9 | API e site |
-| `8318597` | Nomes de fábrica novos dos tipos (B) | API |
-| `05ea8aa` | Botão "Refazer este dia do zero"; impressão sem "vagas sem ninguém" e com "Escrever o nome de todo mundo" | site |
-| `994c73b` | Posição de função (Produção) nasce com vaga aberta | API |
-| `79ffd8f` | Rodízio conta os dias gerados em rascunho (D) | API |
-| `0b313a6` | Bloco flexível (almoço em janela) e prioridade da atividade específica (E) — **migração 0085** | migração, API, site |
+| Etapas 0 a 7 (Escala com cara de planilha, virada do dia por local, preencher em lote, tipos com cores, "Enviar minha parte", publicar com confirmação) | até 0084 | plano de construção |
+| Livro do Dia: "Trazer as novidades", vagas editáveis, "Ver quem faz o quê", "Refazer este dia do zero" | — | plano de 26/10 |
+| Defeitos A1 a A9, nomes de fábrica dos tipos (B), resumo "quem faz" (C), rodízio com rascunho (D) | — | plano de 26/10 |
+| Bloco flexível (almoço em janela) e prioridade da atividade específica, cortando só o trecho que cruza (E) | 0085 | plano de 26/10 |
+| "Conferido" saiu do app; a Escala abre por atividade (M + N); cabeçalho compacto no celular; folga vence na vaga do show | — | seção 9 |
+| Chamadas (F1 a F3): várias por show, configuráveis; chamada do show na sessão | 0086, 0089 | `docs/desenho-chamadas-escala.md` |
+| Editar a atividade só neste dia | 0087 | seção 9 |
+| Folha impressa simples ("Elenco do dia", área pelo nome, "Pessoas de folga", "Editar este texto"), Guardião 1–8 em ordem | — | seção 9 |
+| Visual da Escala: faixa do dia no topo (quem não trabalha à vista), tabela mais baixa | — | `57f012b`, `75c5f2e` |
+| Local fechado no dia (Snowland às quartas) e "No outro local" | — | `c9b509b` |
+| **O. Equipe por local** na Programação, imprevisto do dia, tempo de ida entre locais, choque entre locais, Livro do Dia que pula quem está em outro local; revisão de 30/10 (cada local mostra só a sua equipe; "todo mundo" do outro local conta como ocupado) | 0088 | seção 10 |
 
-Antes de promover: rodar a bateria de testes de novo (um arquivo por vez) e conferir o que ainda não foi visto na tela (ver seção 6).
-
-## 3. Feito e commitado, **ainda não enviado ao GitHub** (26/10, noite)
-- `831f1e6` **E, trecho:** a atividade específica corta só o trecho que cruza o bloco geral (gelo 08:40–11:00 + ensaio 10:00–11:00 → gelo até 10:00; a tela diz "Treino de gelo até 10:00 · ENSAIO às 10:00"); no meio do bloco, sai do geral inteiro; choque entre duas específicas é só aviso. Sem migração.
-- `2aeea26` **M + N:** o "Conferido" saiu do app inteiro (cartões, faixa, botão, conferência guiada, aviso ao publicar, rotas); a Escala abre por atividade e a grade está no topo, com letra de 14 a 15 px. Sem migração. **A API perde as rotas de conferir: promover o SITE primeiro e a API logo depois.**
-- `c2a52ff` **Cabeçalho compacto no celular** (até 720 px): a grade passou de ~920 px para ~307 px do topo a 375 px (321 e 353 px a 414 px). Visto: Administração, Supervisão e Direção com dados, a 360, 375 e 414 px. Não visto: Elenco com escala publicada, "Atenção do dia" aberta com dados, toque em aparelho de verdade. Botões "Hoje/Amanhã/Calendário" e visões têm 29–38 px de altura visível (área de toque de 44 px ao redor): pode ainda parecer pequeno. Sem migração.
-- `12f43a8` **Consertos pequenos da conferência no computador:** rodapé da Programação, papéis do Livro do Dia, "hoje" → "do dia", Direção sem "Gere o dia…", etiquetas das áreas em uma linha.
-- `36f402e` **Folga vence também na vaga do show:** a Escala não mostra mais gente de folga ocupando personagem (defeito antigo, desde 23/10); chamada de propósito com motivo continua aparecendo.
-- `2c0460b` **Conferência da sessão principal (27/10):** a Supervisão agora corrige ("Mudar horário", "Tirar do dia") a atividade só do dia que criou; o "×" do Livro do Dia ganhou 44 px de toque.
-- **Conferência da sessão principal (26/10 à noite):** os 20 arquivos de teste de API passaram; tsc (db, API, site), build e verificação de nomes passaram; vistas na tela, com dados, Administração (1360 e 375 px), Supervisão, Direção e Elenco (375 px), Livro do Dia (375 px) e impressão. **Não visto:** Supervisão, Direção e Elenco a 1360 px; Programação com "Janela flexível" a 375 px; janelas Ajustar/Mudar horário/Publicar abertas; "chamado na folga" na janela de Publicar; Meu Dia com dois locais; PDF de verdade; toque em aparelho.
-- **Segunda rodada de conferência (27/10, sessão principal), tudo visto na tela com dados:** Administração, Supervisão, Direção e Elenco a 1360 e 375 px; janelas Ajustar, Mudar horário, Publicar (com "chamada na folga" e vagas sem ninguém), Novo bloco com "Janela flexível" (1360 e 375); Programação; recusas da Supervisão e da Direção em português; Meu Dia com dois locais (contador subiu de 4 para 5); PDFs de verdade (1 página por atividade, com nomes e por pessoa; controles não saem no papel). Consertado: barra de baixo e "Atenção do dia" no celular (barra de ~216 para ~91 px). **Ainda não visto:** toque em aparelho de verdade; o app instalado (PWA).
-- **Para decidir depois:** "saída 13:30" na Minha escala vem do fim da janela do almoço, que não é a saída real da pessoa; a grade a 375 px começa a ~400 px do topo quando há "Atenção do dia", e a barra de baixo ocupa ~20% da altura; "Hoje/Amanhã/Calendário" e as abas medem 29–42 px de altura.
-- A senha das contas `teste.*` do banco de teste foi redefinida e gravada só em `artifacts/api-server/scripts/empresa-de-teste.local.json` (checkout principal, ignorado pelo git).
-
-## 4. Falta fazer (ordem sugerida)
+## 2. Falta fazer (ordem sugerida para entregar a Escala às Supervisões)
 | # | Pacote | Tam. | Migração | Observação |
 |---|---|---|---|---|
-| 0 | **O. Equipe por local na Programação** (seção 10): é o que falta para a Escala ser entregue às Supervisões; vem antes de G, H e J | G | **0088** | decidido em 28/10; código só com o "pode começar" |
-| 1 | **Promover** o que está na seção 2 e 3; depois renomear os tipos já existentes em produção (janela "Tipos de atividade"); "Trazer as novidades" no Teatro 11:30 e Boas Vindas do dia 22; "Refazer" no Opening de terça | — | 0085 | só quem constrói o app roda em produção; antes, `DB_POOL_MAX=3` na API (ver `docs/quando-o-app-cai.md`) |
-| 2 | **F. Chamadas** (desenho aprovado em 27/10 em `docs/desenho-chamadas-escala.md`; **F1 construída e commitada localmente em 27/10**: migração 0086, rotas e leitura na Escala; faltam F2 editor e F3 telas e aviso) (várias por show, configuráveis; ocupa tempo ou só informativa; aviso; quem = Livro do Dia) | G | **0086** | **desenhar a tela de configuração antes** e mostrar à usuária |
-| 3 | **Fase 2 do plano de construção: semana e equilíbrio** (gerar a semana; visão "Semana" só leitura com a contagem de shows de elenco limitado; interruptor "Conta para o equilíbrio" por show) | G | **0090** (a 0087 virou "Editar neste dia" e a 0088 a equipe por local) | é o "plano esquecido" do rodízio por semana; **pergunta nova: qual a regra de "limitado"** |
-| 4 | **G. Tempo disponível** (aviso a partir de 30 min, configurável em Locais) | M | **0089** | só Supervisão e Administração veem |
-| 5 | **H. Etapa 8: copiar de outro dia** (mostra quem ficou de fora e por quê) | M | não | |
+| 1 | **Preencher a equipe** de Snowland e da Acqua (Programação → "Equipe do local", marcar em lote ou "Sugerir pelas Escalas feitas") e conferir uma quinta-feira real: o Miguelito só em Snowland, o almoço de Snowland sem a Acqua, a grade sem colunas de gente da Acqua | — | — | **a usuária faz em produção**; quem confere só lê |
+| 2 | **H. Copiar de outro dia** (Etapa 8): a Supervisão copia um dia que funcionou; o app mostra quem ficou de fora e por quê (folga, outra equipe, local fechado) | M | não | **o próximo**: é o que mais poupa trabalho de quem monta sozinho; desenhar a janela antes e mostrar à usuária |
+| 3 | **G. Tempo disponível**: aviso quando alguém fica 30 min ou mais sem nada no dia; só Supervisão e Administração veem; o limite é configurável em Locais | M | **0090** | decisão 4 da seção 7 |
+| 4 | **J. Menos cliques**: cadastro de várias pessoas, ligar vários personagens ao show, repetir horários nas sessões, bloco em vários horários | M cada | não | perguntar à usuária quais partes incomodam mais e fazer só essas |
+| 5 | **"Uma escala só"**: visão "Todos os locais" na Atividade do dia (a linha do dia de cada pessoa com o local de cada atividade) | G | não | desenhar antes; depende da equipe preenchida |
 | 6 | **I. Formações no Livro do Dia** (criar do zero, renomear, arquivar) | M–G | talvez | conferir antes na tela com um show de mapa de palco |
-| 7 | **J. Menos cliques** (cadastro de várias pessoas, ligar vários personagens ao show, repetir horários nas sessões, bloco em vários horários) | M cada | não | |
-| 8 | **Fase 3: relatório do mês** | G | ? | só depois de um mês real de uso; definir o que entra e quem vê |
+| 7 | **Fase 3: relatório do mês** | G | ? | só depois de um mês real de uso |
+| — | **Trocar "folga" e "férias" por "No show" e "Recessos"** em todo o app | G | talvez | **sessão própria** (decisão de 27/10): telas, avisos, Registro e textos; a regra "folga vence a escala" continua, só muda o nome |
 
-A numeração das migrações é a prevista; a primeira livre hoje (28/10) é a **0088**.
+## 3. Em espera ou por decidir
+- **Fase 2 (semana e equilíbrio):** espera a Babi dizer a regra de "limitado" (quais shows contam para o equilíbrio). Migração: a primeira livre na hora.
+- **Pessoa em duas áreas** (Amanda e Antônio): dependia da equipe por local, que já existe. Falta conversar com a usuária como fica.
+- **Renomear "Escala do dia" para "Atividade do dia"** no resto do app (Livro do Dia, Solicitações, Registro, avisos): a aba e a folha já mudaram; o resto espera a decisão dela.
+- **Para decidir depois:** "saída 13:30" na Minha escala vem do fim da janela do almoço, que não é a saída real da pessoa; com a "Atenção do dia" aberta, a grade a 375 px começa a ~400 px do topo.
+- **Almoço com horário dividido:** quem tem "Snowland até 11:30" e "Acqua a partir de 12:30" cruza as duas janelas de almoço e aparece nos dois (só avisa; ver seção 10).
 
-## 5. Em espera (depende da Babi)
-- **K. "Onde a pessoa trabalha no dia":** virou o pacote **O** (seção 10, decidido em 28/10), inclusive o tempo de deslocamento, que é configurável e não espera mais a Babi.
-- **Pessoa em duas áreas** (Amanda e Antônio): depende de K.
-- **Regra de "limitado"** para a Fase 2 (quais shows contam para o equilíbrio).
+## 4. Não visto (vale para quem confere)
+- A equipe preenchida de verdade, o imprevisto do dia, o choque entre locais e o Livro do Dia com equipe, em produção.
+- Toque em aparelho de verdade e o app instalado (PWA).
+- O tempo para gerar um dia em produção com a equipe ligada (no banco de teste cada Escala leva ~7 s; produção não foi medida).
 
-## 6. Não visto na tela (antes de promover)
-A5 (Meu Dia com dois locais) e a linha de "chamado na folga" do A2; "Enviar minha parte" da Supervisão; Elenco a 1360 px e Supervisão a 1360 px; impressão em PDF; Meu Dia no navegador; "Gerar o mês" pela tela (rodízio); a tela do Livro do Dia no celular (janela de Refazer).
+## 5. Comandos e contas de teste
+Os comandos que funcionam nesta máquina estão no `AGENTS.md` (tipos, build, verificação de nomes, testes da API um arquivo por vez,
+migração no banco de TESTE). Para ver a tela com dados de verdade, a empresa de teste e o auxiliar de login estão em
+`docs/prompt-continuar-escala-2026-10-27.md` (seção 4); para ver sem servidor, `?amostra=1` com `sessionStorage["myasa-review-role"]`
+(`adm`/`sup`/`dir`/`mem`) e as chaves de amostra `&fechado=1`, `&outro=1`, `&equipe=1`, `&choques=1`.
+
+## 6. Histórico desta parte
+Até 28/10 este plano listava o que estava "enviado e não promovido" e "commitado e não enviado". Tudo isso está em produção desde
+28 a 30/10 (seção 1); o detalhe de cada commit fica no `git log` do ramo.
 
 ## 7. Decisões da usuária (não reabrir)
 1. **No show = folga.** Nada a construir.
@@ -74,6 +77,9 @@ A5 (Meu Dia com dois locais) e a linha de "chamado na folga" do A2; "Enviar minh
 9. **Supervisão vê tudo.** Quem pode mexer no Livro de um show: como hoje (Administração, Supervisão do local, responsável).
 10. **O "Conferido" sai do app inteiro** (pacote M); a Escala é o centro da tela e abre por atividade (pacote N).
 11. **Tipos já existentes em produção** são renomeados depois, pela janela "Tipos de atividade".
+12. **Equipe por local** (28/10): mora na Programação de cada local, por temporada; tudo o que está na seção 10, "O que foi decidido".
+13. **Tempo de ida entre locais é configurável** em Locais, pela Administração (28/10).
+14. **Quem não tem marca de equipe não é barrado no Livro do Dia** por estar num bloco de "todo mundo" ou de área de outro local (30/10): ela está nesses blocos em todos os locais, então eles não dizem onde ela está. Para quem tem marca, esses blocos contam como ocupado.
 
 ## 8. Regras de trabalho (valem para toda sessão)
 Português simples; dizer o que **não** foi visto; só commitar os arquivos da própria sessão, por caminho; máximo de duas sessões em paralelo e em arquivos diferentes; testes um arquivo por vez (o banco de teste tem 15 conexões); nunca escrever em produção sem pedir; dados de exemplo com nome de gente só em `import.meta.env.DEV`; migração em produção é de quem constrói o app.
@@ -183,6 +189,13 @@ A **Supervisão por local já existe e está certa** (Snowland: Vitinho, Deb, Ro
 
 **Ordem para promover (quem constrói o app):** backup → migração 0088 → API → site. (Conferido em 28/10: a 0087, "Editar neste dia", já está aplicada em produção, então a 0088 é a próxima da fila.) Depois, montar a equipe de Snowland e da Acqua com a
 sugestão automática e conferir uma quinta-feira real (o Miguelito só em Snowland; o almoço de Snowland sem a Acqua).
+
+**Revisão de 30/10/2026 (`da985e4`, em produção):** a conferência achou e corrigiu cinco problemas que só aparecem com a equipe preenchida:
+(1) cada local continuava listando o elenco inteiro: agora a Escala marca `foraDoLocal` em quem é da equipe de outro local e não tem nada ali,
+e a grade, as contagens, a impressão e o resumo deixam essa pessoa de fora (ela aparece em "No outro local"); (2) o Livro do Dia, o choque e a
+faixa "No outro local" ignoravam o "todo mundo" do outro local: agora uma regra só (`contaComoAtividadeDe`) faz "todo mundo" e área contarem
+para quem tem marca (decisão 14 da seção 7); (3) gerar o dia remontava os outros locais a cada Livro: agora uma vez por geração; (4) o
+cabeçalho dos dias e a barra do lote ficam fixos na janela da equipe; (5) a vigência mostra o ano.
 
 ### Riscos e o que fica de fora
 - **Desempenho:** a Escala do dia já faz uma leitura por local (`comOutrosLocais`); a regra do horário no Livro vai olhar a Escala do
