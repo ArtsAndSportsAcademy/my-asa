@@ -21,6 +21,7 @@ import { isUniqueViolation } from "../lib/erro-de-banco.js";
 import { exigirUuidNosParametros } from "../lib/uuid.js";
 import { FRASE_DESLOCAMENTO_MUDOU, FRASE_DESLOCAMENTO_SEM_VERSAO, diferencaDosPares, lerPares, paresGuardados, versaoDoDeslocamento } from "../services/escala-deslocamento.js";
 import { VIRADA_PADRAO, fraseDaViradaInvalida, viradaDoLocal } from "../lib/virada-do-dia.js";
+import { fraseDoTempoDisponivelInvalido, tempoDisponivelDoLocal } from "../lib/tempo-disponivel.js";
 
 const router: IRouter = Router();
 exigirUuidNosParametros(router, { id: "Registro não encontrado.", locationId: "Local não encontrado.", operationId: "Operação não encontrada." });
@@ -157,7 +158,7 @@ router.get("/locations", requireAuth, requireOrganization, async (req, res) => {
         .where(and(inArray(operationLocationsTable.locationId, locations.map((location) => location.id)), eq(operationLocationsTable.active, true), eq(operationsTable.organizationId, req.user!.organizationId)))
     : [];
   const operacaoDoLocal = new Map(vinculos.map((vinculo) => [vinculo.locationId, vinculo.operationName]));
-  res.json({ locations: locations.map((location) => ({ ...location, viradaDoDia: viradaDoLocal(location), operationName: operacaoDoLocal.get(location.id) ?? null })) });
+  res.json({ locations: locations.map((location) => ({ ...location, viradaDoDia: viradaDoLocal(location), tempoDisponivel: tempoDisponivelDoLocal(location), operationName: operacaoDoLocal.get(location.id) ?? null })) });
 });
 
 /**
@@ -246,6 +247,40 @@ router.put("/locations/:id/virada-do-dia", requireAuth, requireOrganization, req
       return novo;
     });
     res.json({ viradaDoDia: depois, alterado: true });
+  } catch {
+    // Falha de banco ou de rede: nada foi alterado, e a frase diz isso (não é erro de quem digitou).
+    res.status(500).json({ error: "INTERNAL_ERROR", message: "Não consegui salvar agora. Nada foi alterado; tente de novo." });
+  }
+});
+
+/**
+ * Aviso de tempo disponível do local (pacote G): liga ou desliga e diz a partir de quantos minutos livres entre duas atividades ele vale.
+ * Só a Administração muda; Direção e Supervisão veem o valor na lista de locais e na Atenção do dia.
+ */
+router.put("/locations/:id/tempo-disponivel", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user!;
+  if (actor.role !== "ADMIN") { res.status(403).json({ error: "ACESSO_NEGADO", message: `${actor.role === "DIR" ? "A Direção só lê o aviso de tempo disponível." : "Seu perfil não muda o aviso de tempo disponível."} Quem liga, desliga e escolhe os minutos é a Administração, em Cadastros, Locais.` }); return; }
+  const before = await locationInOrg(req.params.id as string, actor.organizationId);
+  if (!before) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
+  const ligado = req.body?.ligado, minutos = req.body?.minutos;
+  const invalida = fraseDoTempoDisponivelInvalido(ligado, minutos);
+  if (invalida) { res.status(400).json(invalida); return; }
+  const antes = tempoDisponivelDoLocal(before);
+  if (antes.ligado === ligado && antes.minutos === minutos) { res.json({ tempoDisponivel: antes, alterado: false }); return; }
+  try {
+    const depois = await db.transaction(async (tx) => {
+      const [next] = await tx.update(locationsTable).set({ tempoDisponivelLigado: ligado as boolean, tempoDisponivelMinutos: minutos as number, updatedAt: new Date() }).where(eq(locationsTable.id, before.id)).returning();
+      if (!next) throw new Error("Local não encontrado");
+      const novo = tempoDisponivelDoLocal(next);
+      const frase = (v: { ligado: boolean; minutos: number }) => (v.ligado ? `ligado, a partir de ${v.minutos} min` : "desligado");
+      await writeEntityHistory(req, {
+        category: "OPERATIONAL_CHANGE", action: "location.tempo_disponivel_alterado", title: "Tempo disponível alterado",
+        narrative: `${before.name}: o aviso de tempo disponível passa a ficar ${frase(novo)} (era ${frase(antes)}).`,
+        entityType: "location", entityId: next.id, actorId: actor.sub, orgId: actor.organizationId, beforeState: antes, afterState: novo,
+      }, tx as any);
+      return novo;
+    });
+    res.json({ tempoDisponivel: depois, alterado: true });
   } catch {
     // Falha de banco ou de rede: nada foi alterado, e a frase diz isso (não é erro de quem digitou).
     res.status(500).json({ error: "INTERNAL_ERROR", message: "Não consegui salvar agora. Nada foi alterado; tente de novo." });

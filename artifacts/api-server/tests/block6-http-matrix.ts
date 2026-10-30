@@ -95,6 +95,7 @@ export async function verifyBlock6HttpRoutes(c: Input) {
       ["POST", "/areas", { name: `${tag}_denied` }], ["PATCH", `/areas/${areaId}`, { name: tag }], ["DELETE", `/areas/${areaId}`],
       ["POST", "/locations", { name: `${tag}_denied` }], ["PATCH", `/locations/${locationId}`, { name: tag }], ["DELETE", `/locations/${locationId}`],
       ["PUT", `/locations/${locationId}/virada-do-dia`, { padrao: true }],
+      ["PUT", `/locations/${locationId}/tempo-disponivel`, { ligado: true, minutos: 30 }],
       ["PUT", "/locations/deslocamento", { baseVersao: null, pares: [] }],
       ["PUT", `/areas/${areaId}/locations/${locationId}/supervisor`, { supervisorId: c.supervisorId }],
       ["DELETE", `/areas/${areaId}/locations/${locationId}/supervisor`],
@@ -210,6 +211,9 @@ export async function verifyBlock6HttpRoutes(c: Input) {
     await call("PUT", "/locations/deslocamento", "ADMIN", 200, { baseVersao: null, pares: [] });
     await call("PUT", `/locations/${locationId}/virada-do-dia`, "ADMIN", 400, { abreAmanhaAPartirDe: "25:99", voltaAHojeAPartirDe: "05:00" });
     await call("PUT", `/locations/${locationId}/virada-do-dia`, "ADMIN", 200, { abreAmanhaAPartirDe: "19:00", voltaAHojeAPartirDe: "06:00" });
+    // Aviso de tempo disponível do local (pacote G): só a Administração muda; minutos fora de 5 a 240 são 400 com frase.
+    await call("PUT", `/locations/${locationId}/tempo-disponivel`, "ADMIN", 400, { ligado: true, minutos: 3 });
+    await call("PUT", `/locations/${locationId}/tempo-disponivel`, "ADMIN", 200, { ligado: true, minutos: 45 });
     await call("DELETE", `/locations/${locationId}`, "ADMIN", 200, { reason: "Encerramento" });
     await call("PATCH", `/locations/${locationId}`, "ADMIN", 400, { closed: false, reason: "  " });
     await call("PATCH", `/locations/${locationId}`, "ADMIN", 200, { closed: false, reason: "Retomada da operação" });

@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, boolean, unique, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, boolean, integer, unique, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { organizationsTable } from "./organization.js";
@@ -18,6 +18,9 @@ export const locationsTable = pgTable("locations", {
   escalaAbreAmanhaAPartir: text("escala_abre_amanha_a_partir").notNull().default("18:00"),
   /** ...e a partir desta hora (HH:MM) da manhã volta a abrir em hoje. */
   escalaVoltaAHojeAPartir: text("escala_volta_a_hoje_a_partir").notNull().default("05:00"),
+  /** Aviso de tempo disponível na Atenção do dia (0090): ligado ou não, e a partir de quantos minutos sem nada entre duas atividades ele vale. */
+  tempoDisponivelLigado: boolean("tempo_disponivel_ligado").notNull().default(true),
+  tempoDisponivelMinutos: integer("tempo_disponivel_minutos").notNull().default(30),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
