@@ -9,6 +9,7 @@ import {
   sampleShowsDoLocal, saveSampleEscala, saveSampleProgramacoes, todayISO, vocabularioDoLocal, type SampleEscalaState, type SampleProgramacao,
 } from "@/lib/review-escala";
 import { AtencaoDoDia, type ConflitoDaPessoa, type GrupoDeConflito } from "@/components/escala/atencao-do-dia";
+import { fraseDoBuraco, type TempoDisponivel } from "@/components/escala/tempo-disponivel";
 import { BlocoMenu } from "@/components/escala/bloco-menu";
 import { GradePessoa } from "@/components/escala/grade-pessoa";
 import { ResumoDoDia, soNoutroLocal, trabalhaNoDia } from "@/components/escala/resumo-do-dia";
@@ -49,6 +50,8 @@ export type Mexida = { pessoaId: string; pessoaNome: string; pessoaAreaNome: str
 export type Dia = { date: string; location: { id: string; name: string }; escala: { id: string; status: string; version: number; publishedAt: string | null; alteradaDesde: string | null } | null; programacao: { id: string; nome: string; vigenciaInicio: string; vigenciaFim: string } | null; areas: Area[]; pessoas: Pessoa[]; blocos: Bloco[]; mexidas?: Mexida[]; tipos?: TipoDoLocal[]; fechado?: { motivo: string };
   /** Equipe por local (pacote O): quem tem equipe na temporada mas nenhuma neste dia, e quem está em duas coisas em locais diferentes que não cabem. */
   semLocalHoje?: string[]; choquesEntreLocais?: ChoqueEntreLocais[];
+  /** Tempo disponível (pacote G): só chega para a Administração e a Supervisão, com o aviso ligado no local. */
+  tempoDisponivel?: TempoDisponivel;
   /** Mudanças de local só deste dia (imprevisto): onde a pessoa trabalha hoje em vez do que a Programação manda. */
   imprevistos?: ImprevistoDoDia[] };
 export type ImprevistoDoDia = { id: string; pessoaId: string; localId: string; localNome: string; inicio: string | null; fim: string | null; motivo: string | null; porNome: string | null };
@@ -217,7 +220,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
         if (!localId) return;
         if (review) {
           const d = sampleDia(localId, date) as Dia;
-          if (!cancelled) { setDia({ ...extrasDeAmostra({ ...d, mexidas: mexidasDeAmostra(d) }) }); setAreasMinhas(role === "sup" ? sampleAreasSupervisionadas(me, localId) : []); }
+          if (!cancelled) { setDia({ ...tempoDeAmostra(extrasDeAmostra({ ...d, mexidas: mexidasDeAmostra(d) }), role) }); setAreasMinhas(role === "sup" ? sampleAreasSupervisionadas(me, localId) : []); }
           return;
         }
         const r = await customFetch<{ dia: Dia; areasSupervisionadas: string[] }>(`/api/escalas/dia?locationId=${localId}&date=${date}`);
@@ -579,7 +582,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       </div>}
       {carregandoTela && !error && !dia && !minha && <div aria-busy="true" style={css("padding:16px;text-align:center;font-size:12.5px;color:var(--asa-label);background:#fff;border:1px dashed var(--asa-line-soft);border-radius:12px")}>Montando a escala…</div>}
       {showMinha && minha && <MinhaEscala minha={minha} date={date} onHoje={() => setDate(todayISO())} onConfirm={confirmarEscala} saving={saving}/>}
-      {!isMem && tab === "escala" && dia && <EscalaGrid dia={dia} review={review} canEdit={isAdm || areasMinhas.length > 0} editableAreaIds={null} onAdjust={ajustarCelulaEmLote} onHorario={mudarHorario} onEditarAtividade={editarAtividade} onRemoveManual={isAdm || areasMinhas.length > 0 ? removerEntradaManual : undefined} onEditManual={isAdm || areasMinhas.length > 0 ? ((b) => setManual({ bloco: b })) : undefined} onFolgaResolvida={folgaResolvida} saiu={saiuApi} localDoDia={isAdm || areasMinhas.length > 0 ? { mover: moverDeLocal, desfazer: desfazerImprevisto, locais: locais.filter((l) => l.id !== localId) } : undefined}/>} 
+      {!isMem && tab === "escala" && dia && <EscalaGrid dia={dia} review={review} canEdit={isAdm || areasMinhas.length > 0} editableAreaIds={null} onAdjust={ajustarCelulaEmLote} onHorario={mudarHorario} onEditarAtividade={editarAtividade} onRemoveManual={isAdm || areasMinhas.length > 0 ? removerEntradaManual : undefined} onEditManual={isAdm || areasMinhas.length > 0 ? ((b) => setManual({ bloco: b })) : undefined} onFolgaResolvida={folgaResolvida} saiu={saiuApi} onNovaAtividade={isAdm || areasMinhas.length > 0 ? (() => setManual({ bloco: null })) : undefined} localDoDia={isAdm || areasMinhas.length > 0 ? { mover: moverDeLocal, desfazer: desfazerImprevisto, locais: locais.filter((l) => l.id !== localId) } : undefined}/>} 
       {!isMem && tab === "prog" && localId && <ProgramacaoTab review={review} localId={localId} localName={operationLabel} date={date} dia={dia} canEdit={Boolean(local?.podeEditar)} onChanged={() => setRefresh((n) => n + 1)}/>}
     </div>
 
@@ -600,6 +603,23 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
     {confirmandoPublicacao && dia && <PublicarDialog dia={dia} dataLonga={`${WEEKDAY_LONG[weekdayOf(date)]}, ${fullDate(date)}`} republicar={confirmandoPublicacao.republicar} review={review} ocupado={busy === "publicar"} onClose={() => setConfirmandoPublicacao(null)}
       onConfirmar={() => { const { republicar } = confirmandoPublicacao; setConfirmandoPublicacao(null); void publicar(republicar); }}/>}
   </section>;
+}
+
+/**
+ * Só no modo amostra: `?tempo=1` põe o tempo disponível na Atenção do dia, como a Administração e a Supervisão o recebem (a Direção e o Elenco
+ * não recebem o campo, então o cartão e o número no resumo somem). Usa só os ids das pessoas do dia.
+ */
+function tempoDeAmostra(d: Dia, role: string): Dia {
+  if (new URLSearchParams(window.location.search).get("tempo") !== "1" || (role !== "adm" && role !== "sup")) return d;
+  const ids = d.pessoas.filter((p) => !p.folga && !p.foraDoLocal).map((p) => p.id);
+  if (ids.length < 7) return d;
+  const lado = { rotulo: "Ensaio", localId: d.location.id, localNome: d.location.name };
+  const buraco = (i: number, de: string, ate: string, minutos: number, extra: Partial<TempoDisponivel["avisos"][number]> = {}) => ({ pessoaId: ids[i]!, de, ate, minutos, antes: lado, depois: { ...lado, rotulo: "Show" }, ...extra });
+  return { ...d, tempoDisponivel: {
+    limite: 30,
+    avisos: [buraco(0, "10:00", "11:45", 105), buraco(1, "10:30", "12:00", 90), buraco(2, "15:00", "16:00", 60), buraco(3, "09:00", "09:45", 45), buraco(4, "14:15", "14:50", 35), buraco(5, "11:00", "11:30", 30, { minutosDeIda: 30, depois: { rotulo: "Aula", localId: "outro", localNome: "Acquamotion" } })],
+    diaDividido: [buraco(6, "09:30", "17:30", 480)],
+  } };
 }
 
 /** Só no modo amostra: `?fechado=1` mostra o dia em que o local não abre; `?outro=1` põe duas pessoas "no outro local" (a Escala diz onde estão em vez de contá-las). */
@@ -685,7 +705,7 @@ function useTelefone() {
 }
 
 /* ---------- aba Escala: grade pessoas × horários ---------- */
-function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario, onEditarAtividade, onRemoveManual, onEditManual, onFolgaResolvida, saiu, localDoDia }: { saiu?: SaiuApi; localDoDia?: LocalDoDiaApi; review: boolean; dia: Dia; canEdit: boolean; editableAreaIds: string[] | null; onHorario: (bloco: Bloco, pessoaId: string, horario: { inicio: string; fim: string | null; motivo?: string } | null) => Promise<string | null>; onAdjust: (bloco: Bloco, mudancas: Mudanca[], motivo?: string) => Promise<void>; onEditarAtividade?: (bloco: Bloco, edicao: EdicaoDaAtividade | null) => Promise<string | null>; onRemoveManual?: (allocationIds: string[]) => Promise<void>; onEditManual?: (bloco: Bloco) => void; onFolgaResolvida?: (userId: string) => Promise<void> }) {
+function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario, onEditarAtividade, onRemoveManual, onEditManual, onFolgaResolvida, saiu, localDoDia, onNovaAtividade }: { onNovaAtividade?: () => void; saiu?: SaiuApi; localDoDia?: LocalDoDiaApi; review: boolean; dia: Dia; canEdit: boolean; editableAreaIds: string[] | null; onHorario: (bloco: Bloco, pessoaId: string, horario: { inicio: string; fim: string | null; motivo?: string } | null) => Promise<string | null>; onAdjust: (bloco: Bloco, mudancas: Mudanca[], motivo?: string) => Promise<void>; onEditarAtividade?: (bloco: Bloco, edicao: EdicaoDaAtividade | null) => Promise<string | null>; onRemoveManual?: (allocationIds: string[]) => Promise<void>; onEditManual?: (bloco: Bloco) => void; onFolgaResolvida?: (userId: string) => Promise<void> }) {
   const [view, setView] = useState<"pessoa" | "atividade">("atividade");
   const [team, setTeam] = useState("todos");
   const [busca, setBusca] = useState("");
@@ -912,6 +932,10 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
         {temChoque(pessoaSelecionada, b) && <span style={css("font-size:12px;color:var(--esc-choque);font-weight:700")}>choque</span>}
       </div>)}
       {!blocosDe(pessoaSelecionada.id).length && <span style={css("font-size:12.5px;color:var(--asa-label)")}>Sem atividades neste dia.</span>}
+      {[...(dia.tempoDisponivel?.avisos ?? []), ...(dia.tempoDisponivel?.diaDividido ?? [])].filter((b) => b.pessoaId === pessoaSelecionada.id).sort((a, b) => a.de.localeCompare(b.de)).map((b) => <div key={`livre-${b.de}`} style={css("display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:12.5px;line-height:1.5;color:var(--asa-amber-dark);background:var(--asa-amber-pale);border:1px solid var(--asa-amber-stripe);border-radius:12px;padding:6px 11px")}>
+        <span style={css("flex:1 1 200px;min-width:0")}><strong>Tempo disponível:</strong>{` ${fraseDoBuraco(b)}.`}</span>
+        {onNovaAtividade && podeMexer(pessoaSelecionada) && <button type="button" className="esc-cell-adjust esc-hit" style={{ minHeight: 44 }} onClick={onNovaAtividade}>Adicionar atividade…</button>}
+      </div>)}
     </section>}
 
     <div style={css("height:16px")}/>

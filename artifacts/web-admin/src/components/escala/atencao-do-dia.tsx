@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { css } from "@/lib/dc-style";
 import type { Bloco, Dia } from "@/pages/escalas";
 import { faixa, textoDoBloco } from "./tipos";
+import { CartaoTempoDisponivel, pessoasComDiaDividido, pessoasComTempoDisponivel } from "./tempo-disponivel";
 import "./escala-tokens.css";
 
 const plural = (n: number, um: string, muitos: string) => `${n} ${n === 1 ? um : muitos}`;
@@ -40,7 +41,10 @@ export function AtencaoDoDia({ dia, vazios, grupos, canEdit, editableAreaIds, ti
   const choques = dia.choquesEntreLocais ?? [];
   const semLocal = (dia.semLocalHoje ?? []).filter((id) => nomeDe.has(id));
   const imprevistos = (dia.imprevistos ?? []).filter((i) => nomeDe.has(i.pessoaId));
-  const total = (imprevistos.length ? 1 : 0) + (choques.length ? 1 : 0) + (semLocal.length ? 1 : 0) + (mexidas.length ? 1 : 0) + (vazios.length ? 1 : 0) + grupos.length + chamadas.length + (alterada ? 1 : 0) + (semProgramacao ? 1 : 0);
+  // Tempo disponível: o campo só chega para a Administração e a Supervisão. Sem ele (ou sem ninguém), nada aparece — nem "0".
+  const tempo = dia.tempoDisponivel;
+  const comTempo = pessoasComTempoDisponivel(tempo, nomeDe), comDiaDividido = pessoasComDiaDividido(tempo, nomeDe);
+  const total = (comTempo + comDiaDividido > 0 ? 1 : 0) + (imprevistos.length ? 1 : 0) + (choques.length ? 1 : 0) + (semLocal.length ? 1 : 0) + (mexidas.length ? 1 : 0) + (vazios.length ? 1 : 0) + grupos.length + chamadas.length + (alterada ? 1 : 0) + (semProgramacao ? 1 : 0);
   const [aberto, setAberto] = useState(false);
   useEffect(() => { const abrir = () => setAberto(true); window.addEventListener("ge-abrir-atencao", abrir); return () => window.removeEventListener("ge-abrir-atencao", abrir); }, []);
   if (!total) return null;
@@ -50,6 +54,8 @@ export function AtencaoDoDia({ dia, vazios, grupos, canEdit, editableAreaIds, ti
     imprevistos.length ? plural(imprevistos.length, "mudança de local só de hoje", "mudanças de local só de hoje") : "",
     choques.length ? plural(new Set(choques.map((c) => c.pessoaId)).size, "pessoa que não cabe em dois locais", "pessoas que não cabem em dois locais") : "",
     semLocal.length ? plural(semLocal.length, "pessoa sem local hoje", "pessoas sem local hoje") : "",
+    comTempo ? plural(comTempo, "pessoa com tempo disponível", "pessoas com tempo disponível") : "",
+    comDiaDividido ? plural(comDiaDividido, "pessoa com dia dividido", "pessoas com dia dividido") : "",
     chamadas.length ? plural(chamadas.length, "chamada na folga", "chamadas na folga") : "",
     mexidas.length ? plural(mexidas.length, "mexida de outra área", "mexidas de outras áreas") : "",
     alterada ? "mudou depois de publicada" : "",
@@ -161,6 +167,8 @@ export function AtencaoDoDia({ dia, vazios, grupos, canEdit, editableAreaIds, ti
         </div>;
       })}
     </div>}
+
+    {tempo && comTempo + comDiaDividido > 0 && <CartaoTempoDisponivel tempo={tempo} pessoas={dia.pessoas}/>}
 
     {chamadas.map((p) => <div key={`folga-${p.id}`} style={css("display:flex;flex-wrap:wrap;align-items:center;gap:11px;background:var(--asa-late-bg);border:1px solid var(--asa-amber-stripe);border-radius:12px;padding:10px 13px;")}>
       <span style={css("font-size:12px;color:var(--asa-amber-dark);line-height:1.5;flex:1;min-width:220px;text-wrap:pretty")}>{`${p.name} está de folga neste dia e entrou na escala mesmo assim${p.chamadaNaFolga?.motivo ? ` — ${p.chamadaNaFolga.motivo}` : ""}. Falta decidir a folga: remarcar para outro dia ou deixar como está.`}</span>
