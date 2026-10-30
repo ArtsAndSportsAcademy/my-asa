@@ -396,7 +396,7 @@ export async function copiarParaODia(ator: Ator, pedido: PedidoDeCopia, simular:
       // Vagas dos Livros do Dia (H2): cada Livro muda na mesma transação, com a versão que o planejamento leu (se alguém mexeu antes, VersionConflictError).
       const livrosTrocados: { dailyBookId: string; show: string; trocas: VagaTrocada[] }[] = [];
       for (const pl of plano.livros) {
-        const r = await trocarVagasNoLivro({ dailyBookId: pl.livro.id, actorId: ator.sub, trocas: pl.trocas, origem: `cópia do dia ${pedido.origem}` }, { tx: tx as unknown as typeof db, depoisDoCommit });
+        const r = await trocarVagasNoLivro({ dailyBookId: pl.livro.id, actorId: ator.sub, trocas: pl.trocas, origem: `cópia do dia ${pedido.origem}`, versaoLida: pl.livro.version }, { tx: tx as unknown as typeof db, depoisDoCommit });
         if (r) livrosTrocados.push({ dailyBookId: pl.livro.id, show: pl.livro.titulo, trocas: r });
       }
 
@@ -526,6 +526,12 @@ export async function desfazerCopia(ator: Ator, eventoId: string): Promise<{ sta
     if (desativados.chamadas?.length) {
       const n = await tx.update(escalaChamadasTable).set({ active: true, updatedAt: agora }).where(and(inArray(escalaChamadasTable.id, desativados.chamadas), eq(escalaChamadasTable.active, false))).returning({ id: escalaChamadasTable.id });
       restaurados += n.length;
+    }
+    // Nada muda escondido (crivo 6): se o dia já está publicado (a cópia foi para um rascunho que depois saiu, ou para um dia publicado), tirar os
+    // itens muda o que o Elenco viu. O dia fica "alterada depois de publicada" e a Administração é avisada para republicar, como na própria cópia.
+    if ((desfeitos > 0 || restaurados > 0) && escalaPublicada(scale.status)) {
+      const [marcada] = await tx.update(scalesTable).set({ alteradaDesde: scale.alteradaDesde ?? agora, updatedAt: agora, version: scale.version + 1 }).where(eq(scalesTable.id, scale.id)).returning();
+      await avisarRepublicacaoPendente(tx as unknown as Exec, marcada ?? scale, `desfez a cópia do dia ${dm((ev.afterState as { origem?: string } | null)?.origem ?? scale.periodStart)}`);
     }
     await writeHistoryEvent({
       category: "SCALE", action: ACAO_COPIA_DESFEITA, title: "Cópia de outro dia desfeita",

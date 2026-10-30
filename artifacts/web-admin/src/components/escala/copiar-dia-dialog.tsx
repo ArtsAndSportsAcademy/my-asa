@@ -171,7 +171,7 @@ export function CopiarDiaDialog({ localId, localNome, dataInicial, onClose }: {
               {dias.map((d) => <button key={d} type="button" className={`cd-chip${destinos.includes(d) ? " cd-chip-on" : ""}`} aria-pressed={destinos.includes(d)} disabled={d === origem} onClick={() => alternar(d)}>{curto(d)}</button>)}
             </div>
             <div className="cd-atalhos">
-              <button type="button" className="cd-link" onClick={() => setDestinos([...new Set([dataInicial, ...proximas])].filter((d) => d !== origem).sort())}>Este e as próximas 3 {DIAS[dt(dataInicial).getDay()]}s</button>
+              <button type="button" className="cd-link" onClick={() => setDestinos([...new Set([dataInicial, ...proximas])].filter((d) => d !== origem).sort())}>{[0, 6].includes(dt(dataInicial).getDay()) ? "Este e os próximos" : "Este e as próximas"} 3 {DIAS[dt(dataInicial).getDay()]}s</button>
               <button type="button" className="cd-link" onClick={() => setDestinos([dataInicial])}>Só este dia</button>
               <label className="cd-outro">Outro dia <input type="date" value={outroDia} min={hojeISO()} onChange={(e) => setOutroDia(e.target.value)}/></label>
               <button type="button" className="cd-link" disabled={!outroDia} onClick={acrescentarOutro}>Acrescentar</button>
@@ -193,7 +193,7 @@ export function CopiarDiaDialog({ localId, localNome, dataInicial, onClose }: {
         </>}
 
         {etapa === "conferir" && <>
-          <p className="cd-explica">De <strong>{longo(origem)}</strong>{precisaEscolherVersao ? ` (versão ${versao === "publicada" ? "publicada" : "de agora"})` : ""}. Nada foi gravado ainda.</p>
+          <p className="cd-explica">De <strong>{longo(origem)}</strong>{precisaEscolherVersao ? ` (versão ${versao === "publicada" ? "publicada" : "de agora"})` : ""}. {copiando ? (copiando.feitos === 0 ? "Gravando o primeiro dia…" : `${copiando.feitos} de ${copiando.total} ${copiando.feitos === 1 ? "dia já copiado" : "dias já copiados"}; gravando o próximo…`) : "Nada foi gravado ainda."}</p>
           {destinos.map((d) => {
             const p = previas[d];
             const r = p?.resumo;

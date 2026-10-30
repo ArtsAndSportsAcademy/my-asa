@@ -20,6 +20,7 @@ import {
 } from "@workspace/db";
 import type { EscalaDia } from "./escala-dia.js";
 import { carregarRegrasDoDia } from "./regras-de-escala.js";
+import { LeiturasDoMes } from "./leituras-do-mes.js";
 import type { TrocaDeVaga } from "../routes/daily-book.js";
 
 export type Vaga = { assignmentId: string; chave: string; personagem: string; userId: string | null; manual: boolean };
@@ -90,13 +91,15 @@ export async function planejarVagas(input: {
     aviso.set(chave, { tipo, pessoaId: userId, pessoa: nome, frase: `${frase(nome)} Fica de fora de: ${onde}.` });
   };
   let vagasCopiadas = 0, jaEstavaTotal = 0;
+  // As regras de cada Livro olham a Escala dos outros locais no mesmo dia (equipe por local): lidas uma vez e reaproveitadas de um Livro para o outro.
+  const leituras = new LeiturasDoMes();
   for (const origem of input.livrosOrigem) {
     const comPessoa = origem.vagas.filter((v) => v.userId);
     if (!comPessoa.length) continue;
     const destino = input.livrosDestino.find((l) => mesmoLivro(l, origem));
     if (!destino) { foraDe.push({ tipo: "livro_nao_gerado", frase: `O Livro de ${origem.titulo} ainda não foi gerado neste dia, então as vagas dele não foram copiadas. A Administração gera o dia em "Gerar Escala e Livros"; depois copie de novo.` }); continue; }
     if (destino.status === "EXECUTED") { foraDe.push({ tipo: "livro_encerrado", frase: `O Livro de ${origem.titulo} deste dia já foi executado e não muda.` }); continue; }
-    const regras = await carregarRegrasDoDia({ eventId: destino.agendaEventId, userIds: [...new Set(comPessoa.map((v) => v.userId!))], date: input.destino, operationId: input.operationId });
+    const regras = await carregarRegrasDoDia({ eventId: destino.agendaEventId, userIds: [...new Set(comPessoa.map((v) => v.userId!))], date: input.destino, operationId: input.operationId, leituras });
     const porChave = new Map(destino.vagas.map((v) => [v.chave, v]));
     const trocas: TrocaDeVaga[] = [];
     const ficam = new Map<string, string>(); // vaga de destino → pessoa que a cópia põe nela

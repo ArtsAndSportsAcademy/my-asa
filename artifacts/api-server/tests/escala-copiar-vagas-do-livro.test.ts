@@ -12,6 +12,8 @@ import {
   showBookScenesTable, showBooksTable, userRolesTable, usersTable,
 } from "@workspace/db";
 import app from "../src/application.js";
+import { trocarVagasNoLivro } from "../src/routes/daily-book.js";
+import { VersionConflictError } from "../src/lib/versioning.js";
 import { signAccessToken } from "../src/lib/jwt.service.js";
 
 let passed = 0;
@@ -146,6 +148,19 @@ async function run() {
     // ── Livro que não foi gerado no destino ──
     const semLivro = (await asPat("POST", "/escalas/dia/copiar", pedido({ destino: SEM_LIVRO, simular: true }))).body.resumo as Resumo;
     assert(semLivro.copia.vagas === 0 && semLivro.foraDe.some((f) => f.tipo === "livro_nao_gerado" && /ainda não foi gerado/.test(f.frase)), "Livro não gerado no destino: a prévia diz, e nada é copiado");
+
+    // ── conferência de 30/10: a gravação usa a versão do Livro que a conferência leu; se alguém mexeu no meio, nada é gravado ──
+    {
+      const alvo = vaga(await dia(DEST), "BL 01");
+      const [linha] = await db.select({ dailyBookId: dailyBookAssignmentsTable.dailyBookId }).from(dailyBookAssignmentsTable).where(eq(dailyBookAssignmentsTable.id, alvo.assignmentId));
+      const [livro] = await db.select().from(dailyBooksTable).where(eq(dailyBooksTable.id, linha!.dailyBookId));
+      let recusou = false;
+      try {
+        await trocarVagasNoLivro({ dailyBookId: livro!.id, actorId: admin.id, trocas: [{ assignmentId: alvo.assignmentId, para: { userId: null, status: "OPEN", manual: false } }], origem: "teste", versaoLida: livro!.version - 1 }, { tx: db, depoisDoCommit: [] });
+      } catch (err) { recusou = err instanceof VersionConflictError; }
+      const [depoisDaRecusa] = await db.select().from(dailyBooksTable).where(eq(dailyBooksTable.id, livro!.id));
+      assert(recusou && depoisDaRecusa!.version === livro!.version, "versão do Livro diferente da lida na conferência: recusa e não grava nada");
+    }
 
     // ── destino publicado: marca 'alterada depois de publicada' ──
     const escalaDest = (await dia(DEST)).escala!.id;

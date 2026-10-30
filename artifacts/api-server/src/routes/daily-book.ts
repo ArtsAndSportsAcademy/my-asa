@@ -2663,7 +2663,8 @@ export type VagaTrocada = { assignmentId: string; antes: VagaGravada; depois: Va
  * para o Registro e para o desfazer. Livro executado ou cancelado não muda (devolve false).
  */
 export async function trocarVagasNoLivro(
-  input: { dailyBookId: string; actorId: string; trocas: TrocaDeVaga[]; origem: string },
+  /** `versaoLida`: a versão do Livro que quem planejou leu. Se alguém mexeu no Livro depois disso, VersionConflictError (nada é gravado) em vez de passar por cima. */
+  input: { dailyBookId: string; actorId: string; trocas: TrocaDeVaga[]; origem: string; versaoLida?: number },
   dentro: { tx: typeof db; depoisDoCommit: (() => void)[] },
 ): Promise<VagaTrocada[] | false> {
   const exec = dentro.tx;
@@ -2674,7 +2675,9 @@ export async function trocarVagasNoLivro(
   const antes = new Map(antesRows.map((r) => [r.id, { userId: r.userId, status: (r.status === "ASSIGNED" ? "ASSIGNED" : "OPEN") as "ASSIGNED" | "OPEN", manual: r.manual }]));
   const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(book.id, exec) };
   const agora = new Date();
-  await mutateDailyBookEm(exec, book.id, book.version, async (tx) => {
+  const versao = input.versaoLida ?? book.version;
+  if (versao !== book.version) throw new VersionConflictError("Livro do Dia");
+  await mutateDailyBookEm(exec, book.id, versao, async (tx) => {
     for (const t of input.trocas) {
       await tx.update(dailyBookAssignmentsTable).set({ userId: t.para.userId, status: t.para.status, manual: t.para.manual, updatedAt: agora }).where(eq(dailyBookAssignmentsTable.id, t.assignmentId));
     }

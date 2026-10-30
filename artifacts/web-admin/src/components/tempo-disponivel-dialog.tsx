@@ -20,7 +20,8 @@ const fraseDoServidor = (err: unknown) => {
 
 /** "Tempo disponível" de um local: liga ou desliga o aviso da Atenção do dia e escolhe a partir de quantos minutos livres ele vale. Só a Administração abre. */
 export function TempoDisponivelDialog({ local, review, onClose, onSaved }: { local: { id: string; name: string; tempoDisponivel?: TempoDisponivelDoLocal }; review: boolean; onClose: () => void; onSaved: (valor: TempoDisponivelDoLocal) => void }) {
-  const atual = local.tempoDisponivel ?? TEMPO_DISPONIVEL_PADRAO;
+  // `atual` é o que a janela leu ao abrir (vai junto ao salvar: se outra pessoa salvou antes, o servidor recusa com 409 e a janela passa a mostrar o que vale).
+  const [atual, setAtual] = useState<TempoDisponivelDoLocal>(local.tempoDisponivel ?? TEMPO_DISPONIVEL_PADRAO);
   const [ligado, setLigado] = useState(atual.ligado);
   const [minutos, setMinutos] = useState(String(atual.minutos));
   const [saving, setSaving] = useState(false);
@@ -36,10 +37,14 @@ export function TempoDisponivelDialog({ local, review, onClose, onSaved }: { loc
   const gravar = async (valor: TempoDisponivelDoLocal) => {
     setSaving(true); setErro("");
     try {
-      if (!review) await customFetch(`/api/locations/${local.id}/tempo-disponivel`, { method: "PUT", body: JSON.stringify(valor) });
+      if (!review) await customFetch(`/api/locations/${local.id}/tempo-disponivel`, { method: "PUT", body: JSON.stringify({ ...valor, antes: atual }) });
       onSaved(valor);
       onClose();
-    } catch (err) { setErro(fraseDoServidor(err)); } finally { setSaving(false); }
+    } catch (err) {
+      setErro(fraseDoServidor(err));
+      const valeAgora = err instanceof ApiError && err.status === 409 ? (err.data as { tempoDisponivel?: TempoDisponivelDoLocal } | null)?.tempoDisponivel : undefined;
+      if (valeAgora) { setAtual(valeAgora); setLigado(valeAgora.ligado); setMinutos(String(valeAgora.minutos)); onSaved(valeAgora); }
+    } finally { setSaving(false); }
   };
   const salvar = (event: FormEvent) => {
     event.preventDefault();

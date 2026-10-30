@@ -254,7 +254,7 @@ Lido o código dos três pacotes; testes com o código final, um arquivo por vez
 dia, permission-matrix e block6. `tsc` da API limpo. Vista na tela, com a API de teste e a Supervisão de Patinadores: a janela "Copiar de outro
 dia" (origens, "os próximos 3", conferência de 4 sábados, cópia de 22 itens, "Desfazer cópia") a 1360 e 375 px.
 
-**Achados (nenhum corrigido ainda):**
+**Achados (todos corrigidos na mesma data, ver o fim desta seção):**
 1. **Desfazer depois de publicar muda o dia publicado sem avisar.** Se a cópia foi para um rascunho e o dia foi publicado depois, o
    "Desfazer cópia" tira os itens sem marcar "alterada depois de publicada" nem avisar a Administração (crivo 6). O desfazer de uma cópia em
    dia já publicado também não avisa. `desfazerCopia` em `services/escala-copia.ts`.
@@ -267,3 +267,11 @@ dia" (origens, "os próximos 3", conferência de 4 sábados, cópia de 22 itens,
 7. **Tempo:** a conferência de 4 dias levou ~50 s e a cópia ~15 s por dia no banco de teste (lento por natureza); produção não medida.
    A janela mostra o andamento, então não fica muda.
 8. **G, limite em Locais:** duas pessoas da Administração salvando ao mesmo tempo, vale a última (sem conferência de versão). Baixo risco.
+
+**Correções (30/10/2026):** (1) desfazer em dia publicado marca "alterada depois de publicada", sobe a versão e avisa a Administração;
+(2) a cópia das vagas grava com a versão do Livro que a conferência leu (se alguém mexeu no meio, 409 e nada é gravado no dia); (3) o
+desfazer que deu certo diz "Desfiz a cópia de N dias"; (4) durante a gravação, "Gravando o primeiro dia…" / "N de M dias já copiados";
+(5) "Este e os próximos 3 sábados/domingos"; (6) no celular a janela tem 16 px dos dois lados; (7) as regras do Livro são lidas uma vez
+por cópia e reaproveitadas de um Livro para o outro; (8) o limite do tempo disponível manda o valor lido ao abrir e recebe 409 com a frase
+se outra pessoa salvou antes. Testes: escala-copiar-de-outro-dia (51), escala-copiar-vagas-do-livro (27), escala-tempo-disponivel (66).
+Vistos na tela com a API de teste a 375 px: (3), (4), (5) e (6). Não visto na tela: a janela do tempo disponível recebendo o 409.

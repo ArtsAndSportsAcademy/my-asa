@@ -266,6 +266,13 @@ router.put("/locations/:id/tempo-disponivel", requireAuth, requireOrganization, 
   const invalida = fraseDoTempoDisponivelInvalido(ligado, minutos);
   if (invalida) { res.status(400).json(invalida); return; }
   const antes = tempoDisponivelDoLocal(before);
+  // Duas pessoas com a janela aberta (crivo 19): a tela manda o que leu ao abrir; se outra pessoa salvou antes, nada é gravado e a frase diz o que vale.
+  const lido = req.body?.antes as { ligado?: unknown; minutos?: unknown } | undefined;
+  if (lido && (lido.ligado !== antes.ligado || lido.minutos !== antes.minutos)) {
+    const frase = (v: { ligado: boolean; minutos: number }) => (v.ligado ? `ligado, a partir de ${v.minutos} min` : "desligado");
+    res.status(409).json({ error: "VERSAO_MUDOU", message: `Outra pessoa mudou o tempo disponível de ${before.name} enquanto você editava: agora está ${frase(antes)}. Nada foi salvo; confira e salve de novo se ainda quiser mudar.`, tempoDisponivel: antes });
+    return;
+  }
   if (antes.ligado === ligado && antes.minutos === minutos) { res.json({ tempoDisponivel: antes, alterado: false }); return; }
   try {
     const depois = await db.transaction(async (tx) => {

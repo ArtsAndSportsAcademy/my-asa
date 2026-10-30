@@ -190,7 +190,13 @@ async function run() {
     const dm = await dia(DEST_MEXIDO);
     const tm = achar(dm, "TREINO GELO ESPECIAL")!;
     assert((await asAdmin("POST", "/escalas/dia/ajustes", { locationId: local!.id, date: DEST_MEXIDO, sourceKey: tm.key, userId: dana.id, action: "REMOVER" })).status === 200, "alguém tira a Dana do treino depois da cópia");
+    // Conferência de 30/10: o dia foi publicado DEPOIS da cópia; desfazer muda o que o Elenco viu, então marca e avisa (crivo 6).
+    const escMexido = (await dia(DEST_MEXIDO)).escala!.id;
+    await db.update(scalesTable).set({ status: "PUBLISHED", publishedAt: new Date(), alteradaDesde: null }).where(eq(scalesTable.id, escMexido));
+    const antesDoDesfazer = (await db.select().from(scalesTable).where(eq(scalesTable.id, escMexido)))[0]!;
     const desMexido = await asPat("POST", "/escalas/dia/copiar/desfazer", { eventoId: mexido.body.eventoId });
+    const depoisDoDesfazer = (await db.select().from(scalesTable).where(eq(scalesTable.id, escMexido)))[0]!;
+    assert(depoisDoDesfazer.alteradaDesde !== null && depoisDoDesfazer.version === antesDoDesfazer.version + 1, "desfazer num dia publicado depois da cópia marca 'alterada depois de publicada' e sobe a versão");
     assert(desMexido.status === 200 && desMexido.body.ok === false && (desMexido.body.naoDesfeitos as string[]).some((f) => /ajuste/.test(f)), "desfazer diz o que já tinha sido mexido e não pôde voltar");
 
     // ── versão da origem: se a origem foi publicada e mudou depois, pede a escolha ──

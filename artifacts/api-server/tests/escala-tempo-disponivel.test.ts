@@ -199,6 +199,13 @@ async function run() {
       const r = await asAdmin("PUT", caminho, corpo);
       assert(r.status === 400 && /minutos|ligado|desligado/.test(r.text), `valor fora da lista é 400 com a frase (${JSON.stringify(corpo)})`);
     }
+    // Conferência de 30/10: duas pessoas com a janela aberta. Quem abriu com um valor que já mudou recebe 409 com a frase e o que vale; nada muda.
+    const valeAgora = ((await asAdmin("GET", "/locations")).body.locations as { id: string; tempoDisponivel: { ligado: boolean; minutos: number } }[]).find((l) => l.id === snow!.id)!.tempoDisponivel;
+    const velho = await asAdmin("PUT", caminho, { ligado: true, minutos: 55, antes: { ligado: valeAgora.ligado, minutos: valeAgora.minutos + 5 } });
+    assert(velho.status === 409 && velho.body.error === "VERSAO_MUDOU" && /Outra pessoa/.test(velho.text) && velho.body.tempoDisponivel?.minutos === valeAgora.minutos, "salvar sobre um valor que outra pessoa mudou: 409 com a frase e o valor de agora");
+    const naoMudou = ((await asAdmin("GET", "/locations")).body.locations as { id: string; tempoDisponivel: { minutos: number } }[]).find((l) => l.id === snow!.id)!.tempoDisponivel;
+    assert(naoMudou.minutos === valeAgora.minutos, "a recusa não gravou nada");
+    assert((await asAdmin("PUT", caminho, { ligado: valeAgora.ligado, minutos: valeAgora.minutos, antes: valeAgora })).status === 200, "com o valor certo de quando abriu, o pedido passa");
     assert((await asAdmin("PUT", "/locations/nao-e-um-id/tempo-disponivel", { ligado: true, minutos: 30 })).status === 404, "id quebrado na URL é 404 com frase");
     assert((await asAdmin("PUT", `/locations/${localDeFora!.id}/tempo-disponivel`, { ligado: true, minutos: 30 })).status === 404, "local de outra casa não é encontrado");
     const igual = await asAdmin("PUT", caminho, { ligado: true, minutos: 30 });

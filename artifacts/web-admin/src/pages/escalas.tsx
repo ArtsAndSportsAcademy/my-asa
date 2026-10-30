@@ -157,7 +157,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
   const [gerarMesAberto, setGerarMesAberto] = useState(false);
   // "Copiar de outro dia": a janela aberta e, depois de copiar, a faixa com o "Desfazer cópia" (um evento do Registro por dia copiado).
   const [copiarAberto, setCopiarAberto] = useState(false);
-  const [copiaFeita, setCopiaFeita] = useState<{ texto: string; eventoIds: string[]; desfazendo: boolean } | null>(null);
+  const [copiaFeita, setCopiaFeita] = useState<{ texto: string; eventoIds: string[]; desfazendo: boolean; desfeita?: boolean } | null>(null);
   // Publicar e republicar pedem confirmação: a janela diz quantas pessoas são avisadas, quais Livros saem juntos e o que ainda pede atenção.
   const [confirmandoPublicacao, setConfirmandoPublicacao] = useState<{ republicar: boolean } | null>(null);
   const [dia, setDia] = useState<Dia | null>(null);
@@ -301,11 +301,17 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
     if (!copiaFeita || copiaFeita.desfazendo) return;
     setCopiaFeita({ ...copiaFeita, desfazendo: true });
     const frases: string[] = [];
+    let desfeitos = 0;
     for (const eventoId of copiaFeita.eventoIds) {
-      try { const r = await customFetch<{ ok: boolean; message: string }>("/api/escalas/dia/copiar/desfazer", { method: "POST", body: JSON.stringify({ eventoId }) }); if (!r.ok) frases.push(r.message); }
+      try { const r = await customFetch<{ ok: boolean; message: string }>("/api/escalas/dia/copiar/desfazer", { method: "POST", body: JSON.stringify({ eventoId }) }); if (r.ok) desfeitos += 1; else frases.push(r.message); }
       catch (err) { frases.push(errMsg(err, "Não consegui desfazer um dos dias. Nada foi alterado nele.")); }
     }
-    setCopiaFeita(null);
+    // Quem desfez precisa ver que terminou (crivo 14): a faixa fica alguns segundos com a frase, sem o botão; o que não deu certo vai para o aviso de erro.
+    if (desfeitos) {
+      const texto = `Desfiz a cópia ${desfeitos === 1 ? "de 1 dia" : `de ${desfeitos} dias`}.${frases.length ? " Em parte dos dias, nem tudo voltou: veja o aviso." : ""}`;
+      setCopiaFeita({ texto, eventoIds: [], desfazendo: false, desfeita: true });
+      window.setTimeout(() => setCopiaFeita((atual) => (atual?.desfeita ? null : atual)), 6000);
+    } else setCopiaFeita(null);
     if (frases.length) setError(frases.join(" "));
     setRefresh((n) => n + 1);
   };
@@ -593,7 +599,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
     {manual && dia && !manual.bloco && <AtividadeLoteDialog tipos={dia.tipos ?? []} pessoas={dia.pessoas} areas={dia.areas} blocos={dia.blocos} areasQueSupervisiona={isAdm ? null : areasMinhas} saving={busy === "manual"} onClose={() => setManual(null)} onSubmit={criarEntradaManual}/>}
     {desfazerLote && <div className="ge-desfazer" role="status"><span>{desfazerLote.texto}</span><button type="button" onClick={() => void desfazerAtividade()}>Desfazer</button></div>}
     {copiaFeita && <div className="ge-desfazer" role="status"><span>{copiaFeita.texto}</span>
-      <button type="button" disabled={copiaFeita.desfazendo} onClick={() => void desfazerCopia()}>{copiaFeita.desfazendo ? "Desfazendo…" : "Desfazer cópia"}</button>
+      {!copiaFeita.desfeita && <button type="button" disabled={copiaFeita.desfazendo} onClick={() => void desfazerCopia()}>{copiaFeita.desfazendo ? "Desfazendo…" : "Desfazer cópia"}</button>}
       <button type="button" disabled={copiaFeita.desfazendo} aria-label="Fechar o aviso" onClick={() => setCopiaFeita(null)}>×</button></div>}
     {copiarAberto && !review && localId && <CopiarDiaDialog localId={localId} localNome={operationLabel} dataInicial={date} onClose={aoFecharCopia}/>}
 

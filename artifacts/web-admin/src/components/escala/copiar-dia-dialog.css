@@ -45,7 +45,7 @@
 .cd-campo textarea{min-height:64px;border:1px solid #d9d2ea;border-radius:10px;padding:8px 12px;font:500 15px Manrope,sans-serif;width:100%;box-sizing:border-box;resize:vertical}
 .cd-resultado{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:1.5;color:#1b1630}
 @media (max-width:640px){
-  .shows-dialog.cd-dialog{width:calc(100vw - 16px)}
+  .shows-dialog.cd-dialog{width:calc(100vw - 32px)}
   .cd-chips{grid-template-columns:repeat(3,1fr)}
   .shows-dialog.cd-dialog .shows-dialog-footer{flex-wrap:wrap}
   .shows-dialog.cd-dialog .shows-dialog-footer button{flex:1 1 30%}
