@@ -6,6 +6,14 @@
 /* O miolo é uma coluna flex e a grade tem overflow:hidden: sem isto ela encolhia até caber no miolo (127 px) e não sobrava nada para rolar, então só se viam duas pessoas. */
 .eq-conteudo>*{flex:none}
 .eq-explica{margin:0;font-size:13px;line-height:1.55;color:#4a4361}
+/* A instrução é a primeira coisa que se lê: o que tocar e o que fazer no fim. As regras ficam recolhidas em "Como a equipe funciona". */
+.eq-instrucao{margin:0;padding:10px 13px;border-radius:12px;background:#f3ebff;border:1px solid #d8c8fb;font-size:14px;line-height:1.5;color:#2f1a6b}
+.eq-como>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font:700 12.5px Manrope,sans-serif;color:#5b23c9}
+.eq-como[open]>summary{margin-bottom:4px}
+/* "todos os dias" ao lado do nome: um atalho por pessoa, pequeno para não competir com os dias. */
+.eq-todos{flex:none;min-height:32px;margin-left:auto;padding:4px 9px;border:1px solid #d9d2ea;border-radius:999px;background:#fff;font:700 11.5px Manrope,sans-serif;color:#5b23c9;cursor:pointer;white-space:nowrap}
+.eq-todos:hover{background:#f6f0ff}
+.eq-todos:disabled{opacity:.5;cursor:default}
 .eq-resumo{margin:0;font:700 13px Manrope,sans-serif;color:#2f1a6b}
 .eq-nota{margin:0;font-size:12.5px;line-height:1.5;color:#6b6482}
 .eq-aviso{margin:0;padding:10px 13px;border-radius:12px;background:#eaf7ef;border:1px solid #bfe3cc;font-size:13px;color:#14532d}

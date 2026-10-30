@@ -66,6 +66,8 @@ export function EquipeDialog({ programacaoId, programacaoNome, vigencia, localNa
   const [grade, setGrade] = useState<Grade>({});
   const [busca, setBusca] = useState(""), [areaId, setAreaId] = useState("");
   const [marcadas, setMarcadas] = useState<string[]>([]);
+  // "Marcar várias pessoas de uma vez" (30/10: a usuária confundiu a caixinha de escolher com os dias): o lote e as caixinhas só aparecem quando pedidos.
+  const [emLote, setEmLote] = useState(false);
   const [diasDoLote, setDiasDoLote] = useState<number[]>(DIAS_UTEIS);
   const [aberta, setAberta] = useState<string | null>(null);
   const [sugestao, setSugestao] = useState<SugestaoDaApi | null>(null), [pedindoSugestao, setPedindoSugestao] = useState(false);
@@ -119,6 +121,20 @@ export function EquipeDialog({ programacaoId, programacaoNome, vigencia, localNa
       return novo;
     });
   };
+  const todosOsDias = (userId: string) => DIAS.every((d) => (grade[userId]?.[d.w] ?? []).length > 0);
+  /** Liga os 7 dias da pessoa (o dia que já tem horário fica como está); se já estavam todos ligados, tira todos. */
+  const alternarTodos = (userId: string) => {
+    setAviso("");
+    setGrade((g) => {
+      const tinha = DIAS.every((d) => (g[userId]?.[d.w] ?? []).length > 0);
+      const novo: Grade = { ...g };
+      if (tinha) { delete novo[userId]; return novo; }
+      const dias = { ...(novo[userId] ?? {}) };
+      for (const d of DIAS) if (!(dias[d.w]?.length)) dias[d.w] = [{ inicio: null, fim: null }];
+      novo[userId] = dias;
+      return novo;
+    });
+  };
   const alternarMarca = (userId: string) => setMarcadas((m) => m.includes(userId) ? m.filter((x) => x !== userId) : [...m, userId]);
   const alternarDiaDoLote = (w: number) => setDiasDoLote((d) => d.includes(w) ? d.filter((x) => x !== w) : [...d, w]);
 
@@ -162,13 +178,20 @@ export function EquipeDialog({ programacaoId, programacaoNome, vigencia, localNa
     <div className="shows-dialog eq-dialog" role="dialog" aria-modal="true" aria-labelledby={`${id}-titulo`}>
       <header className="shows-dialog-header"><div><h2 id={`${id}-titulo`}>Equipe de {localName}</h2><p>{programacaoNome} · {vigencia}</p></div><button type="button" onClick={tentarFechar} aria-label="Fechar"><X size={18}/></button></header>
       <div ref={conteudoRef} className="shows-dialog-content eq-conteudo">
-        <p className="eq-explica">Marque em que dias da semana cada pessoa trabalha em {localName} nesta Programação. Quem ainda não tem marca em nenhum local continua entrando em tudo, como antes. Quem tem marca só entra nos blocos de <b>todo mundo</b> e de <b>área</b> do local e do dia marcados; blocos de grupo, de pessoas escolhidas pelo nome e os shows não mudam.</p>
+        <p className="eq-instrucao">{podeEditar
+          ? <>Toque nos <b>dias</b> em que cada pessoa trabalha em {localName}. O dia marcado fica roxo. No fim, <b>Salvar equipe</b>.</>
+          : <>O dia em roxo é o dia em que a pessoa trabalha em {localName}.</>}</p>
+        <details className="eq-como">
+          <summary>Como a equipe funciona</summary>
+          <p className="eq-explica">Quem ainda não tem marca em nenhum local continua entrando em tudo, como antes. Quem tem marca só entra nos blocos de <b>todo mundo</b> e de <b>área</b> do local e do dia marcados; blocos de grupo, de pessoas escolhidas pelo nome e os shows não mudam. Tocar no nome da pessoa abre o horário de cada dia (opcional): sem horário, ela trabalha o dia inteiro aqui.</p>
+        </details>
         {carregando && <p className="eq-nota" role="status">Abrindo a equipe…</p>}
         {!carregando && pessoas.length > 0 && <>
           <p className="eq-resumo" aria-live="polite">{quantasPessoas === 0 ? "Ninguém marcado ainda neste local." : `${quantasPessoas} ${quantasPessoas === 1 ? "pessoa marcada" : "pessoas marcadas"} neste local.`}</p>
           <div className="eq-filtros">
             <input type="search" placeholder="Buscar pessoa" aria-label="Buscar pessoa" value={busca} onChange={(e) => setBusca(e.target.value)}/>
             <select aria-label="Filtrar por área" value={areaId} onChange={(e) => setAreaId(e.target.value)}><option value="">Todas as áreas</option>{areas.map(([aid, nome]) => <option key={aid} value={aid}>{nome}</option>)}</select>
+            {podeEditar && !emLote && <button type="button" className="shows-secondary eq-sugerir" disabled={saving} onClick={() => { setEmLote(true); setAberta(null); }}>Marcar várias pessoas de uma vez</button>}
             {podeEditar && !review && <button type="button" className="shows-secondary eq-sugerir" disabled={pedindoSugestao || saving} onClick={() => void pedirSugestao()}>{pedindoSugestao ? "Olhando as Escalas…" : "Sugerir pelas Escalas feitas"}</button>}
           </div>
 
@@ -187,11 +210,12 @@ export function EquipeDialog({ programacaoId, programacaoNome, vigencia, localNa
             </div>
           </div>}
 
-          {podeEditar && <div ref={loteRef} className="eq-lote" data-ativo={marcadas.length > 0} role="group" aria-label="Marcar várias pessoas de uma vez">
+          {podeEditar && emLote && <div ref={loteRef} className="eq-lote" data-ativo={marcadas.length > 0} role="group" aria-label="Marcar várias pessoas de uma vez">
             <div className="eq-lote-topo">
-              <span>{marcadas.length ? `${marcadas.length} ${marcadas.length === 1 ? "pessoa escolhida" : "pessoas escolhidas"}` : "Escolha pessoas na lista para marcar vários dias de uma vez."}</span>
+              <span><b>Várias de uma vez:</b> {marcadas.length ? `${marcadas.length} ${marcadas.length === 1 ? "pessoa escolhida" : "pessoas escolhidas"}. Agora escolha os dias e toque em "Marcar em ${localName}".` : "escolha as pessoas na caixinha ao lado do nome."}</span>
               <button type="button" className="eq-link" onClick={() => setMarcadas(listadas.map((p) => p.id))}>Escolher as da lista</button>
               {marcadas.length > 0 && <button type="button" className="eq-link" onClick={() => setMarcadas([])}>Limpar escolha</button>}
+              <button type="button" className="eq-link" onClick={() => { setEmLote(false); setMarcadas([]); }}>Voltar a marcar uma por uma</button>
             </div>
             {marcadas.length > 0 && <>
               <div className="eq-lote-dias">
@@ -221,10 +245,12 @@ export function EquipeDialog({ programacaoId, programacaoNome, vigencia, localNa
               return <div key={p.id} className={`eq-pessoa-bloco${comMarca(p.id) ? " tem-marca" : ""}`}>
                 <div className="eq-linha" role="row">
                   <span className="eq-pessoa" role="rowheader">
-                    {podeEditar && <input type="checkbox" aria-label={`Escolher ${p.nome}`} checked={marcadas.includes(p.id)} onChange={() => alternarMarca(p.id)}/>}
+                    {podeEditar && emLote && <input type="checkbox" aria-label={`Escolher ${p.nome} para marcar várias de uma vez`} checked={marcadas.includes(p.id)} onChange={() => alternarMarca(p.id)}/>}
                     <button type="button" className="eq-nome" aria-expanded={abertaAqui} onClick={() => setAberta(abertaAqui ? null : p.id)}>
                       <b>{p.nome}</b>{p.areaNome && <small>{p.areaNome}</small>}{comHorario && <small className="eq-com-horario">com horário</small>}
                     </button>
+                    {podeEditar && !emLote && <button type="button" className="eq-todos" disabled={saving} onClick={() => alternarTodos(p.id)}
+                      aria-label={todosOsDias(p.id) ? `Tirar todos os dias de ${p.nome}` : `Marcar todos os dias de ${p.nome} em ${localName}`}>{todosOsDias(p.id) ? "tirar todos" : "todos os dias"}</button>}
                   </span>
                   {DIAS.map((d) => {
                     const janelas = grade[p.id]?.[d.w] ?? [];
