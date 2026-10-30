@@ -6,22 +6,23 @@ import "./escala-tokens.css";
 import "./equipe-dialog.css";
 import "./copiar-dia-dialog.css";
 
-type Itens = { atividades: boolean; ajustes: boolean; horarios: boolean; edicoes: boolean; chamadas: boolean };
-type Origem = { date: string; diaDaSemana: string; estado: "rascunho" | "publicado"; mudouDepois: boolean; atividades: number; ajustes: number; horarios: number; edicoes: number; chamadas: number };
+type Itens = { atividades: boolean; ajustes: boolean; horarios: boolean; edicoes: boolean; chamadas: boolean; livros: boolean };
+type Origem = { date: string; diaDaSemana: string; estado: "rascunho" | "publicado"; mudouDepois: boolean; atividades: number; ajustes: number; horarios: number; edicoes: number; chamadas: number; livros: number };
 type ForaDe = { tipo: string; pessoa?: string; atividades?: string[]; frase: string };
 type Resumo = {
   date: string; diaDaSemana: string; estado: "vazio" | "rascunho" | "publicado" | "fechado" | "igual_a_origem"; fechado?: string; publicado: boolean; jaTemAjustes: number;
-  copia: { atividades: number; ajustes: number; horarios: number; edicoes: number; chamadas: number }; jaEstava: number; foraDe: ForaDe[];
+  copia: { atividades: number; ajustes: number; horarios: number; edicoes: number; chamadas: number; vagas: number }; jaEstava: number; foraDe: ForaDe[];
 };
 type Previa = { carregando: boolean; resumo?: Resumo; erro?: string };
 export type CopiaFeita = { eventoId: string | null; date: string; itens: number };
 
-const NOMES_ITENS: { chave: keyof Itens; um: string; muitos: string; rotulo: string; ajuda: string }[] = [
+const NOMES_ITENS: { chave: keyof Itens; copia?: keyof Resumo["copia"]; um: string; muitos: string; rotulo: string; ajuda: string }[] = [
   { chave: "atividades", um: "atividade só do dia", muitos: "atividades só do dia", rotulo: "Atividades só do dia", ajuda: "As que foram criadas à mão naquele dia (peruca, vídeo…), com as pessoas." },
   { chave: "ajustes", um: "ajuste por pessoa", muitos: "ajustes por pessoa", rotulo: "Ajustes por pessoa", ajuda: "Quem entrou ou saiu de uma atividade do molde." },
   { chave: "horarios", um: "horário só de uma pessoa", muitos: "horários só de uma pessoa", rotulo: "Horários só de uma pessoa", ajuda: "Quando alguém começou mais tarde ou saiu mais cedo." },
   { chave: "edicoes", um: "edição de atividade", muitos: "edições de atividade", rotulo: "Edições da atividade no dia", ajuda: "Nome, horário ou tipo mudados só naquele dia." },
   { chave: "chamadas", um: "chamada só do dia", muitos: "chamadas só do dia", rotulo: "Chamadas só do dia", ajuda: "As chamadas que foram criadas naquele dia." },
+  { chave: "livros", copia: "vagas", um: "vaga de Livro do Dia", muitos: "vagas de Livros do Dia", rotulo: "Vagas dos Livros do Dia", ajuda: "Quem faz cada personagem dos shows, nos Livros que já foram gerados no dia de destino." },
 ];
 const DIAS = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
@@ -33,7 +34,7 @@ const somaDias = (iso: string, n: number) => { const d = dt(iso); d.setDate(d.ge
 const hojeISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const plural = (n: number, um: string, muitos: string) => `${n} ${n === 1 ? um : muitos}`;
 const fraseDe = (err: unknown, padrao: string) => err instanceof ApiError && err.data && typeof err.data === "object" && typeof (err.data as { message?: unknown }).message === "string" ? (err.data as { message: string }).message : padrao;
-const totalDe = (r: Resumo["copia"]) => r.atividades + r.ajustes + r.horarios + r.edicoes + r.chamadas;
+const totalDe = (r: Resumo["copia"]) => r.atividades + r.ajustes + r.horarios + r.edicoes + r.chamadas + r.vagas;
 
 /**
  * Copiar de outro dia (H1). Quatro tempos numa janela só: escolher o dia de origem, escolher os dias de destino e o que copiar, conferir (a prévia não grava nada
@@ -52,7 +53,7 @@ export function CopiarDiaDialog({ localId, localNome, dataInicial, onClose }: {
   const [versao, setVersao] = useState<"" | "publicada" | "atual">("");
   const [destinos, setDestinos] = useState<string[]>([dataInicial]);
   const [outroDia, setOutroDia] = useState("");
-  const [itens, setItens] = useState<Itens>({ atividades: true, ajustes: true, horarios: true, edicoes: true, chamadas: true });
+  const [itens, setItens] = useState<Itens>({ atividades: true, ajustes: true, horarios: true, edicoes: true, chamadas: true, livros: true });
   const [modo, setModo] = useState<"juntar" | "zero">("juntar");
   const [motivo, setMotivo] = useState("");
   const [previas, setPrevias] = useState<Record<string, Previa>>({});
@@ -151,7 +152,7 @@ export function CopiarDiaDialog({ localId, localNome, dataInicial, onClose }: {
             {origens !== null && !erroOrigens && origens.length === 0 && <p className="cd-vazio" role="status">Nenhum dia deste local tem ajuste, atividade só do dia ou chamada para copiar. Faça o ajuste em um dia primeiro; depois ele aparece aqui.</p>}
             {origens !== null && origens.length > 0 && <div className="cd-lista" role="radiogroup" aria-label="Dia de origem">
               {[...origens].sort((a, b) => Number(dt(b.date).getDay() === dt(dataInicial).getDay()) - Number(dt(a.date).getDay() === dt(dataInicial).getDay()) || b.date.localeCompare(a.date)).map((o) => {
-                const soma = o.atividades + o.ajustes + o.horarios + o.edicoes + o.chamadas;
+                const soma = o.atividades + o.ajustes + o.horarios + o.edicoes + o.chamadas + o.livros;
                 return <label key={o.date} className={`cd-linha${origem === o.date ? " cd-linha-on" : ""}`}>
                   <input type="radio" name={`${id}-origem`} checked={origem === o.date} onChange={() => { setOrigem(o.date); setVersao(""); setErro(""); }}/>
                   <span className="cd-linha-texto"><strong>{longo(o.date)}</strong>
@@ -187,7 +188,7 @@ export function CopiarDiaDialog({ localId, localNome, dataInicial, onClose }: {
                   <span><strong>{n.rotulo}{qtd !== null ? ` · ${qtd}` : ""}</strong><span>{n.ajuda}</span></span></label>;
               })}
             </div>
-            <p className="cd-nota">Os Livros do Dia (quem faz cada vaga do show) ainda não entram nesta cópia.</p>
+            <p className="cd-nota">As vagas dos Livros só entram nos Livros que já foram gerados no dia de destino. Gerar os Livros continua sendo da Administração.</p>
           </section>
         </>}
 
@@ -205,7 +206,7 @@ export function CopiarDiaDialog({ localId, localNome, dataInicial, onClose }: {
                 {r.publicado && <p className="cd-amarela" role="note">Este dia está publicado: a cópia espera a republicação. O Elenco segue vendo a versão antiga e a Administração é avisada.</p>}
                 <p className="cd-resumo">{totalDe(r.copia) === 0 && modo === "juntar"
                   ? `Nada novo para copiar${r.jaEstava ? ` (${plural(r.jaEstava, "item já estava", "itens já estavam")} no dia)` : ""}.`
-                  : `Vai copiar: ${NOMES_ITENS.filter((n) => r.copia[n.chave] > 0).map((n) => plural(r.copia[n.chave], n.um, n.muitos)).join(", ") || "nada"}.${r.jaEstava ? ` ${plural(r.jaEstava, "já estava", "já estavam")} no dia.` : ""}`}</p>
+                  : `Vai copiar: ${NOMES_ITENS.filter((n) => r.copia[n.copia ?? (n.chave as keyof Resumo["copia"])] > 0).map((n) => plural(r.copia[n.copia ?? (n.chave as keyof Resumo["copia"])], n.um, n.muitos)).join(", ") || "nada"}.${r.jaEstava ? ` ${plural(r.jaEstava, "já estava", "já estavam")} no dia.` : ""}`}</p>
                 {r.jaTemAjustes > 0 && <p className="cd-nota">{modo === "juntar" ? `Este dia já tem ${plural(r.jaTemAjustes, "ajuste", "ajustes")}: continuam como estão.` : `Os ${plural(r.jaTemAjustes, "item", "itens")} que este dia já tem serão desativados (nada é apagado) e o dia fica só com a cópia.`}</p>}
                 {r.foraDe.length > 0 && <details className="cd-fora" open={r.foraDe.length <= 3}><summary>Ficam de fora ({r.foraDe.length})</summary>
                   <ul>{r.foraDe.map((f, i) => <li key={i}>{f.frase}</li>)}</ul></details>}

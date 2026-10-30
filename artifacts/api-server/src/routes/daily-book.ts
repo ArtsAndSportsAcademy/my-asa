@@ -2653,6 +2653,42 @@ export async function ajustarPessoaNoLivro(
   return true;
 }
 
+export type VagaGravada = { userId: string | null; status: "ASSIGNED" | "OPEN"; manual: boolean };
+export type TrocaDeVaga = { assignmentId: string; para: VagaGravada };
+export type VagaTrocada = { assignmentId: string; antes: VagaGravada; depois: VagaGravada; updatedAt: string };
+
+/**
+ * Copiar de outro dia (H2): põe várias vagas de UM Livro do Dia no estado pedido, numa vez só, dentro da transação de quem chama. É o mesmo
+ * efeito do ajuste pela Escala (a vaga vira exceção do dia, `manual`), mas em lote e devolvendo o estado de antes e de depois de cada vaga,
+ * para o Registro e para o desfazer. Livro executado ou cancelado não muda (devolve false).
+ */
+export async function trocarVagasNoLivro(
+  input: { dailyBookId: string; actorId: string; trocas: TrocaDeVaga[]; origem: string },
+  dentro: { tx: typeof db; depoisDoCommit: (() => void)[] },
+): Promise<VagaTrocada[] | false> {
+  const exec = dentro.tx;
+  const [book] = await exec.select().from(dailyBooksTable).where(eq(dailyBooksTable.id, input.dailyBookId)).limit(1);
+  if (!book || book.status === "EXECUTED" || book.status === "CANCELLED" || !input.trocas.length) return false;
+  const ids = input.trocas.map((t) => t.assignmentId);
+  const antesRows = await exec.select().from(dailyBookAssignmentsTable).where(and(eq(dailyBookAssignmentsTable.dailyBookId, book.id), inArray(dailyBookAssignmentsTable.id, ids)));
+  const antes = new Map(antesRows.map((r) => [r.id, { userId: r.userId, status: (r.status === "ASSIGNED" ? "ASSIGNED" : "OPEN") as "ASSIGNED" | "OPEN", manual: r.manual }]));
+  const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(book.id, exec) };
+  const agora = new Date();
+  await mutateDailyBookEm(exec, book.id, book.version, async (tx) => {
+    for (const t of input.trocas) {
+      await tx.update(dailyBookAssignmentsTable).set({ userId: t.para.userId, status: t.para.status, manual: t.para.manual, updatedAt: agora }).where(eq(dailyBookAssignmentsTable.id, t.assignmentId));
+    }
+  }, async (tx) => {
+    const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(book.id, tx) };
+    const primeira = input.trocas.find((t) => t.para.userId)?.para.userId ?? input.trocas[0]!.para.userId;
+    await writeDailyBookAudit(book.id, input.actorId, "assignment_swap",
+      { version: book.version, snapshot: beforeSnapshot, userId: primeira, origem: input.origem },
+      { version: book.version + 1, snapshot: afterSnapshot, userId: primeira, action: "ADICIONAR", assignmentIds: ids }, tx);
+  });
+  dentro.depoisDoCommit.push(() => eventBus.emit("daily-book.updated", { dailyBookId: book.id, changeType: "assignment_swap", changedBy: input.actorId }));
+  return input.trocas.map((t) => ({ assignmentId: t.assignmentId, antes: antes.get(t.assignmentId) ?? { userId: null, status: "OPEN", manual: false }, depois: t.para, updatedAt: agora.toISOString() }));
+}
+
 router.delete("/daily-book/:id/positions/:positionId", requireAuth, requireOrganization, requireRole("ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"), async (req, res) => {
   const id = req.params.id as string;
   const positionId = req.params.positionId as string;

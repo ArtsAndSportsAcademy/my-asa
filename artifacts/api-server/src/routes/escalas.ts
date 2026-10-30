@@ -1805,7 +1805,7 @@ router.post("/escalas/dia/copiar", requireAuth, requireOrganization, async (req,
   if (!(await locationInOrg(locationId, actor.organizationId))) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
   if (!(await podeCopiar(actor, locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: `${fraseDeRecusaPorPerfil(["ADMIN", "SUPERVISOR_A"], actor.role)} ${FRASE_COPIA_SEM_ACESSO}` }); return; }
   const itensLidos: Partial<ItensDaCopia> = {};
-  for (const k of ["atividades", "ajustes", "horarios", "edicoes", "chamadas"] as const) if (itens && typeof itens === "object" && typeof itens[k] === "boolean") itensLidos[k] = itens[k];
+  for (const k of ["atividades", "ajustes", "horarios", "edicoes", "chamadas", "livros"] as const) if (itens && typeof itens === "object" && typeof itens[k] === "boolean") itensLidos[k] = itens[k];
   try {
     const r = await copiarParaODia(actor, { locationId, origem: de, destino: para, versao, itens: itensLidos, modo, motivo: typeof motivo === "string" ? motivo : null }, simular === true);
     if (!r.ok) { res.status(r.status).json({ error: r.error, message: r.message, ...(r.resumo ? { resumo: r.resumo } : {}) }); return; }

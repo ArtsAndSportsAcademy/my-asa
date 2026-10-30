@@ -17,12 +17,15 @@
  */
 import { and, asc, desc, eq, gte, inArray, lte, ne, sql } from "drizzle-orm";
 import {
-  db, escalaBlocoAjustesTable, escalaBlocoEdicoesTable, escalaChamadasTable, folgasTable, historyEventsTable, locationsTable,
+  agendaEventsTable, dailyBooksTable, db, dailyBookAssignmentsTable, showBooksTable, escalaBlocoAjustesTable, escalaBlocoEdicoesTable, escalaChamadasTable, folgasTable, historyEventsTable, locationsTable,
   programacaoBlocosTable, scaleAllocationsTable, scalesTable, usersTable,
 } from "@workspace/db";
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
 import { avisarRepublicacaoPendente, diaFechadoDoLocal, escalaPublicada, findEscalaDoDia, montarEscalaDoDia, operationForLocation, type EscalaDia } from "./escala-dia.js";
 import { areasQueSupervisiona, novaColeta } from "./escala-mexidas.js";
+import { lerLivrosDoDia, planejarVagas, type ForaDoLivro, type PlanoDoLivro } from "./escala-copia-livros.js";
+import { trocarVagasNoLivro, type VagaTrocada } from "../routes/daily-book.js";
+import { VersionConflictError } from "../lib/versioning.js";
 
 type Exec = typeof db;
 type Escala = typeof scalesTable.$inferSelect;
@@ -37,8 +40,8 @@ export const FRASE_COPIA_SEM_ACESSO = "Copiar um dia é da Administração e da 
 export const FRASE_ORIGEM_SEM_ESCALA = "O dia de origem não tem Escala feita. Escolha um dia que já tenha Escala neste local.";
 export const FRASE_ESCOLHA_A_VERSAO = "O dia de origem mudou depois de publicado. Escolha qual versão copiar: a que o Elenco viu (publicada) ou a de agora.";
 
-export type ItensDaCopia = { atividades: boolean; ajustes: boolean; horarios: boolean; edicoes: boolean; chamadas: boolean };
-export const TODOS_OS_ITENS: ItensDaCopia = { atividades: true, ajustes: true, horarios: true, edicoes: true, chamadas: true };
+export type ItensDaCopia = { atividades: boolean; ajustes: boolean; horarios: boolean; edicoes: boolean; chamadas: boolean; livros: boolean };
+export const TODOS_OS_ITENS: ItensDaCopia = { atividades: true, ajustes: true, horarios: true, edicoes: true, chamadas: true, livros: true };
 export type VersaoDaOrigem = "publicada" | "atual";
 export type ModoDaCopia = "juntar" | "zero";
 
@@ -48,13 +51,13 @@ export type PedidoDeCopia = {
 export type Ator = { sub: string; role: string; organizationId: string };
 
 export type ForaDaCopia = {
-  tipo: "folga" | "outro_local" | "sem_local" | "fora_do_elenco" | "sem_atividade" | "show" | "chamada_na_folga" | "pedido";
+  tipo: "folga" | "outro_local" | "sem_local" | "fora_do_elenco" | "sem_atividade" | "show" | "chamada_na_folga" | "pedido" | ForaDoLivro["tipo"];
   pessoaId?: string; pessoa?: string; atividades?: string[]; frase: string;
 };
 export type ResumoDoDestino = {
   date: string; diaDaSemana: string; estado: "vazio" | "rascunho" | "publicado" | "fechado" | "igual_a_origem";
   fechado?: string; publicado: boolean; jaTemAjustes: number;
-  copia: { atividades: number; ajustes: number; horarios: number; edicoes: number; chamadas: number }; jaEstava: number; foraDe: ForaDaCopia[];
+  copia: { atividades: number; ajustes: number; horarios: number; edicoes: number; chamadas: number; vagas: number }; jaEstava: number; foraDe: ForaDaCopia[];
 };
 
 const dm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
@@ -138,6 +141,7 @@ type Plano = {
   horarios: { sourceKey: string; userId: string; newStart: string; newEnd: string | null }[];
   edicoes: { sourceKey: string; newRotulo: string | null; newStart: string | null; newEnd: string | null; newTipoId: string | null }[];
   chamadas: { blocoKey: string | null; grupo: GrupoManual | null; c: typeof escalaChamadasTable.$inferSelect }[];
+  livros: PlanoDoLivro[];
 };
 
 export async function planejarDestino(ator: Ator, o: Origem, pedido: PedidoDeCopia): Promise<Plano> {
@@ -146,9 +150,9 @@ export async function planejarDestino(ator: Ator, o: Origem, pedido: PedidoDeCop
   const date = pedido.destino;
   const resumo: ResumoDoDestino = {
     date, diaDaSemana: DIAS[weekdayOf(date)]!, estado: "vazio", publicado: false, jaTemAjustes: 0,
-    copia: { atividades: 0, ajustes: 0, horarios: 0, edicoes: 0, chamadas: 0 }, jaEstava: 0, foraDe: [],
+    copia: { atividades: 0, ajustes: 0, horarios: 0, edicoes: 0, chamadas: 0, vagas: 0 }, jaEstava: 0, foraDe: [],
   };
-  const plano: Plano = { resumo, destDia: null, scale: null, operationId: null, pularPorFechado: false, manuais: [], ajustes: [], horarios: [], edicoes: [], chamadas: [] };
+  const plano: Plano = { resumo, destDia: null, scale: null, operationId: null, pularPorFechado: false, manuais: [], ajustes: [], horarios: [], edicoes: [], chamadas: [], livros: [] };
   if (date === pedido.origem) { resumo.estado = "igual_a_origem"; resumo.fechado = "Este é o próprio dia de origem."; plano.pularPorFechado = true; return plano; }
   const scale = await findEscalaDoDia(pedido.locationId, date);
   plano.scale = scale;
@@ -305,6 +309,16 @@ export async function planejarDestino(ator: Ator, o: Origem, pedido: PedidoDeCop
   resumo.copia.horarios = plano.horarios.length;
   resumo.copia.edicoes = plano.edicoes.length;
   resumo.copia.chamadas = plano.chamadas.length;
+
+  // Vagas dos Livros do Dia (H2): só nos Livros que já existem no destino.
+  if (itens.livros && plano.operationId) {
+    const [livrosOrigem, livrosDestino] = await Promise.all([lerLivrosDoDia(pedido.locationId, pedido.origem), lerLivrosDoDia(pedido.locationId, date)]);
+    const v = await planejarVagas({ organizationId: ator.organizationId, operationId: plano.operationId, locationId: pedido.locationId, origem: pedido.origem, destino: date, modo, destDia, livrosOrigem, livrosDestino });
+    plano.livros = v.planos;
+    resumo.copia.vagas = v.vagas;
+    resumo.jaEstava += v.jaEstava;
+    resumo.foraDe.push(...v.foraDe);
+  }
   resumo.foraDe.unshift(...[...porPessoa.values()].map((f) => ({ ...f, frase: `${f.frase} Fica de fora de: ${f.atividades!.join(", ")}.` })));
   for (const rotulo of semPar) resumo.foraDe.push({ tipo: "sem_atividade", frase: `A atividade "${rotulo}" não existe neste dia, então o que era dela não foi copiado.` });
   if (ajustesEmShow) resumo.foraDe.push({ tipo: "show", frase: `${ajustesEmShow === 1 ? "Há 1 ajuste" : `Há ${ajustesEmShow} ajustes`} em atividades de show. As vagas dos shows ficam para a cópia dos Livros do Dia e não foram copiadas.` });
@@ -324,7 +338,7 @@ export async function copiarParaODia(ator: Ator, pedido: PedidoDeCopia, simular:
   if (!simular && o.mudouDepois && !pedido.versao) return { ok: false, status: 400, error: "ESCOLHER_VERSAO", message: FRASE_ESCOLHA_A_VERSAO };
   const plano = await planejarDestino(ator, o, pedido);
   const { resumo } = plano;
-  const nada = resumo.copia.atividades + resumo.copia.ajustes + resumo.copia.horarios + resumo.copia.edicoes + resumo.copia.chamadas === 0;
+  const nada = resumo.copia.atividades + resumo.copia.ajustes + resumo.copia.horarios + resumo.copia.edicoes + resumo.copia.chamadas + resumo.copia.vagas === 0;
   if (simular) return { ok: true, resumo, eventoId: null, gravou: false };
   if (plano.pularPorFechado) return { ok: false, status: 409, error: "DIA_NAO_COPIAVEL", message: resumo.fechado ?? "Este dia não recebe cópia.", resumo };
   if (!plano.operationId) return { ok: false, status: 409, error: "LOCAL_SEM_OPERACAO", message: "Este local ainda não está ligado a uma operação.", resumo };
@@ -332,10 +346,11 @@ export async function copiarParaODia(ator: Ator, pedido: PedidoDeCopia, simular:
   const operationId = plano.operationId;
   const [local] = await db.select({ name: locationsTable.name }).from(locationsTable).where(eq(locationsTable.id, pedido.locationId)).limit(1);
   const coleta = await novaColeta(ator, pedido.locationId, pedido.destino);
-  const idsDePessoas = new Set<string>([...plano.ajustes.map((x) => x.userId), ...plano.horarios.map((x) => x.userId), ...plano.manuais.flatMap((m) => m.userIds)]);
+  const idsDePessoas = new Set<string>([...plano.ajustes.map((x) => x.userId), ...plano.horarios.map((x) => x.userId), ...plano.manuais.flatMap((m) => m.userIds), ...plano.livros.flatMap((l) => l.trocas.map((t) => t.para.userId).filter((u): u is string => Boolean(u)))]);
   const pessoas = idsDePessoas.size ? await db.select({ id: usersTable.id, name: usersTable.name, areaId: usersTable.areaId }).from(usersTable).where(inArray(usersTable.id, [...idsDePessoas])) : [];
   const areasDosBlocos = new Set<string | null>(pessoas.map((p) => p.areaId));
   for (const e of plano.edicoes) for (const id of plano.destDia?.blocos.find((b) => b.key === e.sourceKey)?.pessoaIds ?? []) areasDosBlocos.add(plano.destDia?.pessoas.find((p) => p.id === id)?.areaId ?? null);
+  const depoisDoCommit: (() => void)[] = [];
   try {
     const resultado = await db.transaction(async (tx) => {
       let scale = plano.scale;
@@ -378,14 +393,22 @@ export async function copiarParaODia(ator: Ator, pedido: PedidoDeCopia, simular:
       });
       if (novasChamadas.length) criados.chamadas.push(...(await tx.insert(escalaChamadasTable).values(novasChamadas).returning({ id: escalaChamadasTable.id })).map((r) => r.id));
 
+      // Vagas dos Livros do Dia (H2): cada Livro muda na mesma transação, com a versão que o planejamento leu (se alguém mexeu antes, VersionConflictError).
+      const livrosTrocados: { dailyBookId: string; show: string; trocas: VagaTrocada[] }[] = [];
+      for (const pl of plano.livros) {
+        const r = await trocarVagasNoLivro({ dailyBookId: pl.livro.id, actorId: ator.sub, trocas: pl.trocas, origem: `cópia do dia ${pedido.origem}` }, { tx: tx as unknown as typeof db, depoisDoCommit });
+        if (r) livrosTrocados.push({ dailyBookId: pl.livro.id, show: pl.livro.titulo, trocas: r });
+      }
+
       const mex = await coleta.registrar(scale.id, pessoas.map((pessoa) => ({ pessoa, texto: `copiou o dia ${dm(pedido.origem)} e mexeu na escala de ${pessoa.name}` })));
-      const total = resumo.copia.atividades + resumo.copia.ajustes + resumo.copia.horarios + resumo.copia.edicoes + resumo.copia.chamadas;
+      const total = resumo.copia.atividades + resumo.copia.ajustes + resumo.copia.horarios + resumo.copia.edicoes + resumo.copia.chamadas + resumo.copia.vagas;
       const partes = [
         resumo.copia.atividades && `${resumo.copia.atividades} ${resumo.copia.atividades === 1 ? "atividade só do dia" : "atividades só do dia"}`,
         resumo.copia.ajustes && `${resumo.copia.ajustes} ${resumo.copia.ajustes === 1 ? "ajuste" : "ajustes"}`,
         resumo.copia.horarios && `${resumo.copia.horarios} ${resumo.copia.horarios === 1 ? "horário" : "horários"}`,
         resumo.copia.edicoes && `${resumo.copia.edicoes} ${resumo.copia.edicoes === 1 ? "edição de atividade" : "edições de atividade"}`,
         resumo.copia.chamadas && `${resumo.copia.chamadas} ${resumo.copia.chamadas === 1 ? "chamada" : "chamadas"}`,
+        resumo.copia.vagas && `${resumo.copia.vagas} ${resumo.copia.vagas === 1 ? "vaga de Livro do Dia" : "vagas de Livros do Dia"}`,
       ].filter(Boolean).join(", ");
       const versaoTexto = o.publicada ? ((pedido.versao ?? "publicada") === "publicada" ? " (versão publicada)" : " (versão de agora)") : " (rascunho)";
       const eventoId = await writeHistoryEvent({
@@ -393,7 +416,7 @@ export async function copiarParaODia(ator: Ator, pedido: PedidoDeCopia, simular:
         narrative: `Copiou o dia ${pedido.origem} (${DIAS[weekdayOf(pedido.origem)]})${versaoTexto} para ${pedido.destino}: ${total ? partes : "nada novo para copiar"}.${modo === "zero" ? ` Começou do zero (${desativados.ajustes.length + desativados.edicoes.length + desativados.manuais.length + desativados.chamadas.length} itens desativados, restauráveis). Motivo: ${motivo}.` : ""}${resumo.jaEstava ? ` ${resumo.jaEstava} já estavam no dia.` : ""}${resumo.foraDe.length ? ` Ficaram de fora: ${resumo.foraDe.map((f) => f.pessoa ? `${f.pessoa} (${f.tipo})` : f.tipo).join("; ")}.` : ""}`,
         entityType: "scale", entityId: scale.id, actorId: ator.sub, operationId, orgId: ator.organizationId,
         beforeState: { origem: pedido.origem, modo },
-        afterState: { origem: pedido.origem, origemEscalaId: o.scale.id, versao: o.publicada ? (pedido.versao ?? "publicada") : "rascunho", modo, criados, desativados, copia: resumo.copia, jaEstava: resumo.jaEstava, foraDe: resumo.foraDe.map((f) => ({ tipo: f.tipo, pessoaId: f.pessoaId ?? null, frase: f.frase })) },
+        afterState: { origem: pedido.origem, origemEscalaId: o.scale.id, versao: o.publicada ? (pedido.versao ?? "publicada") : "rascunho", modo, criados, desativados, livros: livrosTrocados, copia: resumo.copia, jaEstava: resumo.jaEstava, foraDe: resumo.foraDe.map((f) => ({ tipo: f.tipo, pessoaId: f.pessoaId ?? null, frase: f.frase })) },
         metadata: { ...(modo === "zero" ? { reason: motivo } : {}), ...mex },
       }, tx as unknown as HistoryExecutor);
       if (escalaPublicada(scale.status)) {
@@ -403,9 +426,11 @@ export async function copiarParaODia(ator: Ator, pedido: PedidoDeCopia, simular:
       await coleta.avisar(tx as unknown as Exec, scale);
       return eventoId;
     });
+    for (const emitir of depoisDoCommit) { try { emitir(); } catch (err) { console.error(err); } }
     return { ok: true, resumo, eventoId: resultado || null, gravou: true };
   } catch (err) {
     console.error(err);
+    if (err instanceof VersionConflictError) return { ok: false, status: 409, error: "LIVRO_MUDOU", message: "Um Livro do Dia mudou enquanto a cópia era gravada. Nada foi gravado neste dia: confira e copie de novo.", resumo };
     return { ok: false, status: 500, error: "ERRO_INTERNO", message: "Não consegui copiar para este dia. Nada foi gravado nele; tente de novo.", resumo };
   }
 }
@@ -429,7 +454,20 @@ export async function desfazerCopia(ator: Ator, eventoId: string): Promise<{ sta
   const naoDesfeitos: string[] = [];
   let desfeitos = 0, restaurados = 0;
   const agora = new Date();
+  const livrosGravados = ((depois as { livros?: { dailyBookId: string; show: string; trocas: VagaTrocada[] }[] }).livros) ?? [];
+  const depoisDoCommit: (() => void)[] = [];
   await db.transaction(async (tx) => {
+    // Vagas dos Livros (H2): volta ao que era antes só a vaga que ninguém mexeu depois da cópia (mesma pessoa e mesma hora de gravação).
+    for (const livro of livrosGravados) {
+      const atuais = await tx.select({ id: dailyBookAssignmentsTable.id, userId: dailyBookAssignmentsTable.userId, updatedAt: dailyBookAssignmentsTable.updatedAt }).from(dailyBookAssignmentsTable)
+        .where(inArray(dailyBookAssignmentsTable.id, livro.trocas.map((t) => t.assignmentId)));
+      const intactas = livro.trocas.filter((t) => { const a = atuais.find((x) => x.id === t.assignmentId); return a && a.userId === t.depois.userId && a.updatedAt.toISOString() === t.updatedAt; });
+      let voltou = false;
+      if (intactas.length) voltou = (await trocarVagasNoLivro({ dailyBookId: livro.dailyBookId, actorId: ator.sub, trocas: intactas.map((t) => ({ assignmentId: t.assignmentId, para: t.antes })), origem: "desfazer a cópia de outro dia" }, { tx: tx as unknown as typeof db, depoisDoCommit })) !== false;
+      const ficaram = livro.trocas.length - (voltou ? intactas.length : 0);
+      if (voltou) desfeitos += intactas.length;
+      if (ficaram > 0) naoDesfeitos.push(`${ficaram} ${ficaram === 1 ? "vaga" : "vagas"} de ${livro.show} já ${ficaram === 1 ? "foi mexida" : "foram mexidas"} depois da cópia (ou o Livro já foi executado) e ${ficaram === 1 ? "ficou" : "ficaram"} como está.`);
+    }
     if (criados.ajustes?.length) {
       const linhas = await tx.select().from(escalaBlocoAjustesTable).where(inArray(escalaBlocoAjustesTable.id, criados.ajustes));
       const intactas = linhas.filter((l) => l.active && !l.endedAt).map((l) => l.id);
@@ -496,6 +534,7 @@ export async function desfazerCopia(ator: Ator, eventoId: string): Promise<{ sta
       beforeState: { eventoId }, afterState: { desfeitos, restaurados, naoDesfeitos }, metadata: { eventoId },
     }, tx as unknown as HistoryExecutor);
   });
+  for (const emitir of depoisDoCommit) { try { emitir(); } catch (err) { console.error(err); } }
   const message = naoDesfeitos.length
     ? `Desfiz o que não foi mexido (${desfeitos}). ${naoDesfeitos.join(" ")}`
     : `Desfiz a cópia de ${dm(scale.periodStart)}: ${desfeitos} ${desfeitos === 1 ? "item tirado" : "itens tirados"}${restaurados ? ` e ${restaurados} de antes ${restaurados === 1 ? "voltou" : "voltaram"}` : ""}.`;
@@ -504,7 +543,7 @@ export async function desfazerCopia(ator: Ator, eventoId: string): Promise<{ sta
 
 // ─── Dias que podem servir de origem ─────────────────────────────────────────────────────────────
 
-export type OrigemPossivel = { date: string; diaDaSemana: string; estado: "rascunho" | "publicado"; mudouDepois: boolean; atividades: number; ajustes: number; horarios: number; edicoes: number; chamadas: number };
+export type OrigemPossivel = { date: string; diaDaSemana: string; estado: "rascunho" | "publicado"; mudouDepois: boolean; atividades: number; ajustes: number; horarios: number; edicoes: number; chamadas: number; livros: number };
 
 export async function origensPossiveis(locationId: string, centro: string, diasAtras = 56, diasAFrente = 14): Promise<OrigemPossivel[]> {
   const soma = (iso: string, dias: number) => { const d = new Date(`${iso}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + dias); return d.toISOString().slice(0, 10); };
@@ -513,11 +552,15 @@ export async function origensPossiveis(locationId: string, centro: string, diasA
   )).orderBy(desc(scalesTable.periodStart));
   if (!escalas.length) return [];
   const ids = escalas.map((e) => e.id);
-  const [aj, ed, ma, ch] = await Promise.all([
+  const datas = escalas.map((e) => e.periodStart);
+  const [aj, ed, ma, ch, lv] = await Promise.all([
     db.select({ scaleId: escalaBlocoAjustesTable.scaleId, action: escalaBlocoAjustesTable.action, mesmo: escalaBlocoAjustesTable.mesmoDeFolga, key: escalaBlocoAjustesTable.sourceKey }).from(escalaBlocoAjustesTable).where(and(inArray(escalaBlocoAjustesTable.scaleId, ids), eq(escalaBlocoAjustesTable.active, true))),
     db.select({ scaleId: escalaBlocoEdicoesTable.scaleId }).from(escalaBlocoEdicoesTable).where(and(inArray(escalaBlocoEdicoesTable.scaleId, ids), eq(escalaBlocoEdicoesTable.active, true))),
     db.select({ scaleId: scaleAllocationsTable.scaleId, label: scaleAllocationsTable.manualLabel, ini: scaleAllocationsTable.startTime, fim: scaleAllocationsTable.endTime }).from(scaleAllocationsTable).where(and(inArray(scaleAllocationsTable.scaleId, ids), eq(scaleAllocationsTable.active, true), sql`${scaleAllocationsTable.manualLabel} IS NOT NULL`)),
     db.select({ scaleId: escalaChamadasTable.scaleId }).from(escalaChamadasTable).where(and(inArray(escalaChamadasTable.scaleId, ids), eq(escalaChamadasTable.active, true))),
+    // Livros do Dia de cada dia (cancelado não conta): um dia só com Livros também serve de origem das vagas.
+    db.select({ date: agendaEventsTable.date }).from(dailyBooksTable).innerJoin(agendaEventsTable, eq(dailyBooksTable.agendaEventId, agendaEventsTable.id)).innerJoin(showBooksTable, eq(dailyBooksTable.showBookId, showBooksTable.id))
+      .where(and(eq(showBooksTable.locationId, locationId), ne(dailyBooksTable.status, "CANCELLED"), inArray(agendaEventsTable.date, datas))),
   ]);
   const lista: OrigemPossivel[] = [];
   for (const e of escalas) {
@@ -526,8 +569,9 @@ export async function origensPossiveis(locationId: string, centro: string, diasA
     const edicoes = ed.filter((x) => x.scaleId === e.id).length;
     const atividades = new Set(ma.filter((x) => x.scaleId === e.id).map((x) => `${x.label}|${x.ini}|${x.fim}`)).size;
     const chamadas = ch.filter((x) => x.scaleId === e.id).length;
-    if (ajustes + horarios + edicoes + atividades + chamadas === 0) continue;
-    lista.push({ date: e.periodStart, diaDaSemana: DIAS[weekdayOf(e.periodStart)]!, estado: escalaPublicada(e.status) ? "publicado" : "rascunho", mudouDepois: escalaPublicada(e.status) && Boolean(e.alteradaDesde), atividades, ajustes, horarios, edicoes, chamadas });
+    const livros = lv.filter((x) => x.date === e.periodStart).length;
+    if (ajustes + horarios + edicoes + atividades + chamadas + livros === 0) continue;
+    lista.push({ date: e.periodStart, diaDaSemana: DIAS[weekdayOf(e.periodStart)]!, estado: escalaPublicada(e.status) ? "publicado" : "rascunho", mudouDepois: escalaPublicada(e.status) && Boolean(e.alteradaDesde), atividades, ajustes, horarios, edicoes, chamadas, livros });
   }
   return lista;
 }
