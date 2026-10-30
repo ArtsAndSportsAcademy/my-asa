@@ -129,7 +129,9 @@ async function run() {
 
     // ── Item "Escopo do supervisor é real" ──
     assert((await call("POST", "/escalas/dia/pronta", asDeborah, { locationId: snow!.id, date, areaId: bai!.id, pronta: true })).status === 403, "Deborah (Patinadores) não marca Bailarinos como pronta");
-    assert((await call("POST", "/escalas/dia/ajustes", asDeborah, { locationId: snow!.id, date, sourceKey: blocoSnow.key, userId: louis.id, action: "REMOVER" })).status === 403, "Deborah não mexe na escala de quem é de Bailarinos");
+    // Decisão de 25/10/2026: a Supervisão com acesso ao LOCAL mexe na escala de pessoa de qualquer área (o corte que vale é o do local, mais abaixo
+    // com o Victor em Acquamotion). Antes isto era 403; o teste foi atualizado junto com a decisão.
+    assert((await call("POST", "/escalas/dia/ajustes", asDeborah, { locationId: snow!.id, date, sourceKey: blocoSnow.key, userId: louis.id, action: "REMOVER" })).status === 200, "Deborah (Patinadores) mexe na escala de quem é de Bailarinos no mesmo local (decisão de 25/10)");
     assert((await call("POST", "/escalas/dia/pronta", asVictor, { locationId: acqua!.id, date, areaId: bai!.id, pronta: true })).status === 403, "Victor (Bailarinos em Snowland) não escreve em Acquamotion");
     assert((await call("POST", "/escalas/dia/ajustes", asVictor, { locationId: acqua!.id, date, sourceKey: blocoSnow.key, userId: louis.id, action: "REMOVER" })).status === 403, "Victor não ajusta a escala de Acquamotion");
     assert((await call("GET", `/escalas/dia?locationId=${acqua!.id}&date=${date}`, asVictor)).status === 403, "Victor não lê a grade de Acquamotion");
@@ -213,6 +215,9 @@ async function run() {
     await db.delete(programacaoBlocosTable).where(inArray(programacaoBlocosTable.programacaoId, progs.map((p) => p.id)));
     await db.delete(programacoesTable).where(inArray(programacoesTable.id, progs.map((p) => p.id)));
     await db.delete(areaLocalSupervisorsTable).where(inArray(areaLocalSupervisorsTable.locationId, [snow!.id, acqua!.id]));
+    // Avisos que o próprio teste gerou (por exemplo "mexeram em pessoa de outra área") apontam para estas pessoas.
+    await pool.query("delete from notification_outbox where user_id = any($1::uuid[])", [everyone]).catch(() => undefined);
+    await pool.query("delete from user_notifications where user_id = any($1::uuid[])", [everyone]).catch(() => undefined);
     await db.delete(userRolesTable).where(inArray(userRolesTable.userId, everyone));
     await db.delete(usersTable).where(inArray(usersTable.id, everyone));
     await db.delete(areasTable).where(inArray(areasTable.id, [pat!.id, bai!.id]));

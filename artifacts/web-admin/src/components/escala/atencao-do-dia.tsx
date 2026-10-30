@@ -26,10 +26,12 @@ export type AtencaoDoDiaProps = {
   onFolgaResolvida?: (pessoaId: string) => Promise<void>;
   /** Quem pode mexer: "Desfazer" ao lado de cada mudança de local só de hoje. */
   onDesfazerImprevisto?: (imprevistoId: string) => void;
+  /** Quem pode mexer: "Trazer para cá hoje" ao lado de quem está sem local hoje. */
+  onTrazer?: (pessoaId: string) => void;
 };
 
 /** Tudo o que pede olhar no dia, em um cartão só: some quando não há nada. */
-export function AtencaoDoDia({ dia, vazios, grupos, canEdit, editableAreaIds, tirando, onTirar, onMudarHorario, onVoltarHorario, onAjustarVazio, onFolgaResolvida, onDesfazerImprevisto }: AtencaoDoDiaProps) {
+export function AtencaoDoDia({ dia, vazios, grupos, canEdit, editableAreaIds, tirando, onTirar, onMudarHorario, onVoltarHorario, onAjustarVazio, onFolgaResolvida, onDesfazerImprevisto, onTrazer }: AtencaoDoDiaProps) {
   const chamadas = dia.pessoas.filter((p) => p.chamadaNaFolga && !p.chamadaNaFolga.decidida);
   const alterada = dia.escala?.alteradaDesde ?? null;
   const semProgramacao = !dia.programacao;
@@ -91,7 +93,13 @@ export function AtencaoDoDia({ dia, vazios, grupos, canEdit, editableAreaIds, ti
 
     {semLocal.length > 0 && <div style={css("display:flex;flex-direction:column;gap:6px;background:var(--asa-amber-pale);border:1px solid var(--asa-amber-stripe);border-radius:12px;padding:10px 13px;")}>
       <span style={css("font-family:Outfit,sans-serif;font-size:14px;font-weight:600;color:var(--asa-amber-dark)")}>Sem local hoje</span>
-      <span style={css("font-size:12.5px;line-height:1.5;color:var(--asa-amber-dark);text-wrap:pretty")}>{`${semLocal.map((id) => nomeDe.get(id)).join(", ")} ${semLocal.length === 1 ? "tem equipe marcada nesta temporada, mas não neste dia da semana" : "têm equipe marcada nesta temporada, mas não neste dia da semana"}. Por isso não entram nos blocos de todo mundo nem de área de nenhum local. Pode entrar em show, se estiver livre, e por um imprevisto do dia.`}</span>
+      <span style={css("font-size:12.5px;line-height:1.5;color:var(--asa-amber-dark);text-wrap:pretty")}>{`${semLocal.length === 1 ? "Esta pessoa tem equipe marcada nesta temporada, mas não neste dia da semana" : "Estas pessoas têm equipe marcada nesta temporada, mas não neste dia da semana"}. Por isso não entram nos blocos de todo mundo nem de área de nenhum local. Pode entrar em show, se estiver livre, e por um imprevisto do dia.`}</span>
+      <div style={css("display:flex;flex-wrap:wrap;gap:6px")}>
+        {semLocal.map((id) => <span key={id} style={css("display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;border:1px solid var(--asa-amber-stripe);background:#fff;border-radius:16px;padding:3px 4px 3px 10px;font-size:12px;font-weight:700;color:var(--asa-ink-dark)")}>
+          {nomeDe.get(id)}
+          {canEdit && onTrazer && <button type="button" className="esc-cell-adjust esc-hit" style={{ minHeight: 44 }} aria-label={`Trazer ${nomeDe.get(id)} para cá hoje`} onClick={() => onTrazer(id)}>Trazer para cá hoje</button>}
+        </span>)}
+      </div>
     </div>}
 
     {mexidas.length > 0 && <div style={css("display:flex;flex-direction:column;gap:6px;background:#fff;border:1px solid var(--asa-line-soft);border-radius:12px;padding:10px 13px;")}>

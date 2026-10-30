@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from "react";
 import { X } from "lucide-react";
 import { useFecharComEsc } from "@/lib/fechar-com-esc";
 import "./escala-tokens.css";
+import "./equipe-dialog.css";
 import "./local-do-dia-dialog.css";
 
 export type MudarDeLocal = { destinoId: string; origemId: string | null; inicio: string | null; fim: string | null; motivo: string };
@@ -48,13 +49,13 @@ export function LocalDoDiaDialog({ modo, pessoa, data, localAtual, origem, desti
   };
   const quando = inicio && fim ? `das ${inicio} às ${fim}` : inicio ? `a partir das ${inicio}` : fim ? `até as ${fim}` : "o dia inteiro";
 
-  return <div className="shows-dialog-backdrop" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget && !saving) onClose(); }}>
+  return <div className="shows-dialog-backdrop eq-backdrop" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget && !saving) onClose(); }}>
     <div className="shows-dialog" role="dialog" aria-modal="true" aria-labelledby={`${id}-titulo`}>
       <header className="shows-dialog-header"><div><h2 id={`${id}-titulo`}>{modo === "trazer" ? "Trazer para cá hoje" : "Mandar para outro local hoje"}</h2><p>{pessoa.name} · {quandoDe(data)}</p></div><button type="button" onClick={onClose} aria-label="Fechar" disabled={saving}><X size={18}/></button></header>
       <div className="shows-dialog-content ld-conteudo">
         <p className="ld-explica">
           {modo === "trazer"
-            ? `${pessoa.name}${origem ? ` está em ${origem.name} hoje` : " tem atividade em outro local hoje"}. Ao trazer, ela passa a entrar nos blocos de todo mundo e de área de ${localAtual.name} e deixa os do outro local, só nesta data.`
+            ? `${pessoa.name}${origem ? ` está em ${origem.name} hoje` : " está sem local hoje"}. Ao trazer, ela passa a entrar nos blocos de todo mundo e de área de ${localAtual.name}${origem ? " e deixa os do outro local" : ""}, só nesta data.`
             : `${pessoa.name} passa o dia no local que você escolher: deixa os blocos de todo mundo e de área de ${localAtual.name} e entra nos de lá, só nesta data.`}
           {" "}A Programação não muda e dá para desfazer.
         </p>
@@ -71,7 +72,7 @@ export function LocalDoDiaDialog({ modo, pessoa, data, localAtual, origem, desti
         <label className="ld-campo" htmlFor={`${id}-motivo`}>Motivo (opcional)
           <textarea id={`${id}-motivo`} rows={2} maxLength={300} value={motivo} disabled={saving} placeholder="Ex.: faltou gente no treino" onChange={(e) => setMotivo(e.target.value)}/>
         </label>
-        <p className="ld-nota">Entra no Registro. {destino ? `A Supervisão de ${modo === "trazer" ? (origem?.name ?? "do outro local") : destino.name} é avisada` : "A Supervisão do outro local é avisada"}; se o local não tiver Supervisão, o aviso vai para a Administração.</p>
+        <p className="ld-nota">Entra no Registro. {modo === "trazer" && !origem ? "A Supervisão do local, ou a Administração, é avisada." : `A Supervisão de ${modo === "trazer" ? origem!.name : destino?.name ?? "do outro local"} é avisada; se não houver, o aviso vai para a Administração.`}</p>
         {erro && <p id={`${id}-erro`} className="ld-erro-geral" role="alert">{erro}</p>}
       </div>
       <footer className="shows-dialog-footer">

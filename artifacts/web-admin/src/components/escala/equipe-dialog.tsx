@@ -146,7 +146,7 @@ export function EquipeDialog({ programacaoId, programacaoNome, vigencia, localNa
     } finally { setSaving(false); }
   };
 
-  return <div className="shows-dialog-backdrop" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) tentarFechar(); }}>
+  return <div className="shows-dialog-backdrop eq-backdrop" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) tentarFechar(); }}>
     <div className="shows-dialog eq-dialog" role="dialog" aria-modal="true" aria-labelledby={`${id}-titulo`}>
       <header className="shows-dialog-header"><div><h2 id={`${id}-titulo`}>Equipe de {localName}</h2><p>{programacaoNome} · {vigencia}</p></div><button type="button" onClick={tentarFechar} aria-label="Fechar"><X size={18}/></button></header>
       <div className="shows-dialog-content eq-conteudo">

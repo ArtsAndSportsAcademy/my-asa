@@ -37,7 +37,7 @@ export async function marcarEscalasPublicadasPelaEquipe(organizationId: string, 
       await writeHistoryEvent({
         category: "SCALE", action: "escala.alterada_pela_equipe", title: "Escala alterada pela equipe do local",
         narrative: `A equipe do local mudou (${nomeDaProgramacao}) e a Escala publicada de ${escala.periodStart} deixou de bater com a publicação. Ela pede republicação.`,
-        entityType: "scale", entityId: escala.id, actorId, operationId: escala.operationId,
+        entityType: "scale", entityId: escala.id, actorId, operationId: escala.operationId, orgId: organizationId,
         beforeState: { alteradaDesde: escala.alteradaDesde }, afterState: { alteradaDesde: atualizada?.alteradaDesde ?? agora, motivo },
       }, tx as unknown as HistoryExecutor);
       await avisarRepublicacaoPendente(tx as unknown as Parameters<typeof avisarRepublicacaoPendente>[0], atualizada ?? escala, motivo, { now: agora });
@@ -66,7 +66,7 @@ export async function marcarEscalasDoDiaPeloImprevisto(organizationId: string, a
       await writeHistoryEvent({
         category: "SCALE", action: "escala.alterada_pelo_imprevisto", title: "Escala alterada por um imprevisto de local",
         narrative: `${motivo}. A Escala publicada de ${escala.periodStart} deixou de bater com a publicação e pede republicação.`,
-        entityType: "scale", entityId: escala.id, actorId, operationId: escala.operationId,
+        entityType: "scale", entityId: escala.id, actorId, operationId: escala.operationId, orgId: organizationId,
         beforeState: { alteradaDesde: escala.alteradaDesde }, afterState: { alteradaDesde: atualizada?.alteradaDesde ?? agora, motivo },
       }, tx as unknown as HistoryExecutor);
       await avisarRepublicacaoPendente(tx as unknown as Parameters<typeof avisarRepublicacaoPendente>[0], atualizada ?? escala, motivo, { now: agora });

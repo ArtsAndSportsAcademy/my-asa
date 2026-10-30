@@ -761,7 +761,8 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
       onTirar={(bloco, pessoaId) => { const pessoa = dia.pessoas.find((p) => p.id === pessoaId); return pessoa ? tirarDoBloco(bloco, pessoa) : Promise.resolve(); }}
       onMudarHorario={(pessoaId, nome, bloco, outro) => setMudandoHorario({ pessoaId, nome, bloco, outro })}
       onVoltarHorario={(bloco, pessoaId) => void onHorario({ ...bloco, key: bloco.horarioDela!.chaveOriginal }, pessoaId, null)}
-      onAjustarVazio={setAjustando} onFolgaResolvida={onFolgaResolvida} onDesfazerImprevisto={localDoDia ? ((imprevistoId) => void localDoDia.desfazer(imprevistoId)) : undefined}/>}
+      onAjustarVazio={setAjustando} onFolgaResolvida={onFolgaResolvida} onDesfazerImprevisto={localDoDia ? ((imprevistoId) => void localDoDia.desfazer(imprevistoId)) : undefined}
+      onTrazer={localDoDia ? ((pessoaId) => { const p = dia.pessoas.find((x) => x.id === pessoaId); if (p) setMudandoLocal({ modo: "trazer", pessoa: p, origem: null }); }) : undefined}/>}
 
     {view === "pessoa" && telefone ? <ul className="esc-cartoes" aria-label="Escala por pessoa">
       {cols.filter((p) => !buscaIds || buscaIds.has(p.id)).map((p) => {

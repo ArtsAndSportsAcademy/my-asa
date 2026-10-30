@@ -9,7 +9,7 @@
  * - com marca mas sem nenhuma marca no dia (e sem imprevisto): não entra em bloco geral de nenhum local ("sem local hoje").
  * O imprevisto do dia (`escala_local_do_dia`) manda a pessoa para outro local naquela data e horário: ali ela entra, aqui não.
  */
-import { and, asc, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db, escalaLocalDoDiaTable, locationsTable, programacaoEquipeTable, programacoesTable } from "@workspace/db";
 
 const hhmm = (t: string | null | undefined) => (t ? t.slice(0, 5) : null);
@@ -61,26 +61,28 @@ export function montarRegraDaEquipe(marcas: MarcaDeEquipe[], imprevistos: Imprev
   return { ativa: marcas.length > 0 || imprevistos.length > 0, entra, semLocalHoje };
 }
 
-/** As marcas de equipe de todos os locais da casa, cada local com a Programação que vale neste dia (a de vigência mais curta; a "Especial" vence a "Natal"). */
+/**
+ * As marcas de equipe de todos os locais da casa, cada local com a Programação que vale neste dia (a de vigência mais curta; a "Especial" vence a "Natal").
+ * Uma ida só ao banco: as Programações vigentes junto das suas marcas (cada ida custa, e a Escala do dia já faz muitas).
+ */
 export async function marcasVigentesNoDia(organizationId: string, date: string): Promise<MarcaDeEquipe[]> {
-  const vigentes = await db.select({ id: programacoesTable.id, locationId: programacoesTable.locationId, inicio: programacoesTable.vigenciaInicio, fim: programacoesTable.vigenciaFim })
-    .from(programacoesTable)
+  const linhas = await db.select({
+    programacaoId: programacoesTable.id, locationId: programacoesTable.locationId,
+    userId: programacaoEquipeTable.userId, weekday: programacaoEquipeTable.weekday, inicio: programacaoEquipeTable.inicio, fim: programacaoEquipeTable.fim,
+  }).from(programacoesTable)
     .innerJoin(locationsTable, eq(programacoesTable.locationId, locationsTable.id))
+    .leftJoin(programacaoEquipeTable, and(eq(programacaoEquipeTable.programacaoId, programacoesTable.id), eq(programacaoEquipeTable.active, true)))
     .where(and(
       eq(locationsTable.organizationId, organizationId), eq(programacoesTable.active, true),
       lte(programacoesTable.vigenciaInicio, date), gte(programacoesTable.vigenciaFim, date),
     ))
-    .orderBy(asc(sql`${programacoesTable.vigenciaFim} - ${programacoesTable.vigenciaInicio}`), desc(programacoesTable.createdAt));
-  const porLocal = new Map<string, string>();
-  for (const v of vigentes) if (!porLocal.has(v.locationId)) porLocal.set(v.locationId, v.id);
-  const ids = [...porLocal.values()];
-  if (!ids.length) return [];
-  const localDe = new Map([...porLocal].map(([locationId, id]) => [id, locationId]));
-  const linhas = await db.select({
-    programacaoId: programacaoEquipeTable.programacaoId, userId: programacaoEquipeTable.userId, weekday: programacaoEquipeTable.weekday,
-    inicio: programacaoEquipeTable.inicio, fim: programacaoEquipeTable.fim,
-  }).from(programacaoEquipeTable).where(and(inArray(programacaoEquipeTable.programacaoId, ids), eq(programacaoEquipeTable.active, true)));
-  return linhas.map((l) => ({ userId: l.userId, locationId: localDe.get(l.programacaoId)!, weekday: l.weekday, inicio: hhmm(l.inicio), fim: hhmm(l.fim) }));
+    .orderBy(asc(sql`${programacoesTable.vigenciaFim} - ${programacoesTable.vigenciaInicio}`), desc(programacoesTable.createdAt), asc(programacoesTable.id));
+  // A ordem põe a Programação mais curta (e, no empate, a mais nova) primeiro: a primeira de cada local é a que vale.
+  const vale = new Map<string, string>();
+  for (const l of linhas) if (!vale.has(l.locationId)) vale.set(l.locationId, l.programacaoId);
+  return linhas
+    .filter((l) => l.userId !== null && l.weekday !== null && vale.get(l.locationId) === l.programacaoId)
+    .map((l) => ({ userId: l.userId!, locationId: l.locationId, weekday: l.weekday!, inicio: hhmm(l.inicio), fim: hhmm(l.fim) }));
 }
 
 /** Os imprevistos vivos do dia (a pessoa trabalha em outro local só nesta data). */

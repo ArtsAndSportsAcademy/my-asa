@@ -194,10 +194,10 @@ assert.equal(resolveAsaSummaryTeamOperation("DIR", "op-1", ["op-1"]), null);
 assert.equal(resolveAsaSummaryTeamOperation("ADMIN", "op-3", ["op-1", "op-2"]), null);
 assert.equal(resolveAsaSummaryTeamOperation("ADMIN", null, ["op-1"]), null);
 
-const webShell = readFileSync(resolve(process.cwd(), "../web-admin/src/components/shell-foundation.tsx"), "utf8");
+const webShell = readFileSync(resolve(process.cwd(), "../web-admin/src/components/shell-foundation.tsx"), "utf8").replace(/\r\n/g, "\n");
 assert.match(webShell, /<Suspense fallback=\{null\}><GlobalAsaAssistant \/><\/Suspense>/, "ASA deve estar montada no shell web autenticado");
 assert.match(webShell, /active\.href === "\/biblioteca" \? <LibraryPage role=\{role\}\/>/, "Biblioteca do shell deve usar a página compartilhada ativa");
-const webLibrary = readFileSync(resolve(process.cwd(), "../web-admin/src/pages/communication.tsx"), "utf8");
+const webLibrary = readFileSync(resolve(process.cwd(), "../web-admin/src/pages/communication.tsx"), "utf8").replace(/\r\n/g, "\n");
 assert.match(webLibrary, /const search = useSearch\(\)/, "Biblioteca web deve aceitar abertura direta de documento pela URL");
 assert.match(webLibrary, /customFetch<\{ document: LibraryDoc; citations\?: LibraryCitation\[\]; canManageCitations\?: boolean[^}]* \}>\(`\/api\/library\/documents\/\$\{selectedDocumentId\}`\)/, "detalhe aberto pela ASA deve usar a rota oficial autenticada da Biblioteca e carregar citações e permissão efetiva");
 assert.match(webLibrary, /setLocation\(`\/biblioteca\$\{queryString \? `\?\$\{queryString\}` : ""\}`\)/, "fechar detalhe deve limpar só o documento da URL e preservar o contexto da tela");
@@ -208,13 +208,13 @@ assert.match(webLibrary, /onClick=\{\(\) => setLocation\(`\/biblioteca\?document
 // A tela antiga pages/admin/library.tsx (que carregava os temas sem documento) saiu do site em 20/10/2026, junto com as outras telas
 // mortas: nenhuma tela viva chama GET /asa/library-gaps hoje. O contrato da rota (quem lê, isolamento por organização, só dado
 // agregado) continua conferido logo abaixo, no próprio servidor.
-const globalAsa = readFileSync(resolve(process.cwd(), "../web-admin/src/components/global-asa-assistant.tsx"), "utf8");
+const globalAsa = readFileSync(resolve(process.cwd(), "../web-admin/src/components/global-asa-assistant.tsx"), "utf8").replace(/\r\n/g, "\n");
 assert.match(globalAsa, /setLocation\(`\/biblioteca\?document=\$\{documentId\}`\)/, "link da ASA web deve abrir o documento no shell atual, não em uma rota ausente");
-const mobileLayout = readFileSync(resolve(process.cwd(), "../mobile/app/_layout.tsx"), "utf8");
+const mobileLayout = readFileSync(resolve(process.cwd(), "../mobile/app/_layout.tsx"), "utf8").replace(/\r\n/g, "\n");
 assert.match(mobileLayout, /segments\[0\] === "\(tabs\)" \|\| segments\[0\] === "\(stack\)"/, "ASA deve cobrir as rotas autenticadas mobile de abas e pilha");
 assert.match(mobileLayout, /const showAsaLauncher = isAuthenticated && !mustChangePassword[\s\S]*segments\.join\("\/"\) !== "\(stack\)\/asa"/, "launcher mobile fica nas telas autenticadas, exceto na própria conversa ASA");
 assert.match(mobileLayout, /<AsaAvatar[\s\S]*onPress=\{\(\) => router\.push\(\{ pathname: "\/\(stack\)\/asa"/, "launcher mobile deve abrir a conversa ASA");
-const asaRoutes = readFileSync(resolve(process.cwd(), "./src/routes/asa.ts"), "utf8");
+const asaRoutes = readFileSync(resolve(process.cwd(), "./src/routes/asa.ts"), "utf8").replace(/\r\n/g, "\n");
 const showBookQueryBlock = asaRoutes.match(/if \(name === "consultar_livros_do_show"\) \{([\s\S]*?)\n    \}/);
 assert.ok(showBookQueryBlock, "servidor deve implementar a consulta determinística ao Livro do Show");
 assert.match(showBookQueryBlock[1]!, /eq\(showBooksTable\.operationId, ctx\.operationId\)/, "consulta do Livro do Show deve usar somente a operação selecionada");
@@ -238,14 +238,14 @@ assert.match(libraryQueryBlock[1]!, /d\.categoryName \?\? "", \.\.\.d\.tags/, "b
 assert.match(libraryQueryBlock[1]!, /libraryDocumentPageCitationsTable\.documentId[\s\S]*libraryDocumentPageCitationsTable\.version/, "busca deve ler citações vinculadas ao documento e versão atuais");
 assert.match(libraryQueryBlock[1]!, /selectAsaLibraryCitation\(query, currentCitations\.get\(d\.id\)/, "resposta deve usar apenas trecho paginado correspondente à pergunta");
 assert.doesNotMatch(libraryQueryBlock[1]!, /excerpt:\s*d\.body|summary:\s*d\.summary/, "busca não deve retornar texto sem âncora como resposta citada");
-const libraryRoutes = readFileSync(resolve(process.cwd(), "./src/routes/library.ts"), "utf8");
+const libraryRoutes = readFileSync(resolve(process.cwd(), "./src/routes/library.ts"), "utf8").replace(/\r\n/g, "\n");
 const libraryCitationsRoute = libraryRoutes.match(/router\.put\("\/library\/documents\/:id\/citations"([\s\S]*?)\n\}\);/);
 assert.ok(libraryCitationsRoute, "gestão deve permitir cadastrar citações por página");
 assert.match(libraryCitationsRoute[1]!, /MANAGER_ROLES[\s\S]*canManageDocumentScope[\s\S]*payload\.version !== doc\.version/, "edição de citações deve respeitar papel, escopo e versão atual");
 assert.match(libraryRoutes, /body !== undefined && body !== doc\.body[\s\S]*delete\(libraryDocumentPageCitationsTable\)/, "edição do texto deve invalidar âncoras antigas");
 assert.match(libraryRoutes, /delete\(libraryDocumentPageCitationsTable\)[\s\S]*doc\.version/, "substituição do PDF deve invalidar citações da versão corrente");
 assert.match(libraryRoutes, /const canManageCitations = doc\.status !== "ARCHIVED" && await canManageDocumentScope\(role, userId, doc\)[\s\S]*canManageCitations[^}]*\}\)/, "detalhe da Biblioteca deve devolver a autorização de escrita específica para o documento");
-const libraryCitationsMigration = readFileSync(resolve(process.cwd(), "../../lib/db/drizzle/0052_library_page_citations.sql"), "utf8");
+const libraryCitationsMigration = readFileSync(resolve(process.cwd(), "../../lib/db/drizzle/0052_library_page_citations.sql"), "utf8").replace(/\r\n/g, "\n");
 assert.match(libraryCitationsMigration, /document_id uuid NOT NULL REFERENCES library_documents\(id\) ON DELETE CASCADE/, "citações devem acompanhar o ciclo de vida do documento");
 assert.match(libraryCitationsMigration, /version integer NOT NULL CHECK \(version > 0\)[\s\S]*page_number integer NOT NULL CHECK \(page_number > 0\)/, "migração deve impedir versões e páginas inválidas");
 assert.match(libraryCitationsMigration, /length\(btrim\(excerpt\)\) BETWEEN 8 AND 1000/, "migração deve limitar o conteúdo de cada citação");
@@ -297,7 +297,7 @@ assert.match(taskEvidenceConfirmBlock[1]!, /writeHistoryEvent\([\s\S]*action: "t
 const proposalTypeBlock = asaRoutes.match(/const ASA_PROPOSAL_ACTION_TYPES = new Set\(\[([\s\S]*?)\]\);/);
 assert.ok(proposalTypeBlock, "servidor deve declarar o conjunto de tipos de proposta recuperáveis");
 const serverProposalTypes = [...proposalTypeBlock[1]!.matchAll(/"([A-Z][A-Z0-9_]*)"/g)].map((match) => match[1]!);
-const webAssistant = readFileSync(resolve(process.cwd(), "../web-admin/src/components/global-asa-assistant.tsx"), "utf8");
+const webAssistant = readFileSync(resolve(process.cwd(), "../web-admin/src/components/global-asa-assistant.tsx"), "utf8").replace(/\r\n/g, "\n");
 assert.match(webAssistant, /"\/livro-do-dia": \["O que tenho aqui\?", "Mostra o Livro do Dia de hoje"\]/, "Livro do Dia do shell deve sugerir sua consulta contextual implementada");
 assert.match(webAssistant, /"\/check-in": \["O que tenho aqui\?", "Meu check-in hoje"\]/, "Check-in do shell deve sugerir a consulta pessoal implementada");
 assert.match(webAssistant, /"\/agenda": \["O que tenho aqui\?", "Mostra a agenda"/, "Agenda do shell deve oferecer uma sugestão reconhecida pelo motor");
@@ -319,7 +319,7 @@ for (const [, page, rawSuggestions] of webPageSuggestions) {
     );
   }
 }
-const mobileAssistant = readFileSync(resolve(process.cwd(), "../mobile/app/(stack)/asa.tsx"), "utf8");
+const mobileAssistant = readFileSync(resolve(process.cwd(), "../mobile/app/(stack)/asa.tsx"), "utf8").replace(/\r\n/g, "\n");
 const mobilePageContextBlock = mobileAssistant.match(/const ASA_PAGE_CONTEXT: Record<string, string> = \{([\s\S]*?)\n\};/);
 assert.ok(mobilePageContextBlock, "mobile deve declarar o mapa de contexto da tela de origem");
 const mobilePageContexts = [...mobilePageContextBlock[1]!.matchAll(/"([^\"]+)": "([^\"]+)"/g)];

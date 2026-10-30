@@ -4,7 +4,7 @@
  * escala quem não chega a tempo ao show. PostgreSQL real de teste.
  */
 import http from "node:http";
-import { eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import {
   agendaEventsTable, areasTable, characterCastTable, charactersTable, db, historyEventsTable, locaisDeslocamentoTable, locationsTable, operationLocationsTable,
   operationsTable, organizationsTable, pool, programacaoBlocosTable, programacaoEquipeTable, programacoesTable, showBookBlocksTable, showBookLinesTable,
@@ -108,7 +108,7 @@ async function run() {
     assert(velha.status === 409 && velha.body.error === "VERSAO_MUDOU" && /Outra pessoa alterou/.test(velha.body.message ?? "") && velha.body.pares.length === 1, "salvar sobre a versão velha dá 409 com a frase e o que está valendo agora");
     const igual = await asAdmin("PUT", url, { baseVersao: gravou.body.versao, pares: [{ locationAId: snow!.id, locationBId: acqua!.id, minutos: 30 }] });
     assert(igual.status === 200 && igual.body.mudou === false, "salvar o mesmo conjunto de novo não grava nada");
-    const eventos = await db.select().from(historyEventsTable).where(eq(historyEventsTable.action, "locations.deslocamento_alterado"));
+    const eventos = await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.action, "locations.deslocamento_alterado"), eq(historyEventsTable.orgId, org!.id)));
     assert(eventos.length === 1 && /30 min \(novo\)/.test(eventos[0]!.narrative ?? ""), "um evento no Registro, dizendo o par e o tempo");
 
     // O choque na Escala do dia. Equipe: a m1 trabalha nos dois locais na quinta; Snowland tem treino das 09:00 às 11:00.

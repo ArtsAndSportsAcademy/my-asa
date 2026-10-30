@@ -87,12 +87,15 @@ export async function verifyBlock6HttpRoutes(c: Input) {
       await call("GET", "/locations", profile, profile === "MEMBER" ? 403 : 200);
       await call("GET", `/areas/${c.areaId}/local-supervisors`, profile, profile === "MEMBER" ? 403 : 200);
       await call("GET", `/operations/${c.operationId}/locations`, profile, profile === "MEMBER" ? 403 : 200);
+      // Tempo de ida entre locais (pacote O, O5): lê Administração, Direção e Supervisão; o Elenco não vê.
+      await call("GET", "/locations/deslocamento", profile, profile === "MEMBER" ? 403 : 200);
     }
 
     const adminOnly: [string, string, object?][] = [
       ["POST", "/areas", { name: `${tag}_denied` }], ["PATCH", `/areas/${areaId}`, { name: tag }], ["DELETE", `/areas/${areaId}`],
       ["POST", "/locations", { name: `${tag}_denied` }], ["PATCH", `/locations/${locationId}`, { name: tag }], ["DELETE", `/locations/${locationId}`],
       ["PUT", `/locations/${locationId}/virada-do-dia`, { padrao: true }],
+      ["PUT", "/locations/deslocamento", { baseVersao: null, pares: [] }],
       ["PUT", `/areas/${areaId}/locations/${locationId}/supervisor`, { supervisorId: c.supervisorId }],
       ["DELETE", `/areas/${areaId}/locations/${locationId}/supervisor`],
       ["PUT", `/operations/${c.operationId}/locations`, { locationIds: [c.snowId, c.acquaId] }],
@@ -204,6 +207,7 @@ export async function verifyBlock6HttpRoutes(c: Input) {
     await call("DELETE", `/show-books/${c.showId}/sessions/${sessionId}`, "SUPERVISOR_A", 200);
     for (const profile of ["ADMIN", "SUPERVISOR_B"]) await call("DELETE", `/show-books/${c.showId}/sessions/${sessionId}`, profile, 200);
     // Hora em que a Escala do local passa a abrir no dia seguinte (Etapa 1): só a Administração muda; valor que não é hora é 400 com frase.
+    await call("PUT", "/locations/deslocamento", "ADMIN", 200, { baseVersao: null, pares: [] });
     await call("PUT", `/locations/${locationId}/virada-do-dia`, "ADMIN", 400, { abreAmanhaAPartirDe: "25:99", voltaAHojeAPartirDe: "05:00" });
     await call("PUT", `/locations/${locationId}/virada-do-dia`, "ADMIN", 200, { abreAmanhaAPartirDe: "19:00", voltaAHojeAPartirDe: "06:00" });
     await call("DELETE", `/locations/${locationId}`, "ADMIN", 200, { reason: "Encerramento" });

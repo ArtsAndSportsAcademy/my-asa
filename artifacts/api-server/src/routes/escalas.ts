@@ -44,7 +44,7 @@ import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.j
 import { operationalDate } from "../lib/operational-date.js";
 import { requestLogger } from "../lib/logger.js";
 import { avisarImprevistoDeLocal, marcarEscalasDoDiaPeloImprevisto, marcarEscalasPublicadasPelaEquipe } from "../services/escala-equipe-aviso.js";
-import { avisarRepublicacaoPendente, avisarTodasAsAreasEnviaram, comoPublicada, convocacaoPorPessoa, diaFechadoDoLocal, escalaPublicada, findEscalaDoDia, montarEscalaDoDia, operationForLocation, pessoasAfetadas, tiposDoLocal } from "../services/escala-dia.js";
+import { avisarRepublicacaoPendente, avisarTodasAsAreasEnviaram, comoPublicada, convocacaoPorPessoa, diaFechadoDoLocal, escalaPublicada, findEscalaDoDia, leituraDaCasaNoDia, montarEscalaDoDia, operationForLocation, pessoasAfetadas, tiposDoLocal } from "../services/escala-dia.js";
 import { FRASE_NOME_DE_TIPO, TIPOS_PRONTOS, nomeDeTipoEmUso, nomeDeTipoValido, recusaDoTipo } from "../services/escala-tipos.js";
 import { ultimoRetratoFolgas } from "../services/folgas-publicadas.js";
 import { FRASE_LOCAL_SEM_OPERACAO, descartarMes, descartaveisDoMes, gerarDiaDoLocal, gerarMes, restaurarDescarte, resumoDoMes, validarMes } from "../services/escala-mes.js";
@@ -139,8 +139,9 @@ router.get("/escalas/minha", requireAuth, requireOrganization, async (req, res) 
     ));
     // Um local por vez somava o tempo de todos (10 s ou mais com 5 locais, na tela que o Elenco mais abre).
     // Os locais não dependem um do outro: monta todos juntos e mantém a ordem da lista.
+    const casa = await leituraDaCasaNoDia(actor.organizationId, date);
     const porLocal = await Promise.all(locations.map(async (location) => {
-      const aoVivo = await montarEscalaDoDia(actor.organizationId, location.id, date);
+      const aoVivo = await montarEscalaDoDia(actor.organizationId, location.id, date, casa);
       if (!aoVivo || !escalaPublicada(aoVivo.escala?.status)) return null;
       // O Elenco vê a versão publicada; o que mudou depois só chega com a republicação.
       const dia = await comoPublicada(aoVivo);

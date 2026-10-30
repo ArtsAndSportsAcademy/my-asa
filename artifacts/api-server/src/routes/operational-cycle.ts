@@ -7,7 +7,7 @@ import {
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { canSupervisorAccessPerson, listAreaLocalScopes } from "../services/area-local-scope.js";
-import { comoPublicada, montarEscalaDoDia, operationForLocation } from "../services/escala-dia.js";
+import { comoPublicada, leituraDaCasaNoDia, montarEscalaDoDia, operationForLocation } from "../services/escala-dia.js";
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
 import { nomeNaLista } from "../lib/nome-na-lista.js";
 import { exigirUuidNosParametros } from "../lib/uuid.js";
@@ -429,7 +429,8 @@ router.get("/panel-indicators", requireAuth, requireOrganization, async (req, re
   let expected = 0, checkedIn = 0, late = 0, absent = 0, vacant = 0, draftScales = 0;
   // Montar a Escala é a parte pesada e um local não depende do outro: monta todos juntos (em série, o Painel
   // somava o tempo de cada local). A contagem continua igual, local por local.
-  const dias = await Promise.all(allowedLocations.map((location) => montarEscalaDoDia(actor.organizationId, location.id, date)));
+  const casa = await leituraDaCasaNoDia(actor.organizationId, date);
+  const dias = await Promise.all(allowedLocations.map((location) => montarEscalaDoDia(actor.organizationId, location.id, date, casa)));
   for (const [i, location] of allowedLocations.entries()) {
     const dia = dias[i];
     if (!dia?.escala) continue;

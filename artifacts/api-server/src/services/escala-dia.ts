@@ -46,7 +46,7 @@ import {
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
 import { isNotSessionBlock, listSessionBlocks } from "./session-blocks.js";
 import { chamadasDoDia, chamadasDosBlocos, type ChamadaDoDia } from "./escala-chamadas.js";
-import { lerRegraDaEquipe } from "./escala-equipe-regra.js";
+import { lerRegraDaEquipe, type RegraDaEquipe } from "./escala-equipe-regra.js";
 import { choquesEntreLocais, lerTempoDeIda, type ChoqueEntreLocais } from "./escala-deslocamento.js";
 import { enqueueNotification } from "./undo.js";
 import { operationalDate } from "../lib/operational-date.js";
@@ -328,12 +328,35 @@ async function vagasDoLivro(dailyBookId: string, executor: Exec = db): Promise<V
   return rows;
 }
 
-export async function montarEscalaDoDia(organizationId: string, locationId: string, date: string, options: { publishedOnly?: boolean; /** Só a tela da Escala pede: marca quem já tem atividade em outro local hoje (custa uma leitura por local). */ comOutrosLocais?: boolean } = {}): Promise<EscalaDia | null> {
+type ImprevistoDoDiaComNomes = NonNullable<EscalaDia["imprevistos"]>[number];
+
+/**
+ * O que é da casa toda no dia (a regra da equipe e os imprevistos). Quem monta a Escala de VÁRIOS locais na mesma data lê uma vez e passa a cada
+ * `montarEscalaDoDia` (`options`), em vez de cada local repetir as mesmas consultas.
+ */
+export async function leituraDaCasaNoDia(organizationId: string, date: string): Promise<{ regraDaEquipe: RegraDaEquipe; imprevistos: ImprevistoDoDiaComNomes[] }> {
+  const [regraDaEquipe, imprevistos] = await Promise.all([lerRegraDaEquipe(organizationId, date, weekdayOf(date)), imprevistosDoDiaComNomes(organizationId, date)]);
+  return { regraDaEquipe, imprevistos };
+}
+
+/** As mudanças de local só desta data (imprevisto do dia), da casa toda, com o nome do local e de quem fez. */
+async function imprevistosDoDiaComNomes(organizationId: string, date: string): Promise<ImprevistoDoDiaComNomes[]> {
+  const linhas = await db.select({
+    id: escalaLocalDoDiaTable.id, pessoaId: escalaLocalDoDiaTable.userId, localId: escalaLocalDoDiaTable.locationId, localNome: locationsTable.name,
+    inicio: escalaLocalDoDiaTable.inicio, fim: escalaLocalDoDiaTable.fim, motivo: escalaLocalDoDiaTable.motivo, porNome: usersTable.name,
+  }).from(escalaLocalDoDiaTable)
+    .innerJoin(locationsTable, eq(locationsTable.id, escalaLocalDoDiaTable.locationId))
+    .leftJoin(usersTable, eq(usersTable.id, escalaLocalDoDiaTable.createdBy))
+    .where(and(eq(escalaLocalDoDiaTable.organizationId, organizationId), eq(escalaLocalDoDiaTable.data, date), eq(escalaLocalDoDiaTable.active, true)));
+  return linhas.map((i) => ({ ...i, inicio: hhmm(i.inicio), fim: hhmm(i.fim) }));
+}
+
+export async function montarEscalaDoDia(organizationId: string, locationId: string, date: string, options: { publishedOnly?: boolean; /** A regra da equipe e os imprevistos são da casa toda no dia: quem já leu passa adiante para a leitura dos outros locais não repetir as mesmas consultas. */ regraDaEquipe?: RegraDaEquipe; imprevistos?: ImprevistoDoDiaComNomes[]; /** Só a tela da Escala pede: marca quem já tem atividade em outro local hoje (custa uma leitura por local). */ comOutrosLocais?: boolean } = {}): Promise<EscalaDia | null> {
   const [location] = await db.select({ id: locationsTable.id, name: locationsTable.name }).from(locationsTable)
     .where(and(eq(locationsTable.id, locationId), eq(locationsTable.organizationId, organizationId))).limit(1);
   if (!location) return null;
 
-  const [scale, people, supervisors, fechado, equipe] = await Promise.all([
+  const [scale, people, supervisors, fechado, equipe, imprevistosDoDia, tempoDeIda] = await Promise.all([
     findEscalaDoDia(locationId, date, db, options.publishedOnly),
     db.select({ id: usersTable.id, name: usersTable.name, areaId: usersTable.areaId }).from(usersTable).where(and(
       eq(usersTable.organizationId, organizationId), isNotNull(usersTable.areaId),
@@ -343,7 +366,10 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
       .innerJoin(usersTable, eq(areaLocalSupervisorsTable.supervisorId, usersTable.id))
       .where(and(eq(areaLocalSupervisorsTable.locationId, locationId), eq(areaLocalSupervisorsTable.active, true))),
     diaFechadoDoLocal(locationId, date),
-    lerRegraDaEquipe(organizationId, date, weekdayOf(date)),
+    options.regraDaEquipe ?? lerRegraDaEquipe(organizationId, date, weekdayOf(date)),
+    options.imprevistos ?? imprevistosDoDiaComNomes(organizationId, date),
+    // O tempo de ida só serve ao choque entre locais, que a tela pede: lê junto das outras consultas em vez de esperar por elas.
+    options.comOutrosLocais ? lerTempoDeIda(organizationId) : Promise.resolve(null),
   ]);
 
   const areaIds = [...new Set([...people.map((p) => p.areaId), ...supervisors.map((s) => s.areaId)].filter((id): id is string => Boolean(id)))];
@@ -588,7 +614,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
   if (options.comOutrosLocais) {
     const outros = await db.select({ id: locationsTable.id }).from(locationsTable)
       .where(and(eq(locationsTable.organizationId, organizationId), ne(locationsTable.id, locationId), eq(locationsTable.closed, false)));
-    const dias = await Promise.all(outros.map((o) => montarEscalaDoDia(organizationId, o.id, date, { publishedOnly: options.publishedOnly })));
+    const dias = await Promise.all(outros.map((o) => montarEscalaDoDia(organizationId, o.id, date, { publishedOnly: options.publishedOnly, regraDaEquipe: equipe, imprevistos: imprevistosDoDia })));
     for (const dia of dias) {
       if (!dia || dia.fechado) continue;
       const porPessoa = new Map<string, { inicio: string; fim: string | null; atividades: number }>();
@@ -604,18 +630,9 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     }
     // Choque entre locais (pacote O, O5): só quando a casa já usa equipe, para quem não usa não aparecer alerta novo.
     if (equipe.ativa && !fechado) {
-      choquesDosLocais = choquesEntreLocais(locationId, blocos, dias.filter((d): d is EscalaDia => Boolean(d) && !d!.fechado).map((d) => ({ id: d.location.id, name: d.location.name, blocos: d.blocos })), await lerTempoDeIda(organizationId));
+      choquesDosLocais = choquesEntreLocais(locationId, blocos, dias.filter((d): d is EscalaDia => Boolean(d) && !d!.fechado).map((d) => ({ id: d.location.id, name: d.location.name, blocos: d.blocos })), tempoDeIda!);
     }
   }
-
-  const imprevistosDoDia = (await db.select({
-    id: escalaLocalDoDiaTable.id, pessoaId: escalaLocalDoDiaTable.userId, localId: escalaLocalDoDiaTable.locationId, localNome: locationsTable.name,
-    inicio: escalaLocalDoDiaTable.inicio, fim: escalaLocalDoDiaTable.fim, motivo: escalaLocalDoDiaTable.motivo, porNome: usersTable.name,
-  }).from(escalaLocalDoDiaTable)
-    .innerJoin(locationsTable, eq(locationsTable.id, escalaLocalDoDiaTable.locationId))
-    .leftJoin(usersTable, eq(usersTable.id, escalaLocalDoDiaTable.createdBy))
-    .where(and(eq(escalaLocalDoDiaTable.organizationId, organizationId), eq(escalaLocalDoDiaTable.data, date), eq(escalaLocalDoDiaTable.active, true))))
-    .map((i) => ({ ...i, inicio: hhmm(i.inicio), fim: hhmm(i.fim) }));
 
   return {
     date,

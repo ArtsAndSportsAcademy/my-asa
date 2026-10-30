@@ -1,4 +1,6 @@
 /* Equipe de um local na Programação. Reaproveita .shows-dialog (cabeçalho, miolo que rola e rodapé sempre à vista); aqui só a grade. */
+/* A janela cobre a tela toda, menu lateral incluído (o menu do computador fica em z-index 60 e o fundo padrão da janela em 50: a janela larga ficava por baixo dele). */
+.shows-dialog-backdrop.eq-backdrop{z-index:90}
 .shows-dialog.eq-dialog{width:min(960px,calc(100vw - 32px));min-width:0}
 .eq-conteudo{display:flex;flex-direction:column;gap:12px}
 .eq-explica{margin:0;font-size:13px;line-height:1.55;color:#4a4361}
@@ -47,12 +49,13 @@
 .eq-descartar{color:#8a1830}
 @media(max-width:720px){
   .shows-dialog.eq-dialog{width:calc(100vw - 32px)}
-  .eq-linha{grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;padding:6px 8px}
+  .shows-dialog-content.eq-conteudo{padding:12px 10px}
+  .eq-linha{grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;padding:6px 4px}
   .eq-lote{padding:10px}
   .eq-lote-dias{gap:4px}
   .eq-linha .eq-pessoa{grid-column:1 / -1}
   .eq-cabecalho .eq-pessoa{display:none}
-  .eq-celula{width:100%;max-width:56px}
+  .eq-celula{width:100%;max-width:56px;min-width:0}
   .eq-rodape .shows-primary,.eq-rodape .shows-secondary{flex:1 1 0}
   .eq-contagem,.eq-descartar{flex:1 1 100%;margin-right:0}
 }

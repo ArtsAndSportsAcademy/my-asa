@@ -310,7 +310,7 @@ async function barrarQuemEstaEmOutroLocal(input: {
   const equipe = await lerRegraDaEquipe(local.organizationId, date, new Date(`${date}T12:00:00Z`).getUTCDay());
   if (!equipe.ativa) return;
   const outros = await db.select({ id: locationsTable.id }).from(locationsTable).where(and(eq(locationsTable.organizationId, local.organizationId), ne(locationsTable.id, locationId), eq(locationsTable.closed, false)));
-  const [dias, tempoDeIda] = await Promise.all([Promise.all(outros.map((o) => montarEscalaDoDia(local.organizationId, o.id, date))), lerTempoDeIda(local.organizationId)]);
+  const [dias, tempoDeIda] = await Promise.all([Promise.all(outros.map((o) => montarEscalaDoDia(local.organizationId, o.id, date, { regraDaEquipe: equipe }))), lerTempoDeIda(local.organizationId)]);
   const quem = new Set(userIds);
   const jaBarrados = new Set<string>();
   const faixa = (b: { inicio: string; fim: string | null }) => `${b.inicio}${b.fim ? `–${b.fim}` : ""}`;

@@ -5,7 +5,7 @@
  * Escala já publicada não muda para quem faz: a Administração é avisada de que há o que republicar. PostgreSQL real de teste.
  */
 import http from "node:http";
-import { eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import {
   areaLocalSupervisorsTable, areasTable, db, escalaLocalDoDiaTable, historyEventsTable, locationsTable, operationLocationsTable, operationsTable,
   organizationsTable, pool, programacaoBlocosTable, programacaoEquipeTable, programacoesTable, scalesTable, userRolesTable, usersTable,
@@ -133,14 +133,14 @@ async function run() {
     const [depoisSexta] = await db.select().from(scalesTable).where(eq(scalesTable.id, escSexta.id));
     assert(depoisQuinta!.alteradaDesde !== null && depoisQuinta!.status === "PUBLISHED", "a Escala publicada da quinta passou a pedir republicação, sem sair de 'publicada'");
     assert(depoisSexta!.alteradaDesde === null, "a Escala publicada da sexta, que a equipe não muda, ficou como estava");
-    const eventos = await db.select().from(historyEventsTable).where(eq(historyEventsTable.action, "escala.alterada_pela_equipe"));
+    const eventos = await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.action, "escala.alterada_pela_equipe"), eq(historyEventsTable.orgId, org!.id)));
     assert(eventos.filter((e) => e.entityId === escQuinta.id).length === 1 && eventos.every((e) => e.entityId !== escSexta.id), "um evento no Registro, só da quinta");
     const avisos = await pool.query(`select count(*)::int as n from notification_outbox where user_id = $1 and payload->>'type' = 'scale.needs_republish'`, [admin.id]);
     assert(avisos.rows[0].n === 1, "a Administração recebeu um aviso só ('a escala mudou depois de publicada')");
     const lidoDeNovo = (await chamar("GET", url)).body;
     const mesma = await chamar("PUT", url, { baseVersao: lidoDeNovo.versao, linhas: semM1 });
     assert(mesma.status === 200 && mesma.body.mudou === false, "salvar o mesmo conjunto de novo não grava nada");
-    const eventos2 = await db.select().from(historyEventsTable).where(eq(historyEventsTable.action, "escala.alterada_pela_equipe"));
+    const eventos2 = await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.action, "escala.alterada_pela_equipe"), eq(historyEventsTable.orgId, org!.id)));
     assert(eventos2.length === eventos.length, "salvar sem mudança não conta de novo no Registro");
   } finally {
     if (server) { server.closeAllConnections?.(); await new Promise<void>((resolve) => server!.close(() => resolve())); }

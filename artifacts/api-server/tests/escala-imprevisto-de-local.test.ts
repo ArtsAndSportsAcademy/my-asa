@@ -4,7 +4,7 @@
  * de bater e desfaz. Folga vence. PostgreSQL real de teste.
  */
 import http from "node:http";
-import { eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import {
   areaLocalSupervisorsTable, areasTable, db, escalaLocalDoDiaTable, folgasTable, historyEventsTable, locationsTable, operationLocationsTable, operationsTable,
   organizationsTable, pool, programacaoBlocosTable, programacaoEquipeTable, programacoesTable, scalesTable, userRolesTable, usersTable,
@@ -99,7 +99,7 @@ async function run() {
     const dia = trouxe.body.dia as { imprevistos?: { id: string; pessoaId: string; localNome: string; motivo: string | null }[]; blocos: { rotulo: string; pessoaIds: string[] }[] };
     assert(dia.imprevistos?.length === 1 && dia.imprevistos[0]!.pessoaId === m1.id && dia.imprevistos[0]!.motivo === "faltou gente no treino", "a resposta já traz o imprevisto do dia, com o motivo");
     assert(dia.blocos.find((b) => b.rotulo === "Boas-vindas")!.pessoaIds.includes(m1.id) && !(await nomes(acqua!.id, "Boas-vindas")).has(m1.id), "a m1 entra em Snowland e sai dos blocos gerais da Acqua só naquele dia");
-    const eventos = await db.select().from(historyEventsTable).where(eq(historyEventsTable.action, "escala.local_do_dia_criado"));
+    const eventos = await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.action, "escala.local_do_dia_criado"), eq(historyEventsTable.orgId, org!.id)));
     assert(eventos.length === 1 && /em vez de/.test(eventos[0]!.narrative ?? "") && JSON.stringify(eventos[0]!.metadata ?? {}).includes("faltou gente no treino"), "um evento no Registro, com a origem e o motivo escrito");
     assert((await avisosDe(supAcqua.id, "escala.local_do_dia")) === 1 && (await avisosDe(supSnow.id, "escala.local_do_dia")) === 0, "a Supervisão da Acqua (o outro local) é avisada, e quem fez não recebe o próprio aviso");
     const repetida = await asSupSnow("POST", url, trazer({ motivo: "faltou gente no treino" }));
@@ -109,7 +109,7 @@ async function run() {
     const [depois] = await db.select().from(scalesTable).where(eq(scalesTable.id, escala!.id));
     assert(depois!.status === "PUBLISHED" && depois!.alteradaDesde !== null, "a Escala publicada de Snowland passou a pedir republicação");
     assert((await avisosDe(admin.id, "scale.needs_republish")) === 1, "a Administração recebeu um aviso de que há o que republicar");
-    assert((await db.select().from(historyEventsTable).where(eq(historyEventsTable.action, "escala.alterada_pelo_imprevisto"))).length >= 1, "o Registro conta que o imprevisto alterou a Escala publicada");
+    assert((await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.action, "escala.alterada_pelo_imprevisto"), eq(historyEventsTable.orgId, org!.id)))).length >= 1, "o Registro conta que o imprevisto alterou a Escala publicada");
 
     // Com horário: a m3 vem para Snowland só a partir das 10:00 (entra no treino, não nas boas-vindas das 8).
     const comHora = await asAdmin("POST", url, trazer({ userId: m3.id, inicio: "10:00" }));
@@ -126,7 +126,7 @@ async function run() {
     assert(linhas.length === 2 && linhas.find((l) => l.id === id)!.active === false, "desfazer deixa a linha inativa (nada é apagado)");
     assert(!(await nomes(snow!.id, "Boas-vindas")).has(m1.id) && (await nomes(acqua!.id, "Boas-vindas")).has(m1.id), "a m1 volta à Acqua, como a Programação manda");
     assert((await asSupSnow("POST", `${url}/desfazer`, { id, locationId: snow!.id })).body.mudou === false, "desfazer de novo não muda nada");
-    assert((await db.select().from(historyEventsTable).where(eq(historyEventsTable.action, "escala.local_do_dia_desfeito"))).length === 1, "o desfazer entra no Registro uma vez");
+    assert((await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.action, "escala.local_do_dia_desfeito"), eq(historyEventsTable.orgId, org!.id)))).length === 1, "o desfazer entra no Registro uma vez");
   } finally {
     if (server) { server.closeAllConnections?.(); await new Promise<void>((resolve) => server!.close(() => resolve())); }
     const ids = todos.map((u) => u.id);

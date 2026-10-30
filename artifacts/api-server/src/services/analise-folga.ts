@@ -14,7 +14,7 @@ import {
   agendaEventsTable, dailyBookAssignmentsTable, dailyBookPositionsTable, dailyBooksTable, db, folgaGruposTable, folgasTable, showBookLinesTable, showBooksTable, usersTable,
 } from "@workspace/db";
 import { operacaoDaPessoa } from "./folga-roteamento.js";
-import { montarEscalaDoDia } from "./escala-dia.js";
+import { leituraDaCasaNoDia, montarEscalaDoDia } from "./escala-dia.js";
 import { fraseDoLimite, lerConfigFolga, limitesExcedidos } from "./folga-config.js";
 
 export const LIMITE_DIAS_ANALISE = 14;
@@ -130,7 +130,8 @@ export async function analisarPedidoDeFolga(input: { organizationId: string; use
   for (const date of datas) {
     const vagas = await vagasDaPessoa(userId, date);
     const locais = [...new Set([...vagas.map((v) => v.locationId), pessoa.defaultLocationId].filter((id): id is string => Boolean(id)))];
-    const escalas = (await Promise.all(locais.map((l) => montarEscalaDoDia(organizationId, l, date)))).filter((e): e is NonNullable<typeof e> => Boolean(e));
+    const casa = await leituraDaCasaNoDia(organizationId, date);
+    const escalas = (await Promise.all(locais.map((l) => montarEscalaDoDia(organizationId, l, date, casa)))).filter((e): e is NonNullable<typeof e> => Boolean(e));
 
     const nomes = new Map<string, string>();
     const folgam = new Set<string>(), trabalham = new Set<string>();
