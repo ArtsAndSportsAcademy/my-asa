@@ -56,6 +56,7 @@ import { viradaDoLocal } from "../lib/virada-do-dia.js";
 import { mexidasDoDia, novaColeta } from "../services/escala-mexidas.js";
 import { FRASE_CHAMADA_MUITAS, MAXIMO_DE_CHAMADAS, fraseChamadaDepoisDoInicio, janelaDaChamada, lerChamada } from "../services/escala-chamadas.js";
 import { canManageShowBook, canViewShowBook } from "../lib/show-responsibility.js";
+import { FRASE_COPIA_SEM_ACESSO, copiarParaODia, desfazerCopia, lerData, origensPossiveis, podeCopiar, type ItensDaCopia } from "../services/escala-copia.js";
 import { FRASE_EQUIPE_MUDOU, FRASE_SEM_VERSAO, copiarEquipe, diferencaDaEquipe, elencoDaOrganizacao, equipeDaProgramacao, lerLinhas, resumoPorPessoa, sugerirEquipe, versaoDaEquipe, type LinhaGuardada } from "../services/escala-equipe.js";
 
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
@@ -1773,6 +1774,59 @@ router.post("/escalas/chamadas/copiar", requireAuth, requireOrganization, async 
     }
   });
   res.json({ resultado, copiadas: resultado.reduce((n, r) => n + r.copiadas, 0) });
+});
+
+/**
+ * Copiar de outro dia (H1, 30/10/2026). Ver `services/escala-copia.ts`. Quem pode: Administração e Supervisão do local (Direção só lê, Elenco não vê).
+ * `GET /escalas/copia/origens` lista os dias do local que têm algo para copiar; `POST /escalas/dia/copiar` copia (ou, com `simular`, só mostra a
+ * prévia) para UM dia de destino; `POST /escalas/dia/copiar/desfazer` desfaz uma cópia enquanto ninguém mexeu nos itens criados.
+ */
+router.get("/escalas/copia/origens", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  const locationId = typeof req.query.locationId === "string" ? req.query.locationId : "";
+  const date = lerData(req.query.date) ?? operationalDate();
+  if (!locationId || !(await locationInOrg(locationId, actor.organizationId))) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
+  if (!(await podeCopiar(actor, locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: `${fraseDeRecusaPorPerfil(["ADMIN", "SUPERVISOR_A"], actor.role)} ${FRASE_COPIA_SEM_ACESSO}` }); return; }
+  try {
+    res.json({ origens: (await origensPossiveis(locationId, date)).filter((o) => o.date !== date) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não consegui listar os dias para copiar. Tente de novo." });
+  }
+});
+
+router.post("/escalas/dia/copiar", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  const { locationId, origem, destino, versao, itens, modo, motivo, simular } = req.body ?? {};
+  const de = lerData(origem), para = lerData(destino);
+  if (typeof locationId !== "string" || !locationId || !de || !para) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "Informe o local, o dia de origem e o dia de destino (AAAA-MM-DD)." }); return; }
+  if (versao !== undefined && versao !== "publicada" && versao !== "atual") { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "A versão a copiar é a publicada ou a de agora." }); return; }
+  if (modo !== undefined && modo !== "juntar" && modo !== "zero") { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "O modo da cópia é juntar ao que já está ou começar do zero." }); return; }
+  if (!(await locationInOrg(locationId, actor.organizationId))) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
+  if (!(await podeCopiar(actor, locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: `${fraseDeRecusaPorPerfil(["ADMIN", "SUPERVISOR_A"], actor.role)} ${FRASE_COPIA_SEM_ACESSO}` }); return; }
+  const itensLidos: Partial<ItensDaCopia> = {};
+  for (const k of ["atividades", "ajustes", "horarios", "edicoes", "chamadas"] as const) if (itens && typeof itens === "object" && typeof itens[k] === "boolean") itensLidos[k] = itens[k];
+  try {
+    const r = await copiarParaODia(actor, { locationId, origem: de, destino: para, versao, itens: itensLidos, modo, motivo: typeof motivo === "string" ? motivo : null }, simular === true);
+    if (!r.ok) { res.status(r.status).json({ error: r.error, message: r.message, ...(r.resumo ? { resumo: r.resumo } : {}) }); return; }
+    res.status(r.gravou ? 201 : 200).json({ resumo: r.resumo, eventoId: r.eventoId, gravou: r.gravou });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não consegui copiar o dia agora. Nada foi gravado; tente de novo." });
+  }
+});
+
+router.post("/escalas/dia/copiar/desfazer", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  const { eventoId } = req.body ?? {};
+  if (typeof eventoId !== "string" || !UUID.test(eventoId)) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "Informe a cópia a desfazer (eventoId)." }); return; }
+  try {
+    const r = await desfazerCopia(actor, eventoId);
+    res.status(r.status).json(r.body);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não consegui desfazer a cópia agora. Nada foi alterado; tente de novo." });
+  }
 });
 
 export default router;

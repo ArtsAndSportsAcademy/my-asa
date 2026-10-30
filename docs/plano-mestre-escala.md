@@ -35,7 +35,7 @@ produção (backup, migração, API, site) é de quem constrói o app, nessa ord
 | # | Pacote | Tam. | Migração | Observação |
 |---|---|---|---|---|
 | 1 | **Preencher a equipe** de Snowland e da Acqua (Programação → "Equipe do local", marcar em lote ou "Sugerir pelas Escalas feitas") e conferir uma quinta-feira real: o Miguelito só em Snowland, o almoço de Snowland sem a Acqua, a grade sem colunas de gente da Acqua | — | — | **a usuária faz em produção**; quem confere só lê |
-| 2 | **H. Copiar de outro dia** (Etapa 8): a Supervisão copia um dia que funcionou; o app mostra quem ficou de fora e por quê (folga, outra equipe, local fechado) | M | não | **o próximo**: é o que mais poupa trabalho de quem monta sozinho; desenhar a janela antes e mostrar à usuária |
+| 2 | **H. Copiar de outro dia** (Etapa 8): a Supervisão copia um dia que funcionou; o app mostra quem ficou de fora e por quê (folga, outra equipe, local fechado) | M | não (a confirmar) | **o próximo**, decidido em 30/10 (decisões 15 a 24 da seção 7). **H1** copia a Escala (atividades só do dia, ajustes por pessoa, horários, edições do dia, chamadas) para um ou vários dias do mesmo local; **H2** copia as vagas dos Livros do Dia. Começa pelo H1. **H1 feito em 30/10 (local, sem migração; nada enviado): ver a seção 11** |
 | 3 | **G. Tempo disponível**: aviso quando alguém fica 30 min ou mais sem nada no dia; só Supervisão e Administração veem; o limite é configurável em Locais | M | **0090** | decisão 4 da seção 7 |
 | 4 | **J. Menos cliques**: cadastro de várias pessoas, ligar vários personagens ao show, repetir horários nas sessões, bloco em vários horários | M cada | não | perguntar à usuária quais partes incomodam mais e fazer só essas |
 | 5 | **"Uma escala só"**: visão "Todos os locais" na Atividade do dia (a linha do dia de cada pessoa com o local de cada atividade) | G | não | desenhar antes; depende da equipe preenchida |
@@ -80,6 +80,17 @@ Até 28/10 este plano listava o que estava "enviado e não promovido" e "commita
 12. **Equipe por local** (28/10): mora na Programação de cada local, por temporada; tudo o que está na seção 10, "O que foi decidido".
 13. **Tempo de ida entre locais é configurável** em Locais, pela Administração (28/10).
 14. **Quem não tem marca de equipe não é barrado no Livro do Dia** por estar num bloco de "todo mundo" ou de área de outro local (30/10): ela está nesses blocos em todos os locais, então eles não dizem onde ela está. Para quem tem marca, esses blocos contam como ocupado.
+
+15. **Copiar de outro dia (H), dividido em duas partes** (30/10): **H1** copia a Escala; **H2** copia as vagas dos Livros do Dia. Nas duas, Administração e Supervisão do local têm as mesmas permissões; publicar continua só da Administração. No H2, copiar vagas de Livro passa a valer também para a Supervisão do local (hoje gerar Livros é só da Administração), com Registro. Direção só lê; Elenco não vê.
+16. **Destino que já tem ajustes:** juntar, sem mexer no que já está. "Começar do zero" existe, mas não como botão principal: pede motivo escrito e é restaurável (nada é apagado).
+17. **Destino já publicado: permitir.** Marca "alterada depois de publicada", avisa a Administração para republicar, o Elenco segue vendo a versão antiga; faixa amarela avisa antes de copiar.
+18. **Origem de outro dia da semana: permitir**, casando por nome e horário e listando o que não casou.
+19. **Qual versão da origem:** a publicada, quando houver. Se a origem mudou depois de publicada, avisa e pergunta qual das duas copiar. Nunca publicada: copia o rascunho.
+20. **Só dias do mesmo local.**
+21. **Desfazer a cópia:** na faixa logo depois de copiar e no Registro, enquanto ninguém mexeu nesses itens; se alguém já mexeu, o app diz o que não dá para desfazer.
+22. **A cópia respeita a equipe por local** (seção 10): no destino, quem é da equipe de outro local ou está sem local não entra e aparece em "ficam de fora" com o motivo ("é da equipe da Acqua neste dia"). Folga e local fechado também são motivos. Quem precisar, a Supervisão traz pelo imprevisto do dia.
+23. **Vários dias de destino de uma vez** (ex.: esta quinta para as próximas 3 quintas).
+24. **Um aviso por cópia** (não um por item) e, no Registro, **um evento por dia copiado**, dizendo de onde veio e o que ficou de fora.
 
 ## 8. Regras de trabalho (valem para toda sessão)
 Português simples; dizer o que **não** foi visto; só commitar os arquivos da própria sessão, por caminho; máximo de duas sessões em paralelo e em arquivos diferentes; testes um arquivo por vez (o banco de teste tem 15 conexões); nunca escrever em produção sem pedir; dados de exemplo com nome de gente só em `import.meta.env.DEV`; migração em produção é de quem constrói o app.
@@ -203,3 +214,13 @@ cabeçalho dos dias e a barra do lote ficam fixos na janela da equipe; (5) a vig
 - **Escala já publicada** antes da equipe existir não muda sozinha: a mudança espera a republicação, como sempre (crivo 6).
 - **Fora:** "uma escala só" com todos os locais na mesma grade (vem depois, com a equipe
   pronta); pessoa em duas áreas (Amanda e Antônio).
+
+## 11. Copiar de outro dia, H1 (30/10/2026, local, sem migração, nada enviado)
+- **Serviço** `services/escala-copia.ts`; **rotas** em `routes/escalas.ts`: `GET /escalas/copia/origens` (dias do local com algo para copiar), `POST /escalas/dia/copiar` (UM dia de destino por pedido; `simular: true` é a prévia e não grava) e `POST /escalas/dia/copiar/desfazer` (`eventoId`). Quem pode: Administração e Supervisão com acesso ao local; Direção e Elenco recebem 403 com frase.
+- **O que copia:** atividades só do dia (com as pessoas), ajustes por pessoa, horário só de uma pessoa, edição da atividade no dia e chamadas das atividades só do dia. **Não copia:** chamada na folga (o motivo era daquele dia), imprevisto de local, "saiu do show", horários pedidos em Solicitações, marcas de parte enviada. Ajustes em atividades de show ficam para o **H2** (a prévia diz quantos são).
+- **Regras no destino:** folga, equipe de outro local, "sem local hoje" e quem saiu do elenco ficam de fora, com a frase; local fechado pula o dia; destino publicado marca "alterada depois de publicada", avisa a Administração e o Elenco segue vendo a versão antiga. Atividade de outro dia da semana casa por nome e horário; a que não casa vai para "ficam de fora".
+- **Juntar** (padrão) não mexe no que o destino já tem. **Começar do zero** pede motivo, desativa (não apaga) o que havia e o desfazer devolve.
+- **Versão da origem:** a publicada quando houver (reconstruída pelos registros ativos no instante da publicação); se a origem mudou depois, a tela pergunta e o servidor recusa sem a escolha.
+- **Registro:** um evento `escala.copiada_de_outro_dia` por dia copiado (de onde veio, o que ficou de fora, ids criados) e `escala.copia_desfeita`. **Avisos:** um por dia copiado (o de "quem mexeu em pessoa de outra área" e o de republicação), não um por item.
+- **Tela:** `components/escala/copiar-dia-dialog.tsx`, no menu "Mais" do rodapé; escolher origem, dias de destino (até 8), o que copiar, conferir (prévia por dia) e copiar em fila; faixa "Desfazer cópia" depois. Teste: `escala-copiar-de-outro-dia.test.ts`.
+- **Limites conhecidos:** o desfazer fica só na faixa (o botão no Registro não foi feito; a rota já aceita o `eventoId`); copiar de novo "juntando" uma atividade só do dia que já existe com pessoa nova pode repetir a chamada dela; a "versão publicada" da origem é uma reconstrução aproximada para atividades só do dia (usa a hora da última mexida).

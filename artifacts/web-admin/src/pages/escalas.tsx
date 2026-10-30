@@ -26,6 +26,7 @@ import { diaQueAEscalaAbre, type ViradaDoDia } from "@/lib/dia-da-escala";
 import { SaiuDialog, type PreviaDaSaida, type SaiuApi } from "@/components/escala/saiu-dialog";
 import { AtividadeLoteDialog } from "@/components/escala/atividade-lote-dialog";
 import { PublicarDialog } from "@/components/escala/publicar-dialog";
+import { CopiarDiaDialog, type CopiaFeita } from "@/components/escala/copiar-dia-dialog";
 import { ShowLinha } from "@/components/escala/show-linha";
 import "./shows.css"; // a janela do Ajustar usa .shows-dialog: sem isto ela não rola e o rodapé some quando a Escala abre direto
 import "./escalas.css";
@@ -151,6 +152,9 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
   const [chamadasDoDia, setChamadasDoDia] = useState<Bloco | null>(null);
   const [regrasAbertas, setRegrasAbertas] = useState(false);
   const [gerarMesAberto, setGerarMesAberto] = useState(false);
+  // "Copiar de outro dia": a janela aberta e, depois de copiar, a faixa com o "Desfazer cópia" (um evento do Registro por dia copiado).
+  const [copiarAberto, setCopiarAberto] = useState(false);
+  const [copiaFeita, setCopiaFeita] = useState<{ texto: string; eventoIds: string[]; desfazendo: boolean } | null>(null);
   // Publicar e republicar pedem confirmação: a janela diz quantas pessoas são avisadas, quais Livros saem juntos e o que ainda pede atenção.
   const [confirmandoPublicacao, setConfirmandoPublicacao] = useState<{ republicar: boolean } | null>(null);
   const [dia, setDia] = useState<Dia | null>(null);
@@ -278,6 +282,29 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       }
       setRefresh((n) => n + 1);
     } catch (err) { setError(errMsg(err, "Não consegui marcar a área.")); } finally { setSaving(false); setBusy(""); }
+  };
+  const aoFecharCopia = (feitas: CopiaFeita[], origemCopiada: string | null) => {
+    setCopiarAberto(false);
+    const comEvento = feitas.filter((f) => f.eventoId);
+    if (!comEvento.length) { if (feitas.length) setRefresh((n) => n + 1); return; }
+    const itens = comEvento.reduce((n, f) => n + f.itens, 0);
+    setCopiaFeita({
+      texto: `Copiei ${plural(itens, "item", "itens")}${origemCopiada ? ` de ${shortDate(origemCopiada)}` : ""} para ${comEvento.length === 1 ? shortDate(comEvento[0]!.date) : `${comEvento.length} dias`}.`,
+      eventoIds: comEvento.map((f) => f.eventoId!), desfazendo: false,
+    });
+    setRefresh((n) => n + 1);
+  };
+  const desfazerCopia = async () => {
+    if (!copiaFeita || copiaFeita.desfazendo) return;
+    setCopiaFeita({ ...copiaFeita, desfazendo: true });
+    const frases: string[] = [];
+    for (const eventoId of copiaFeita.eventoIds) {
+      try { const r = await customFetch<{ ok: boolean; message: string }>("/api/escalas/dia/copiar/desfazer", { method: "POST", body: JSON.stringify({ eventoId }) }); if (!r.ok) frases.push(r.message); }
+      catch (err) { frases.push(errMsg(err, "Não consegui desfazer um dos dias. Nada foi alterado nele.")); }
+    }
+    setCopiaFeita(null);
+    if (frases.length) setError(frases.join(" "));
+    setRefresh((n) => n + 1);
   };
   const gerarDia = async () => {
     if (!localId) return;
@@ -562,10 +589,14 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
     {chamadasDoDia && dia?.escala && <ChamadasDialog dona={{ scaleId: dia.escala.id, blocoKey: chamadasDoDia.key }} titulo={`Chamadas · ${chamadasDoDia.rotulo} ${chamadasDoDia.inicio}`} inicioDaAtividade={chamadasDoDia.inicio} onClose={() => setChamadasDoDia(null)} onSalvou={() => setRefresh((n) => n + 1)}/>}
     {manual && dia && !manual.bloco && <AtividadeLoteDialog tipos={dia.tipos ?? []} pessoas={dia.pessoas} areas={dia.areas} blocos={dia.blocos} areasQueSupervisiona={isAdm ? null : areasMinhas} saving={busy === "manual"} onClose={() => setManual(null)} onSubmit={criarEntradaManual}/>}
     {desfazerLote && <div className="ge-desfazer" role="status"><span>{desfazerLote.texto}</span><button type="button" onClick={() => void desfazerAtividade()}>Desfazer</button></div>}
+    {copiaFeita && <div className="ge-desfazer" role="status"><span>{copiaFeita.texto}</span>
+      <button type="button" disabled={copiaFeita.desfazendo} onClick={() => void desfazerCopia()}>{copiaFeita.desfazendo ? "Desfazendo…" : "Desfazer cópia"}</button>
+      <button type="button" disabled={copiaFeita.desfazendo} aria-label="Fechar o aviso" onClick={() => setCopiaFeita(null)}>×</button></div>}
+    {copiarAberto && !review && localId && <CopiarDiaDialog localId={localId} localNome={operationLabel} dataInicial={date} onClose={aoFecharCopia}/>}
 
     {regrasAbertas && isAdm && localId && <RegrasDoLocalDialog localId={localId} localNome={locais.find((l) => l.id === localId)?.name ?? "este local"} onClose={() => setRegrasAbertas(false)}/>}
     {gerarMesAberto && isAdm && <GerarMesDialog locais={locais} localInicial={localId} review={review} onClose={() => setGerarMesAberto(false)} onGerou={() => setRefresh((n) => n + 1)}/>}
-    <Rodape role={role} tab={tab} onMinha={tab === "minha"} dia={dia} minha={minha} areasMinhas={areasMinhas} saving={saving} busy={busy} onGerar={gerarDia} onGerarMes={() => setGerarMesAberto(true)} onRegras={review ? undefined : () => setRegrasAbertas(true)} onPronta={marcarPronta} onPublicar={(republicar) => setConfirmandoPublicacao({ republicar })}/>
+    <Rodape role={role} tab={tab} onMinha={tab === "minha"} dia={dia} minha={minha} areasMinhas={areasMinhas} saving={saving} busy={busy} onGerar={gerarDia} onGerarMes={() => setGerarMesAberto(true)} onCopiar={review || !(isAdm || areasMinhas.length > 0) ? undefined : () => setCopiarAberto(true)} onRegras={review ? undefined : () => setRegrasAbertas(true)} onPronta={marcarPronta} onPublicar={(republicar) => setConfirmandoPublicacao({ republicar })}/>
     {confirmandoPublicacao && dia && <PublicarDialog dia={dia} dataLonga={`${WEEKDAY_LONG[weekdayOf(date)]}, ${fullDate(date)}`} republicar={confirmandoPublicacao.republicar} review={review} ocupado={busy === "publicar"} onClose={() => setConfirmandoPublicacao(null)}
       onConfirmar={() => { const { republicar } = confirmandoPublicacao; setConfirmandoPublicacao(null); void publicar(republicar); }}/>}
   </section>;
@@ -1224,7 +1255,7 @@ function lembrarLocal(list: { id: string }[]): string | undefined {
 }
 function guardarLocal(id: string) { try { localStorage.setItem(LOCAL_KEY, id); } catch { /* sem armazenamento */ } }
 
-function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, busy = "", onGerar, onGerarMes, onRegras, onPronta, onPublicar }: { role: Role; tab: string; onMinha?: boolean; dia: Dia | null; minha: Minha | null; areasMinhas: string[]; saving: boolean; busy?: string; onGerar: () => void; onGerarMes?: () => void; onRegras?: () => void; onPronta: (areaIds: string[], pronta: boolean) => void; onPublicar: (republicar: boolean) => void }) {
+function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, busy = "", onGerar, onGerarMes, onCopiar, onRegras, onPronta, onPublicar }: { role: Role; tab: string; onMinha?: boolean; dia: Dia | null; minha: Minha | null; areasMinhas: string[]; saving: boolean; busy?: string; onGerar: () => void; onGerarMes?: () => void; onCopiar?: () => void; onRegras?: () => void; onPronta: (areaIds: string[], pronta: boolean) => void; onPublicar: (republicar: boolean) => void }) {
   const isMem = role === "mem" || onMinha, isDir = role === "dir", isAdm = role === "adm";
   let note = "";
   const actions: ReactNode[] = [];
@@ -1243,13 +1274,15 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, b
     const published = dia.escala && dia.escala.status !== "DRAFT";
     if (tab === "prog") note = "Programação é o molde: muda os próximos dias que ainda não foram publicados. Dia publicado não muda sozinho.";
     else if (!dia.escala && dia.fechado) note = "Local fechado neste dia: não há Escala para gerar.";
-    else if (!dia.escala) note = isAdm ? "Gere o dia para criar a Escala e os Livros dos Shows programados como rascunho." : "Este dia ainda não foi gerado. Quem gera a Escala e os Livros é a Administração.";
+    else if (!dia.escala) note = isAdm ? "Gere o dia para criar a Escala e os Livros dos Shows programados como rascunho. Ou copie de outro dia pelo menu Mais." : `Este dia ainda não foi gerado. Quem gera a Escala e os Livros é a Administração.${onCopiar ? " Você pode copiar de outro dia pelo menu Mais." : ""}`;
     else if (dia.escala.alteradaDesde) note = "Mudou depois de publicada · quem faz só recebe a mudança quando você republicar";
     else if (published) note = `Publicada${dia.escala.publishedAt ? ` às ${hhmm(dia.escala.publishedAt)}` : ""} · ${dia.areas.length} ${dia.areas.length === 1 ? "área" : "áreas"} · a mesma escalação está no Livro do Dia`;
     else note = `Rascunho · ${prontas.length} de ${dia.areas.length} ${dia.areas.length === 1 ? "parte enviada" : "partes enviadas"}${faltam.length ? ` · falta ${faltam.map((a) => a.name).join(", ")}` : ""}${faltam.filter((a) => a.prontaTirada).map((a) => ` · ${a.name}: marca tirada por ${a.prontaTirada!.por ?? "alguém"} às ${hhmm(a.prontaTirada!.em)}`).join("")} · publica a Administração`;
     // O mês inteiro de uma vez, em rascunho: a Administração confere depois e publica dia a dia.
     if (tab === "escala" && isAdm && onRegras) apoio.push({ key: "regras", label: "Regras do local", onClick: onRegras, disabled: saving });
     if (tab === "escala" && isAdm && onGerarMes) apoio.push({ key: "gerar-mes", label: "Gerar o mês", onClick: onGerarMes, disabled: saving });
+    // Copiar de outro dia: Administração e Supervisão do local; não faz sentido no dia em que o local não abre e não há Escala.
+    if (tab === "escala" && onCopiar && !(dia.fechado && !dia.escala)) apoio.push({ key: "copiar", label: "Copiar de outro dia", onClick: onCopiar, disabled: saving });
     if (tab === "escala" && isAdm && !dia.escala && !dia.fechado) actions.push(<button key="generate" type="button" className="esc-hit" disabled={saving} onClick={onGerar} style={css(btn("primary"))}>{busy === "gerar" ? "Gerando Escala e Livros…" : "Gerar Escala e Livros"}</button>);
     // Show que entrou na Programação depois da geração fica sem Livro: dá para gerar o que falta.
     const semLivro = dia.escala ? dia.blocos.filter((b) => b.regra === "livro" && !b.dailyBookId).length : 0;
