@@ -8,8 +8,9 @@ Regra de uso: o que mudar de estado muda **aqui primeiro**. Código só com o "p
 produção (backup, migração, API, site) é de quem constrói o app, nessa ordem.
 
 ## 0. Onde estamos (30/10/2026) — leia isto primeiro
+- **H (copiar de outro dia, `e7c3cdb` e `ef2f83a`) e G (tempo disponível, `70ecf7a..2154d03`, migração 0090) estão prontos e conferidos, mas NÃO promovidos.** Ordem: backup, migração 0090, API, site.
 - **Tudo até `da985e4` está em produção** (ramo `codex/escala-mais-facil`; migrações da 0000 à **0089** aplicadas). Nada na `main`.
-- **A próxima migração livre é a 0090.** Ao criar uma, escreva o rollback em `lib/db/drizzle/rollback/` e registre no `meta/_journal.json`.
+- **A próxima migração livre é a 0091** (a 0090 é a do G, já no banco de teste). Ao criar uma, escreva o rollback em `lib/db/drizzle/rollback/` e registre no `meta/_journal.json`.
 - **A equipe por local (pacote O) está no ar, mas ainda vazia em produção:** até alguém preencher a equipe de Snowland e da Acqua na
   Programação, a Escala segue como antes. Preencher e conferir uma quinta-feira real é o primeiro passo (seção 2, item 1).
 - **Como se trabalha agora:** a usuária constrói cada pacote numa sessão própria e traz para outra sessão **conferir** (ler o diff atrás de
@@ -35,8 +36,8 @@ produção (backup, migração, API, site) é de quem constrói o app, nessa ord
 | # | Pacote | Tam. | Migração | Observação |
 |---|---|---|---|---|
 | 1 | **Preencher a equipe** de Snowland e da Acqua (Programação → "Equipe do local", marcar em lote ou "Sugerir pelas Escalas feitas") e conferir uma quinta-feira real: o Miguelito só em Snowland, o almoço de Snowland sem a Acqua, a grade sem colunas de gente da Acqua | — | — | **a usuária faz em produção**; quem confere só lê |
-| 2 | **H. Copiar de outro dia** (Etapa 8): a Supervisão copia um dia que funcionou; o app mostra quem ficou de fora e por quê (folga, outra equipe, local fechado) | M | não (a confirmar) | **o próximo**, decidido em 30/10 (decisões 15 a 24 da seção 7). **H1** copia a Escala (atividades só do dia, ajustes por pessoa, horários, edições do dia, chamadas) para um ou vários dias do mesmo local; **H2** copia as vagas dos Livros do Dia. Começa pelo H1. **H1 e H2 feitos em 30/10 (local, sem migração; nada enviado). H1: seção 11. H2 (vagas dos Livros do Dia, `services/escala-copia-livros.ts`, `trocarVagasNoLivro` em `routes/daily-book.ts`):** copia quem faz cada personagem do Livro de origem para o Livro do mesmo show e da mesma sessão no destino, casando a vaga por cena, bloco e papel de origem. **Só copia num Livro que já existe no destino**; se não foi gerado, a prévia diz e a Administração gera. Passa pelas regras (folga, fora do elenco, restrição de horário, limite do dia, atividade em outro local); em show **não** vale "equipe de outro local" (show pega o elenco de onde for quando a pessoa está livre). Juntar não troca vaga que alguém já mudou à mão; a vaga copiada vira exceção do dia (manual); se a pessoa já estava em outra vaga do mesmo Livro, a outra abre. Supervisão do local também copia vagas. Vai no mesmo evento do Registro e o desfazer devolve só a vaga que ninguém mexeu. Copia o Livro **como está agora** (não há retrato confiável da versão publicada do Livro). Teste: `escala-copiar-vagas-do-livro.test.ts` |
-| 3 | **G. Tempo disponível**: aviso quando alguém fica 30 min ou mais sem nada no dia; só Supervisão e Administração veem; o limite é configurável em Locais | M | **0090** | decisão 4 da seção 7 |
+| 2 | ~~**H. Copiar de outro dia** (Etapa 8)~~ **feito** (H1 `e7c3cdb`, H2 `ef2f83a`; conferência de 30/10 abaixo): a Supervisão copia um dia que funcionou; o app mostra quem ficou de fora e por quê (folga, outra equipe, local fechado) | M | não (a confirmar) | **o próximo**, decidido em 30/10 (decisões 15 a 24 da seção 7). **H1** copia a Escala (atividades só do dia, ajustes por pessoa, horários, edições do dia, chamadas) para um ou vários dias do mesmo local; **H2** copia as vagas dos Livros do Dia. Começa pelo H1. **H1 e H2 feitos em 30/10 (local, sem migração; nada enviado). H1: seção 11. H2 (vagas dos Livros do Dia, `services/escala-copia-livros.ts`, `trocarVagasNoLivro` em `routes/daily-book.ts`):** copia quem faz cada personagem do Livro de origem para o Livro do mesmo show e da mesma sessão no destino, casando a vaga por cena, bloco e papel de origem. **Só copia num Livro que já existe no destino**; se não foi gerado, a prévia diz e a Administração gera. Passa pelas regras (folga, fora do elenco, restrição de horário, limite do dia, atividade em outro local); em show **não** vale "equipe de outro local" (show pega o elenco de onde for quando a pessoa está livre). Juntar não troca vaga que alguém já mudou à mão; a vaga copiada vira exceção do dia (manual); se a pessoa já estava em outra vaga do mesmo Livro, a outra abre. Supervisão do local também copia vagas. Vai no mesmo evento do Registro e o desfazer devolve só a vaga que ninguém mexeu. Copia o Livro **como está agora** (não há retrato confiável da versão publicada do Livro). Teste: `escala-copiar-vagas-do-livro.test.ts` |
+| 3 | ~~**G. Tempo disponível**~~ **feito** (`70ecf7a..2154d03`, seção 12): aviso quando alguém fica 30 min ou mais sem nada no dia; só Supervisão e Administração veem; o limite é configurável em Locais | M | **0090** | decisão 4 da seção 7. **Decidido e desenhado em 30/10: ver a seção 12** (código ainda não começou) |
 | 4 | **J. Menos cliques**: cadastro de várias pessoas, ligar vários personagens ao show, repetir horários nas sessões, bloco em vários horários | M cada | não | perguntar à usuária quais partes incomodam mais e fazer só essas |
 | 5 | **"Uma escala só"**: visão "Todos os locais" na Atividade do dia (a linha do dia de cada pessoa com o local de cada atividade) | G | não | desenhar antes; depende da equipe preenchida |
 | 6 | **I. Formações no Livro do Dia** (criar do zero, renomear, arquivar) | M–G | talvez | conferir antes na tela com um show de mapa de palco |
@@ -224,3 +225,45 @@ cabeçalho dos dias e a barra do lote ficam fixos na janela da equipe; (5) a vig
 - **Registro:** um evento `escala.copiada_de_outro_dia` por dia copiado (de onde veio, o que ficou de fora, ids criados) e `escala.copia_desfeita`. **Avisos:** um por dia copiado (o de "quem mexeu em pessoa de outra área" e o de republicação), não um por item.
 - **Tela:** `components/escala/copiar-dia-dialog.tsx`, no menu "Mais" do rodapé; escolher origem, dias de destino (até 8), o que copiar, conferir (prévia por dia) e copiar em fila; faixa "Desfazer cópia" depois. Teste: `escala-copiar-de-outro-dia.test.ts`.
 - **Limites conhecidos:** o desfazer fica só na faixa (o botão no Registro não foi feito; a rota já aceita o `eventoId`); copiar de novo "juntando" uma atividade só do dia que já existe com pessoa nova pode repetir a chamada dela; a "versão publicada" da origem é uma reconstrução aproximada para atividades só do dia (usa a hora da última mexida).
+
+## 12. G. Tempo disponível (decidido em 30/10/2026; código pronto em `70ecf7a..2154d03`, conferido; migração 0090, ainda não promovido)
+
+### Decisões (não reabrir)
+1. **O que é:** buraco entre duas atividades da mesma pessoa no mesmo dia, igual ou maior que o limite do local. O dia da pessoa vai da **primeira à última** atividade; antes da primeira e depois da última não é tempo disponível. Quem tem uma atividade só (ou nenhuma) não gera aviso.
+2. **Conta como ocupado:** a janela de almoço **inteira**; a **ida entre locais** (desconta o tempo de ida cadastrado em Locais; sem tempo cadastrado vale 0); chamada que "ocupa tempo" (a só informativa não conta); atividade sem fim dura 30 min (como no choque entre locais). Folga, "equipe de outro local" e "sem local hoje" não geram aviso. Blocos "todo mundo" e de área seguem `contaComoAtividadeDe` (a mesma regra do choque).
+3. **Buraco entre dois locais:** aparece **só no local onde começa**, com o limite desse local.
+4. **Dia dividido:** buraco de **3 horas ou mais** sai da lista principal e vai para uma linha recolhida "Dia dividido (N pessoas) · ver quem". Na lista principal, do maior para o menor (correção de 30/10: "menores primeiro" queria dizer só que os buracos comuns vêm antes da linha de dia dividido).
+5. **Lista principal:** mostra os **5 maiores buracos** (de 30 min até menos de 3 h) e "ver todos". Uma linha por buraco: quem tem dois buracos aparece em duas linhas.
+6. **Quem vê:** Administração e Supervisão (esta vê pessoas de **outras áreas**, com o nome da área). **Direção e Elenco não veem**, e o servidor nem envia o campo a eles.
+7. **Configuração:** Cadastros → Locais, só a Administração muda ("ligar/desligar" e "minutos"), com Registro; Supervisão e Direção só leem. Os locais que já existem começam **ligados, com 30 min**.
+8. **Não vai para o sino, nem para a impressão, nem para a grade.** É alerta de tela.
+9. **"Tempo livre" antigo da ASA** (`consultar_tempo_livre`, módulo `scales`, limite fixo de 60 min): fica como está. **Os números da ASA e os da Escala nova podem não bater.**
+
+### Desenho
+- **Banco (0090):** em `locations`, `tempo_disponivel_ligado boolean not null default true` e `tempo_disponivel_minutos integer not null default 30`. Rollback em `lib/db/drizzle/rollback/`, registro no `_journal.json`, aplicada só no banco de teste.
+- **Serviço puro** `services/escala-tempo-disponivel.ts`: junta, por pessoa, as atividades que ocupam (inclui almoço-janela e a ida), ordena, funde as que se encostam e devolve os buracos ≥ limite, cada um com `pessoaId`, `de`, `ate`, `minutos`, a atividade de antes e a de depois, e, quando a seguinte é em outro local, o nome dele. Reaproveita `minutosDe`, `horaDe`, `contaComoAtividadeDe` e o tempo de ida.
+- **Escala do dia:** `EscalaDia` ganha `tempoDisponivel?: { limite: number; avisos: …[]; diaDividido: …[] }`, montado ao lado de `choquesEntreLocais` com as mesmas Escalas dos outros locais; só vem para Administração e Supervisão e só com o local ligado. A rota passa o perfil (mudança pequena em `routes/escalas.ts`).
+- **Locais:** `PUT /locations/:id/tempo-disponivel` (só Administração, com Registro `location.tempo_disponivel_alterado`, mínimo 5 e máximo 240 min) e leitura junto da lista de locais; janela pequena em Cadastros → Locais, ao lado da virada do dia (rodapé Cancelar/Salvar, Esc fecha).
+- **Tela:** cartão "Tempo disponível" na Atenção do dia (5 maiores + "ver todos"; linha recolhida "Dia dividido"); linha "Livre das X às Y" no painel "Dia de Fulano" com botão para adicionar atividade; resumo do cabeçalho ganha "N pessoas com tempo disponível". Conferir a 375 e 1360 px, com os quatro perfis.
+- **Teste:** `escala-tempo-disponivel.test.ts` (contas do serviço puro; perfis que não recebem o campo; ligar/desligar; recusa com frase; Registro).
+- **Não visto ainda:** a janela da virada em Locais e o painel "Dia de Fulano" por dentro; produção; desempenho (deve reaproveitar o que o choque já carrega).
+
+## 13. Conferência de H e G (30/10/2026)
+Lido o código dos três pacotes; testes com o código final, um arquivo por vez: `escala-copiar-de-outro-dia` (50), `escala-copiar-vagas-do-livro`
+(26), `escala-tempo-disponivel` (63); a sessão do G rodou também escalas-dia, deslocamento, equipe, imprevisto, horário da pessoa, virada do
+dia, permission-matrix e block6. `tsc` da API limpo. Vista na tela, com a API de teste e a Supervisão de Patinadores: a janela "Copiar de outro
+dia" (origens, "os próximos 3", conferência de 4 sábados, cópia de 22 itens, "Desfazer cópia") a 1360 e 375 px.
+
+**Achados (nenhum corrigido ainda):**
+1. **Desfazer depois de publicar muda o dia publicado sem avisar.** Se a cópia foi para um rascunho e o dia foi publicado depois, o
+   "Desfazer cópia" tira os itens sem marcar "alterada depois de publicada" nem avisar a Administração (crivo 6). O desfazer de uma cópia em
+   dia já publicado também não avisa. `desfazerCopia` em `services/escala-copia.ts`.
+2. **H2: a vaga trocada à mão entre a conferência e o "Copiar" é sobrescrita.** O comentário diz que a gravação usa a versão do Livro que a
+   conferência leu, mas `trocarVagasNoLivro` lê a versão de novo dentro da transação; então não há 409 se alguém mexeu no meio (crivo 19).
+3. **Desfazer que deu certo não diz nada:** a faixa some sem "Desfiz a cópia de 4 dias" (crivo 14). Só aparece frase quando falha.
+4. **Durante a gravação a janela segue dizendo "Nada foi gravado ainda."** enquanto mostra "Copiando 2 de 4…" (crivo 13).
+5. **"Este e as próximas 3 sábados":** sábado e domingo são masculinos ("os próximos 3 sábados").
+6. **No celular a janela de cópia encosta na borda direita** (16 px à esquerda, 0 à direita).
+7. **Tempo:** a conferência de 4 dias levou ~50 s e a cópia ~15 s por dia no banco de teste (lento por natureza); produção não medida.
+   A janela mostra o andamento, então não fica muda.
+8. **G, limite em Locais:** duas pessoas da Administração salvando ao mesmo tempo, vale a última (sem conferência de versão). Baixo risco.
