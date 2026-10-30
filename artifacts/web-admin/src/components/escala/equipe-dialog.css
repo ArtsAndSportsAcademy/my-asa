@@ -3,6 +3,8 @@
 .shows-dialog-backdrop.eq-backdrop{z-index:90}
 .shows-dialog.eq-dialog{width:min(960px,calc(100vw - 32px));min-width:0}
 .eq-conteudo{display:flex;flex-direction:column;gap:12px}
+/* O miolo é uma coluna flex e a grade tem overflow:hidden: sem isto ela encolhia até caber no miolo (127 px) e não sobrava nada para rolar, então só se viam duas pessoas. */
+.eq-conteudo>*{flex:none}
 .eq-explica{margin:0;font-size:13px;line-height:1.55;color:#4a4361}
 .eq-resumo{margin:0;font:700 13px Manrope,sans-serif;color:#2f1a6b}
 .eq-nota{margin:0;font-size:12.5px;line-height:1.5;color:#6b6482}
