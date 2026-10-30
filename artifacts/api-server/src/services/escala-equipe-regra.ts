@@ -26,7 +26,26 @@ export type RegraDaEquipe = {
   entra: (userId: string, locationId: string, inicio: string, fim: string | null) => boolean;
   /** Tem marca na temporada, nenhuma no dia da semana e nenhum imprevisto: não entra em bloco geral de nenhum local. */
   semLocalHoje: (userId: string) => boolean;
+  /** Tem alguma marca de equipe na temporada (em qualquer local)? Para ela, "todo mundo" e "a área" de um local são atividade de verdade. */
+  temMarca: (userId: string) => boolean;
+  /**
+   * A pessoa é deste local hoje? Sem marca nenhuma: sim (em todos, como antes). Com imprevisto do dia inteiro: só o local dele. Senão: tem marca
+   * aqui no dia, ou um imprevisto que a traz para cá. A Escala de cada local só mostra quem é dele (mais quem tem atividade ali, como um show).
+   */
+  estaNoLocal: (userId: string, locationId: string) => boolean;
 };
+
+/**
+ * O bloco conta como atividade DESTA pessoa para dizer onde ela está (faixa "No outro local", choque entre locais e o Livro do Dia)?
+ * Almoço (janela), bloco sem ninguém e chamada nunca contam. "Todo mundo" e "a área": sem equipe na casa, "todo mundo" é o elenco inteiro e não prova
+ * nada (a área conta, como sempre contou); com equipe, os dois contam só para quem tem marca, porque para essa pessoa eles já são o local dela.
+ * Quem não tem marca nenhuma entra nesses blocos em todos os locais, então neles não prova onde está.
+ */
+export function contaComoAtividadeDe(b: { flexivel?: boolean; regra: string | null; chamada?: unknown }, userId: string, equipe: Pick<RegraDaEquipe, "ativa" | "temMarca">): boolean {
+  if (b.flexivel || b.regra === "ninguem" || b.chamada) return false;
+  if (b.regra === "todos" || b.regra === "area") return equipe.ativa ? equipe.temMarca(userId) : b.regra === "area";
+  return true;
+}
 
 /**
  * A janela da marca ([inicio, fim), vazio = desde o começo / até o fim do dia) cruza o bloco? Bloco sem fim é um ponto no horário de início:
@@ -58,7 +77,17 @@ export function montarRegraDaEquipe(marcas: MarcaDeEquipe[], imprevistos: Imprev
     return (doDia.get(userId) ?? []).some((m) => m.locationId === locationId && janelasSeCruzam(m, janela));
   };
   const semLocalHoje: RegraDaEquipe["semLocalHoje"] = (userId) => comMarca.has(userId) && !doDia.has(userId) && !imprevistoDe.has(userId);
-  return { ativa: marcas.length > 0 || imprevistos.length > 0, entra, semLocalHoje };
+  const temMarca: RegraDaEquipe["temMarca"] = (userId) => comMarca.has(userId);
+  const estaNoLocal: RegraDaEquipe["estaNoLocal"] = (userId, locationId) => {
+    if (!comMarca.has(userId) && !imprevistoDe.has(userId)) return true;
+    const imprevistos = imprevistoDe.get(userId) ?? [];
+    const diaInteiro = imprevistos.filter((i) => !i.inicio && !i.fim);
+    if (diaInteiro.length) return diaInteiro.some((i) => i.locationId === locationId);
+    if (imprevistos.some((i) => i.locationId === locationId)) return true;
+    if (!comMarca.has(userId)) return true;
+    return (doDia.get(userId) ?? []).some((m) => m.locationId === locationId);
+  };
+  return { ativa: marcas.length > 0 || imprevistos.length > 0, entra, semLocalHoje, temMarca, estaNoLocal };
 }
 
 /**

@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { ApiError, customFetch } from "@workspace/api-client-react";
 import { useFecharComEsc } from "@/lib/fechar-com-esc";
@@ -45,6 +45,18 @@ type Props = {
  * em lugar nenhum segue entrando em tudo, como antes.
  */
 export function EquipeDialog({ programacaoId, programacaoNome, vigencia, localName, review, pessoasDaAmostra, editavelNaAmostra, onClose, onSaved }: Props) {
+  // Ao rolar a lista, o cabeçalho dos dias (e a barra do lote, com gente escolhida) ficam no alto: a altura da barra vira a distância do cabeçalho.
+  const conteudoRef = useRef<HTMLDivElement>(null);
+  const loteRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const lote = loteRef.current, conteudo = conteudoRef.current;
+    if (!lote || !conteudo || typeof ResizeObserver === "undefined") return;
+    const medir = () => conteudo.style.setProperty("--eq-lote-h", `${lote.offsetHeight}px`);
+    medir();
+    const obs = new ResizeObserver(medir);
+    obs.observe(lote);
+    return () => obs.disconnect();
+  });
   const id = useId();
   const [carregando, setCarregando] = useState(!review);
   const [pessoas, setPessoas] = useState<PessoaDaEquipe[]>(review ? pessoasDaAmostra ?? [] : []);
@@ -149,7 +161,7 @@ export function EquipeDialog({ programacaoId, programacaoNome, vigencia, localNa
   return <div className="shows-dialog-backdrop eq-backdrop" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) tentarFechar(); }}>
     <div className="shows-dialog eq-dialog" role="dialog" aria-modal="true" aria-labelledby={`${id}-titulo`}>
       <header className="shows-dialog-header"><div><h2 id={`${id}-titulo`}>Equipe de {localName}</h2><p>{programacaoNome} · {vigencia}</p></div><button type="button" onClick={tentarFechar} aria-label="Fechar"><X size={18}/></button></header>
-      <div className="shows-dialog-content eq-conteudo">
+      <div ref={conteudoRef} className="shows-dialog-content eq-conteudo">
         <p className="eq-explica">Marque em que dias da semana cada pessoa trabalha em {localName} nesta Programação. Quem ainda não tem marca em nenhum local continua entrando em tudo, como antes. Quem tem marca só entra nos blocos de <b>todo mundo</b> e de <b>área</b> do local e do dia marcados; blocos de grupo, de pessoas escolhidas pelo nome e os shows não mudam.</p>
         {carregando && <p className="eq-nota" role="status">Abrindo a equipe…</p>}
         {!carregando && pessoas.length > 0 && <>
@@ -175,7 +187,7 @@ export function EquipeDialog({ programacaoId, programacaoNome, vigencia, localNa
             </div>
           </div>}
 
-          {podeEditar && <div className="eq-lote" role="group" aria-label="Marcar várias pessoas de uma vez">
+          {podeEditar && <div ref={loteRef} className="eq-lote" data-ativo={marcadas.length > 0} role="group" aria-label="Marcar várias pessoas de uma vez">
             <div className="eq-lote-topo">
               <span>{marcadas.length ? `${marcadas.length} ${marcadas.length === 1 ? "pessoa escolhida" : "pessoas escolhidas"}` : "Escolha pessoas na lista para marcar vários dias de uma vez."}</span>
               <button type="button" className="eq-link" onClick={() => setMarcadas(listadas.map((p) => p.id))}>Escolher as da lista</button>

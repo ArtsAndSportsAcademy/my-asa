@@ -5,6 +5,7 @@
  * em `locationAId`. Par sem tempo = só confere se os horários se cruzam. O choque entre locais só avisa, nunca bloqueia (a pessoa pode estar nos
  * dois de propósito); no Livro do Dia, quem não chega a tempo conta como indisponível e a reserva entra (ver `regras-de-escala.ts`).
  */
+import { contaComoAtividadeDe, type RegraDaEquipe } from "./escala-equipe-regra.js";
 import { and, eq, sql } from "drizzle-orm";
 import { db, locaisDeslocamentoTable } from "@workspace/db";
 import type { BlocoDia } from "./escala-dia.js";
@@ -127,18 +128,18 @@ export type ChoqueEntreLocais = {
   minutosDeIda?: number; minutosDeFolga?: number;
 };
 
-/** O que conta como "atividade" para o choque entre locais: as mesmas exclusões da faixa "No outro local" (fora o almoço, o "todo mundo" e as chamadas). */
-const contaParaOChoque = (b: BlocoDia) => !b.flexivel && b.regra !== "todos" && b.regra !== "ninguem" && !b.chamada && b.pessoaIds.length > 0;
+/** Bloco que pode contar para alguém (o resto é por pessoa: `contaComoAtividadeDe`, a mesma regra da faixa "No outro local" e do Livro do Dia). */
+const podeContar = (b: BlocoDia) => !b.flexivel && b.regra !== "ninguem" && !b.chamada && b.pessoaIds.length > 0;
 
 /** Compara as atividades deste local com as dos outros, pessoa por pessoa. Só avisa; quem decide é quem responde pelo dia. */
-export function choquesEntreLocais(localId: string, aqui: BlocoDia[], outros: { id: string; name: string; blocos: BlocoDia[] }[], tempoDeIda: TempoDeIda): ChoqueEntreLocais[] {
+export function choquesEntreLocais(localId: string, aqui: BlocoDia[], outros: { id: string; name: string; blocos: BlocoDia[] }[], tempoDeIda: TempoDeIda, equipe: Pick<RegraDaEquipe, "ativa" | "temMarca">): ChoqueEntreLocais[] {
   const achados: ChoqueEntreLocais[] = [];
-  const meus = aqui.filter(contaParaOChoque);
+  const meus = aqui.filter(podeContar);
   for (const outro of outros) {
     const ida = tempoDeIda(localId, outro.id);
-    for (const b of outro.blocos.filter(contaParaOChoque)) {
+    for (const b of outro.blocos.filter(podeContar)) {
       for (const a of meus) {
-        const comuns = a.pessoaIds.filter((id) => b.pessoaIds.includes(id));
+        const comuns = a.pessoaIds.filter((id) => b.pessoaIds.includes(id) && contaComoAtividadeDe(a, id, equipe) && contaComoAtividadeDe(b, id, equipe));
         if (!comuns.length) continue;
         const problema = problemaDeIda({ rotulo: a.rotulo, inicio: a.inicio, fim: a.fim }, { rotulo: b.rotulo, inicio: b.inicio, fim: b.fim }, ida);
         if (!problema) continue;

@@ -21,17 +21,19 @@ export type ResumoDoDiaProps = {
   onTrazer?: (pessoa: Pessoa) => void;
 };
 
-/** Quem entra na grade: quem trabalha no dia, mais quem foi chamado de propósito na folga. */
-export const trabalhaNoDia = (p: Pessoa, blocosDe: (id: string) => Bloco[]) => !p.folga || Boolean(p.chamadaNaFolga && blocosDe(p.id).length);
+/** Quem entra na grade: quem trabalha no dia neste local (não é da equipe de outro), mais quem foi chamado de propósito na folga. */
+export const trabalhaNoDia = (p: Pessoa, blocosDe: (id: string) => Bloco[]) => (!p.folga && !p.foraDoLocal) || Boolean(p.chamadaNaFolga && blocosDe(p.id).length);
 
 /** Quem tem atividade em outro local hoje e aqui só tem o almoço (janela de todos): a Escala deste local diz onde a pessoa está em vez de contá-la como escalada. */
 export const soNoutroLocal = (p: Pessoa, blocosDe: (id: string) => Bloco[]) => Boolean(p.noutroLocal?.length) && blocosDe(p.id).every((b) => b.flexivel);
 
 export function ResumoDoDia({ data, pessoas, blocos, blocosDe, pessoasComChoque, motivoDaFolga, soExcecoes, onSoExcecoes, onIrParaAtencao, parte = "tudo", onTrazer }: ResumoDoDiaProps) {
   const quando = quandoDoDia(data);
-  const noutroLocal = pessoas.filter((p) => trabalhaNoDia(p, blocosDe) && soNoutroLocal(p, blocosDe));
+  // "No outro local": quem é da equipe de outro local hoje e já tem atividade lá, mais quem (sem equipe) só tem o almoço aqui e atividade lá.
+  const noutroLocal = pessoas.filter((p) => !p.folga && Boolean(p.noutroLocal?.length) && (p.foraDoLocal || (trabalhaNoDia(p, blocosDe) && soNoutroLocal(p, blocosDe))));
   const trabalham = pessoas.filter((p) => trabalhaNoDia(p, blocosDe) && !soNoutroLocal(p, blocosDe));
-  const fora = pessoas.filter((p) => !trabalhaNoDia(p, blocosDe));
+  // "Não trabalham": folga. Quem é de outro local não entra aqui (trabalha, só que lá).
+  const fora = pessoas.filter((p) => !p.foraDoLocal && !trabalhaNoDia(p, blocosDe));
   const semAtividade = trabalham.filter((p) => blocosDe(p.id).length === 0);
   const comExcecao = trabalham.filter((p) => blocosDe(p.id).some(ehExcecao));
   const semNinguem = blocos.filter((b) => b.regra !== "ninguem" && (b.vazio || b.vagas?.some((v) => !v.userId))).length;

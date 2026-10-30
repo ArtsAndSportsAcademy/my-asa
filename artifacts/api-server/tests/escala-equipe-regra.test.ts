@@ -14,7 +14,7 @@ import app from "../src/application.js";
 import { signAccessToken } from "../src/lib/jwt.service.js";
 import { writeHistoryEvent } from "../src/lib/history-helper.js";
 import { convocacaoPorPessoa, montarEscalaDoDia } from "../src/services/escala-dia.js";
-import { janelasSeCruzam, montarRegraDaEquipe } from "../src/services/escala-equipe-regra.js";
+import { contaComoAtividadeDe, janelasSeCruzam, montarRegraDaEquipe } from "../src/services/escala-equipe-regra.js";
 
 let passed = 0;
 const failures: string[] = [];
@@ -37,6 +37,17 @@ async function run() {
   assert(!vazia.ativa && vazia.entra(P, L1, "08:00", "09:00") && !vazia.semLocalHoje(P), "sem nenhuma marca a regra fica desligada: todo mundo entra e ninguém é 'sem local'");
   const r = montarRegraDaEquipe([{ userId: P, locationId: L1, weekday: 4, inicio: null, fim: null }], [], 4);
   assert(r.entra(P, L1, "08:00", "09:00") && !r.entra(P, L2, "08:00", "09:00") && r.entra(Q, L2, "08:00", "09:00"), "com marca só entra no local marcado; quem não tem marca segue entrando");
+  // Revisão de 30/10: onde a pessoa está (a Escala de cada local só mostra quem é dele) e o que conta como atividade dela.
+  assert(r.temMarca(P) && !r.temMarca(Q), "temMarca: só quem tem alguma marca na temporada");
+  assert(r.estaNoLocal(P, L1) && !r.estaNoLocal(P, L2) && r.estaNoLocal(Q, L1) && r.estaNoLocal(Q, L2), "estaNoLocal: com marca, só onde está marcada; sem marca, em todos");
+  const comImp = montarRegraDaEquipe([{ userId: P, locationId: L1, weekday: 4, inicio: null, fim: null }], [{ userId: P, locationId: L2, inicio: null, fim: null }], 4);
+  assert(!comImp.estaNoLocal(P, L1) && comImp.estaNoLocal(P, L2), "imprevisto do dia inteiro: a pessoa só está no local do imprevisto");
+  const meio = montarRegraDaEquipe([{ userId: P, locationId: L1, weekday: 4, inicio: null, fim: null }], [{ userId: P, locationId: L2, inicio: "14:00", fim: null }], 4);
+  assert(meio.estaNoLocal(P, L1) && meio.estaNoLocal(P, L2), "imprevisto a partir de um horário: a pessoa está nos dois locais naquele dia");
+  const todosB = { regra: "todos" }, areaB = { regra: "area" }, almoco = { regra: "todos", flexivel: true }, pessoasB = { regra: "pessoas" }, chamadaB = { regra: "pessoas", chamada: {} };
+  assert(contaComoAtividadeDe(todosB, P, r) && contaComoAtividadeDe(areaB, P, r) && !contaComoAtividadeDe(todosB, Q, r) && !contaComoAtividadeDe(areaB, Q, r), "com equipe: 'todo mundo' e 'área' contam como atividade de quem tem marca, e não de quem não tem");
+  assert(!contaComoAtividadeDe(almoco, P, r) && !contaComoAtividadeDe(chamadaB, P, r) && contaComoAtividadeDe(pessoasB, Q, r), "almoço e chamada nunca contam; bloco de pessoas conta sempre");
+  assert(!contaComoAtividadeDe(todosB, P, vazia) && contaComoAtividadeDe(areaB, P, vazia), "sem equipe na casa fica como antes: 'todo mundo' não conta, 'área' conta");
 
   // ── com banco ──
   const tag = `equipereg_${Date.now()}`;
@@ -93,6 +104,17 @@ async function run() {
     assert(nomes(dS, "Treino").has(carol.id) && !nomes(dS, "Treino").has(m4.id), "bloco de área também usa a equipe do local");
     assert(nomes(dS, "Briefing").has(m4.id) && nomes(dA, "Briefing").has(m4.id), "bloco de pessoas escolhidas pelo nome não filtra: a m4 fica mesmo sem marca em Snowland");
     assert((dS!.semLocalHoje ?? []).join() === m2.id && (dA!.semLocalHoje ?? []).join() === m2.id, "a m2 aparece em 'sem local hoje' nos dois locais; quem não tem marca nenhuma não aparece");
+    // Cada local só mostra quem é dele (revisão de 30/10): a Carol (só Snowland) some da Acqua; a m4 (só Acqua) continua em Snowland porque tem o
+    // Briefing com o nome dela lá; a m2 (sem local) some dos dois; a m3 (sem marca nenhuma) aparece nos dois; a m1 (Snowland e Acqua) nos dois.
+    const fora = (dia: typeof dS, id: string) => Boolean(dia!.pessoas.find((x) => x.id === id)?.foraDoLocal);
+    assert(fora(dA, carol.id) && !fora(dS, carol.id), "a Carol, da equipe de Snowland, não aparece na Escala da Acqua");
+    assert(!fora(dS, m4.id) && !fora(dA, m4.id), "a m4 aparece em Snowland porque tem um bloco com o nome dela lá");
+    assert(fora(dS, m2.id) && fora(dA, m2.id) && !fora(dS, m3.id) && !fora(dA, m3.id) && !fora(dS, m1.id) && !fora(dA, m1.id), "sem local hoje some dos dois; sem marca e com marca nos dois aparecem nos dois");
+    // "Todo mundo" de Snowland é atividade de verdade de quem tem marca: na Acqua, a Carol aparece "no outro local"; a m3 (sem marca) não.
+    const dAcom = await montarEscalaDoDia(org!.id, acqua!.id, quinta, { comOutrosLocais: true });
+    const outro = (id: string) => dAcom!.pessoas.find((x) => x.id === id)?.noutroLocal;
+    assert(outro(carol.id)?.[0]?.localId === snow!.id && outro(carol.id)![0]!.inicio === "08:00", "na Acqua, a Carol aparece em Snowland desde as 08:00 (o bloco de todo mundo conta para quem tem marca)");
+    assert(!outro(m3.id), "a m3, sem marca, não aparece 'no outro local' só por estar no bloco de todo mundo de lá");
 
     // Imprevisto do dia: a Carol vai para a Acqua o dia inteiro; a m2 vem para Snowland só a partir das 10:00.
     const [impCarol] = await db.insert(escalaLocalDoDiaTable).values({ organizationId: org!.id, userId: carol.id, data: quinta, locationId: acqua!.id, createdBy: admin.id }).returning();

@@ -12,7 +12,7 @@ import { eligibleSessionsDoDia } from "./session-blocks.js";
 import { enqueueNotification } from "./undo.js";
 import { janelaDoMes, lembrarOuLer, type LeiturasDoMes } from "./leituras-do-mes.js";
 import { APP_ROUTES } from "../lib/app-routes.js";
-import { lerRegraDaEquipe } from "./escala-equipe-regra.js";
+import { contaComoAtividadeDe, lerRegraDaEquipe } from "./escala-equipe-regra.js";
 import { montarEscalaDoDia } from "./escala-dia.js";
 import { lerTempoDeIda, problemaDeIda } from "./escala-deslocamento.js";
 import {
@@ -259,7 +259,7 @@ export async function carregarRegrasDoDia(input: { eventId: string; userIds: str
     if (impede) barrar(userId, "RESTRICAO_HORARIO", `está com restrição de horário (só pode das ${hhmm(impede.horaInicio)} às ${hhmm(impede.horaFim)}: ${impede.motivo})`);
   }
 
-  if (proprio && locationId) await barrarQuemEstaEmOutroLocal({ locationId, date, userIds, horario: proprio, barrar });
+  if (proprio && locationId) await barrarQuemEstaEmOutroLocal({ locationId, date, userIds, horario: proprio, barrar, leituras });
 
   const [regrasDoLocal] = locationId ? await lembrarOuLer(leituras, `regras-do-local:${locationId}`, () => db.select().from(escalaRegrasLocalTable).where(eq(escalaRegrasLocalTable.locationId, locationId)).limit(1)) : [];
   const limite = regrasDoLocal?.limiteShowsDia ?? null;
@@ -301,16 +301,24 @@ export async function carregarRegrasDoDia(input: { eventId: string; userIds: str
 async function barrarQuemEstaEmOutroLocal(input: {
   locationId: string; date: string; userIds: string[]; horario: Horario;
   barrar: (userId: string, regra: RegraDeEscala, frase: string) => void;
+  /** Gerando o dia (ou o mês), os outros locais não mudam de um Livro para o outro: são montados uma vez e reaproveitados. */
+  leituras?: LeiturasDoMes;
 }) {
-  const { locationId, date, userIds, horario, barrar } = input;
+  const { locationId, date, userIds, horario, barrar, leituras } = input;
   const inicioShow = minutosDoDia(horario.start);
   if (inicioShow === null) return;
   const [local] = await db.select({ organizationId: locationsTable.organizationId }).from(locationsTable).where(eq(locationsTable.id, locationId)).limit(1);
   if (!local) return;
-  const equipe = await lerRegraDaEquipe(local.organizationId, date, new Date(`${date}T12:00:00Z`).getUTCDay());
+  const orgId = local.organizationId;
+  const equipe = await lembrarOuLer(leituras, `equipe-do-dia:${orgId}:${date}`, () => lerRegraDaEquipe(orgId, date, new Date(`${date}T12:00:00Z`).getUTCDay()));
   if (!equipe.ativa) return;
-  const outros = await db.select({ id: locationsTable.id }).from(locationsTable).where(and(eq(locationsTable.organizationId, local.organizationId), ne(locationsTable.id, locationId), eq(locationsTable.closed, false)));
-  const [dias, tempoDeIda] = await Promise.all([Promise.all(outros.map((o) => montarEscalaDoDia(local.organizationId, o.id, date, { regraDaEquipe: equipe }))), lerTempoDeIda(local.organizationId)]);
+  const [dias, tempoDeIda] = await Promise.all([
+    lembrarOuLer(leituras, `outros-locais:${orgId}:${locationId}:${date}`, async () => {
+      const outros = await db.select({ id: locationsTable.id }).from(locationsTable).where(and(eq(locationsTable.organizationId, orgId), ne(locationsTable.id, locationId), eq(locationsTable.closed, false)));
+      return Promise.all(outros.map((o) => montarEscalaDoDia(orgId, o.id, date, { regraDaEquipe: equipe })));
+    }),
+    lembrarOuLer(leituras, `tempo-de-ida:${orgId}`, () => lerTempoDeIda(orgId)),
+  ]);
   const quem = new Set(userIds);
   const jaBarrados = new Set<string>();
   const faixa = (b: { inicio: string; fim: string | null }) => `${b.inicio}${b.fim ? `–${b.fim}` : ""}`;
@@ -318,12 +326,12 @@ async function barrarQuemEstaEmOutroLocal(input: {
     if (!dia || dia.fechado) continue;
     const ida = tempoDeIda(locationId, dia.location.id);
     for (const bloco of dia.blocos) {
-      if (bloco.flexivel || bloco.regra === "todos" || bloco.regra === "ninguem" || bloco.origem === "chamada") continue;
+      if (bloco.flexivel || bloco.regra === "ninguem" || bloco.origem === "chamada") continue;
       // Mesmo horário, ou sem o tempo de ida cadastrado em Locais entre uma coisa e outra.
       const problema = problemaDeIda({ rotulo: bloco.rotulo, inicio: bloco.inicio, fim: bloco.fim }, { rotulo: "show", inicio: horario.start, fim: horario.end }, ida);
       if (!problema) continue;
       for (const userId of bloco.pessoaIds) {
-        if (!quem.has(userId) || jaBarrados.has(userId)) continue;
+        if (!quem.has(userId) || jaBarrados.has(userId) || !contaComoAtividadeDe(bloco, userId, equipe)) continue;
         jaBarrados.add(userId);
         barrar(userId, "ATIVIDADE_EM_OUTRO_LOCAL", problema.tipo === "mesmo_horario"
           ? `está em ${dia.location.name} nesse horário (${bloco.rotulo}, ${faixa(bloco)})`

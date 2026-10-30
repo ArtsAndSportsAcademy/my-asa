@@ -41,7 +41,7 @@ export type Bloco = { key: string; rotulo: string; inicio: string; fim: string |
 type VagaDoLivro = { assignmentId: string; personagem: string; userId: string | null };
 /** Uma mexida no bloco; com `assignmentId`, vale para aquele personagem e não para "a primeira vaga aberta". */
 type Mudanca = { userId: string; action: "ADICIONAR" | "REMOVER"; assignmentId?: string };
-export type Pessoa = { id: string; name: string; areaId: string | null; areaName: string | null; folga: string | null; chamadaNaFolga?: { motivo: string | null; decidida: boolean }; noutroLocal?: { localId: string; localNome: string; inicio: string; fim: string | null; atividades: number }[] };
+export type Pessoa = { id: string; name: string; areaId: string | null; areaName: string | null; folga: string | null; chamadaNaFolga?: { motivo: string | null; decidida: boolean }; noutroLocal?: { localId: string; localNome: string; inicio: string; fim: string | null; atividades: number }[]; /** Da equipe de outro local hoje, sem nada aqui: não aparece nem conta nesta Escala. */ foraDoLocal?: true };
 type Area = { id: string; name: string; supervisores: { id: string; name: string }[]; pronta: { por: string | null; em: string } | null; prontaTirada?: { por: string | null; em: string } | null };
 /** Alguém de outra área mexeu na escala desta pessoa: quem mexeu e o quê, para a Supervisão da pessoa ver. */
 export type Mexida = { pessoaId: string; pessoaNome: string; pessoaAreaNome: string | null; porId: string; porNome: string; porAreaNome: string | null; em: string; texto: string };
@@ -100,7 +100,12 @@ const partsOf = (iso: string) => { const [y, m, d] = iso.split("-").map(Number);
 const weekdayOf = (iso: string) => partsOf(iso).dt.getDay();
 const fullDate = (iso: string) => { const { y, m, d } = partsOf(iso); return `${d} de ${MONTH[m - 1]} de ${y}`; };
 const shortDate = (iso: string) => { const { m, d } = partsOf(iso); return `${d} ${MON3[m - 1]}`; };
-const rangeLabel = (a: string, b: string) => { const x = partsOf(a), y = partsOf(b); return `${x.d} de ${MON3[x.m - 1]} — ${y.d} de ${MON3[y.m - 1]}`; };
+// A vigência leva o ano quando não é o deste ano ("6 de out — 31 de dez de 2027"): sem ele, uma Programação que acaba no ano que vem parecia acabar agora.
+const rangeLabel = (a: string, b: string) => {
+  const x = partsOf(a), y = partsOf(b), agora = partsOf(todayISO()).y;
+  const anoDe = (p: { y: number }) => (x.y !== y.y || p.y !== agora ? ` de ${p.y}` : "");
+  return `${x.d} de ${MON3[x.m - 1]}${x.y !== y.y ? anoDe(x) : ""} — ${y.d} de ${MON3[y.m - 1]}${anoDe(y)}`;
+};
 const relOf = (iso: string) => {
   const diff = Math.round((partsOf(iso).dt.getTime() - partsOf(todayISO()).dt.getTime()) / 86_400_000);
   return diff === 0 ? "hoje" : diff === 1 ? "amanhã" : diff === -1 ? "ontem" : diff > 1 ? `em ${diff} dias` : `há ${-diff} dias`;
@@ -504,7 +509,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       <div className="esc-db-sub" style={css("display:flex;align-items:center;gap:9px;font-size:12px;color:var(--asa-label);flex-wrap:wrap")}>
         <span>{operationLabel}</span>
         <span>·</span>
-        <span>{isMem ? (carregandoTela && !minha ? "carregando…" : error && !minha ? "não carregou" : minha?.publicada ? plural(meusBlocos.length, "bloco seu", "blocos seus") : "ainda não publicada") : dia ? plural(dia.pessoas.filter((p) => !p.folga).length, "pessoa no dia", "pessoas no dia") : "—"}</span>
+        <span>{isMem ? (carregandoTela && !minha ? "carregando…" : error && !minha ? "não carregou" : minha?.publicada ? plural(meusBlocos.length, "bloco seu", "blocos seus") : "ainda não publicada") : dia ? plural(dia.pessoas.filter((p) => !p.folga && !p.foraDoLocal).length, "pessoa no dia", "pessoas no dia") : "—"}</span>
       </div>
     </div>
     <span className="esc-db-folga" style={css("flex:1")}/>
@@ -570,6 +575,13 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
 function extrasDeAmostra(d: Dia): Dia {
   const q = new URLSearchParams(window.location.search);
   if (q.get("fechado") === "1") return { ...d, escala: null, blocos: [], fechado: { motivo: `${d.location.name} não abre quartas. Não há o que escalar aqui neste dia.` } };
+  // `?equipe=1`: duas pessoas são da equipe de outro local hoje (somem da grade e aparecem só em "No outro local").
+  if (q.get("equipe") === "1") {
+    const deLa = d.pessoas.filter((p) => !p.folga).slice(-2).map((p) => p.id);
+    return { ...d,
+      pessoas: d.pessoas.map((p) => deLa.includes(p.id) ? { ...p, foraDoLocal: true as const, noutroLocal: [{ localId: "outro", localNome: "Acquamotion", inicio: "08:40", fim: "16:00", atividades: 6 }] } : p),
+      blocos: d.blocos.map((b) => ({ ...b, pessoaIds: b.pessoaIds.filter((id) => !deLa.includes(id)) })) };
+  }
   if (q.get("outro") !== "1") return d;
   const dois = d.pessoas.filter((p) => !p.folga).slice(-2).map((p) => p.id);
   return { ...d,

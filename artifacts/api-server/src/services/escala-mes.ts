@@ -67,7 +67,9 @@ async function programacaoEBlocosDoDia(locationId: string, organizationId: strin
 
 /** Gera (ou completa) a Escala em rascunho de um local num dia e os Livros dos shows da Programação. */
 export async function gerarDiaDoLocal(actor: ActorMes, location: { id: string; name: string }, date: string, opts: { leituras?: LeiturasDoMes } = {}): Promise<ResultadoDia> {
-  const { leituras } = opts;
+  // Gerar um dia sozinho também reaproveita o que não muda no meio da geração (o Livro do Show, as regras do local, a Escala dos outros locais):
+  // antes só o "Gerar o mês" fazia isso, e cada Livro do dia remontava os outros locais de novo.
+  const leituras = opts.leituras ?? new LeiturasDoMes();
   const locationId = location.id;
   let scale = await findEscalaDoDia(locationId, date);
   if (scale && scale.status !== "DRAFT") return { ok: false, status: 409, error: "ESCALA_JA_PUBLICADA", message: "O dia já foi publicado; use republicação para uma alteração posterior." };

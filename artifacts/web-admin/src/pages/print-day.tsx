@@ -17,7 +17,7 @@ type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; 
 type Dia = {
   date: string; location: { id: string; name: string };
   escala: { status: string; version: number; publishedAt: string | null; alteradaDesde: string | null } | null;
-  pessoas: { id: string; name: string; areaId?: string | null; areaName: string | null; folga: string | null; chamadaNaFolga?: unknown }[];
+  pessoas: { id: string; name: string; areaId?: string | null; areaName: string | null; folga: string | null; chamadaNaFolga?: unknown; foraDoLocal?: true }[];
   blocos: Bloco[];
 };
 const WEEKDAY = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
@@ -73,12 +73,12 @@ export default function PrintDayPage() {
   if (!isAuthenticated && !review) return <Redirect to="/login"/>;
 
   const publicada = dia?.escala && dia.escala.status !== "DRAFT";
-  const porPessoa = (dia?.pessoas ?? []).filter((p) => !p.folga).map((p) => ({ ...p, blocos: (dia?.blocos ?? []).filter((b) => b.pessoaIds.includes(p.id)).sort((a, b) => a.inicio.localeCompare(b.inicio)) }))
+  const porPessoa = (dia?.pessoas ?? []).filter((p) => !p.folga && !p.foraDoLocal).map((p) => ({ ...p, blocos: (dia?.blocos ?? []).filter((b) => b.pessoaIds.includes(p.id)).sort((a, b) => a.inicio.localeCompare(b.inicio)) }))
     .filter((p) => p.blocos.length).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   const nomeDe = new Map((dia?.pessoas ?? []).map((p) => [p.id, p.name]));
   // Por atividade: só entra bloco que convoca alguém ou que ficou sem ninguém (bloco "ninguém" é pausa, não escala).
   // Quem trabalha no dia (mesma conta da tela): sem folga, ou chamado na folga e com bloco. É a base do "Elenco todo" e da área.
-  const doDia: PessoaDoDia[] = (dia?.pessoas ?? []).filter((p) => !p.folga || (p.chamadaNaFolga && (dia?.blocos ?? []).some((b) => b.pessoaIds.includes(p.id))))
+  const doDia: PessoaDoDia[] = (dia?.pessoas ?? []).filter((p) => (!p.folga && !p.foraDoLocal) || (p.chamadaNaFolga && (dia?.blocos ?? []).some((b) => b.pessoaIds.includes(p.id))))
     .map((p) => ({ id: p.id, name: p.name, areaId: p.areaId ?? null, areaName: p.areaName }));
   // Folha por atividade, simples: sem a linha extra de quem teve o horário cortado (trecho encurtado ou horário só dele) e sem linha própria de chamada
   // (a chamada sai embaixo da atividade a que pertence).

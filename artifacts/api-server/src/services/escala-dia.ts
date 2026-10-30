@@ -46,7 +46,7 @@ import {
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
 import { isNotSessionBlock, listSessionBlocks } from "./session-blocks.js";
 import { chamadasDoDia, chamadasDosBlocos, type ChamadaDoDia } from "./escala-chamadas.js";
-import { lerRegraDaEquipe, type RegraDaEquipe } from "./escala-equipe-regra.js";
+import { contaComoAtividadeDe, lerRegraDaEquipe, type RegraDaEquipe } from "./escala-equipe-regra.js";
 import { choquesEntreLocais, lerTempoDeIda, type ChoqueEntreLocais } from "./escala-deslocamento.js";
 import { enqueueNotification } from "./undo.js";
 import { operationalDate } from "../lib/operational-date.js";
@@ -106,7 +106,9 @@ export type EscalaDia = {
   areas: { id: string; name: string; supervisores: { id: string; name: string }[]; pronta: { por: string | null; em: Date } | null; /** A parte já foi enviada e a marca saiu depois: quem tirou e quando (a tela explica por que a área voltou a faltar). */ prontaTirada?: { por: string | null; em: Date } | null }[];
   pessoas: { id: string; name: string; areaId: string | null; areaName: string | null; folga: string | null; chamadaNaFolga?: { motivo: string | null; decidida: boolean };
     /** Atividades que a pessoa tem hoje em OUTRO local (fora o almoço e os blocos de "todos"): a Escala deste local a mostra "no outro local" e não como pessoa sem nada. */
-    noutroLocal?: { localId: string; localNome: string; inicio: string; fim: string | null; atividades: number }[] }[];
+    noutroLocal?: { localId: string; localNome: string; inicio: string; fim: string | null; atividades: number }[];
+    /** Com equipe na casa: a pessoa é da equipe de OUTRO local hoje e não tem nada aqui. A Escala deste local não a mostra (nem conta). */
+    foraDoLocal?: true }[];
   blocos: BlocoDia[];
   /** Quem tem equipe marcada na temporada mas nenhuma neste dia da semana (e nenhum imprevisto): fica fora dos blocos gerais de todos os locais. A Atenção do dia escreve "Fulano sem local hoje". */
   semLocalHoje?: string[];
@@ -619,8 +621,8 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
       if (!dia || dia.fechado) continue;
       const porPessoa = new Map<string, { inicio: string; fim: string | null; atividades: number }>();
       for (const b of dia.blocos) {
-        if (b.flexivel || b.regra === "todos" || b.regra === "ninguem") continue;
         for (const id of b.pessoaIds) {
+          if (!contaComoAtividadeDe(b, id, equipe)) continue;
           const atual = porPessoa.get(id);
           const fim = b.fim ?? b.inicio;
           porPessoa.set(id, atual ? { inicio: b.inicio < atual.inicio ? b.inicio : atual.inicio, fim: (atual.fim ?? "") > fim ? atual.fim : fim, atividades: atual.atividades + 1 } : { inicio: b.inicio, fim, atividades: 1 });
@@ -630,9 +632,12 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     }
     // Choque entre locais (pacote O, O5): só quando a casa já usa equipe, para quem não usa não aparecer alerta novo.
     if (equipe.ativa && !fechado) {
-      choquesDosLocais = choquesEntreLocais(locationId, blocos, dias.filter((d): d is EscalaDia => Boolean(d) && !d!.fechado).map((d) => ({ id: d.location.id, name: d.location.name, blocos: d.blocos })), tempoDeIda!);
+      choquesDosLocais = choquesEntreLocais(locationId, blocos, dias.filter((d): d is EscalaDia => Boolean(d) && !d!.fechado).map((d) => ({ id: d.location.id, name: d.location.name, blocos: d.blocos })), tempoDeIda!, equipe);
     }
   }
+
+  // Quem tem qualquer coisa aqui (um show, um bloco com o nome dela, um imprevisto) continua aparecendo, mesmo sendo da equipe de outro local.
+  const comAtividadeAqui = new Set(blocos.filter((b) => !b.flexivel).flatMap((b) => b.pessoaIds));
 
   return {
     date,
@@ -652,6 +657,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
         folga: folgaOf.get(p.id) ?? null,
         ...(chamada ? { chamadaNaFolga: chamada } : {}),
         ...(noutroLocal.has(p.id) ? { noutroLocal: noutroLocal.get(p.id)! } : {}),
+        ...(equipe.ativa && !equipe.estaNoLocal(p.id, locationId) && !comAtividadeAqui.has(p.id) ? { foraDoLocal: true as const } : {}),
       };
     }),
     blocos,

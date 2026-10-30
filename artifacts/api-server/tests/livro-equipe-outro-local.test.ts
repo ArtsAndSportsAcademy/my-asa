@@ -62,8 +62,11 @@ async function run() {
     ]).returning();
     // Snowland tem um treino da área das 09:30 às 11:00 na quinta.
     await db.insert(programacaoBlocosTable).values({ programacaoId: progS!.id, weekday: 4, inicio: "09:30", fim: "11:00", rotulo: "Treino", regra: "area", areaIds: [area!.id], createdBy: admin.id });
+    // E uma reunião de todo mundo às 16:00 (revisão de 30/10: com equipe, "todo mundo" de Snowland é atividade de verdade de quem é de lá).
+    await db.insert(programacaoBlocosTable).values({ programacaoId: progS!.id, weekday: 4, inicio: "16:00", fim: "16:30", rotulo: "Reunião", regra: "todos", createdBy: admin.id });
     const manha = await evento("10:00", "10:30");
     const tarde = await evento("14:00", "14:30");
+    const fimDeTarde = await evento("16:00", "16:30");
 
     // Sem nenhuma marca de equipe, nada muda: a fila segue a ordem (m1 primeiro), mesmo com o treino em Snowland.
     assert((await quemFaz(manha.id))[0] === "m1", "sem equipe marcada a regra fica desligada: o rodízio escolhe a m1, como sempre");
@@ -78,13 +81,22 @@ async function run() {
     const frase = regras.bloqueios.get(m1.id) ?? "";
     assert(regras.bloqueios.has(m1.id) && /Snowland/.test(frase) && /Treino/.test(frase) && /09:30–11:00/.test(frase), `a m1 é barrada com a frase de onde ela está (veio: ${frase})`);
     assert(!regras.bloqueios.has(m2.id), "a m2 (marcada na Acqua, onde é o show) fica livre");
-    assert(regras.bloqueios.has(m3.id), "a m3, sem marca nenhuma, segue a regra de antes: entra no treino de Snowland e por isso também está ocupada");
+    // Revisão de 30/10: quem não tem marca entra no treino da área de TODOS os locais, então estar no de Snowland não prova que ela está lá. Fica
+    // como era antes da equipe: não é barrada (só a m1, que é de Snowland, é).
+    assert(!regras.bloqueios.has(m3.id), "a m3, sem marca nenhuma, não é barrada: estar no treino de área de Snowland não diz onde ela está");
     assert(regras.motivos.get(m1.id)?.[0]?.regra === "ATIVIDADE_EM_OUTRO_LOCAL" && codigoDaExcecao(regras.motivos.get(m1.id)!) === "PESSOA_EM_OUTRO_LOCAL", "a exceção à mão fala o código próprio (PESSOA_EM_OUTRO_LOCAL)");
     assert((await quemFaz(manha.id))[0] === "m2", "o rodízio pula a m1 (em Snowland) e a reserva m2 faz o show");
 
     // Fora do horário do treino a m1 volta a ser opção.
     assert((await quemFaz(tarde.id))[0] === "m1", "às 14:00, sem atividade em Snowland, a m1 volta a ser a primeira da fila");
     assert((await carregarRegrasDoDia({ eventId: tarde.id, userIds: [m1.id], date: quinta, operationId: operation!.id })).bloqueios.size === 0, "às 14:00 ninguém é barrado");
+
+    // Bloco de todo mundo em Snowland às 16:00: conta para a m1 (marcada em Snowland), não para a m3 (sem marca) nem para a m2 (da Acqua, fora dele).
+    const r16 = await carregarRegrasDoDia({ eventId: fimDeTarde.id, userIds: [m1.id, m2.id, m3.id], date: quinta, operationId: operation!.id });
+    assert(r16.bloqueios.has(m1.id) && /Reunião/.test(r16.bloqueios.get(m1.id) ?? ""), `às 16:00 a m1 é barrada pela reunião de todo mundo de Snowland (veio: ${r16.bloqueios.get(m1.id) ?? "nada"})`);
+    assert(!r16.bloqueios.has(m2.id) && !r16.bloqueios.has(m3.id), "às 16:00 a m2 (Acqua) e a m3 (sem marca) ficam livres");
+    const faz16 = (await quemFaz(fimDeTarde.id))[0];
+    assert(faz16 !== undefined && faz16 !== "m1", `às 16:00 o rodízio pula a m1 (veio: ${faz16 ?? "ninguém"})`);
   } finally {
     const ids = todos.map((u) => u.id);
     await db.delete(historyEventsTable).where(or(eq(historyEventsTable.orgId, org!.id), inArray(historyEventsTable.actorId, ids)));
