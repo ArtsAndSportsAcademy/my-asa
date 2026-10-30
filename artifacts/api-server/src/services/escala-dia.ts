@@ -48,6 +48,7 @@ import { isNotSessionBlock, listSessionBlocks } from "./session-blocks.js";
 import { chamadasDoDia, chamadasDosBlocos, type ChamadaDoDia } from "./escala-chamadas.js";
 import { contaComoAtividadeDe, lerRegraDaEquipe, type RegraDaEquipe } from "./escala-equipe-regra.js";
 import { choquesEntreLocais, lerTempoDeIda, type ChoqueEntreLocais } from "./escala-deslocamento.js";
+import { tempoDisponivelDoDia, type TempoDisponivel } from "./escala-tempo-disponivel.js";
 import { enqueueNotification } from "./undo.js";
 import { operationalDate } from "../lib/operational-date.js";
 import { APP_ROUTES } from "../lib/app-routes.js";
@@ -116,6 +117,8 @@ export type EscalaDia = {
   imprevistos?: { id: string; pessoaId: string; localId: string; localNome: string; inicio: string | null; fim: string | null; motivo: string | null; porNome: string | null }[];
   /** Pessoas em duas coisas em locais diferentes que não cabem (mesmo horário, ou sem o tempo de ida cadastrado em Locais). Só quando a casa usa equipe; só avisa. */
   choquesEntreLocais?: ChoqueEntreLocais[];
+  /** Quem fica um bom tempo sem nada entre duas atividades (pacote G). Só vem para Administração e Supervisão, com o aviso ligado no local. */
+  tempoDisponivel?: TempoDisponivel;
   /** O local não abre neste dia da semana (ou está fechado): sem Escala feita, a Programação não é projetada e a Escala não pode ser gerada. */
   fechado?: { motivo: string };
   /** Os tipos de atividade do local (inclusive os arquivados, que ainda pintam o que já os usa). Vazio = o local ainda não tem lista. */
@@ -353,10 +356,11 @@ async function imprevistosDoDiaComNomes(organizationId: string, date: string): P
   return linhas.map((i) => ({ ...i, inicio: hhmm(i.inicio), fim: hhmm(i.fim) }));
 }
 
-export async function montarEscalaDoDia(organizationId: string, locationId: string, date: string, options: { publishedOnly?: boolean; /** A regra da equipe e os imprevistos são da casa toda no dia: quem já leu passa adiante para a leitura dos outros locais não repetir as mesmas consultas. */ regraDaEquipe?: RegraDaEquipe; imprevistos?: ImprevistoDoDiaComNomes[]; /** Só a tela da Escala pede: marca quem já tem atividade em outro local hoje (custa uma leitura por local). */ comOutrosLocais?: boolean } = {}): Promise<EscalaDia | null> {
-  const [location] = await db.select({ id: locationsTable.id, name: locationsTable.name }).from(locationsTable)
+export async function montarEscalaDoDia(organizationId: string, locationId: string, date: string, options: { publishedOnly?: boolean; /** A regra da equipe e os imprevistos são da casa toda no dia: quem já leu passa adiante para a leitura dos outros locais não repetir as mesmas consultas. */ regraDaEquipe?: RegraDaEquipe; imprevistos?: ImprevistoDoDiaComNomes[]; /** Só a tela da Escala pede: marca quem já tem atividade em outro local hoje (custa uma leitura por local). */ comOutrosLocais?: boolean; /** Só Administração e Supervisão recebem o tempo disponível (decisão 4): a rota liga; quem não é dos dois nem recebe o campo. */ comTempoDisponivel?: boolean } = {}): Promise<EscalaDia | null> {
+  const [achado] = await db.select({ id: locationsTable.id, name: locationsTable.name, tempoDisponivelLigado: locationsTable.tempoDisponivelLigado, tempoDisponivelMinutos: locationsTable.tempoDisponivelMinutos }).from(locationsTable)
     .where(and(eq(locationsTable.id, locationId), eq(locationsTable.organizationId, organizationId))).limit(1);
-  if (!location) return null;
+  if (!achado) return null;
+  const location = { id: achado.id, name: achado.name };
 
   const [scale, people, supervisors, fechado, equipe, imprevistosDoDia, tempoDeIda] = await Promise.all([
     findEscalaDoDia(locationId, date, db, options.publishedOnly),
@@ -613,10 +617,12 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
   // Quem já tem atividade em OUTRO local hoje (fora o almoço e os blocos de "todos"): a Escala deste local diz onde a pessoa está, em vez de mostrá-la sem nada.
   const noutroLocal = new Map<string, NonNullable<EscalaDia["pessoas"][number]["noutroLocal"]>>();
   let choquesDosLocais: ChoqueEntreLocais[] | undefined;
+  let diasDosOutros: EscalaDia[] = [];
   if (options.comOutrosLocais) {
     const outros = await db.select({ id: locationsTable.id }).from(locationsTable)
       .where(and(eq(locationsTable.organizationId, organizationId), ne(locationsTable.id, locationId), eq(locationsTable.closed, false)));
     const dias = await Promise.all(outros.map((o) => montarEscalaDoDia(organizationId, o.id, date, { publishedOnly: options.publishedOnly, regraDaEquipe: equipe, imprevistos: imprevistosDoDia })));
+    diasDosOutros = dias.filter((d): d is EscalaDia => Boolean(d) && !d!.fechado);
     for (const dia of dias) {
       if (!dia || dia.fechado) continue;
       const porPessoa = new Map<string, { inicio: string; fim: string | null; atividades: number }>();
@@ -638,6 +644,17 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
 
   // Quem tem qualquer coisa aqui (um show, um bloco com o nome dela, um imprevisto) continua aparecendo, mesmo sendo da equipe de outro local.
   const comAtividadeAqui = new Set(blocos.filter((b) => !b.flexivel).flatMap((b) => b.pessoaIds));
+  const foraDoLocalAqui = (id: string) => equipe.ativa && !equipe.estaNoLocal(id, locationId) && !comAtividadeAqui.has(id);
+
+  // Tempo disponível (pacote G): só para quem pediu (Administração e Supervisão), só com o aviso ligado neste local e o local aberto.
+  // Ficam de fora quem está de folga, sem local hoje ou na equipe de outro local.
+  const tempoDisponivel = options.comTempoDisponivel && achado.tempoDisponivelLigado && !fechado
+    ? tempoDisponivelDoDia({
+        localId: locationId, limite: achado.tempoDisponivelMinutos, equipe, tempoDeIda: tempoDeIda ?? (() => null),
+        pessoaIds: people.filter((p) => !folgaOf.get(p.id) && !foraDoLocalAqui(p.id) && !(equipe.ativa && present.has(p.id) && equipe.semLocalHoje(p.id))).map((p) => p.id),
+        locais: [{ id: locationId, name: location.name, blocos }, ...diasDosOutros.map((d) => ({ id: d.location.id, name: d.location.name, blocos: d.blocos }))],
+      })
+    : undefined;
 
   return {
     date,
@@ -657,11 +674,12 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
         folga: folgaOf.get(p.id) ?? null,
         ...(chamada ? { chamadaNaFolga: chamada } : {}),
         ...(noutroLocal.has(p.id) ? { noutroLocal: noutroLocal.get(p.id)! } : {}),
-        ...(equipe.ativa && !equipe.estaNoLocal(p.id, locationId) && !comAtividadeAqui.has(p.id) ? { foraDoLocal: true as const } : {}),
+        ...(foraDoLocalAqui(p.id) ? { foraDoLocal: true as const } : {}),
       };
     }),
     blocos,
     ...(choquesDosLocais ? { choquesEntreLocais: choquesDosLocais } : {}),
+    ...(tempoDisponivel ? { tempoDisponivel } : {}),
     ...(imprevistosDoDia.length ? { imprevistos: imprevistosDoDia } : {}),
     ...(equipe.ativa ? { semLocalHoje: people.filter((p) => present.has(p.id) && equipe.semLocalHoje(p.id)).map((p) => p.id) } : {}),
     tipos: await tiposDoLocal(locationId),

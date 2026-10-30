@@ -88,7 +88,7 @@ async function main() {
 
   if (!process.env.TEST_FILE) testSources.push("checkin-shift-schedule.test.ts", "shift-checkins.test.ts", "ciclo-paralelo.test.ts",
     // Equipe por local (pacote O): equipe, regra na Escala, Livro, tempo de ida e imprevisto do dia.
-    "escala-equipe.test.ts", "escala-equipe-regra.test.ts", "livro-equipe-outro-local.test.ts", "escala-deslocamento.test.ts", "escala-imprevisto-de-local.test.ts");
+    "escala-equipe.test.ts", "escala-equipe-regra.test.ts", "livro-equipe-outro-local.test.ts", "escala-deslocamento.test.ts", "escala-imprevisto-de-local.test.ts", "escala-tempo-disponivel.test.ts");
 
   // esbuild-plugin-pino emits multiple files, so the output must be a directory.
   await bundleTests(testSources, outDir);
