@@ -195,3 +195,11 @@
 .ge-faixa[data-parte="fora"]{gap:0}
 .ge-num:not(:disabled):active{transform:scale(.97)}
 @media (prefers-reduced-motion:reduce){.ge-num:not(:disabled):active,.esc-cell-adjust:active{transform:none}}
+
+/* ---------- "Tirado deste dia": shows que a Escala tirou do dia, com o botão de voltar ---------- */
+.ge-tirados{border:1px dashed var(--asa-line);border-radius:12px;background:var(--asa-fade);padding:10px 14px;display:flex;flex-direction:column;gap:6px}
+.ge-tirados h3{margin:0;font:700 12px "JetBrains Mono",monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--asa-label)}
+.ge-tirados ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.ge-tirados li{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;font-size:13.5px;line-height:1.45;color:var(--asa-ink-medium)}
+.ge-tirados li>span{flex:1 1 220px;min-width:0;overflow-wrap:anywhere}
+.ge-tirados li strong{color:var(--asa-ink-dark)}

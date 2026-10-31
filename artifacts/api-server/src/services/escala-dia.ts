@@ -49,6 +49,7 @@ import { chamadasDoDia, chamadasDosBlocos, type ChamadaDoDia } from "./escala-ch
 import { contaComoAtividadeDe, lerRegraDaEquipe, type RegraDaEquipe } from "./escala-equipe-regra.js";
 import { choquesEntreLocais, lerTempoDeIda, type ChoqueEntreLocais } from "./escala-deslocamento.js";
 import { tempoDisponivelDoDia, type TempoDisponivel } from "./escala-tempo-disponivel.js";
+import { showsTiradosDoDia, type ShowTirado } from "./escala-show-tirado.js";
 import { enqueueNotification } from "./undo.js";
 import { operationalDate } from "../lib/operational-date.js";
 import { APP_ROUTES } from "../lib/app-routes.js";
@@ -111,6 +112,8 @@ export type EscalaDia = {
     /** Com equipe na casa: a pessoa é da equipe de OUTRO local hoje e não tem nada aqui. A Escala deste local não a mostra (nem conta). */
     foraDoLocal?: true }[];
   blocos: BlocoDia[];
+  /** Shows que a Escala tirou deste dia ("Tirar este show do dia"): fora da grade, com o botão de voltar. Nada aqui convoca ninguém. */
+  showsTirados?: ShowTirado[];
   /** Quem tem equipe marcada na temporada mas nenhuma neste dia da semana (e nenhum imprevisto): fica fora dos blocos gerais de todos os locais. A Atenção do dia escreve "Fulano sem local hoje". */
   semLocalHoje?: string[];
   /** Mudanças de local só desta data (imprevisto do dia): onde a pessoa trabalha hoje em vez do que a Programação manda. Vivas, da casa toda; a tela filtra. */
@@ -422,6 +425,9 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     .innerJoin(agendaEventsTable, eq(dailyBooksTable.agendaEventId, agendaEventsTable.id))
     .innerJoin(showBooksTable, eq(dailyBooksTable.showBookId, showBooksTable.id))
     .where(and(eq(agendaEventsTable.date, date), eq(showBooksTable.locationId, locationId), ne(dailyBooksTable.status, "CANCELLED")));
+  // Shows que a Escala tirou deste dia: o Livro cancelado com a marca não convoca ninguém e não volta sozinho (ver escala-show-tirado.ts).
+  const tirados = await showsTiradosDoDia(locationId, date);
+  const blocosDosTirados = new Map<string, { rotulo: string; inicio: string; fim: string | null }[]>();
   const elenco = new Map<string, string[]>();
   const vagas = new Map<string, VagaDoLivro[]>();
   for (const livro of livros) { elenco.set(livro.id, await elencoDoLivro(livro.id)); vagas.set(livro.id, await vagasDoLivro(livro.id)); }
@@ -442,6 +448,18 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
       const separados = doShow.filter((l) => l.sessionId);
       const maisPerto = [...separados].sort((x, y) => Math.abs((minutos(x.startTime) ?? 9999) - (minutos(inicio) ?? 0)) - Math.abs((minutos(y.startTime) ?? 9999) - (minutos(inicio) ?? 0)))[0];
       livro = separados.find((l) => hhmm(l.startTime) === inicio) ?? doShow.find((l) => !l.sessionId) ?? maisPerto;
+      // Show que a Escala tirou do dia (30/10/2026): sem Livro vivo na hora do bloco e com um tirado que casa, o bloco não entra — ele sai da
+      // grade e fica na lista "Tirado deste dia", com o botão de voltar. Nunca vira "Livro ainda não gerado".
+      const vivoNaHora = separados.find((l) => hhmm(l.startTime) === inicio) ?? doShow.find((l) => !l.sessionId);
+      const tiradoDaHora = vivoNaHora ? undefined : tirados.find((t) => t.showBookId === bloco.showBookId && (t.sessionId ? t.inicio === inicio : true));
+      if (tiradoDaHora) {
+        // A lista "Tirado deste dia" usa o nome e a hora do bloco da Programação (é o que a pessoa via na grade), não só o título do show:
+        // dois shows parecidos do mesmo dia (Musical da manhã e da tarde) não podem ficar iguais.
+        const lista = blocosDosTirados.get(tiradoDaHora.dailyBookId) ?? [];
+        lista.push({ rotulo: bloco.rotulo, inicio, fim: hhmm(bloco.fim) });
+        blocosDosTirados.set(tiradoDaHora.dailyBookId, lista);
+        continue;
+      }
       if (livro) { cobertos.add(livro.id); pessoaIds = (elenco.get(livro.id) ?? []).filter((id) => present.has(id)); }
       else sinal = "Livro do Dia deste show ainda não gerado";
     } else if (bloco.regra === "todos") pessoaIds = [...present].filter((id) => equipe.entra(id, locationId, inicio, hhmm(bloco.fim)));
@@ -678,6 +696,12 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
       };
     }),
     blocos,
+    ...(tirados.length ? { showsTirados: tirados.map((t) => {
+      const doMolde = blocosDosTirados.get(t.dailyBookId);
+      if (!doMolde?.length) return t;
+      const rotulos = [...new Set(doMolde.map((b) => b.rotulo))];
+      return { ...t, rotulo: rotulos.join(" e "), inicio: doMolde.map((b) => b.inicio).join(" e "), fim: doMolde.length === 1 ? doMolde[0]!.fim : null };
+    }) } : {}),
     ...(choquesDosLocais ? { choquesEntreLocais: choquesDosLocais } : {}),
     ...(tempoDisponivel ? { tempoDisponivel } : {}),
     ...(imprevistosDoDia.length ? { imprevistos: imprevistosDoDia } : {}),

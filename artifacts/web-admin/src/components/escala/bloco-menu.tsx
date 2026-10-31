@@ -26,10 +26,12 @@ export type BlocoMenuProps = {
   onAjustar: () => void;
   /** Só aparece quando a tela sabe tirar a pessoa do resto do dia. */
   onSaiu?: () => void;
+  /** Só em bloco de show, para quem gere o local: o show não acontece neste dia. */
+  onTirarShow?: () => void;
 };
 
 /** Menu junto do bloco tocado. No celular sobe de baixo, sempre com "Fechar" à vista. */
-export function BlocoMenu({ bloco, pessoa, ancora, data, temChoque, excecao, tipos, pode, motivoSemPoder, ocupado, onFechar, onTirar, onMudarHorario, onAjustar, onSaiu }: BlocoMenuProps) {
+export function BlocoMenu({ bloco, pessoa, ancora, data, temChoque, excecao, tipos, pode, motivoSemPoder, ocupado, onFechar, onTirar, onMudarHorario, onAjustar, onSaiu, onTirarShow }: BlocoMenuProps) {
   useFecharComEsc(onFechar);
   const raiz = useRef<HTMLDivElement>(null);
   useEffect(() => { raiz.current?.querySelector<HTMLElement>("button:not([disabled]),a")?.focus(); }, []);
@@ -56,6 +58,7 @@ export function BlocoMenu({ bloco, pessoa, ancora, data, temChoque, excecao, tip
         ? <>
           <Link href={hrefLivro} role="menuitem">Abrir o Livro do Dia<small>É lá que se vê e se muda quem faz cada posição</small></Link>
           <button type="button" role="menuitem" disabled>Mudar o horário só desta pessoa<small>Show não muda de horário. Para tirar a pessoa do show, use o Livro.</small></button>
+          {onTirarShow && <button type="button" role="menuitem" disabled={ocupado} onClick={onTirarShow}>Tirar este show do dia<small>O show não acontece hoje. Com Desfazer.</small></button>}
         </>
         : pode
           ? <>

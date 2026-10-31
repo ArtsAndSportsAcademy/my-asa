@@ -92,7 +92,7 @@ export function CopiarDiaDialog({ localId, localNome, dataInicial, onClose }: {
     setDestinos((v) => [...v, outroDia].sort()); setOutroDia(""); setErro("");
   };
   const pedidoDe = (destino: string, simular: boolean) => ({
-    locationId: localId, origem, destino, itens, modo, ...(modo === "zero" ? { motivo: motivo.trim() } : {}),
+    locationId: localId, origem, destino, itens, modo, ...(modo === "zero" && motivo.trim() ? { motivo: motivo.trim() } : {}),
     ...(precisaEscolherVersao && versao ? { versao } : {}), simular,
   });
 
@@ -117,12 +117,11 @@ export function CopiarDiaDialog({ localId, localNome, dataInicial, onClose }: {
 
   const copiaveis = destinos.filter((d) => { const r = previas[d]?.resumo; return r && r.estado !== "fechado" && r.estado !== "igual_a_origem"; });
   const conferindo = destinos.some((d) => previas[d]?.carregando);
-  const motivoFalta = modo === "zero" && motivo.trim().length < 3;
   const conferenciaVelha = modo !== modoConferido;
   const algoACopiar = copiaveis.some((d) => totalDe(previas[d]!.resumo!.copia) > 0) || (modo === "zero" && copiaveis.length > 0);
 
   const copiar = async () => {
-    if (ocupado || conferindo || motivoFalta || conferenciaVelha || !copiaveis.length) return;
+    if (ocupado || conferindo || conferenciaVelha || !copiaveis.length) return;
     setErro(""); setFalhas({});
     const novas: CopiaFeita[] = [...feitas], falhou: Record<string, string> = {};
     for (let i = 0; i < copiaveis.length; i += 1) {
@@ -217,12 +216,12 @@ export function CopiarDiaDialog({ localId, localNome, dataInicial, onClose }: {
             {modo === "juntar"
               ? <button type="button" className="cd-link" disabled={conferindo} onClick={() => { setModo("zero"); }}>Começar do zero em vez de juntar…</button>
               : <>
-                <label className="cd-campo" htmlFor={`${id}-motivo`}>Por que começar do zero? (obrigatório)
+                <label className="cd-campo" htmlFor={`${id}-motivo`}>Por que começar do zero? (opcional)
                   <textarea id={`${id}-motivo`} rows={2} maxLength={300} value={motivo} disabled={ocupado} placeholder="Ex.: o dia ficou todo diferente do que estava" onChange={(e) => setMotivo(e.target.value)}/>
                 </label>
                 <p className="cd-nota">Os ajustes, as atividades e as chamadas que o dia já tem ficam desativados, não apagados, e voltam se você desfizer a cópia. Depois de mudar, confira de novo.</p>
                 <div className="cd-atalhos"><button type="button" className="cd-link" disabled={ocupado} onClick={() => { setModo("juntar"); setMotivo(""); }}>Voltar a juntar</button>
-                  <button type="button" className="cd-link" disabled={ocupado || conferindo || motivoFalta} onClick={() => void conferir()}>Conferir de novo</button></div>
+                  <button type="button" className="cd-link" disabled={ocupado || conferindo} onClick={() => void conferir()}>Conferir de novo</button></div>
               </>}
           </div>}
           {modo === "juntar" && Object.values(previas).some((p) => p.resumo && p.resumo.jaTemAjustes > 0) && <p className="cd-nota">Juntar é o padrão: nada do que já está no dia é mexido.</p>}
@@ -245,7 +244,7 @@ export function CopiarDiaDialog({ localId, localNome, dataInicial, onClose }: {
         {etapa === "conferir" && <>
           <button type="button" className="shows-secondary" onClick={fechar} disabled={ocupado}>Cancelar</button>
           <button type="button" className="shows-secondary" onClick={voltar} disabled={ocupado}>Voltar</button>
-          <button type="button" className="shows-primary" disabled={ocupado || conferindo || motivoFalta || conferenciaVelha || !copiaveis.length || !algoACopiar} onClick={() => void copiar()}>
+          <button type="button" className="shows-primary" disabled={ocupado || conferindo || conferenciaVelha || !copiaveis.length || !algoACopiar} onClick={() => void copiar()}>
             {copiando ? `Copiando ${copiando.feitos + 1} de ${copiando.total}…` : conferindo ? "Conferindo…" : conferenciaVelha ? "Confira de novo" : copiaveis.length === 1 ? `Copiar para ${curto(copiaveis[0]!)}` : `Copiar para ${copiaveis.length} dias`}</button>
         </>}
         {etapa === "resultado" && <button type="button" className="shows-primary" onClick={fechar}>Fechar</button>}

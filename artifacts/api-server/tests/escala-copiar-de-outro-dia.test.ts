@@ -147,9 +147,10 @@ async function run() {
     assert(repete.status === 200 && repete.body.gravou === false && (repete.body.resumo as Resumo).jaEstava > 0, "copiar de novo não duplica nada: tudo já estava");
     assert((await db.select().from(escalaBlocoAjustesTable).where(eq(escalaBlocoAjustesTable.userId, dana.id))).length === 2, "continua um ajuste da Dana na origem e um no destino");
 
-    // ── "começar do zero": pede motivo, não apaga, e dá para desfazer ──
+    // ── "começar do zero": motivo opcional (decisão de 30/10/2026), não apaga, e dá para desfazer ──
     const semMotivo = await asPat("POST", "/escalas/dia/copiar", pedido({ modo: "zero" }));
-    assert(semMotivo.status === 400 && /motivo/.test(semMotivo.text), "começar do zero sem motivo: 400 com a frase");
+    assert(semMotivo.status === 201, "começar do zero sem motivo também copia: o motivo é opcional");
+    assert((await asPat("POST", "/escalas/dia/copiar/desfazer", { eventoId: semMotivo.body.eventoId })).status === 200, "e o 'do zero' sem motivo também se desfaz");
     const zero = await asPat("POST", "/escalas/dia/copiar", pedido({ modo: "zero", motivo: "Refazer a partir de segunda" }));
     assert(zero.status === 201, "começar do zero com motivo copia");
     const emptyAntes = (await db.select().from(escalaBlocoAjustesTable).where(eq(escalaBlocoAjustesTable.scaleId, d.escala!.id)));

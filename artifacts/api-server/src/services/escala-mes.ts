@@ -9,7 +9,7 @@
  *   que falta, e a tela chama de novo. Dia já gerado é pulado; refazer a chamada retoma de onde parou.
  * - Nada é publicado e ninguém é avisado (rascunho é rascunho).
  */
-import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, ne } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, ne, or } from "drizzle-orm";
 import {
   agendaEventsTable, dailyBookAssignmentsTable, dailyBookPositionsTable, dailyBooksTable, db, escalaBlocoAjustesTable,
   historyEventsTable, locationsTable, programacaoBlocosTable, programacoesTable, scaleAllocationsTable, scalesTable, showBooksTable,
@@ -20,6 +20,7 @@ import { conferirConflitosDosLivros, generateDailyBookDraftForScale } from "../r
 import { eligibleSessions, eligibleSessionsDoDia } from "./session-blocks.js";
 import { janelaDoMes, lembrarOuLer, LeiturasDoMes } from "./leituras-do-mes.js";
 import { diaFechadoDoLocal, findEscalaDoDia, operationForLocation } from "./escala-dia.js";
+import { livroTiradoDoDia, showsTiradosDoDia } from "./escala-show-tirado.js";
 
 export type ActorMes = { sub: string; role: string; organizationId: string };
 const weekdayOf = (date: string) => new Date(`${date}T12:00:00Z`).getUTCDay();
@@ -111,6 +112,10 @@ export async function gerarDiaDoLocal(actor: ActorMes, location: { id: string; n
     for (const sessao of sessoes.filter((x) => x.separada)) alvos.push({ showBookId: show.id, sessionId: sessao.id, inicio: sessao.startTime, sessoesComuns });
     if (sessoes.length === 0 || sessoes.some((x) => !x.separada)) alvos.push({ showBookId: show.id, sessionId: null, inicio: inicioDoShow, sessoesComuns });
   }
+  // Show que a Escala tirou deste dia não é recriado: o Livro cancelado com a marca "tirado do dia" fica como está até alguém o devolver.
+  const tirados = await showsTiradosDoDia(locationId, date);
+  const semOsTirados = alvos.filter((alvo) => !tirados.some((t) => t.showBookId === alvo.showBookId && (alvo.sessionId ? t.sessionId === alvo.sessionId : !t.sessionId)));
+  alvos.length = 0; alvos.push(...semOsTirados);
   alvos.sort((a, b) => a.inicio.localeCompare(b.inicio));
   // Os Livros saem um de cada vez (cada um enxerga os anteriores na carga do dia); os conflitos de horário, que só
   // dependem de o dia estar completo, são conferidos UMA vez para todos no fim — quem está em dois Livros é conferido uma vez.
@@ -170,7 +175,7 @@ export async function resumoDoMes(organizationId: string, locationId: string, ye
   const showIdsDoLocal = (await db.select({ id: showBooksTable.id }).from(showBooksTable).where(eq(showBooksTable.locationId, locationId))).map((s) => s.id);
   const livros = showIdsDoLocal.length ? await db.select({ date: agendaEventsTable.date, showBookId: dailyBooksTable.showBookId }).from(dailyBooksTable)
     .innerJoin(agendaEventsTable, eq(dailyBooksTable.agendaEventId, agendaEventsTable.id))
-    .where(and(inArray(dailyBooksTable.showBookId, showIdsDoLocal), gte(agendaEventsTable.date, primeiroDia), lte(agendaEventsTable.date, ultimoDia), ne(dailyBooksTable.status, "CANCELLED"))) : [];
+    .where(and(inArray(dailyBooksTable.showBookId, showIdsDoLocal), gte(agendaEventsTable.date, primeiroDia), lte(agendaEventsTable.date, ultimoDia), or(ne(dailyBooksTable.status, "CANCELLED"), livroTiradoDoDia))) : [];
 
   const dias: DiaMes[] = [];
   for (let d = 1; d <= ultimo; d++) {

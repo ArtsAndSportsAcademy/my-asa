@@ -332,7 +332,7 @@ export type ResultadoDoDia = { ok: true; resumo: ResumoDoDestino; eventoId: stri
 export async function copiarParaODia(ator: Ator, pedido: PedidoDeCopia, simular: boolean): Promise<ResultadoDoDia> {
   const modo: ModoDaCopia = pedido.modo ?? "juntar";
   const motivo = typeof pedido.motivo === "string" ? pedido.motivo.trim().slice(0, 300) : "";
-  if (modo === "zero" && !simular && motivo.length < 3) return { ok: false, status: 400, error: "MOTIVO_OBRIGATORIO", message: "Para começar o dia do zero, escreva o motivo (pelo menos 3 letras). Nada é apagado: dá para restaurar." };
+  // O motivo de "começar do zero" é opcional (decisão de 30/10/2026): quem quiser escreve, e o Registro guarda; sem motivo, o Registro diz isso.
   const o = await lerOrigem(ator.organizationId, pedido.locationId, pedido.origem, pedido.versao);
   if ("erro" in o) return { ok: false, ...o.erro };
   if (!simular && o.mudouDepois && !pedido.versao) return { ok: false, status: 400, error: "ESCOLHER_VERSAO", message: FRASE_ESCOLHA_A_VERSAO };
@@ -413,11 +413,11 @@ export async function copiarParaODia(ator: Ator, pedido: PedidoDeCopia, simular:
       const versaoTexto = o.publicada ? ((pedido.versao ?? "publicada") === "publicada" ? " (versão publicada)" : " (versão de agora)") : " (rascunho)";
       const eventoId = await writeHistoryEvent({
         category: "SCALE", action: ACAO_COPIA, title: "Dia copiado de outro dia",
-        narrative: `Copiou o dia ${pedido.origem} (${DIAS[weekdayOf(pedido.origem)]})${versaoTexto} para ${pedido.destino}: ${total ? partes : "nada novo para copiar"}.${modo === "zero" ? ` Começou do zero (${desativados.ajustes.length + desativados.edicoes.length + desativados.manuais.length + desativados.chamadas.length} itens desativados, restauráveis). Motivo: ${motivo}.` : ""}${resumo.jaEstava ? ` ${resumo.jaEstava} já estavam no dia.` : ""}${resumo.foraDe.length ? ` Ficaram de fora: ${resumo.foraDe.map((f) => f.pessoa ? `${f.pessoa} (${f.tipo})` : f.tipo).join("; ")}.` : ""}`,
+        narrative: `Copiou o dia ${pedido.origem} (${DIAS[weekdayOf(pedido.origem)]})${versaoTexto} para ${pedido.destino}: ${total ? partes : "nada novo para copiar"}.${modo === "zero" ? ` Começou do zero (${desativados.ajustes.length + desativados.edicoes.length + desativados.manuais.length + desativados.chamadas.length} itens desativados, restauráveis). ${motivo ? `Motivo: ${motivo}.` : "Sem motivo informado."}` : ""}${resumo.jaEstava ? ` ${resumo.jaEstava} já estavam no dia.` : ""}${resumo.foraDe.length ? ` Ficaram de fora: ${resumo.foraDe.map((f) => f.pessoa ? `${f.pessoa} (${f.tipo})` : f.tipo).join("; ")}.` : ""}`,
         entityType: "scale", entityId: scale.id, actorId: ator.sub, operationId, orgId: ator.organizationId,
         beforeState: { origem: pedido.origem, modo },
         afterState: { origem: pedido.origem, origemEscalaId: o.scale.id, versao: o.publicada ? (pedido.versao ?? "publicada") : "rascunho", modo, criados, desativados, livros: livrosTrocados, copia: resumo.copia, jaEstava: resumo.jaEstava, foraDe: resumo.foraDe.map((f) => ({ tipo: f.tipo, pessoaId: f.pessoaId ?? null, frase: f.frase })) },
-        metadata: { ...(modo === "zero" ? { reason: motivo } : {}), ...mex },
+        metadata: { ...(modo === "zero" && motivo ? { reason: motivo } : {}), ...mex },
       }, tx as unknown as HistoryExecutor);
       if (escalaPublicada(scale.status)) {
         scale = (await tx.update(scalesTable).set({ alteradaDesde: scale.alteradaDesde ?? new Date(), updatedAt: new Date(), version: scale.version + 1 }).where(eq(scalesTable.id, scale.id)).returning())[0]!;

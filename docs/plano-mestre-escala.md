@@ -9,6 +9,7 @@ produção (backup, migração, API, site) é de quem constrói o app, nessa ord
 
 ## 0. Onde estamos (30/10/2026) — leia isto primeiro
 - **H (copiar de outro dia, `e7c3cdb` e `ef2f83a`) e G (tempo disponível, `70ecf7a..2154d03`, migração 0090) estão prontos e conferidos, mas NÃO promovidos.** Ordem: backup, migração 0090, API, site.
+- **"Tirar este show do dia", "Refazer os Livros deste dia" e o motivo opcional na cópia estão prontos (seção 14): só locais, nada enviado, sem migração.** Ordem para promover: API, depois site.
 - **Tudo até `da985e4` está em produção** (ramo `codex/escala-mais-facil`; migrações da 0000 à **0089** aplicadas). Nada na `main`.
 - **A próxima migração livre é a 0091** (a 0090 é a do G, já no banco de teste). Ao criar uma, escreva o rollback em `lib/db/drizzle/rollback/` e registre no `meta/_journal.json`.
 - **A equipe por local (pacote O) está no ar, mas ainda vazia em produção:** até alguém preencher a equipe de Snowland e da Acqua na
@@ -275,3 +276,33 @@ desfazer que deu certo diz "Desfiz a cópia de N dias"; (4) durante a gravação
 por cópia e reaproveitadas de um Livro para o outro; (8) o limite do tempo disponível manda o valor lido ao abrir e recebe 409 com a frase
 se outra pessoa salvou antes. Testes: escala-copiar-de-outro-dia (51), escala-copiar-vagas-do-livro (27), escala-tempo-disponivel (66).
 Vistos na tela com a API de teste a 375 px: (3), (4), (5) e (6). Não visto na tela: a janela do tempo disponível recebendo o 409.
+
+## 14. Tirar show do dia, refazer os Livros do dia e motivo opcional (30/10/2026, local, sem migração, nada enviado)
+Pedido da usuária depois do sábado 31/10 na Acquamotion (o OPENING e o BOAS VINDAS normais precisavam sair; entraram "Mergulhadores de Halloween").
+- **"Tirar este show do dia"** (`POST /escalas/dia/tirar-show`, desfazer em `/escalas/dia/tirar-show/desfazer`): botão no bloco de show da visão
+  "Por atividade" e item no menu do bloco na grade por pessoa. Cancela o Livro do Dia pelo caminho do cancelamento de sempre
+  (`tirarLivroDoDia` em `routes/daily-book.ts`), **motivo opcional**, Administração e Supervisão do local (Direção lê, Elenco não vê).
+  Desfazer: faixa logo depois **e** a lista "Tirado deste dia" (com "Voltar ao dia"), que fica enquanto o show estiver fora. Devolver o show
+  restaura o Livro como estava (rascunho ou publicado, com o retrato de antes) e só vale para show tirado por este caminho — não abre o
+  "reabrir" geral (que segue só da Administração, com motivo). Dia publicado: marca "alterada depois de publicada" e avisa a Administração.
+  Livro executado não sai (409 com a frase). Um evento no Registro (`escala.show_tirado_do_dia` / `escala.show_devolvido_ao_dia`).
+- **Defeito do Livro cancelado voltar:** o show tirado agora **some da grade** (não vira "Livro do Dia ainda não gerado") e aparece em
+  "Tirado deste dia"; gerar o dia e gerar o mês **não recriam** o Livro dele; o resumo do mês não o conta como "Livro que falta". **Decisão
+  minha, para a usuária confirmar:** só o show tirado por este botão tem essa proteção (marca `tiradoDoDia` no retrato do Livro, sem
+  migração). O cancelamento por apagar o Livro e o descarte do mês **continuam podendo ser gerados de novo**, como sempre foi — se valesse
+  para todo Livro cancelado, "descartar o mês e gerar de novo" deixaria de recriar os Livros.
+- **Refazer os Livros deste dia** (menu "Mais" da Escala; prévia em `GET /escalas/dia/refazer`): mostra quais Livros em rascunho serão
+  refeitos, quantas trocas feitas à mão se perdem e quais ficam como estão (publicado, executado, show de outra pessoa responsável), motivo
+  opcional, e refaz um por vez pela **mesma rota** do Livro do Dia (`POST /daily-book/:id/regenerate`); se um falhar, diz qual e por quê.
+  Dia publicado: a janela avisa que depois é preciso republicar.
+- **Motivo nunca obrigatório:** a cópia "começar do zero" agora aceita motivo vazio (Registro: "Sem motivo informado"). **Ainda obrigatório na
+  Escala (não mudei, a usuária decide):** (a) "Saiu ou não vem a partir de…" (3 letras, API e `SaiuDialog`); (b) descartar os rascunhos do mês
+  (API `escalas/mes/descartar` e `GerarMesDialog`); (c) chamar na folga e passar de uma regra de escala exigem motivo escrito (a regra
+  "folga vence a escala" do AGENTS.md pede isso de propósito). Fora da Escala (não olhei a fundo): reabrir Livro do Dia, operações, solicitações.
+- **Testes:** `escala-tirar-show-do-dia.test.ts` (55): perfis e frases de recusa, sem motivo, gerar o dia não recria, cancelamento comum ainda
+  regera, resumo do mês, desfazer, dia publicado (versão, aviso, Livro publicado restaurado), executado, prévia e refazer. `escala-copiar-de-outro-dia`
+  ajustado (zero sem motivo agora copia).
+- **Visto na tela:** modo amostra (`?amostra=1&tirado=1`) nos 4 perfis a 1360 e 375 px (Direção e Elenco sem botões); empresa de teste com a conta
+  `teste.admin`, a 375 px: janela de refazer (prévia, "Refazendo 1 de 1…", "1 Livro refeito"), tirar sem motivo, faixa Desfazer, lista "Tirado
+  deste dia", "Voltar ao dia"; `teste.direcao` sem botões nem "Mais". **Não visto:** Supervisão de verdade com Livro de show de outra pessoa
+  responsável; produção; o Elenco recebendo o aviso depois da republicação.

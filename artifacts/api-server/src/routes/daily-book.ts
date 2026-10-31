@@ -2032,6 +2032,63 @@ router.post("/daily-book/:id/cancel", requireAuth, requireOrganization, requireR
   }
 });
 
+/**
+ * "Tirar este show do dia" (Escala, 30/10/2026): cancela o Livro do Dia como o cancelamento de sempre, mas deixa no retrato uma marca
+ * (`tiradoDoDia`) dizendo que foi uma decisão do dia, e guarda o estado de antes. É a marca que faz a Escala mostrar "tirado deste dia"
+ * e o "gerar o dia" não recriar o Livro; o cancelamento por apagar ou por descartar o mês não tem a marca e segue podendo ser regerado.
+ * Roda dentro da transação de quem chama. Devolve null quando o Livro não pode sair (já cancelado ou já executado).
+ */
+export async function tirarLivroDoDia(input: { dailyBookId: string; actorId: string; motivo: string | null }, tx: typeof db): Promise<typeof dailyBooksTable.$inferSelect | null> {
+  const [book] = await tx.select().from(dailyBooksTable).where(eq(dailyBooksTable.id, input.dailyBookId)).limit(1);
+  if (!book || book.status === "CANCELLED" || book.status === "EXECUTED") return null;
+  const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(book.id, tx) };
+  const reason = input.motivo?.trim() || DEFAULT_DAY_REASON;
+  return mutateDailyBookEm(tx, book.id, book.version, async (t) => {
+    // Como no cancelar: grava de vez o que estava ao vivo, para o registro não depender de recalcular depois.
+    await bakeLiveAssignments(book, t);
+    const finalTree = await buildDailyBookTree(book.id, t);
+    const existing = (book.snapshotJson as { rotationWinners?: RotationWinners } | null) ?? null;
+    const [next] = await t.update(dailyBooksTable).set({
+      status: "CANCELLED", cancelledAt: new Date(), cancelledBy: input.actorId,
+      snapshotJson: {
+        scenes: finalTree, rotationWinners: existing?.rotationWinners ?? {},
+        tiradoDoDia: { por: input.actorId, em: new Date().toISOString(), motivo: input.motivo?.trim() || null, statusAntes: book.status, snapshotAntes: book.snapshotJson ?? {} },
+      } as any,
+    }).where(eq(dailyBooksTable.id, book.id)).returning();
+    return next!;
+  }, async (t, _claimed, next) => {
+    const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(book.id, t) };
+    await writeDailyBookAudit(book.id, input.actorId, "cancel",
+      { version: book.version, snapshot: beforeSnapshot, status: book.status },
+      { version: next.version, snapshot: afterSnapshot, status: "CANCELLED", reason, origem: "tirado do dia pela Escala" }, t);
+  });
+}
+
+/**
+ * Desfaz o "tirar este show do dia": o Livro volta ao estado em que estava (rascunho ou publicado, com o retrato de antes) e a marca sai.
+ * Só vale para Livro que foi tirado do dia por este caminho — não é um "reabrir" qualquer. Devolve null quando não há o que desfazer.
+ */
+export async function devolverLivroAoDia(input: { dailyBookId: string; actorId: string; motivo: string | null }, tx: typeof db): Promise<typeof dailyBooksTable.$inferSelect | null> {
+  const [book] = await tx.select().from(dailyBooksTable).where(eq(dailyBooksTable.id, input.dailyBookId)).limit(1);
+  const marca = (book?.snapshotJson as { tiradoDoDia?: { statusAntes?: string; snapshotAntes?: Record<string, unknown> } } | null)?.tiradoDoDia;
+  if (!book || book.status !== "CANCELLED" || !marca) return null;
+  const statusAntes = (["DRAFT", "PUBLISHED", "REPUBLISHED"].includes(marca.statusAntes ?? "") ? marca.statusAntes : "DRAFT") as "DRAFT" | "PUBLISHED" | "REPUBLISHED";
+  const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(book.id, tx) };
+  const reason = input.motivo?.trim() || "O show voltou ao dia (desfeito pela Escala)";
+  return mutateDailyBookEm(tx, book.id, book.version, async (t) => {
+    const [next] = await t.update(dailyBooksTable).set({
+      status: statusAntes, cancelledAt: null, cancelledBy: null,
+      snapshotJson: (marca.snapshotAntes ?? {}) as any,
+    }).where(eq(dailyBooksTable.id, book.id)).returning();
+    return next!;
+  }, async (t, _claimed, next) => {
+    const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(book.id, t) };
+    await writeDailyBookAudit(book.id, input.actorId, "reopen",
+      { version: book.version, snapshot: beforeSnapshot, status: book.status },
+      { version: next.version, snapshot: afterSnapshot, status: statusAntes, reason, origem: "show voltou ao dia pela Escala" }, t);
+  });
+}
+
 // Reabrir um dia fechado (EXECUTED/CANCELLED → DRAFT) é exclusivo da Administração — mesmo
 // supervisor responsável pelo show não pode (20-livro-oficial-interacoes.md / 14 Livro do Dia.dc.html:
 // "Reabrir é da Administração — peça a ela e fica registrado quem reabriu"). Motivo obrigatório.

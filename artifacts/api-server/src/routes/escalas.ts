@@ -8,8 +8,9 @@
  * Toda escrita entra no Registro na mesma transação.
  */
 import { Router, type IRouter } from "express";
-import { and, asc, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, sql } from "drizzle-orm";
 import {
+  agendaEventsTable,
   areaLocalSupervisorsTable,
   db,
   dailyBookAssignmentsTable,
@@ -55,14 +56,14 @@ import { VersionConflictError } from "../lib/versioning.js";
 import { viradaDoLocal } from "../lib/virada-do-dia.js";
 import { mexidasDoDia, novaColeta } from "../services/escala-mexidas.js";
 import { FRASE_CHAMADA_MUITAS, MAXIMO_DE_CHAMADAS, fraseChamadaDepoisDoInicio, janelaDaChamada, lerChamada } from "../services/escala-chamadas.js";
-import { canManageShowBook, canViewShowBook } from "../lib/show-responsibility.js";
+import { canManageShowBook, canOperateDailyBook, canViewShowBook } from "../lib/show-responsibility.js";
 import { FRASE_COPIA_SEM_ACESSO, copiarParaODia, desfazerCopia, lerData, origensPossiveis, podeCopiar, type ItensDaCopia } from "../services/escala-copia.js";
 import { FRASE_EQUIPE_MUDOU, FRASE_SEM_VERSAO, copiarEquipe, diferencaDaEquipe, elencoDaOrganizacao, equipeDaProgramacao, lerLinhas, resumoPorPessoa, sugerirEquipe, versaoDaEquipe, type LinhaGuardada } from "../services/escala-equipe.js";
 
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const DIAS_DA_SEMANA = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
 const dataPorExtenso = (iso: string) => { const [, m, d] = iso.split("-").map(Number); return `${d} de ${MESES[m! - 1]}`; };
-import { ajustarPessoaNoLivro, generateDailyBookDraftForScale } from "./daily-book.js";
+import { ajustarPessoaNoLivro, devolverLivroAoDia, generateDailyBookDraftForScale, tirarLivroDoDia } from "./daily-book.js";
 
 const router: IRouter = Router();
 const SUPERVISOR = ["SUPERVISOR_A", "SUPERVISOR_B"];
@@ -744,6 +745,173 @@ router.post("/escalas/dia/saiu/desfazer", requireAuth, requireOrganization, asyn
     console.error(err);
     const conflito = err instanceof VersionConflictError;
     res.status(conflito ? 409 : 500).json({ error: conflito ? "LIVRO_MUDOU" : "ERRO_INTERNO", message: conflito ? "O Livro do Dia mudou enquanto você desfazia. Nada foi gravado; tente de novo." : "Não consegui desfazer a saída. Nada foi gravado; tente de novo.", nadaFoiGravado: true });
+  }
+});
+
+/** O Livro do Dia pedido, desde que seja de um show deste local e deste dia (qualquer outro é "não achei"). */
+async function livroDoLocalNoDia(dailyBookId: string, locationId: string, date: string) {
+  if (!UUID.test(dailyBookId)) return null;
+  const [row] = await db.select({
+    book: dailyBooksTable, titulo: showBooksTable.title, showBookId: showBooksTable.id, inicio: agendaEventsTable.startTime, fim: agendaEventsTable.endTime, responsibleId: showBooksTable.responsibleId, operationId: showBooksTable.operationId,
+  }).from(dailyBooksTable)
+    .innerJoin(agendaEventsTable, eq(dailyBooksTable.agendaEventId, agendaEventsTable.id))
+    .innerJoin(showBooksTable, eq(dailyBooksTable.showBookId, showBooksTable.id))
+    .where(and(eq(dailyBooksTable.id, dailyBookId), eq(agendaEventsTable.date, date), eq(showBooksTable.locationId, locationId))).limit(1);
+  return row ?? null;
+}
+const horaDe = (v: string | null | undefined) => (v ? v.slice(0, 5) : null);
+
+/**
+ * "Tirar este show do dia" (30/10/2026): o show normal sai da Escala deste dia (entrou outro no lugar, o show não vai acontecer).
+ * Cancela o Livro do Dia pelo mesmo caminho do cancelamento de sempre, com a marca de "tirado do dia" (por isso gerar o dia não o recria).
+ * Motivo OPCIONAL, nunca obrigatório. Administração e Supervisão do local. Dia publicado: marca "alterada depois de publicada" e avisa a
+ * Administração para republicar (o Elenco segue vendo a versão publicada). Um evento no Registro e um aviso por acontecimento.
+ */
+router.post("/escalas/dia/tirar-show", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  const { locationId, date, dailyBookId, motivo } = req.body ?? {};
+  if (typeof locationId !== "string" || typeof date !== "string" || !DATE.test(date) || typeof dailyBookId !== "string" || !dailyBookId) {
+    res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "locationId, date e dailyBookId são obrigatórios." }); return;
+  }
+  if (motivo !== undefined && motivo !== null && typeof motivo !== "string") { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "O motivo, quando vem, é um texto." }); return; }
+  try {
+    const location = await locationInOrg(locationId, actor.organizationId);
+    if (!location) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
+    if (!(await canManageLocal(actor, locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: `${fraseDeRecusaPorPerfil(["ADMIN", "SUPERVISOR_A"], actor.role)} Tirar um show do dia é da Administração ou da Supervisão do local.` }); return; }
+    const livro = await livroDoLocalNoDia(dailyBookId, locationId, date);
+    if (!livro) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Não achei esse show neste dia. Atualize a tela." }); return; }
+    if (livro.book.status === "CANCELLED") { res.status(409).json({ error: "JA_TIRADO", message: `${livro.titulo} já está fora deste dia.` }); return; }
+    if (livro.book.status === "EXECUTED") { res.status(409).json({ error: "ESTADO_INVALIDO", message: `${livro.titulo} já foi marcado como executado: é o registro do que aconteceu e não sai do dia. A Administração pode reabrir o Livro, com motivo, se precisar.` }); return; }
+    const porque = typeof motivo === "string" ? motivo.trim().slice(0, 300) : "";
+    const scaleAntes = await findEscalaDoDia(locationId, date);
+    const rotulo = `${livro.titulo}${horaDe(livro.inicio) ? ` das ${horaDe(livro.inicio)}` : ""}`;
+    const resultado = await db.transaction(async (tx) => {
+      const tirado = await tirarLivroDoDia({ dailyBookId, actorId: actor.sub, motivo: porque || null }, tx as unknown as typeof db);
+      if (!tirado) throw Object.assign(new Error("livro não pôde sair"), { naoPode: true });
+      let scale = scaleAntes ?? null;
+      const publicada = Boolean(scale && escalaPublicada(scale.status));
+      if (scale && publicada) scale = (await tx.update(scalesTable).set({ alteradaDesde: scale.alteradaDesde ?? new Date(), updatedAt: new Date(), version: scale.version + 1 }).where(eq(scalesTable.id, scale.id)).returning())[0]!;
+      const eventoId = await writeHistoryEvent({
+        category: "SCALE", action: "escala.show_tirado_do_dia", title: "Show tirado do dia",
+        narrative: `Tirou ${rotulo} da Escala de ${location.name} em ${date}. O Livro do Dia foi cancelado e não volta sozinho; dá para devolver o show ao dia.${porque ? ` Motivo: ${porque}.` : " Sem motivo informado."}`,
+        entityType: scale ? "scale" : "daily_book", entityId: scale ? scale.id : dailyBookId, actorId: actor.sub, operationId: livro.operationId, orgId: actor.organizationId,
+        beforeState: { dailyBookId, status: livro.book.status, rotulo }, afterState: { dailyBookId, status: "CANCELLED", rotulo, publicada },
+        metadata: { ...(porque ? { reason: porque } : {}), dailyBookId, showBookId: livro.showBookId },
+      }, tx as unknown as HistoryExecutor);
+      if (scale && publicada) {
+        await avisarRepublicacaoPendente(tx as unknown as Parameters<typeof avisarRepublicacaoPendente>[0], scale, `${rotulo} saiu do dia${porque ? ` (${porque})` : ""}`);
+      }
+      return { eventoId, publicada };
+    });
+    res.json({ tirado: { dailyBookId, rotulo }, eventoId: resultado.eventoId, publicada: resultado.publicada, dia: await diaParaTela(actor.organizationId, locationId, date, actor.role) });
+  } catch (err) {
+    console.error(err);
+    if ((err as { naoPode?: boolean }).naoPode) { res.status(409).json({ error: "ESTADO_INVALIDO", message: "Este show já estava fora do dia ou já foi executado. Atualize a tela.", nadaFoiGravado: true }); return; }
+    const conflito = err instanceof VersionConflictError;
+    res.status(conflito ? 409 : 500).json({
+      error: conflito ? "LIVRO_MUDOU" : "ERRO_INTERNO",
+      message: conflito ? "O Livro do Dia mudou enquanto você tirava o show. Nada foi gravado; confira a tela e tente de novo." : "Não consegui tirar o show do dia. Nada foi gravado; tente de novo.",
+      nadaFoiGravado: true,
+    });
+  }
+});
+
+/** Desfaz o "tirar este show do dia": o Livro volta como estava (rascunho ou publicado). Só vale para show tirado por este caminho. Motivo opcional. */
+router.post("/escalas/dia/tirar-show/desfazer", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  const { locationId, date, dailyBookId, motivo } = req.body ?? {};
+  if (typeof locationId !== "string" || typeof date !== "string" || !DATE.test(date) || typeof dailyBookId !== "string" || !dailyBookId) {
+    res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "locationId, date e dailyBookId são obrigatórios." }); return;
+  }
+  if (motivo !== undefined && motivo !== null && typeof motivo !== "string") { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "O motivo, quando vem, é um texto." }); return; }
+  try {
+    const location = await locationInOrg(locationId, actor.organizationId);
+    if (!location) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
+    if (!(await canManageLocal(actor, locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: `${fraseDeRecusaPorPerfil(["ADMIN", "SUPERVISOR_A"], actor.role)} Devolver um show ao dia é da Administração ou da Supervisão do local.` }); return; }
+    const livro = await livroDoLocalNoDia(dailyBookId, locationId, date);
+    if (!livro) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Não achei esse show neste dia. Atualize a tela." }); return; }
+    const tiradoPorAqui = Boolean((livro.book.snapshotJson as { tiradoDoDia?: unknown } | null)?.tiradoDoDia);
+    if (livro.book.status !== "CANCELLED" || !tiradoPorAqui) { res.status(409).json({ error: "NADA_A_DESFAZER", message: `${livro.titulo} não está tirado deste dia pela Escala. Atualize a tela.` }); return; }
+    // Se, depois de tirar, alguém gerou outro Livro para o mesmo show e a mesma sessão, devolver este deixaria dois no dia.
+    const [outro] = await db.select({ id: dailyBooksTable.id }).from(dailyBooksTable).where(and(
+      eq(dailyBooksTable.agendaEventId, livro.book.agendaEventId), eq(dailyBooksTable.showBookId, livro.showBookId),
+      livro.book.sessionId ? eq(dailyBooksTable.sessionId, livro.book.sessionId) : isNull(dailyBooksTable.sessionId), ne(dailyBooksTable.status, "CANCELLED"),
+    )).limit(1);
+    if (outro) { res.status(409).json({ error: "JA_TEM_OUTRO", message: `${livro.titulo} já tem outro Livro do Dia neste dia, criado depois que ele saiu. Use esse, ou cancele esse antes de devolver o que saiu.` }); return; }
+    const porque = typeof motivo === "string" ? motivo.trim().slice(0, 300) : "";
+    const scaleAntes = await findEscalaDoDia(locationId, date);
+    const rotulo = `${livro.titulo}${horaDe(livro.inicio) ? ` das ${horaDe(livro.inicio)}` : ""}`;
+    const resultado = await db.transaction(async (tx) => {
+      const devolvido = await devolverLivroAoDia({ dailyBookId, actorId: actor.sub, motivo: porque || null }, tx as unknown as typeof db);
+      if (!devolvido) throw Object.assign(new Error("nada a desfazer"), { naoPode: true });
+      let scale = scaleAntes ?? null;
+      const publicada = Boolean(scale && escalaPublicada(scale.status));
+      if (scale && publicada) scale = (await tx.update(scalesTable).set({ alteradaDesde: scale.alteradaDesde ?? new Date(), updatedAt: new Date(), version: scale.version + 1 }).where(eq(scalesTable.id, scale.id)).returning())[0]!;
+      await writeHistoryEvent({
+        category: "SCALE", action: "escala.show_devolvido_ao_dia", title: "Show devolvido ao dia",
+        narrative: `${rotulo} voltou à Escala de ${location.name} em ${date}; o Livro do Dia voltou como estava.${porque ? ` Motivo: ${porque}.` : ""}`,
+        entityType: scale ? "scale" : "daily_book", entityId: scale ? scale.id : dailyBookId, actorId: actor.sub, operationId: livro.operationId, orgId: actor.organizationId,
+        beforeState: { dailyBookId, status: "CANCELLED", rotulo }, afterState: { dailyBookId, status: devolvido.status, rotulo, publicada },
+        metadata: { ...(porque ? { reason: porque } : {}), dailyBookId, showBookId: livro.showBookId },
+      }, tx as unknown as HistoryExecutor);
+      if (scale && publicada) await avisarRepublicacaoPendente(tx as unknown as Parameters<typeof avisarRepublicacaoPendente>[0], scale, `${rotulo} voltou ao dia`);
+      return { publicada };
+    });
+    res.json({ desfeito: true, publicada: resultado.publicada, dia: await diaParaTela(actor.organizationId, locationId, date, actor.role) });
+  } catch (err) {
+    console.error(err);
+    if ((err as { naoPode?: boolean }).naoPode) { res.status(409).json({ error: "NADA_A_DESFAZER", message: "Este show não está mais fora do dia. Atualize a tela.", nadaFoiGravado: true }); return; }
+    const conflito = err instanceof VersionConflictError;
+    res.status(conflito ? 409 : 500).json({
+      error: conflito ? "LIVRO_MUDOU" : "ERRO_INTERNO",
+      message: conflito ? "O Livro do Dia mudou enquanto você o devolvia. Nada foi gravado; tente de novo." : "Não consegui devolver o show ao dia. Nada foi gravado; tente de novo.",
+      nadaFoiGravado: true,
+    });
+  }
+});
+
+/**
+ * "Refazer os Livros deste dia" (menu Mais da Escala), PRÉVIA: quais Livros do dia podem ser refeitos (só rascunho) e quais ficam como estão,
+ * com a versão de cada um e quantas vagas mexidas à mão se perdem. Só lê. Quem refaz chama `POST /daily-book/:id/regenerate` por Livro,
+ * a mesma rota do Livro do Dia, que confere a permissão de cada show.
+ */
+router.get("/escalas/dia/refazer", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  const locationId = typeof req.query.locationId === "string" ? req.query.locationId : "";
+  const date = typeof req.query.date === "string" ? req.query.date : "";
+  if (!locationId || !DATE.test(date)) { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "locationId e date são obrigatórios." }); return; }
+  try {
+    const location = await locationInOrg(locationId, actor.organizationId);
+    if (!location) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
+    if (!(await canManageLocal(actor, locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: `${fraseDeRecusaPorPerfil(["ADMIN", "SUPERVISOR_A"], actor.role)} Refazer os Livros do dia é da Administração ou da Supervisão do local.` }); return; }
+    const livros = await db.select({
+      id: dailyBooksTable.id, status: dailyBooksTable.status, version: dailyBooksTable.version, titulo: showBooksTable.title, inicio: agendaEventsTable.startTime,
+      showBookId: showBooksTable.id, responsibleId: showBooksTable.responsibleId, operationId: showBooksTable.operationId,
+    }).from(dailyBooksTable)
+      .innerJoin(agendaEventsTable, eq(dailyBooksTable.agendaEventId, agendaEventsTable.id))
+      .innerJoin(showBooksTable, eq(dailyBooksTable.showBookId, showBooksTable.id))
+      .where(and(eq(agendaEventsTable.date, date), eq(showBooksTable.locationId, locationId), ne(dailyBooksTable.status, "CANCELLED")))
+      .orderBy(asc(agendaEventsTable.startTime), asc(showBooksTable.title));
+    const mexidas = livros.length ? await db.select({ livro: dailyBookAssignmentsTable.dailyBookId, n: sql<number>`count(*)::int` }).from(dailyBookAssignmentsTable)
+      .where(and(inArray(dailyBookAssignmentsTable.dailyBookId, livros.map((l) => l.id)), eq(dailyBookAssignmentsTable.manual, true), isNull(dailyBookAssignmentsTable.supersededAt), ne(dailyBookAssignmentsTable.status, "REMOVED")))
+      .groupBy(dailyBookAssignmentsTable.dailyBookId) : [];
+    const mexidasPor = new Map(mexidas.map((m) => [m.livro, m.n]));
+    const scale = await findEscalaDoDia(locationId, date);
+    const lista = [];
+    for (const l of livros) {
+      const rascunho = l.status === "DRAFT";
+      const pode = rascunho && (await canOperateDailyBook(req.user!, l.operationId, { id: l.showBookId, responsibleId: l.responsibleId }));
+      lista.push({
+        dailyBookId: l.id, rotulo: l.titulo, inicio: horaDe(l.inicio), status: l.status, version: l.version, vagasMexidas: mexidasPor.get(l.id) ?? 0,
+        refaz: rascunho && pode,
+        ...(rascunho && !pode ? { motivoDeNao: l.responsibleId ? "Este show tem uma pessoa responsável: só ela e a Administração refazem o Livro." : "Você não opera este show." } : {}),
+        ...(!rascunho ? { motivoDeNao: l.status === "EXECUTED" ? "Já foi executado: é registro e não se refaz." : "Já foi publicado: só o rascunho se refaz. Para mudar, ajuste o Livro e republique a Escala." } : {}),
+      });
+    }
+    res.json({ locationId, date, publicada: Boolean(scale && escalaPublicada(scale.status)), escalaExiste: Boolean(scale), livros: lista });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não consegui montar a prévia dos Livros do dia. Nada foi alterado; tente de novo." });
   }
 });
 

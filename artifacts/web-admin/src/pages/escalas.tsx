@@ -28,6 +28,8 @@ import { SaiuDialog, type PreviaDaSaida, type SaiuApi } from "@/components/escal
 import { AtividadeLoteDialog } from "@/components/escala/atividade-lote-dialog";
 import { PublicarDialog } from "@/components/escala/publicar-dialog";
 import { CopiarDiaDialog, type CopiaFeita } from "@/components/escala/copiar-dia-dialog";
+import { TirarShowDialog } from "@/components/escala/tirar-show-dialog";
+import { RefazerDiaDialog } from "@/components/escala/refazer-dia-dialog";
 import { ShowLinha } from "@/components/escala/show-linha";
 import "./shows.css"; // a janela do Ajustar usa .shows-dialog: sem isto ela não rola e o rodapé some quando a Escala abre direto
 import "./escalas.css";
@@ -47,7 +49,10 @@ export type Pessoa = { id: string; name: string; areaId: string | null; areaName
 type Area = { id: string; name: string; supervisores: { id: string; name: string }[]; pronta: { por: string | null; em: string } | null; prontaTirada?: { por: string | null; em: string } | null };
 /** Alguém de outra área mexeu na escala desta pessoa: quem mexeu e o quê, para a Supervisão da pessoa ver. */
 export type Mexida = { pessoaId: string; pessoaNome: string; pessoaAreaNome: string | null; porId: string; porNome: string; porAreaNome: string | null; em: string; texto: string };
+export type ShowTiradoDoDia = { dailyBookId: string; rotulo: string; inicio: string | null; fim: string | null; porNome: string | null; em: string | null; motivo: string | null };
 export type Dia = { date: string; location: { id: string; name: string }; escala: { id: string; status: string; version: number; publishedAt: string | null; alteradaDesde: string | null } | null; programacao: { id: string; nome: string; vigenciaInicio: string; vigenciaFim: string } | null; areas: Area[]; pessoas: Pessoa[]; blocos: Bloco[]; mexidas?: Mexida[]; tipos?: TipoDoLocal[]; fechado?: { motivo: string };
+  /** Shows que a Escala tirou deste dia ("Tirar este show do dia"): fora da grade, com o botão de voltar ao dia. */
+  showsTirados?: ShowTiradoDoDia[];
   /** Equipe por local (pacote O): quem tem equipe na temporada mas nenhuma neste dia, e quem está em duas coisas em locais diferentes que não cabem. */
   semLocalHoje?: string[]; choquesEntreLocais?: ChoqueEntreLocais[];
   /** Tempo disponível (pacote G): só chega para a Administração e a Supervisão, com o aviso ligado no local. */
@@ -157,6 +162,8 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
   const [gerarMesAberto, setGerarMesAberto] = useState(false);
   // "Copiar de outro dia": a janela aberta e, depois de copiar, a faixa com o "Desfazer cópia" (um evento do Registro por dia copiado).
   const [copiarAberto, setCopiarAberto] = useState(false);
+  // "Refazer os Livros deste dia": a janela que mostra o que será refeito antes de gravar.
+  const [refazerAberto, setRefazerAberto] = useState(false);
   const [copiaFeita, setCopiaFeita] = useState<{ texto: string; eventoIds: string[]; desfazendo: boolean; desfeita?: boolean } | null>(null);
   // Publicar e republicar pedem confirmação: a janela diz quantas pessoas são avisadas, quais Livros saem juntos e o que ainda pede atenção.
   const [confirmandoPublicacao, setConfirmandoPublicacao] = useState<{ republicar: boolean } | null>(null);
@@ -425,6 +432,32 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       return frase;
     } finally { setSaving(false); setBusy(""); }
   };
+  /** Tirar este show do dia (30/10/2026): o show normal não vai acontecer neste dia. Devolve a frase do erro (a janela a mostra) ou null. */
+  const tirarShow = async (bloco: Bloco, motivo: string): Promise<string | null> => {
+    if (!dia || !localId || !bloco.dailyBookId) return null;
+    if (review) return "No modo de amostra não dá para tirar o show. Abra com a conta de teste para ver.";
+    setSaving(true); setBusy("ajuste"); setError("");
+    try {
+      await customFetch("/api/escalas/dia/tirar-show", { method: "POST", body: JSON.stringify({ locationId: localId, date, dailyBookId: bloco.dailyBookId, ...(motivo ? { motivo } : {}) }) });
+      setRefresh((n) => n + 1);
+      return null;
+    } catch (err) {
+      const frase = errMsg(err, "Não consegui tirar o show do dia agora. Nada foi alterado; tente de novo.");
+      setRefresh((n) => n + 1);
+      return frase;
+    } finally { setSaving(false); setBusy(""); }
+  };
+  const devolverShow = async (dailyBookId: string): Promise<string | null> => {
+    if (!dia || !localId) return null;
+    if (review) return "No modo de amostra não há o que desfazer.";
+    setSaving(true); setBusy("ajuste"); setError("");
+    try {
+      await customFetch("/api/escalas/dia/tirar-show/desfazer", { method: "POST", body: JSON.stringify({ locationId: localId, date, dailyBookId }) });
+      setRefresh((n) => n + 1);
+      return null;
+    } catch (err) { const frase = errMsg(err, "Não consegui devolver o show ao dia agora. Nada foi alterado; tente de novo."); setError(frase); setRefresh((n) => n + 1); return frase; }
+    finally { setSaving(false); setBusy(""); }
+  };
   const ajustarCelula = async (bloco: Bloco, pessoaId: string, action: "ADICIONAR" | "REMOVER") => {
     if (!dia || !localId) return;
     setSaving(true); setError("");
@@ -588,7 +621,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       </div>}
       {carregandoTela && !error && !dia && !minha && <div aria-busy="true" style={css("padding:16px;text-align:center;font-size:12.5px;color:var(--asa-label);background:#fff;border:1px dashed var(--asa-line-soft);border-radius:12px")}>Montando a escala…</div>}
       {showMinha && minha && <MinhaEscala minha={minha} date={date} onHoje={() => setDate(todayISO())} onConfirm={confirmarEscala} saving={saving}/>}
-      {!isMem && tab === "escala" && dia && <EscalaGrid dia={dia} review={review} canEdit={isAdm || areasMinhas.length > 0} editableAreaIds={null} onAdjust={ajustarCelulaEmLote} onHorario={mudarHorario} onEditarAtividade={editarAtividade} onRemoveManual={isAdm || areasMinhas.length > 0 ? removerEntradaManual : undefined} onEditManual={isAdm || areasMinhas.length > 0 ? ((b) => setManual({ bloco: b })) : undefined} onFolgaResolvida={folgaResolvida} saiu={saiuApi} onNovaAtividade={isAdm || areasMinhas.length > 0 ? (() => setManual({ bloco: null })) : undefined} localDoDia={isAdm || areasMinhas.length > 0 ? { mover: moverDeLocal, desfazer: desfazerImprevisto, locais: locais.filter((l) => l.id !== localId) } : undefined}/>} 
+      {!isMem && tab === "escala" && dia && <EscalaGrid dia={dia} review={review} canEdit={isAdm || areasMinhas.length > 0} editableAreaIds={null} onAdjust={ajustarCelulaEmLote} onHorario={mudarHorario} onEditarAtividade={editarAtividade} onRemoveManual={isAdm || areasMinhas.length > 0 ? removerEntradaManual : undefined} onEditManual={isAdm || areasMinhas.length > 0 ? ((b) => setManual({ bloco: b })) : undefined} onFolgaResolvida={folgaResolvida} saiu={saiuApi} onNovaAtividade={isAdm || areasMinhas.length > 0 ? (() => setManual({ bloco: null })) : undefined} localDoDia={isAdm || areasMinhas.length > 0 ? { mover: moverDeLocal, desfazer: desfazerImprevisto, locais: locais.filter((l) => l.id !== localId) } : undefined} tirarShow={isAdm || areasMinhas.length > 0 ? { tirar: tirarShow, devolver: devolverShow } : undefined}/>} 
       {!isMem && tab === "prog" && localId && <ProgramacaoTab review={review} localId={localId} localName={operationLabel} date={date} dia={dia} canEdit={Boolean(local?.podeEditar)} onChanged={() => setRefresh((n) => n + 1)}/>}
     </div>
 
@@ -601,11 +634,12 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
     {copiaFeita && <div className="ge-desfazer" role="status"><span>{copiaFeita.texto}</span>
       {!copiaFeita.desfeita && <button type="button" disabled={copiaFeita.desfazendo} onClick={() => void desfazerCopia()}>{copiaFeita.desfazendo ? "Desfazendo…" : "Desfazer cópia"}</button>}
       <button type="button" disabled={copiaFeita.desfazendo} aria-label="Fechar o aviso" onClick={() => setCopiaFeita(null)}>×</button></div>}
+    {refazerAberto && !review && localId && <RefazerDiaDialog localId={localId} localNome={operationLabel} date={date} dataCurta={`${date.slice(8, 10)}/${date.slice(5, 7)}`} onClose={() => setRefazerAberto(false)} onTerminou={() => setRefresh((n) => n + 1)}/>}
     {copiarAberto && !review && localId && <CopiarDiaDialog localId={localId} localNome={operationLabel} dataInicial={date} onClose={aoFecharCopia}/>}
 
     {regrasAbertas && isAdm && localId && <RegrasDoLocalDialog localId={localId} localNome={locais.find((l) => l.id === localId)?.name ?? "este local"} onClose={() => setRegrasAbertas(false)}/>}
     {gerarMesAberto && isAdm && <GerarMesDialog locais={locais} localInicial={localId} review={review} onClose={() => setGerarMesAberto(false)} onGerou={() => setRefresh((n) => n + 1)}/>}
-    <Rodape role={role} tab={tab} onMinha={tab === "minha"} dia={dia} minha={minha} areasMinhas={areasMinhas} saving={saving} busy={busy} onGerar={gerarDia} onGerarMes={() => setGerarMesAberto(true)} onCopiar={review || !(isAdm || areasMinhas.length > 0) ? undefined : () => setCopiarAberto(true)} onRegras={review ? undefined : () => setRegrasAbertas(true)} onPronta={marcarPronta} onPublicar={(republicar) => setConfirmandoPublicacao({ republicar })}/>
+    <Rodape role={role} tab={tab} onMinha={tab === "minha"} dia={dia} minha={minha} areasMinhas={areasMinhas} saving={saving} busy={busy} onGerar={gerarDia} onGerarMes={() => setGerarMesAberto(true)} onCopiar={review || !(isAdm || areasMinhas.length > 0) ? undefined : () => setCopiarAberto(true)} onRefazer={review || !(isAdm || areasMinhas.length > 0) ? undefined : () => setRefazerAberto(true)} onRegras={review ? undefined : () => setRegrasAbertas(true)} onPronta={marcarPronta} onPublicar={(republicar) => setConfirmandoPublicacao({ republicar })}/>
     {confirmandoPublicacao && dia && <PublicarDialog dia={dia} dataLonga={`${WEEKDAY_LONG[weekdayOf(date)]}, ${fullDate(date)}`} republicar={confirmandoPublicacao.republicar} review={review} ocupado={busy === "publicar"} onClose={() => setConfirmandoPublicacao(null)}
       onConfirmar={() => { const { republicar } = confirmandoPublicacao; setConfirmandoPublicacao(null); void publicar(republicar); }}/>}
   </section>;
@@ -628,9 +662,14 @@ function tempoDeAmostra(d: Dia, role: string): Dia {
   } };
 }
 
-/** Só no modo amostra: `?fechado=1` mostra o dia em que o local não abre; `?outro=1` põe duas pessoas "no outro local" (a Escala diz onde estão em vez de contá-las). */
+/** Só no modo amostra: `?tirado=1` mostra um show em "Tirado deste dia"; `?fechado=1` mostra o dia em que o local não abre; `?outro=1` põe duas pessoas "no outro local" (a Escala diz onde estão em vez de contá-las). */
 function extrasDeAmostra(d: Dia): Dia {
   const q = new URLSearchParams(window.location.search);
+  // `?tirado=1`: o primeiro show do dia aparece como "Tirado deste dia" (fora da grade), para ver a lista e o botão de voltar.
+  if (q.get("tirado") === "1") {
+    const show = d.blocos.find((b) => b.regra === "livro" && b.dailyBookId);
+    if (show) return { ...d, blocos: d.blocos.filter((b) => b !== show), showsTirados: [{ dailyBookId: show.dailyBookId!, rotulo: show.rotulo, inicio: show.inicio, fim: show.fim, porNome: "Supervisão de exemplo", em: null, motivo: "Entrou o show de Halloween no lugar" }] };
+  }
   if (q.get("fechado") === "1") return { ...d, escala: null, blocos: [], fechado: { motivo: `${d.location.name} não abre quartas. Não há o que escalar aqui neste dia.` } };
   // `?equipe=1`: duas pessoas são da equipe de outro local hoje (somem da grade e aparecem só em "No outro local").
   if (q.get("equipe") === "1") {
@@ -711,7 +750,7 @@ function useTelefone() {
 }
 
 /* ---------- aba Escala: grade pessoas × horários ---------- */
-function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario, onEditarAtividade, onRemoveManual, onEditManual, onFolgaResolvida, saiu, localDoDia, onNovaAtividade }: { onNovaAtividade?: () => void; saiu?: SaiuApi; localDoDia?: LocalDoDiaApi; review: boolean; dia: Dia; canEdit: boolean; editableAreaIds: string[] | null; onHorario: (bloco: Bloco, pessoaId: string, horario: { inicio: string; fim: string | null; motivo?: string } | null) => Promise<string | null>; onAdjust: (bloco: Bloco, mudancas: Mudanca[], motivo?: string) => Promise<void>; onEditarAtividade?: (bloco: Bloco, edicao: EdicaoDaAtividade | null) => Promise<string | null>; onRemoveManual?: (allocationIds: string[]) => Promise<void>; onEditManual?: (bloco: Bloco) => void; onFolgaResolvida?: (userId: string) => Promise<void> }) {
+function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario, onEditarAtividade, onRemoveManual, onEditManual, onFolgaResolvida, saiu, localDoDia, onNovaAtividade, tirarShow }: { onNovaAtividade?: () => void; tirarShow?: { tirar: (bloco: Bloco, motivo: string) => Promise<string | null>; devolver: (dailyBookId: string) => Promise<string | null> }; saiu?: SaiuApi; localDoDia?: LocalDoDiaApi; review: boolean; dia: Dia; canEdit: boolean; editableAreaIds: string[] | null; onHorario: (bloco: Bloco, pessoaId: string, horario: { inicio: string; fim: string | null; motivo?: string } | null) => Promise<string | null>; onAdjust: (bloco: Bloco, mudancas: Mudanca[], motivo?: string) => Promise<void>; onEditarAtividade?: (bloco: Bloco, edicao: EdicaoDaAtividade | null) => Promise<string | null>; onRemoveManual?: (allocationIds: string[]) => Promise<void>; onEditManual?: (bloco: Bloco) => void; onFolgaResolvida?: (userId: string) => Promise<void> }) {
   const [view, setView] = useState<"pessoa" | "atividade">("atividade");
   const [team, setTeam] = useState("todos");
   const [busca, setBusca] = useState("");
@@ -726,6 +765,7 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
   const [confirmarGrade, setConfirmarGrade] = useState<{ titulo: string; texto: string; acao: string; onSim: () => void } | null>(null);
   const [tirando, setTirando] = useState("");
   const [saindo, setSaindo] = useState<{ pessoa: Pessoa; aPartirDe: string } | null>(null);
+  const [tirandoShow, setTirandoShow] = useState<Bloco | null>(null);
   const [mudandoLocal, setMudandoLocal] = useState<{ modo: "trazer" | "mandar"; pessoa: Pessoa; origem: { id: string; name: string } | null } | null>(null);
   const telefone = useTelefone();
   const blocosDe = useCallback((pid: string) => dia.blocos.filter((b) => b.pessoaIds.includes(pid)), [dia.blocos]);
@@ -905,6 +945,7 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
                     {b.editadoNoDia && <span style={css("font-size:12px;color:var(--asa-label)")}>{`Editada só neste dia · a Programação manda ${b.editadoNoDia.original.rotulo}, ${faixa(b.editadoNoDia.original)}`}</span>}
                     {canEdit && !b.horarioDela && !b.chamada && b.regra !== "ninguem" && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setAjustando(b)}>Ajustar</button>}
                     {canEdit && onEditarAtividade && b.origem === "programacao" && b.regra !== "livro" && !b.chamada && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setEditandoAtividade(b)}>Editar neste dia</button>}
+                    {tirarShow && b.regra === "livro" && b.dailyBookId && !b.chamada && b.dailyBookStatus !== "EXECUTED" && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setTirandoShow(b)}>Tirar este show do dia</button>}
                     {onEditManual && b.origem === "manual" && b.allocationId && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => onEditManual(b)}>Mudar horário</button>}
                     {onRemoveManual && b.origem === "manual" && b.allocationId && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setConfirmarGrade({ titulo: "Tirar do dia", texto: `"${b.rotulo}" das ${b.inicio} sai do dia para ${b.pessoaIds.length === 1 ? "1 pessoa" : `${b.pessoaIds.length} pessoas`}. A Programação não muda.`, acao: "Tirar do dia", onSim: () => void onRemoveManual(b.allocationIds?.length ? b.allocationIds : [b.allocationId!]) })}>Tirar do dia</button>}
                   </div>
@@ -915,6 +956,14 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
           </tbody>
         </table>
       </div>}
+
+    {!(dia.fechado && !dia.escala) && (dia.showsTirados?.length ?? 0) > 0 && <section className="ge-tirados" aria-label="Shows tirados deste dia">
+      <h3>Tirado deste dia</h3>
+      <ul>{dia.showsTirados!.map((t) => <li key={t.dailyBookId}>
+        <span><strong>{`${t.rotulo}${t.inicio ? ` · ${t.inicio}` : ""}`}</strong>{` não acontece neste dia${t.porNome ? ` · tirado por ${t.porNome}` : ""}${t.motivo ? ` · ${t.motivo}` : ""}`}</span>
+        {tirarShow && <button type="button" className="esc-cell-adjust esc-hit" style={{ minHeight: 44 }} disabled={tirando !== ""} onClick={() => { const { devolver } = tirarShow; setTirando(`livro|${t.dailyBookId}`); void devolver(t.dailyBookId).finally(() => setTirando("")); }}>Voltar ao dia</button>}
+      </li>)}</ul>
+    </section>}
 
     {view === "pessoa" && !telefone && <div className="ge-legenda" aria-label="Cores por tipo de atividade">
       {legenda.map((t) => <span key={t.id} style={{ "--bg": `var(--esc-t-${t.cor}-bg)`, "--fg": `var(--esc-t-${t.cor}-fg)` } as CSSProperties}>{t.nome}</span>)}
@@ -951,7 +1000,15 @@ function EscalaGrid({ dia, review, canEdit, editableAreaIds, onAdjust, onHorario
       onTirar={() => { const { bloco, pessoa } = menu; setMenu(null); void tirarDoBloco(bloco, pessoa); }}
       onMudarHorario={() => { const { bloco, pessoa } = menu; const par = conflitos.find((c) => c.pessoaId === pessoa.id && (c.a.key === bloco.key || c.b.key === bloco.key)); setMenu(null); setMudandoHorario({ pessoaId: pessoa.id, nome: pessoa.name, bloco, outro: par ? (par.a.key === bloco.key ? par.b : par.a) : null }); }}
       onAjustar={() => { const { bloco } = menu; setMenu(null); setAjustando(bloco); }}
-      onSaiu={saiu && podeMexer(menu.pessoa) ? () => { const { bloco, pessoa } = menu; setMenu(null); setSaindo({ pessoa, aPartirDe: bloco.inicio }); } : undefined}/>}
+      onSaiu={saiu && podeMexer(menu.pessoa) ? () => { const { bloco, pessoa } = menu; setMenu(null); setSaindo({ pessoa, aPartirDe: bloco.inicio }); } : undefined}
+      onTirarShow={tirarShow && canEdit && menu.bloco.dailyBookId && menu.bloco.dailyBookStatus !== "EXECUTED" ? () => { const { bloco } = menu; setMenu(null); setTirandoShow(bloco); } : undefined}/>}
+    {tirandoShow && tirarShow && <TirarShowDialog rotulo={textoDoBloco(tirandoShow)} dataCurta={`${dia.date.slice(8, 10)}/${dia.date.slice(5, 7)}`} publicada={Boolean(dia.escala && dia.escala.status !== "DRAFT")} onClose={() => setTirandoShow(null)}
+      onConfirmar={async (motivo) => {
+        const bloco = tirandoShow;
+        const frase = await tirarShow.tirar(bloco, motivo);
+        if (!frase) { setTirandoShow(null); setDesfazer({ texto: `${textoDoBloco(bloco)} saiu do dia.`, acao: async () => { await tirarShow.devolver(bloco.dailyBookId!); } }); }
+        return frase;
+      }}/>}
     {saindo && saiu && <SaiuDialog pessoa={saindo.pessoa} inicialAPartirDe={saindo.aPartirDe} api={saiu} onClose={() => setSaindo(null)}
       onFeito={(saiuId, texto) => { setSaindo(null); setDesfazer({ texto, acao: async () => { await saiu.desfazer(saiuId); } }); }}/>}
     {mudandoLocal && localDoDia && <LocalDoDiaDialog modo={mudandoLocal.modo} pessoa={mudandoLocal.pessoa} data={dia.date} localAtual={dia.location} origem={mudandoLocal.origem} destinos={localDoDia.locais} onClose={() => setMudandoLocal(null)}
@@ -1285,7 +1342,7 @@ function lembrarLocal(list: { id: string }[]): string | undefined {
 }
 function guardarLocal(id: string) { try { localStorage.setItem(LOCAL_KEY, id); } catch { /* sem armazenamento */ } }
 
-function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, busy = "", onGerar, onGerarMes, onCopiar, onRegras, onPronta, onPublicar }: { role: Role; tab: string; onMinha?: boolean; dia: Dia | null; minha: Minha | null; areasMinhas: string[]; saving: boolean; busy?: string; onGerar: () => void; onGerarMes?: () => void; onCopiar?: () => void; onRegras?: () => void; onPronta: (areaIds: string[], pronta: boolean) => void; onPublicar: (republicar: boolean) => void }) {
+function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, busy = "", onGerar, onGerarMes, onCopiar, onRefazer, onRegras, onPronta, onPublicar }: { onRefazer?: () => void; role: Role; tab: string; onMinha?: boolean; dia: Dia | null; minha: Minha | null; areasMinhas: string[]; saving: boolean; busy?: string; onGerar: () => void; onGerarMes?: () => void; onCopiar?: () => void; onRegras?: () => void; onPronta: (areaIds: string[], pronta: boolean) => void; onPublicar: (republicar: boolean) => void }) {
   const isMem = role === "mem" || onMinha, isDir = role === "dir", isAdm = role === "adm";
   let note = "";
   const actions: ReactNode[] = [];
@@ -1313,6 +1370,8 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, b
     if (tab === "escala" && isAdm && onGerarMes) apoio.push({ key: "gerar-mes", label: "Gerar o mês", onClick: onGerarMes, disabled: saving });
     // Copiar de outro dia: Administração e Supervisão do local; não faz sentido no dia em que o local não abre e não há Escala.
     if (tab === "escala" && onCopiar && !(dia.fechado && !dia.escala)) apoio.push({ key: "copiar", label: "Copiar de outro dia", onClick: onCopiar, disabled: saving });
+    // Refazer os Livros deste dia: Administração e Supervisão do local, só com a Escala e os Livros do dia gerados.
+    if (tab === "escala" && onRefazer && dia.escala) apoio.push({ key: "refazer", label: "Refazer os Livros deste dia", onClick: onRefazer, disabled: saving });
     if (tab === "escala" && isAdm && !dia.escala && !dia.fechado) actions.push(<button key="generate" type="button" className="esc-hit" disabled={saving} onClick={onGerar} style={css(btn("primary"))}>{busy === "gerar" ? "Gerando Escala e Livros…" : "Gerar Escala e Livros"}</button>);
     // Show que entrou na Programação depois da geração fica sem Livro: dá para gerar o que falta.
     const semLivro = dia.escala ? dia.blocos.filter((b) => b.regra === "livro" && !b.dailyBookId).length : 0;
