@@ -801,6 +801,16 @@ router.post("/escalas/dia/tirar-show", requireAuth, requireOrganization, async (
       if (scale && publicada) {
         await avisarRepublicacaoPendente(tx as unknown as Parameters<typeof avisarRepublicacaoPendente>[0], scale, `${rotulo} saiu do dia${porque ? ` (${porque})` : ""}`);
       }
+      // A Supervisão do local pode tirar o show mesmo quando ele tem pessoa responsável; a responsável recebe um aviso (um por acontecimento).
+      if (livro.responsibleId && livro.responsibleId !== actor.sub) {
+        const [quem] = await tx.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, actor.sub)).limit(1);
+        await enqueueNotification(tx as never, {
+          userId: livro.responsibleId, type: "escala.show_tirado", category: "schedule", priority: date === operationalDate() ? "IMPORTANT" : "NORMAL",
+          title: `${rotulo} saiu do dia ${dataPorExtenso(date)}`,
+          message: `${quem?.name ?? "Alguém"} tirou ${rotulo} da escala de ${location.name} em ${dataPorExtenso(date)}.${porque ? ` Motivo: ${porque}.` : ""} Para devolver o show ao dia, use "Voltar ao dia" na Escala.`,
+          entityType: "daily_book", entityId: dailyBookId, actionUrl: `${APP_ROUTES.escalas}?data=${date}&local=${locationId}`,
+        }, new Date(), { deduplicationKey: `show-tirado:${eventoId}:${livro.responsibleId}` });
+      }
       return { eventoId, publicada };
     });
     res.json({ tirado: { dailyBookId, rotulo }, eventoId: resultado.eventoId, publicada: resultado.publicada, dia: await diaParaTela(actor.organizationId, locationId, date, actor.role) });
@@ -912,6 +922,53 @@ router.get("/escalas/dia/refazer", requireAuth, requireOrganization, async (req,
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "ERRO_INTERNO", message: "Não consegui montar a prévia dos Livros do dia. Nada foi alterado; tente de novo." });
+  }
+});
+
+/**
+ * "Refazer os Livros deste dia": a tela refaz um Livro por vez pela rota do Livro do Dia e, no fim, chama aqui UMA vez para o Registro da Escala
+ * (um evento por acontecimento, com o motivo e quais Livros foram refeitos). Dia publicado: marca "alterada depois de publicada" e avisa a Administração.
+ */
+router.post("/escalas/dia/refazer/registrar", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  const { locationId, date, motivo, livros } = req.body ?? {};
+  if (typeof locationId !== "string" || typeof date !== "string" || !DATE.test(date) || !Array.isArray(livros) || !livros.length || livros.length > 40 || livros.some((id: unknown) => typeof id !== "string")) {
+    res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "Informe o local, o dia e os Livros que foram refeitos." }); return;
+  }
+  if (motivo !== undefined && motivo !== null && typeof motivo !== "string") { res.status(400).json({ error: "CAMPOS_INVALIDOS", message: "O motivo, quando vem, é um texto." }); return; }
+  try {
+    const location = await locationInOrg(locationId, actor.organizationId);
+    if (!location) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Local não encontrado." }); return; }
+    if (!(await canManageLocal(actor, locationId))) { res.status(403).json({ error: "ACESSO_NEGADO", message: `${fraseDeRecusaPorPerfil(["ADMIN", "SUPERVISOR_A"], actor.role)} Refazer os Livros do dia é da Administração ou da Supervisão do local.` }); return; }
+    const refeitos: { dailyBookId: string; rotulo: string }[] = [];
+    let operationId: string | null = null;
+    for (const id of [...new Set(livros as string[])]) {
+      const l = await livroDoLocalNoDia(id, locationId, date);
+      if (!l) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Um dos Livros não é deste local e dia. Atualize a tela." }); return; }
+      operationId = l.operationId;
+      refeitos.push({ dailyBookId: id, rotulo: `${l.titulo}${horaDe(l.inicio) ? ` das ${horaDe(l.inicio)}` : ""}` });
+    }
+    const porque = typeof motivo === "string" ? motivo.trim().slice(0, 300) : "";
+    const scaleAntes = await findEscalaDoDia(locationId, date);
+    const nomes = refeitos.map((r) => r.rotulo).join(", ");
+    const eventoId = await db.transaction(async (tx) => {
+      let scale = scaleAntes ?? null;
+      const publicada = Boolean(scale && escalaPublicada(scale.status));
+      if (scale && publicada) scale = (await tx.update(scalesTable).set({ alteradaDesde: scale.alteradaDesde ?? new Date(), updatedAt: new Date(), version: scale.version + 1 }).where(eq(scalesTable.id, scale.id)).returning())[0]!;
+      const id = await writeHistoryEvent({
+        category: "SCALE", action: "escala.livros_refeitos", title: "Livros do dia refeitos",
+        narrative: `Refez do zero ${refeitos.length === 1 ? "o Livro" : `${refeitos.length} Livros`} de ${location.name} em ${date}: ${nomes}. As trocas feitas à mão nesses Livros voltaram ao que o app calcula.${porque ? ` Motivo: ${porque}.` : " Sem motivo informado."}`,
+        entityType: scale ? "scale" : "location", entityId: scale ? scale.id : locationId, actorId: actor.sub, operationId: operationId!, orgId: actor.organizationId,
+        beforeState: null, afterState: { livros: refeitos, publicada },
+        metadata: { ...(porque ? { reason: porque } : {}), livros: refeitos.map((r) => r.dailyBookId) },
+      }, tx as unknown as HistoryExecutor);
+      if (scale && publicada) await avisarRepublicacaoPendente(tx as unknown as Parameters<typeof avisarRepublicacaoPendente>[0], scale, `Livros refeitos: ${nomes}${porque ? ` (${porque})` : ""}`);
+      return id;
+    });
+    res.status(201).json({ eventoId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Não consegui gravar o Registro do refazer. Os Livros já foram refeitos; avise a Administração." });
   }
 });
 

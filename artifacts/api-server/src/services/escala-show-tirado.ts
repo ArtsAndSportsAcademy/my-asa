@@ -41,3 +41,19 @@ export async function showsTiradosDoDia(locationId: string, date: string): Promi
     porId: marcas[i]!.por ?? null, porNome: marcas[i]!.por ? nomes.get(marcas[i]!.por!) ?? null : null, em: marcas[i]!.em ?? null, motivo: marcas[i]!.motivo ?? null,
   })).sort((a, b) => (a.inicio ?? "99:99").localeCompare(b.inicio ?? "99:99") || a.rotulo.localeCompare(b.rotulo, "pt-BR"));
 }
+
+export const FRASE_SHOW_TIRADO = "Este show foi tirado deste dia. Use 'Voltar ao dia' na Escala.";
+
+/** Erro de quem tentou gerar o Livro de um show que a Escala tirou do dia (a rota responde 409 com a frase). */
+export class ShowTiradoDoDiaError extends Error {
+  constructor() { super(FRASE_SHOW_TIRADO); this.name = "ShowTiradoDoDiaError"; }
+}
+
+/** Há, neste evento, um Livro deste show (e desta sessão) tirado do dia? Gerar outro no lugar dele não pode. */
+export async function showTiradoNoEvento(agendaEventId: string, showBookId: string, sessionId: string | null, executor: typeof db = db): Promise<boolean> {
+  const [achado] = await executor.select({ id: dailyBooksTable.id }).from(dailyBooksTable).where(and(
+    eq(dailyBooksTable.agendaEventId, agendaEventId), eq(dailyBooksTable.showBookId, showBookId), livroTiradoDoDia,
+    sessionId ? eq(dailyBooksTable.sessionId, sessionId) : sql`${dailyBooksTable.sessionId} is null`,
+  )).limit(1);
+  return Boolean(achado);
+}

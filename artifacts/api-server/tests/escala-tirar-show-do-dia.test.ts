@@ -110,7 +110,11 @@ async function run() {
     assert((await tirar(asSup, "00000000-0000-4000-8000-000000000000")).status === 404, "Livro que não existe neste dia: 404");
     assert((await asSup("POST", "/escalas/dia/tirar-show", { locationId: local!.id, date: DIA, dailyBookId: livroOpening, motivo: 12 })).status === 400, "motivo que não é texto: 400");
 
-    // ── Supervisão do local tira o OPENING sem motivo ──
+    // ── Supervisão do local tira o OPENING sem motivo (o show tem pessoa responsável, e mesmo assim a Supervisão do local pode) ──
+    const fotoDasVagas = async () => JSON.stringify((await db.select({ id: dailyBookAssignmentsTable.id, userId: dailyBookAssignmentsTable.userId, status: dailyBookAssignmentsTable.status, manual: dailyBookAssignmentsTable.manual }).from(dailyBookAssignmentsTable)
+      .where(eq(dailyBookAssignmentsTable.dailyBookId, livroOpening))).sort((a, b) => a.id.localeCompare(b.id)));
+    const vagasAntes = await fotoDasVagas();
+    await db.update(showBooksTable).set({ responsibleId: carol.id }).where(eq(showBooksTable.id, opening.id));
     const t = await tirar(asSup, livroOpening);
     assert(t.status === 200 && t.body.tirado?.dailyBookId === livroOpening, "Supervisão do local tira o show sem escrever motivo");
     d = await dia();
@@ -120,6 +124,10 @@ async function run() {
     assert(d.showsTirados?.[0]?.rotulo === R_OPENING && d.showsTirados[0]!.inicio === "10:00", "a lista usa o nome e a hora do bloco da Programação, para dois shows parecidos não ficarem iguais");
     const [cancelado] = await livrosDoShow(opening.id);
     assert(cancelado!.status === "CANCELLED" && Boolean((cancelado!.snapshotJson as { tiradoDoDia?: unknown }).tiradoDoDia), "o Livro ficou cancelado com a marca de tirado do dia");
+    const avisoResp = await pool.query(`select payload::text as j from notification_outbox where user_id = $1`, [carol.id]);
+    assert(avisoResp.rows.length === 1 && avisoResp.rows[0].j.includes(sup.name) && /tirou/.test(avisoResp.rows[0].j) && /2 de novembro/.test(avisoResp.rows[0].j), "a pessoa responsável pelo show recebe UM aviso com quem tirou, o show e o dia");
+    assert(!/Motivo:/.test(avisoResp.rows[0].j), "sem motivo, o aviso não inventa motivo");
+    await db.update(showBooksTable).set({ responsibleId: null }).where(eq(showBooksTable.id, opening.id));
     const registro = await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.orgId, org!.id), eq(historyEventsTable.action, "escala.show_tirado_do_dia")));
     assert(registro.length === 1 && /Sem motivo informado/.test(registro[0]!.narrative ?? ""), "um evento no Registro, dizendo que não houve motivo");
     assert((await tirar(asAdmin, livroOpening)).status === 409, "tirar de novo o mesmo show: 409 com frase");
@@ -130,6 +138,9 @@ async function run() {
     assert(depoisDeGerar.length === 1 && depoisDeGerar[0]!.status === "CANCELLED", "gerar o dia não recriou o Livro do show tirado");
     d = await dia();
     assert(!achar(d, R_OPENING) && d.showsTirados?.length === 1, "o show segue tirado depois de gerar o dia");
+
+    const manual = await asAdmin("POST", "/daily-book/generate", { showBookId: opening.id, date: DIA });
+    assert(manual.status === 409 && manual.body.message === "Este show foi tirado deste dia. Use 'Voltar ao dia' na Escala." && (await livrosDoShow(opening.id)).length === 1, "a rota manual de gerar Livro também recusa o show tirado, com a frase, e não cria outro");
 
     // ── o resumo do mês conta o show tirado como resolvido, não como Livro que falta ──
     const mes = await resumoDoMes(org!.id, local!.id, 2026, 11, "2026-10-01");
@@ -154,6 +165,7 @@ async function run() {
     const [devolvido] = await livrosDoShow(opening.id);
     assert(devolvido!.status === "DRAFT" && !(devolvido!.snapshotJson as { tiradoDoDia?: unknown }).tiradoDoDia && devolvido!.cancelledAt === null, "o Livro voltou a rascunho, sem a marca");
     assert((await desfazer(asSup, livroOpening)).status === 409, "desfazer duas vezes: 409");
+    assert(await fotoDasVagas() === vagasAntes, "o desfazer devolve o Livro idêntico: cada vaga com a mesma pessoa, o mesmo estado e a mesma marca de mexida à mão de antes");
     const doisEventos = await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.orgId, org!.id), inArray(historyEventsTable.action, ["escala.show_tirado_do_dia", "escala.show_devolvido_ao_dia"])));
     assert(doisEventos.length === 2, "tirar e devolver ficam os dois no Registro");
 
@@ -196,6 +208,18 @@ async function run() {
     // Refazer pela mesma rota do Livro do Dia, com a versão da prévia.
     const refeito = await asSup("POST", `/daily-book/${livroOpening}/regenerate`, { reason: "refazer o dia", expectedVersion: pOpening!.version });
     assert(refeito.status === 200, "a Supervisão refaz o Livro pela rota do Livro do Dia");
+    const motivoNoLivro = await pool.query(`select count(*)::int as n from history_events where entity_id = $1 and after_state::text like '%refazer o dia%'`, [livroOpening]);
+    assert((motivoNoLivro.rows[0].n as number) >= 1, "o motivo do refazer fica no Registro do próprio Livro");
+    const reg = (as_: ReturnType<typeof as>, corpo: Record<string, unknown>) => as_("POST", "/escalas/dia/refazer/registrar", { locationId: local!.id, date: DIA, ...corpo });
+    assert((await reg(asMembro, { livros: [livroOpening] })).status === 403 && (await reg(asDir, { livros: [livroOpening] })).status === 403 && (await reg(asForaDoLocal, { livros: [livroOpening] })).status === 403, "registrar o refazer: Elenco, Direção e Supervisão de outro local recebem 403");
+    assert((await reg(asSup, { livros: [] })).status === 400, "registrar o refazer sem Livros: 400");
+    assert((await reg(asSup, { livros: ["00000000-0000-4000-8000-000000000000"] })).status === 404, "registrar o refazer de Livro que não é deste dia: 404");
+    const versaoAntesRefazer = (await dia()).escala!.version;
+    const registrado = await reg(asSup, { livros: [livroOpening], motivo: "Troquei o titular no Livro do Show" });
+    assert(registrado.status === 201, "a Supervisão registra o refazer");
+    const evRefazer = await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.orgId, org!.id), eq(historyEventsTable.action, "escala.livros_refeitos")));
+    assert(evRefazer.length === 1 && /Motivo: Troquei o titular/.test(evRefazer[0]!.narrative ?? ""), "um evento da Escala para o refazer, com o motivo");
+    assert((await dia()).escala!.version === versaoAntesRefazer + 1, "o dia está publicado: o refazer sobe a versão e marca alterada depois de publicada");
     d = await dia();
     assert(achar(d, R_OPENING)!.vagas![0]!.userId === julia.id, "refeito: a vaga volta ao titular do Livro do Show (a troca à mão se perdeu, como a prévia avisou)");
     // Livro publicado fica de fora da prévia como 'só rascunho'.
@@ -203,6 +227,19 @@ async function run() {
     const previa2 = (await asAdmin("GET", `/escalas/dia/refazer?locationId=${local!.id}&date=${DIA}`)).body as typeof previa;
     const pub = previa2.livros.find((l) => l.dailyBookId === livroOpening);
     assert(pub?.refaz === false && /publicado/.test(pub.motivoDeNao ?? ""), "Livro publicado não se refaz, e a prévia diz o porquê");
+
+    // ── "descartar o mês e gerar de novo" é a exceção: limpa a marca do show tirado e o show volta a ser gerado ──
+    const DIA2 = "2026-11-16";
+    assert((await asAdmin("POST", "/escalas/dia/gerar", { locationId: local!.id, date: DIA2 })).status === 201, "outro dia gerado, para o descarte");
+    const livroBoas2 = (await asAdmin("GET", `/escalas/dia?locationId=${local!.id}&date=${DIA2}`)).body.dia.blocos.find((b: Bloco) => b.rotulo === R_BOAS).dailyBookId as string;
+    assert((await asAdmin("POST", "/escalas/dia/tirar-show", { locationId: local!.id, date: DIA2, dailyBookId: livroBoas2 })).status === 200, "show tirado no outro dia");
+    const descarte = await asAdmin("POST", "/escalas/mes/descartar", { locationId: local!.id, year: 2026, month: 11, motivo: "Refazer o mês", incluirComAjustes: true });
+    assert(descarte.status === 200 && descarte.body.descartados.some((x: { date: string }) => x.date === DIA2), "o mês foi descartado, com o dia do show tirado");
+    const [livroLimpo] = await db.select().from(dailyBooksTable).where(eq(dailyBooksTable.id, livroBoas2));
+    assert(livroLimpo!.status === "CANCELLED" && !(livroLimpo!.snapshotJson as { tiradoDoDia?: unknown }).tiradoDoDia, "o descarte do mês limpou a marca de tirado do dia");
+    assert((await asAdmin("POST", "/escalas/dia/gerar", { locationId: local!.id, date: DIA2 })).status === 201, "gerar o dia de novo depois do descarte");
+    const depois = (await asAdmin("GET", `/escalas/dia?locationId=${local!.id}&date=${DIA2}`)).body.dia as Dia;
+    assert(Boolean(achar(depois, R_BOAS)?.dailyBookId) && achar(depois, R_BOAS)!.dailyBookId !== livroBoas2 && !depois.showsTirados, "o show voltou a ser gerado, com um Livro novo");
   } finally {
     if (server) { server.closeAllConnections?.(); await new Promise<void>((resolve) => server!.close(() => resolve())); }
     const ids = todos.map((u) => u.id);

@@ -9,7 +9,7 @@
  *   que falta, e a tela chama de novo. Dia já gerado é pulado; refazer a chamada retoma de onde parou.
  * - Nada é publicado e ninguém é avisado (rascunho é rascunho).
  */
-import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, ne, or } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, ne, or, sql } from "drizzle-orm";
 import {
   agendaEventsTable, dailyBookAssignmentsTable, dailyBookPositionsTable, dailyBooksTable, db, escalaBlocoAjustesTable,
   historyEventsTable, locationsTable, programacaoBlocosTable, programacoesTable, scaleAllocationsTable, scalesTable, showBooksTable,
@@ -259,6 +259,9 @@ export async function descartarMes(actor: ActorMes, locationId: string, year: nu
       if (dia.ajustes.total > 0 && !incluirComAjustes) { pulados.push({ date: dia.date, motivo: `Tem ${dia.ajustes.total} ajuste(s) feito(s) à mão.` }); continue; }
       const livros = await tx.select({ id: dailyBooksTable.id }).from(dailyBooksTable).where(and(eq(dailyBooksTable.scaleId, dia.escalaId), eq(dailyBooksTable.status, "DRAFT")));
       if (livros.length) await tx.update(dailyBooksTable).set({ status: "CANCELLED", cancelledAt: agora, cancelledBy: actor.sub, updatedAt: agora }).where(inArray(dailyBooksTable.id, livros.map((l) => l.id)));
+      // "Descartar o mês e gerar de novo" é a exceção da proteção dos shows tirados do dia: tira a marca de quem estava tirado neste dia, e o show volta a ser gerado.
+      await tx.update(dailyBooksTable).set({ snapshotJson: sql`${dailyBooksTable.snapshotJson} - 'tiradoDoDia'`, updatedAt: agora })
+        .where(and(eq(dailyBooksTable.scaleId, dia.escalaId), livroTiradoDoDia));
       await tx.update(scalesTable).set({ status: "ARCHIVED", updatedAt: agora }).where(and(eq(scalesTable.id, dia.escalaId), eq(scalesTable.status, "DRAFT")));
       escalaIds.push(dia.escalaId); livroIds.push(...livros.map((l) => l.id));
       descartados.push({ date: dia.date, livros: livros.length });

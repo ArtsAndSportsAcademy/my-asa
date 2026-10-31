@@ -31,6 +31,7 @@ import { nomeFormalDoAtor, writeHistoryEvent } from "../lib/history-helper.js";
 import { operationalDate } from "../lib/operational-date.js";
 import { canOperateDailyBook, canViewDailyBook, isOperationManager, type ShowResponsibilityRef } from "../lib/show-responsibility.js";
 import { eventBus } from "../lib/event-bus.js";
+import { FRASE_SHOW_TIRADO, ShowTiradoDoDiaError, showTiradoNoEvento } from "../services/escala-show-tirado.js";
 import { avisarExcecaoDeRegra, codigoDaExcecao, frasesDasRegras, verificarRegrasDeEscala } from "../services/regras-de-escala.js";
 import { notifyMany } from "../services/notificationService.js";
 import {
@@ -1079,6 +1080,8 @@ export async function generateDailyBookDraftForScale(input: {
       : (await db.update(dailyBooksTable).set({ scaleId, updatedAt: new Date() }).where(eq(dailyBooksTable.id, existing.id)).returning())[0]!;
     return { dailyBook, generated: false, conflicts: conferirConflitos ? await detectGeneratedDailyBookConflicts(dailyBook.id, date) : conflitosAdiados() };
   }
+  // Show que a Escala tirou deste dia: o Livro dele fica cancelado e não é recriado por nenhum caminho (só "Voltar ao dia" na Escala o traz de volta).
+  if (!eventoNovo && await showTiradoNoEvento(event.id, showBookId, sessionId ?? null)) throw new ShowTiradoDoDiaError();
 
   const [{ scenes, blocks, roles }, initialKeyframes] = await Promise.all([
     lembrarOuLer(leituras, `geracao:${showBookId}`, async () => {
@@ -1285,6 +1288,7 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
 
     const [showBook] = await db.select().from(showBooksTable).where(eq(showBooksTable.id, showBookId)).limit(1);
     if (!showBook) { res.status(404).json({ error: "NAO_ENCONTRADO", message: "Show Book não encontrado." }); return; }
+    if (await showTiradoNoEvento(agendaEventId, showBookId, null)) { res.status(409).json({ error: "SHOW_TIRADO_DO_DIA", message: FRASE_SHOW_TIRADO }); return; }
 
     let scaleId = explicitScaleId ?? null;
     if (!scaleId) {
@@ -1677,7 +1681,7 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
       const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id, tx) };
       await writeDailyBookAudit(id, userId, "regenerate",
         { version: book.version, snapshot: beforeSnapshot, sessionBlocks: beforeSessionBlocks },
-        { version: next.version, snapshot: afterSnapshot, sessionBlocks: await listSessionBlocks(id, showBookId, event.date, tx), sessionSync: sessionOutcome }, tx);
+        { version: next.version, snapshot: afterSnapshot, sessionBlocks: await listSessionBlocks(id, showBookId, event.date, tx), sessionSync: sessionOutcome, ...(typeof req.body?.reason === "string" && req.body.reason.trim() ? { reason: req.body.reason.trim().slice(0, 300) } : {}) }, tx);
     });
 
     eventBus.emit("daily-book.generated", { dailyBookId: id, agendaEventId: book.agendaEventId, version: updated.version, scenesCount: scenes.length, positionsCount: roles.length });

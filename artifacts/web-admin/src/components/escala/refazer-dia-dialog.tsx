@@ -30,6 +30,7 @@ export function RefazerDiaDialog({ localId, localNome, date, dataCurta, onClose,
   const [motivo, setMotivo] = useState("");
   const [fazendo, setFazendo] = useState<{ feitos: number; total: number } | null>(null);
   const [resultado, setResultado] = useState<Resultado[] | null>(null);
+  const [avisoRegistro, setAvisoRegistro] = useState("");
   useFecharComEsc(() => { if (!fazendo) onClose(); });
 
   useEffect(() => {
@@ -56,6 +57,12 @@ export function RefazerDiaDialog({ localId, localNome, date, dataCurta, onClose,
         feitos.push({ dailyBookId: l.dailyBookId, rotulo: nomeDoLivro(l), ok: false, frase: fraseDe(e, "Não consegui refazer este Livro. Ele ficou como estava; tente de novo.") });
       }
       setFazendo({ feitos: feitos.length, total: aRefazer.length });
+    }
+    // Um evento só no Registro da Escala por acontecimento (com o motivo); se ele falhar, a janela diz, porque os Livros já foram refeitos.
+    const certos = feitos.filter((f) => f.ok);
+    if (certos.length) {
+      try { await customFetch("/api/escalas/dia/refazer/registrar", { method: "POST", body: JSON.stringify({ locationId: localId, date, livros: certos.map((f) => f.dailyBookId), ...(motivo.trim() ? { motivo: motivo.trim() } : {}) }) }); }
+      catch (e) { setAvisoRegistro(fraseDe(e, "Os Livros foram refeitos, mas não consegui gravar o Registro da Escala.")); }
     }
     setFazendo(null); setResultado(feitos); onTerminou();
   };
@@ -88,6 +95,7 @@ export function RefazerDiaDialog({ localId, localNome, date, dataCurta, onClose,
       </>}
       {resultado && <div role="status" aria-live="polite" style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 12.5, lineHeight: 1.5, color: "var(--asa-ink-dark)" }}>
         {certos > 0 && <p style={{ margin: 0, color: "var(--asa-ok-fg)", fontWeight: 700 }}>{`${plural(certos, "Livro refeito", "Livros refeitos")}.${previa?.publicada ? " Falta a Administração republicar o dia." : ""}`}</p>}
+        {avisoRegistro && <p role="alert" style={{ margin: 0, color: "var(--asa-ausente-fg)" }}>{avisoRegistro}</p>}
         {falhas.map((f) => <p key={f.dailyBookId} role="alert" style={{ margin: 0, color: "var(--asa-ausente-fg)" }}>{`${f.rotulo}: ${f.frase}`}</p>)}
       </div>}
     </div>

@@ -150,6 +150,8 @@ async function run() {
     // ── "começar do zero": motivo opcional (decisão de 30/10/2026), não apaga, e dá para desfazer ──
     const semMotivo = await asPat("POST", "/escalas/dia/copiar", pedido({ modo: "zero" }));
     assert(semMotivo.status === 201, "começar do zero sem motivo também copia: o motivo é opcional");
+    const [eventoSemMotivo] = await db.select().from(historyEventsTable).where(eq(historyEventsTable.id, semMotivo.body.eventoId));
+    assert(/Sem motivo informado/.test(eventoSemMotivo?.narrative ?? ""), "o Registro do 'começar do zero' sem motivo diz 'Sem motivo informado'");
     assert((await asPat("POST", "/escalas/dia/copiar/desfazer", { eventoId: semMotivo.body.eventoId })).status === 200, "e o 'do zero' sem motivo também se desfaz");
     const zero = await asPat("POST", "/escalas/dia/copiar", pedido({ modo: "zero", motivo: "Refazer a partir de segunda" }));
     assert(zero.status === 201, "começar do zero com motivo copia");
