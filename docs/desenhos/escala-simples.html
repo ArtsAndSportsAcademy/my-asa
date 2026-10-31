@@ -1,0 +1,667 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Escala simples — desenho de exemplo</title>
+<style>
+:root{
+  --bg:#f5f5f7;--card:#fff;--tx:#1d1d1f;--tx2:#6e6e73;--tx3:#8e8e93;--line:#e5e5ea;
+  --acc:#0a84ff;--acc-bg:#e8f2ff;
+  --warn:#9a5200;--warn-bg:#fff3dc;--ok:#1c7d38;--ok-bg:#e3f5e9;--bad:#c4271c;--bad-bg:#fdebe9;
+  --r:14px;
+}
+*{box-sizing:border-box;margin:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--tx);font:15px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0;text-align:inherit;-webkit-tap-highlight-color:transparent}
+button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+[hidden]{display:none!important}
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px 120px}
+@media(min-width:800px){.wrap{padding:0 28px 120px}}
+
+/* topo + abas */
+.top{position:sticky;top:0;z-index:10;background:rgba(245,245,247,.85);-webkit-backdrop-filter:saturate(180%) blur(14px);backdrop-filter:saturate(180%) blur(14px);border-bottom:1px solid var(--line)}
+.top-in{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+@media(min-width:800px){.top-in{padding:12px 28px}}
+.brand{font-weight:700;letter-spacing:-.01em}
+.seg{display:flex;background:#e9e9ee;border-radius:10px;padding:2px;gap:2px}
+.seg button{padding:6px 12px;border-radius:8px;font-size:13px;font-weight:500;color:var(--tx2);white-space:nowrap}
+.seg button[aria-selected=true]{background:#fff;color:var(--tx);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.seg .lg{display:none}
+@media(min-width:700px){.seg .lg{display:inline}.seg .sm{display:none}.seg button{padding:6px 16px;font-size:14px}}
+.demo{font-size:12px;color:var(--tx2);text-align:center;padding:14px 0 6px}
+
+/* barra do dia */
+.toolbar{display:grid;gap:10px 12px;align-items:center;grid-template-columns:1fr auto;grid-template-areas:"local pub" "date pill";margin:14px 0 14px}
+@media(min-width:700px){.toolbar{grid-template-columns:auto auto 1fr auto auto;grid-template-areas:"local date . pill pub";margin:18px 0 16px}}
+.pop-wrap{grid-area:local;position:relative;justify-self:start}
+.btn-local{display:inline-flex;align-items:center;gap:8px;background:var(--card);border-radius:12px;padding:9px 14px;box-shadow:0 0 0 1px var(--line);font-size:16px}
+.btn-local b{font-weight:600}
+.btn-local .car{color:var(--tx3);font-size:12px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--c);flex:none;display:inline-block}
+.pop{position:absolute;top:calc(100% + 6px);left:0;min-width:220px;background:var(--card);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.16),0 0 0 1px var(--line);padding:6px;z-index:20}
+.pop button{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:8px}
+.pop button:hover{background:var(--bg)}
+.pop button[aria-current=true]{font-weight:600}
+.datenav{grid-area:date;display:flex;align-items:center;gap:2px}
+.datenav button{width:34px;height:34px;border-radius:50%;font-size:20px;color:var(--tx2);display:grid;place-items:center}
+.datenav button:hover{background:#e9e9ee}
+.datenav span{font-weight:600;min-width:128px;text-align:center;text-transform:capitalize}
+.pill{grid-area:pill;justify-self:end;font-size:13px;font-weight:600;padding:4px 10px;border-radius:99px;white-space:nowrap}
+.pill.rasc{background:#ececf0;color:var(--tx2)}
+.pill.pub{background:var(--ok-bg);color:var(--ok)}
+.pill.alt{background:var(--warn-bg);color:var(--warn)}
+.primary{grid-area:pub;background:var(--acc);color:#fff;font-weight:600;border-radius:99px;padding:9px 20px;justify-self:end;transition:opacity .15s}
+.primary:hover{opacity:.9}
+.primary[disabled]{background:#c7c7cc;cursor:default}
+.nota{background:var(--warn-bg);color:var(--warn);border-radius:12px;padding:10px 14px;font-size:13px;margin-bottom:12px}
+
+/* resumo recolhido */
+.resumo{display:flex;align-items:center;gap:8px;width:100%;background:var(--card);border-radius:12px;box-shadow:0 0 0 1px var(--line);padding:11px 16px;font-size:14px;color:var(--tx2)}
+.resumo .warn{color:var(--warn);font-weight:600}
+.resumo .chev{margin-left:auto;transition:transform .2s;color:var(--tx3)}
+.resumo[aria-expanded=true] .chev{transform:rotate(180deg)}
+.resumo-body{background:var(--card);border-radius:12px;box-shadow:0 0 0 1px var(--line);margin-top:8px;padding:14px 16px;display:grid;gap:16px}
+@media(min-width:700px){.resumo-body{grid-template-columns:1fr 1.4fr}}
+.resumo-body h4{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--tx3);margin-bottom:8px;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--bg);border-radius:99px;padding:4px 10px;font-size:13px}
+.chip small{color:var(--tx3)}
+.aten{list-style:none;padding:0;display:grid;gap:8px;font-size:14px}
+.aten li{display:flex;gap:8px}
+.aten li::before{content:"";width:6px;height:6px;border-radius:50%;background:#ff9f0a;margin-top:7px;flex:none}
+
+/* lista por atividade */
+.lhead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:22px 4px 8px;flex-wrap:wrap}
+.lhead h2{font-size:13px;color:var(--tx2);font-weight:600}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--tx2)}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;background:var(--c)}
+.list{background:var(--card);border-radius:var(--r);overflow:hidden;box-shadow:0 0 0 1px var(--line)}
+.row{display:grid;grid-template-columns:52px 4px minmax(0,1fr);gap:0 12px;align-items:center;width:100%;padding:10px 14px;border-top:1px solid var(--line);min-height:58px}
+.row:first-child{border-top:0}
+.row:hover{background:#fafafc}
+.row[aria-pressed=true]{background:var(--acc-bg)}
+.hora{grid-column:1;grid-row:1/3;display:flex;flex-direction:column;line-height:1.25;font-variant-numeric:tabular-nums}
+.hora b{font-weight:600;font-size:14px}
+.hora small{color:var(--tx3);font-size:12px}
+.bar{grid-column:2;grid-row:1/3;align-self:stretch;border-radius:3px;background:var(--c);min-height:34px}
+.nm{grid-column:3;grid-row:1;font-weight:600;overflow-wrap:anywhere}
+.quem{grid-column:3;grid-row:2;color:var(--tx2);font-size:13px;overflow-wrap:anywhere}
+.quem.vazio{color:var(--bad)}
+@media(min-width:700px){
+  .row{grid-template-columns:96px 4px minmax(0,1fr) minmax(0,300px);gap:0 16px;padding:10px 20px}
+  .hora,.bar{grid-row:1}.nm{grid-column:3;grid-row:1}.quem{grid-column:4;grid-row:1;text-align:right;font-size:14px}
+}
+.link{color:var(--acc);font-size:13px;font-weight:500}
+.link:hover{text-decoration:underline}
+.vazio-msg{padding:28px 20px;text-align:center;color:var(--tx2)}
+
+/* por pessoa */
+.pessoa{padding:12px 16px;border-top:1px solid var(--line)}
+.pessoa:first-child{border-top:0}
+.pessoa h3{font-size:15px;margin-bottom:8px}
+.pessoa .acts{display:flex;flex-wrap:wrap;gap:6px}
+.pessoa .acts button{display:inline-flex;gap:8px;align-items:center;background:var(--bg);border-radius:10px;padding:6px 10px;font-size:13px}
+.pessoa .acts .dot{width:8px;height:8px}
+.pessoa .acts small{color:var(--tx3);font-variant-numeric:tabular-nums}
+
+/* painel lateral / folha de baixo */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.2);opacity:0;pointer-events:none;transition:opacity .22s;z-index:30}
+.scrim.on{opacity:1;pointer-events:auto}
+.panel{position:fixed;z-index:31;top:0;right:0;bottom:0;width:390px;max-width:100%;background:var(--card);box-shadow:-10px 0 40px rgba(0,0,0,.14);display:flex;flex-direction:column;transform:translateX(105%);transition:transform .3s cubic-bezier(.2,.8,.2,1);visibility:hidden}
+.panel.on{transform:none;visibility:visible}
+@media(max-width:699px){
+  .panel{top:auto;left:0;width:auto;max-height:88vh;border-radius:20px 20px 0 0;transform:translateY(105%);box-shadow:0 -10px 40px rgba(0,0,0,.18)}
+  .panel::before{content:"";width:38px;height:5px;border-radius:3px;background:#d1d1d6;margin:8px auto 0;flex:none}
+}
+.p-head{display:flex;gap:12px;align-items:flex-start;padding:18px 20px 12px}
+.p-head .bar{width:4px;min-height:40px;align-self:stretch;flex:none}
+.p-head h3{font-size:19px;letter-spacing:-.01em;line-height:1.2}
+.p-head p{color:var(--tx2);font-size:13px;margin-top:2px}
+.x{margin-left:auto;width:32px;height:32px;border-radius:50%;background:#ececf0;display:grid;place-items:center;font-size:18px;color:var(--tx2);flex:none}
+.p-body{overflow:auto;padding:4px 20px 16px;flex:1}
+.p-body h4{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--tx3);margin:12px 0 8px;font-weight:600}
+.pessoas{display:flex;flex-wrap:wrap;gap:6px}
+.av{display:inline-flex;align-items:center;gap:7px;background:var(--bg);border-radius:99px;padding:3px 11px 3px 3px;font-size:14px}
+.av i{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:11px;font-weight:700;color:#fff;background:var(--c)}
+.acoes{margin-top:8px;border-radius:12px;box-shadow:0 0 0 1px var(--line);overflow:hidden}
+.acoes button{display:block;width:100%;padding:12px 16px;border-top:1px solid var(--line)}
+.acoes button:first-child{border-top:0}
+.acoes button:hover{background:#fafafc}
+.acoes b{display:block;font-weight:500}
+.acoes small{color:var(--tx3);font-size:12px}
+.acoes .perigo b{color:var(--bad)}
+.p-foot{display:flex;gap:10px;justify-content:flex-end;padding:12px 20px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--card)}
+.btn{padding:9px 18px;border-radius:99px;font-weight:600;background:#ececf0}
+.btn.main{background:var(--acc);color:#fff}
+.sel-list{display:flex;flex-wrap:wrap;gap:6px}
+.sel-list button{background:var(--bg);border-radius:99px;padding:7px 13px;font-size:14px;border:1.5px solid transparent}
+.sel-list button[aria-pressed=true]{background:var(--acc-bg);border-color:var(--acc);color:#0561c2;font-weight:600}
+.horas{display:flex;gap:12px;flex-wrap:wrap}
+.horas label{display:grid;gap:4px;font-size:13px;color:var(--tx2)}
+.horas input{font:inherit;font-size:17px;padding:8px 10px;border-radius:10px;border:1px solid #d1d1d6;color:var(--tx);background:#fff;min-width:120px}
+.dica{font-size:13px;color:var(--tx2);margin-top:12px}
+
+/* títulos de seção */
+.hd{margin:20px 0 14px}
+.hd h2{font-size:22px;letter-spacing:-.02em}
+.hd p{color:var(--tx2);font-size:14px;margin-top:2px}
+
+/* semana */
+.card{background:var(--card);border-radius:var(--r);box-shadow:0 0 0 1px var(--line);overflow:hidden}
+.sem-head,.sem-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.sem-head{padding:10px 10px 6px;font-size:11px;font-weight:600;color:var(--tx3);text-align:center}
+.sem-head .esp{display:none}
+.sem-head .hoje{color:var(--acc)}
+.sem-row{padding:10px;border-top:1px solid var(--line)}
+.sem-nome{grid-column:1/-1;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:2px}
+.sem-nome b{font-size:15px}
+.cnt{font-size:12px;color:var(--tx2);background:var(--bg);padding:2px 9px;border-radius:99px}
+.cnt.hi{background:var(--warn-bg);color:var(--warn);font-weight:600}
+.cel{background:color-mix(in srgb,var(--c) 13%,#fff);box-shadow:inset 0 3px 0 var(--c);border-radius:8px;padding:7px 2px 5px;text-align:center;display:grid;gap:5px;align-content:center;min-height:46px;font-size:10px;line-height:1.15;min-width:0}
+.cel .e{display:flex;flex-direction:column;align-items:center}
+.cel .e b{font-weight:600}
+.cel .e span{color:var(--tx2);font-variant-numeric:tabular-nums}
+.cel.folga{background:transparent;box-shadow:inset 0 0 0 1px var(--line);color:var(--tx3);align-content:center}
+.cel.hojec{outline:2px solid var(--acc);outline-offset:-1px}
+@media(min-width:800px){
+  .sem-head,.sem-row{grid-template-columns:190px repeat(7,minmax(0,1fr));gap:6px;align-items:stretch}
+  .sem-head{padding:12px 16px 8px;font-size:12px}
+  .sem-head .esp{display:block}
+  .sem-row{padding:8px 16px;align-items:center}
+  .sem-nome{grid-column:auto;flex-direction:column;align-items:flex-start;gap:3px;margin:0}
+  .cel{font-size:12px;padding:8px 4px 6px}
+  .cel .e{flex-direction:row;gap:5px;justify-content:center;flex-wrap:wrap}
+}
+.nota-linha{font-size:13px;color:var(--tx2);margin:12px 4px 0}
+
+/* todos os locais */
+.legenda{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--tx2);margin:6px 4px 12px}
+.legenda i{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--c);margin-right:6px}
+.filtro{display:inline-flex;align-items:center;gap:8px;padding:7px 13px;border-radius:99px;background:var(--card);box-shadow:0 0 0 1px var(--line);font-size:14px}
+.filtro[aria-pressed=true]{background:var(--acc-bg);box-shadow:0 0 0 1.5px var(--acc);color:#0561c2;font-weight:600}
+.tl-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.tl-row{display:grid;grid-template-columns:1fr;gap:6px;padding:10px 14px;border-top:1px solid var(--line)}
+.tl-row.axis{border-top:0;padding-bottom:0;padding-top:12px}
+.tl-nome{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tl-nome b{font-size:15px}
+.tag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--warn-bg);color:var(--warn)}
+.tag.bad{background:var(--bad-bg);color:var(--bad)}
+.track{position:relative;height:36px;background-image:linear-gradient(to right,var(--line) 1px,transparent 1px);background-size:calc(100%/14) 100%;border-radius:6px;background-color:#fafafc}
+.blk{position:absolute;top:4px;bottom:4px;border-radius:6px;background:color-mix(in srgb,var(--c) 22%,#fff);box-shadow:inset 3px 0 0 var(--c);padding:0 6px 0 9px;font-size:11px;display:flex;align-items:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0;cursor:pointer}
+.ticks{position:relative;height:16px;font-size:11px;color:var(--tx3);font-variant-numeric:tabular-nums}
+.ticks span{position:absolute;transform:translateX(-50%)}
+.ticks span.p0{transform:none}.ticks span.p1{transform:translateX(-100%)}
+@media(max-width:699px){.ticks span.dsk{display:none}}
+@media(min-width:700px){
+  .tl-row{grid-template-columns:150px 1fr;gap:14px;align-items:center;padding:10px 20px}
+  .tl-nome{flex-direction:column;align-items:flex-start;gap:4px}
+}
+
+/* configuração */
+.cfg-top{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.cfg-sub{display:flex;gap:4px}
+.cfg-sub button{padding:7px 14px;border-radius:99px;font-size:14px;color:var(--tx2)}
+.cfg-sub button[aria-selected=true]{background:var(--card);box-shadow:0 0 0 1px var(--line);color:var(--tx);font-weight:600}
+.eq{padding:12px 16px;border-top:1px solid var(--line);display:grid;gap:8px}
+.eq:first-child{border-top:0}
+.eq-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.eq-top b{font-size:15px}
+.todos{font-size:12px;color:var(--acc);padding:3px 10px;border-radius:99px;background:var(--acc-bg);font-weight:500}
+.todos[aria-pressed=true]{background:var(--acc);color:#fff}
+.eq-n{font-size:12px;color:var(--tx3);margin-left:auto}
+.dias{display:flex;gap:6px}
+.dias button{width:34px;height:34px;border-radius:50%;font-size:13px;font-weight:600;background:var(--bg);color:var(--tx3);display:grid;place-items:center;transition:background .12s}
+.dias button[aria-pressed=true]{background:var(--c,var(--acc));color:#fff}
+@media(min-width:700px){
+  .eq{grid-template-columns:1fr auto;align-items:center;padding:12px 20px}
+  .eq-n{margin-left:0;min-width:56px;text-align:right}
+}
+.eq-right{display:flex;align-items:center;gap:14px}
+.pg{padding:14px 16px;border-top:1px solid var(--line);display:grid;gap:10px}
+.pg:first-child{border-top:0}
+.pg-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pg-top b{font-size:15px}
+.pg-top .h{font-variant-numeric:tabular-nums;color:var(--tx2);font-size:14px}
+@media(min-width:700px){.pg{padding:14px 20px}}
+.savebar{position:sticky;bottom:12px;margin-top:16px;display:flex;align-items:center;gap:12px;justify-content:space-between;background:rgba(29,29,31,.92);color:#fff;border-radius:16px;padding:10px 12px 10px 18px;z-index:5;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.savebar span{font-size:14px}
+.savebar .btn{background:#48484a;color:#fff}
+.savebar .btn.main{background:var(--acc)}
+.savebar div{display:flex;gap:8px}
+
+/* aviso */
+.toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,30px);opacity:0;pointer-events:none;background:rgba(29,29,31,.94);color:#fff;border-radius:14px;padding:11px 16px;font-size:14px;display:flex;gap:14px;align-items:center;z-index:50;max-width:calc(100vw - 32px);transition:transform .25s,opacity .25s}
+.toast.on{transform:translate(-50%,0);opacity:1;pointer-events:auto}
+.toast button{color:#6cb6ff;font-weight:600}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="top"><div class="top-in">
+  <span class="brand">My ASA</span>
+  <nav class="seg" role="tablist" aria-label="Telas do desenho" id="tabs"></nav>
+</div></header>
+
+<main class="wrap">
+  <p class="demo">Desenho de exemplo · nomes e horários inventados · nada aqui grava no app</p>
+  <section id="v-dia"></section>
+  <section id="v-sem" hidden></section>
+  <section id="v-loc" hidden></section>
+  <section id="v-cfg" hidden></section>
+</main>
+
+<div class="scrim" id="scrim" data-act="fechar"></div>
+<aside class="panel" id="panel" role="dialog" aria-modal="true" aria-label="Detalhes da atividade"></aside>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* ============ dados de mentira ============ */
+const LOCAIS={
+  snow:{nome:'Snowland',curto:'Snow',cor:'#2f7de1'},
+  acqua:{nome:'Acquamotion',curto:'Acqua',cor:'#12a38f'},
+  bella:{nome:'Bella',curto:'Bella',cor:'#e8742a'},
+  buona:{nome:'Buona',curto:'Buona',cor:'#8a5bd1'},
+  excl:{nome:'Exclusive',curto:'Exclusive',cor:'#d6417b'}
+};
+const CATS={
+  show:{nome:'Show',cor:'#5e5ce6'},
+  recep:{nome:'Recepção',cor:'#2fb36f'},
+  ensaio:{nome:'Ensaio',cor:'#f0a30a'},
+  camarim:{nome:'Camarim',cor:'#ff6482'},
+  apoio:{nome:'Apoio',cor:'#9a9aa0'}
+};
+const TODOS=['Bia','Caio','Davi','Enzo','Gui','Júlia','Lara','Lia','Marina','Nina','Otto','Rafa','Sol','Theo'];
+const DIAS_L=['S','T','Q','Q','S','S','D'];
+const DIAS_N=['segunda','terça','quarta','quinta','sexta','sábado','domingo'];
+const DIAS_C=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+
+const DIA={
+  snow:[
+    {id:1,ini:'08:30',fim:'09:00',nome:'Abertura e recepção',cat:'recep',p:['Lia','Theo']},
+    {id:2,ini:'09:00',fim:'09:30',nome:'Boas-vindas',cat:'recep',p:['Nina','Rafa']},
+    {id:3,ini:'10:00',fim:'10:40',nome:'Show Musical',cat:'show',p:['Marina','Davi','Caio','Bia','Júlia']},
+    {id:4,ini:'10:30',fim:'11:30',nome:'Ensaio de formação',cat:'ensaio',p:['Marina','Júlia','Caio']},
+    {id:5,ini:'12:00',fim:'13:00',nome:'Almoço em revezamento',cat:'apoio',p:['Lia','Theo','Nina']},
+    {id:6,ini:'13:30',fim:'14:30',nome:'Fotos com personagens',cat:'recep',p:['Nina','Bia']},
+    {id:7,ini:'15:00',fim:'15:40',nome:'Show Principal',cat:'show',p:['Marina','Davi','Caio','Bia','Júlia','Theo']},
+    {id:8,ini:'16:30',fim:'17:00',nome:'Troca de figurino',cat:'camarim',p:['Lia','Rafa']},
+    {id:9,ini:'18:00',fim:'18:40',nome:'Show Noturno',cat:'show',p:['Marina','Davi','Caio','Bia','Júlia']}
+  ],
+  acqua:[
+    {id:21,ini:'09:30',fim:'10:00',nome:'Recepção na piscina',cat:'recep',p:['Lara','Gui']},
+    {id:22,ini:'11:00',fim:'11:30',nome:'Show das Ondas',cat:'show',p:['Júlia','Caio','Lara','Gui']},
+    {id:23,ini:'13:00',fim:'14:00',nome:'Ensaio aquático',cat:'ensaio',p:['Júlia','Caio']},
+    {id:24,ini:'14:00',fim:'14:40',nome:'Show das Ondas',cat:'show',p:['Júlia','Caio','Lara','Gui']},
+    {id:25,ini:'16:00',fim:'16:30',nome:'Camarim',cat:'camarim',p:['Lara']}
+  ],
+  bella:[
+    {id:31,ini:'18:00',fim:'18:30',nome:'Recepção do salão',cat:'recep',p:['Nina','Rafa']},
+    {id:32,ini:'20:00',fim:'20:40',nome:'Show de jantar',cat:'show',p:['Nina','Rafa','Caio']},
+    {id:33,ini:'21:30',fim:'22:00',nome:'Encerramento',cat:'apoio',p:['Rafa']}
+  ],
+  buona:[
+    {id:41,ini:'19:00',fim:'19:40',nome:'Show de abertura',cat:'show',p:['Lia','Gui']},
+    {id:42,ini:'21:00',fim:'21:30',nome:'Encerramento',cat:'apoio',p:['Gui']}
+  ],
+  excl:[
+    {id:51,ini:'20:00',fim:'20:45',nome:'Show exclusivo',cat:'show',p:['Lara','Theo']}
+  ]
+};
+const NAO={
+  snow:[{n:'Otto',m:'folga'},{n:'Sol',m:'folga'},{n:'Enzo',m:'atestado'}],
+  acqua:[{n:'Otto',m:'folga'},{n:'Davi',m:'em Snowland'}],
+  bella:[{n:'Sol',m:'folga'}],
+  buona:[],
+  excl:[{n:'Enzo',m:'folga'}]
+};
+const ATEN={
+  snow:[
+    'Marina está em dois lugares às 10h30 (Show Musical e Ensaio)',
+    'Show Noturno está com 1 vaga sem ninguém',
+    'Caio já tem 10 shows na semana',
+    'Rafa foi chamado numa folga — falta o motivo escrito',
+    'O almoço em revezamento passa do limite de 1 hora'
+  ],
+  acqua:['Davi tem só 30 minutos para chegar de Snowland'],
+  bella:[],buona:[],excl:[]
+};
+
+/* sábado 31/10: uma fonte só, usada na Semana e em Todos os locais */
+const SAB={
+  Marina:[['snow',8,12],['acqua',14,18]],
+  Davi:[['snow',9,13],['acqua',13.5,17]],
+  Caio:[['acqua',10,14],['bella',20,22]],
+  Bia:[['snow',10,15]],
+  'Júlia':[['snow',10.5,16]],
+  Theo:[['snow',8,12]],
+  Nina:[['snow',9,14]],
+  Rafa:[['bella',18,22]]
+};
+const S=(a,b)=>['snow',a,b], A=(a,b)=>['acqua',a,b], B=(a,b)=>['bella',a,b];
+const SEMANA={
+  Marina:[[S(8,15)],[S(8,15)],0,[S(9,15)],[A(14,18)],'SAB',0],
+  Davi:[[S(9,15)],0,[S(9,15)],[S(9,15)],0,'SAB',[S(10,16)]],
+  Caio:[[A(10,16)],[A(10,16)],[B(20)],0,[A(10,16)],'SAB',[A(10,16)]],
+  Bia:[[S(8,15)],0,[S(8,15)],[S(8,15)],0,'SAB',0],
+  'Júlia':[[A(9,16)],[A(9,16)],[A(9,16)],0,[A(9,16)],'SAB',0],
+  Theo:[0,[S(8,13)],[S(8,13)],[S(8,13)],0,'SAB',0],
+  Nina:[[B(18,22)],[B(18,22)],0,[B(18,22)],[B(18,22)],'SAB',0],
+  Rafa:[0,[B(18,22)],[B(18,22)],0,[B(18,22)],'SAB',[B(18,22)]]
+};
+const SHOWS={Marina:9,Davi:7,Caio:10,Bia:6,'Júlia':8,Theo:5,Nina:7,Rafa:6};
+
+/* configuração: equipe do local e programação */
+const EQ_INI={
+  snow:{Lia:[1,1,1,1,1,0,0],Davi:[1,0,1,1,0,1,1],Marina:[1,1,0,1,1,1,0],Bia:[1,0,1,1,0,1,0],Theo:[0,1,1,1,0,1,0],Nina:[1,1,0,1,1,1,0]},
+  acqua:{Lara:[1,1,1,1,1,1,0],Gui:[1,1,1,0,1,1,1],'Júlia':[1,1,1,0,1,1,0],Caio:[1,1,0,0,1,1,1]},
+  bella:{Nina:[1,1,0,1,1,1,0],Rafa:[0,1,1,0,1,1,1],Caio:[0,0,1,0,0,1,0]},
+  buona:{Lia:[0,0,1,1,1,1,1],Gui:[1,0,0,1,1,1,0]},
+  excl:{Lara:[0,0,0,0,1,1,1],Theo:[0,0,0,0,1,1,0]}
+};
+const PROG_INI={
+  snow:[
+    {nome:'Abertura e recepção',h:'08:30',cat:'recep',d:[1,1,1,1,1,1,1]},
+    {nome:'Boas-vindas',h:'09:00',cat:'recep',d:[1,1,1,1,1,1,1]},
+    {nome:'Show Musical',h:'10:00',cat:'show',d:[1,1,1,1,1,1,1]},
+    {nome:'Show Principal',h:'15:00',cat:'show',d:[0,0,0,0,1,1,1]},
+    {nome:'Show Noturno',h:'18:00',cat:'show',d:[0,0,0,0,1,1,0]}
+  ],
+  acqua:[
+    {nome:'Recepção na piscina',h:'09:30',cat:'recep',d:[1,1,1,1,1,1,1]},
+    {nome:'Show das Ondas',h:'11:00',cat:'show',d:[1,1,1,1,1,1,1]},
+    {nome:'Show das Ondas',h:'14:00',cat:'show',d:[0,0,0,0,1,1,1]}
+  ],
+  bella:[{nome:'Show de jantar',h:'20:00',cat:'show',d:[0,1,1,0,1,1,1]}],
+  buona:[{nome:'Show de abertura',h:'19:00',cat:'show',d:[0,0,1,1,1,1,1]}],
+  excl:[{nome:'Show exclusivo',h:'20:00',cat:'show',d:[0,0,0,0,1,1,1]}]
+};
+
+/* ============ utilidades ============ */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const clone=o=>JSON.parse(JSON.stringify(o));
+const fh=n=>{const h=Math.floor(n),m=Math.round((n-h)*60);return m?h+'h'+String(m).padStart(2,'0'):''+h};
+const rng=(a,b)=>b==null?fh(a)+'h':fh(a)+'–'+fh(b);
+const tn=t=>{const [h,m]=t.split(':').map(Number);return h+m/60};
+const AVC=['#5e5ce6','#2fb36f','#e8742a','#d6417b','#12a38f','#8a5bd1','#2f7de1','#c9871a'];
+const avc=n=>AVC[[...n].reduce((a,c)=>a+c.charCodeAt(0),0)%AVC.length];
+const sab=nome=>(SAB[nome]||[]);
+
+const st={tab:'dia',local:'snow',off:0,porPessoa:false,resumo:false,pop:false,status:'rascunho',publicando:false,
+  sel:null,modo:'menu',draft:null,soDois:false,cfgLocal:'snow',cfgSub:'equipe'};
+const baseDate=new Date(2026,9,31);
+const dataTxt=()=>{const d=new Date(baseDate);d.setDate(d.getDate()+st.off);
+  return d.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit'}).replace(',','')};
+
+let saved={eq:clone(EQ_INI),prog:clone(PROG_INI)};
+let draft=clone(saved);
+const dirty=()=>JSON.stringify(saved)!==JSON.stringify(draft);
+
+/* ============ aviso ============ */
+let toastT;
+function toast(msg,label,fn){
+  const t=$('#toast');
+  t.innerHTML='<span>'+esc(msg)+'</span>'+(label?'<button>'+esc(label)+'</button>':'');
+  if(label)t.querySelector('button').onclick=()=>{fn();t.classList.remove('on')};
+  t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),label?6000:3200);
+}
+
+/* ============ abas ============ */
+const TABS=[['dia','Escala do dia','Dia'],['sem','Semana','Semana'],['loc','Todos os locais','Locais'],['cfg','Configuração','Config']];
+function renderTabs(){
+  $('#tabs').innerHTML=TABS.map(([k,lg,sm])=>`<button role="tab" aria-selected="${st.tab===k}" data-act="tab" data-k="${k}"><span class="lg">${lg}</span><span class="sm">${sm}</span></button>`).join('');
+  for(const [k] of TABS)$('#v-'+k).hidden=st.tab!==k;
+}
+
+/* ============ 1. escala do dia ============ */
+function statusInfo(){
+  return {rascunho:['Rascunho','rasc','Publicar'],publicada:['Publicada','pub','Publicada'],alterada:['Publicada · mudou','alt','Publicar de novo']}[st.status];
+}
+function dateNav(){
+  return `<div class="datenav"><button data-act="dia" data-d="-1" aria-label="Dia anterior">‹</button><span>${dataTxt()}</span><button data-act="dia" data-d="1" aria-label="Próximo dia">›</button></div>`;
+}
+function renderDia(){
+  const L=LOCAIS[st.local],acts=DIA[st.local],nao=NAO[st.local],aten=ATEN[st.local];
+  const [pt,pc,bt]=statusInfo();
+  const disabled=st.status==='publicada'||st.publicando;
+  const btxt=st.publicando?'Publicando…':bt;
+  const pop=Object.entries(LOCAIS).map(([k,l])=>`<button data-act="local" data-k="${k}" aria-current="${k===st.local}"><span class="dot" style="--c:${l.cor}"></span>${l.nome}</button>`).join('');
+  let html=`<div class="toolbar">
+    <div class="pop-wrap"><button class="btn-local" data-act="popLocal" aria-haspopup="true" aria-expanded="${st.pop}"><span class="dot" style="--c:${L.cor}"></span><span>Local <b>${L.nome}</b></span><span class="car">▾</span></button>
+      ${st.pop?`<div class="pop" role="menu">${pop}</div>`:''}</div>
+    ${dateNav()}
+    <span class="pill ${pc}">${pt}</span>
+    <button class="primary" data-act="publicar" ${disabled?'disabled':''}>${btxt}</button>
+  </div>`;
+  if(st.status==='alterada')html+=`<div class="nota">Mudou depois de publicada. O elenco continua vendo a versão anterior até você publicar de novo.</div>`;
+  const nN=nao.length,nA=aten.length;
+  html+=`<button class="resumo" data-act="resumo" aria-expanded="${st.resumo}">
+    <span>Não trabalham (${nN})</span><span>·</span><span class="${nA?'warn':''}">Atenção (${nA})</span><span class="chev">⌄</span></button>`;
+  if(st.resumo){
+    html+=`<div class="resumo-body"><div><h4>Não trabalham</h4>${nN?`<div class="chips">${nao.map(x=>`<span class="chip">${esc(x.n)} <small>${esc(x.m)}</small></span>`).join('')}</div>`:'<p style="color:var(--tx2);font-size:14px">Ninguém fora hoje.</p>'}</div>
+      <div><h4>Atenção</h4>${nA?`<ul class="aten">${aten.map(a=>`<li>${esc(a)}</li>`).join('')}</ul>`:'<p style="color:var(--tx2);font-size:14px">Nada para resolver.</p>'}</div></div>`;
+  }
+  const leg=Object.values(CATS).map(c=>`<span><i style="--c:${c.cor}"></i>${c.nome}</span>`).join('');
+  html+=`<div class="lhead"><h2>${st.porPessoa?'Por pessoa':'Atividades'} · ${L.nome}</h2><div class="legend">${leg}</div>
+    <button class="link" data-act="porPessoa">${st.porPessoa?'Ver por atividade':'Ver por pessoa'}</button></div>`;
+  html+=`<div class="list">`;
+  if(!acts.length)html+=`<div class="vazio-msg">Nenhuma atividade neste dia. Falta cadastrar a programação do local (em Configuração).</div>`;
+  else if(!st.porPessoa)html+=acts.map(rowAct).join('');
+  else{
+    const m={};acts.forEach(a=>a.p.forEach(n=>(m[n]=m[n]||[]).push(a)));
+    html+=Object.keys(m).sort((a,b)=>a.localeCompare(b,'pt-BR')).map(n=>`<div class="pessoa"><h3>${esc(n)}</h3><div class="acts">${m[n].map(a=>`<button data-act="abrir" data-id="${a.id}"><span class="dot" style="--c:${CATS[a.cat].cor}"></span>${esc(a.nome)} <small>${a.ini}</small></button>`).join('')}</div></div>`).join('');
+  }
+  html+=`</div>`;
+  $('#v-dia').innerHTML=html;
+}
+function rowAct(a){
+  const c=CATS[a.cat].cor;
+  const quem=a.p.length?(a.p.length>3?a.p.slice(0,3).join(', ')+' +'+(a.p.length-3):a.p.join(', ')):'Sem ninguém ainda';
+  return `<button class="row" style="--c:${c}" data-act="abrir" data-id="${a.id}" aria-pressed="${st.sel===a.id}">
+    <span class="hora"><b>${a.ini}</b><small>${a.fim}</small></span><span class="bar"></span>
+    <span class="nm">${esc(a.nome)}</span><span class="quem ${a.p.length?'':'vazio'}">${esc(quem)}</span></button>`;
+}
+const achaAct=()=>DIA[st.local].find(a=>a.id===st.sel);
+function tocouNaEscala(){if(st.status==='publicada')st.status='alterada'}
+
+/* ---------- painel ---------- */
+function renderPanel(){
+  const p=$('#panel'),a=st.sel==null?null:achaAct();
+  $('#scrim').classList.toggle('on',!!a);p.classList.toggle('on',!!a);
+  if(!a){return}
+  const L=LOCAIS[st.local],cor=CATS[a.cat].cor;
+  let body='',foot='';
+  if(st.modo==='menu'){
+    body=`<h4>Quem faz (${a.p.length})</h4><div class="pessoas">${a.p.length?a.p.map(n=>`<span class="av" style="--c:${avc(n)}"><i>${esc(n[0])}</i>${esc(n)}</span>`).join(''):'<span style="color:var(--bad);font-size:14px">Ninguém escolhido ainda.</span>'}</div>
+      <div class="acoes">
+        <button data-act="modo" data-m="ajustar"><b>Ajustar</b><small>Trocar quem faz esta atividade</small></button>
+        <button data-act="modo" data-m="horario"><b>Mudar horário</b><small>Só desta atividade, só neste dia</small></button>
+        <button data-act="editarDia"><b>Editar neste dia</b><small>Nome e detalhes, sem mexer nos outros dias</small></button>
+        <button class="perigo" data-act="tirar"><b>Tirar do dia</b><small>Dá para desfazer logo depois</small></button>
+      </div>`;
+    foot=`<button class="btn" data-act="fechar">Fechar</button>`;
+  }else if(st.modo==='ajustar'){
+    body=`<h4>Quem faz</h4><div class="sel-list">${TODOS.filter(n=>!NAO[st.local].some(x=>x.n===n)).map(n=>`<button data-act="adjTog" data-n="${esc(n)}" aria-pressed="${st.draft.has(n)}">${esc(n)}</button>`).join('')}</div>
+      <p class="dica">Toque nos nomes para pôr ou tirar. Quem está de folga não aparece na lista.</p>`;
+    foot=`<button class="btn" data-act="modo" data-m="menu">Cancelar</button><button class="btn main" data-act="adjSalvar">Salvar</button>`;
+  }else{
+    body=`<div class="horas"><label>Começa<input type="time" id="hIni" value="${a.ini}"></label><label>Termina<input type="time" id="hFim" value="${a.fim}"></label></div>
+      <p class="dica">Vale só para ${dataTxt()}. Os outros dias continuam como estão na Programação.</p>`;
+    foot=`<button class="btn" data-act="modo" data-m="menu">Cancelar</button><button class="btn main" data-act="horSalvar">Salvar horário</button>`;
+  }
+  p.innerHTML=`<div class="p-head"><span class="bar" style="background:${cor}"></span><div><h3>${esc(a.nome)}</h3><p>${a.ini}–${a.fim} · ${L.nome}</p></div><button class="x" data-act="fechar" aria-label="Fechar">×</button></div>
+    <div class="p-body">${body}</div><div class="p-foot">${foot}</div>`;
+}
+function abrir(id){st.sel=id;st.modo='menu';renderDia();renderPanel()}
+function fechar(){st.sel=null;st.modo='menu';renderPanel();if(st.tab==='dia')renderDia()}
+
+/* ============ 2. semana ============ */
+function cellEntries(nome,i){
+  const v=SEMANA[nome][i];
+  return v==='SAB'?sab(nome):(v||[]);
+}
+function renderSem(){
+  const nomes=Object.keys(SEMANA);
+  const media=nomes.reduce((s,n)=>s+SHOWS[n],0)/nomes.length;
+  const cab=DIAS_C.map((d,i)=>`<div class="${i===5?'hoje':''}">${d} ${26+i>31?26+i-31:26+i}</div>`).join('');
+  const linhas=nomes.map(n=>{
+    const hi=SHOWS[n]>media;
+    const cels=DIAS_C.map((_,i)=>{
+      const es=cellEntries(n,i),hoje=i===5?' hojec':'';
+      if(!es.length)return `<div class="cel folga${hoje}">folga</div>`;
+      const c=LOCAIS[es[0][0]].cor;
+      return `<div class="cel${hoje}" style="--c:${c}">${es.map(e=>`<div class="e" title="${LOCAIS[e[0]].nome} ${rng(e[1],e[2])}"><b>${LOCAIS[e[0]].curto}</b><span>${rng(e[1],e[2])}</span></div>`).join('')}</div>`;
+    }).join('');
+    return `<div class="sem-row"><div class="sem-nome"><b>${esc(n)}</b><span class="cnt ${hi?'hi':''}">shows na semana: ${SHOWS[n]}</span></div>${cels}</div>`;
+  }).join('');
+  const leg=Object.values(LOCAIS).map(l=>`<span><i style="--c:${l.cor}"></i>${l.nome}</span>`).join('');
+  $('#v-sem').innerHTML=`<div class="hd"><h2>Semana</h2><p>26/10 a 01/11 · todos os locais, uma linha por pessoa</p></div>
+    <div class="legenda">${leg}</div>
+    <div class="card"><div class="sem-head"><div class="esp"></div>${cab}</div>${linhas}</div>
+    <p class="nota-linha">Média da equipe: ${media.toFixed(1).replace('.',',')} shows. Em laranja, quem está acima da média.</p>`;
+}
+
+/* ============ 3. todos os locais, um dia ============ */
+function renderLoc(){
+  const nomes=Object.keys(SAB).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const info=nomes.map(n=>{
+    const b=[...sab(n)].sort((x,y)=>x[1]-y[1]);
+    const locs=new Set(b.map(x=>x[0]));
+    let gap=null;
+    for(let i=1;i<b.length;i++)if(b[i][0]!==b[i-1][0]){const g=b[i][1]-b[i-1][2];gap=gap==null?g:Math.min(gap,g)}
+    return {n,b,dois:locs.size>1,gap};
+  });
+  const nDois=info.filter(x=>x.dois).length,nApert=info.filter(x=>x.dois&&x.gap<1).length;
+  let vis=info.filter(x=>!st.soDois||x.dois);
+  vis=[...vis].sort((a,b)=>(b.dois-a.dois)||a.n.localeCompare(b.n,'pt-BR'));
+  const ticks=[];for(let h=8;h<=22;h+=2)ticks.push(h);
+  const tk=ticks.map((h,i)=>{
+    const pos=(h-8)/14*100,cls=(h===8?' p0':h===22?' p1':''),soDesk=(h%4!==0&&h!==22)?' dsk':'';
+    return `<span class="${soDesk}${cls}" style="left:${pos}%">${h}h</span>`;
+  }).join('');
+  const linhas=vis.map(x=>{
+    const blocos=x.b.map(e=>{
+      const [l,s,f]=e,fim=f==null?s+2:f,left=(s-8)/14*100,w=(fim-s)/14*100;
+      return `<div class="blk" style="--c:${LOCAIS[l].cor};left:${left}%;width:${w}%" title="${LOCAIS[l].nome} ${rng(s,f)}">${LOCAIS[l].curto} ${rng(s,f)}</div>`;
+    }).join('');
+    const tags=(x.dois?'<span class="tag">2 locais</span>':'')+(x.dois&&x.gap<1?`<span class="tag bad">só ${Math.round(x.gap*60)} min para trocar</span>`:'');
+    return `<div class="tl-row"><div class="tl-nome"><b>${esc(x.n)}</b>${tags}</div><div class="track">${blocos}</div></div>`;
+  }).join('');
+  const leg=Object.values(LOCAIS).map(l=>`<span><i style="--c:${l.cor}"></i>${l.nome}</span>`).join('');
+  $('#v-loc').innerHTML=`<div class="hd"><h2>Todos os locais</h2><p>A linha do dia de cada pessoa, com os blocos na cor do local.</p></div>
+    <div class="tl-bar">${dateNav()}<button class="filtro" data-act="soDois" aria-pressed="${st.soDois}">Só quem passa por 2 locais</button></div>
+    <div class="legenda">${leg}</div>
+    <div class="card"><div class="tl-row axis"><div></div><div class="ticks">${tk}</div></div>${linhas||'<div class="vazio-msg">Ninguém passa por dois locais neste dia.</div>'}</div>
+    <p class="nota-linha">${nDois} ${nDois===1?'pessoa passa':'pessoas passam'} por dois locais${nApert?` · ${nApert} com pouco tempo para trocar`:''}.</p>`;
+}
+
+/* ============ 4. configuração ============ */
+function chipsDias(arr,attrs,cor){
+  return `<div class="dias" style="--c:${cor}">${arr.map((v,i)=>`<button ${attrs} data-i="${i}" aria-pressed="${!!v}" aria-label="${DIAS_N[i]}">${DIAS_L[i]}</button>`).join('')}</div>`;
+}
+function renderCfg(){
+  const L=LOCAIS[st.cfgLocal];
+  const locBtns=Object.entries(LOCAIS).map(([k,l])=>`<button data-act="cfgLocal" data-k="${k}" class="filtro" aria-pressed="${k===st.cfgLocal}"><span class="dot" style="--c:${l.cor}"></span>${l.nome}</button>`).join('');
+  let corpo='';
+  if(st.cfgSub==='equipe'){
+    const eq=draft.eq[st.cfgLocal];
+    const linhas=Object.entries(eq).map(([n,d])=>{
+      const t=d.filter(Boolean).length;
+      return `<div class="eq"><div class="eq-top"><b>${esc(n)}</b><button class="todos" data-act="eqTodos" data-n="${esc(n)}" aria-pressed="${t===7}">todos os dias</button><span class="eq-n">${t===7?'7 dias':t+(t===1?' dia':' dias')}</span></div>
+        ${chipsDias(d,`data-act="eqDia" data-n="${esc(n)}"`,L.cor)}</div>`;
+    }).join('');
+    corpo=`<div class="hd" style="margin-top:6px"><h2 style="font-size:18px">Equipe de ${L.nome}</h2><p>Toque nos dias em que a pessoa faz parte da equipe. É o único lugar onde isso se marca.</p></div>
+      <div class="card">${linhas||'<div class="vazio-msg">Ninguém na equipe ainda.</div>'}</div>`;
+  }else{
+    const pg=draft.prog[st.cfgLocal];
+    const linhas=pg.map((b,bi)=>{
+      const t=b.d.filter(Boolean).length;
+      return `<div class="pg"><div class="pg-top"><span class="dot" style="--c:${CATS[b.cat].cor}"></span><b>${esc(b.nome)}</b><span class="h">${b.h}</span><button class="todos" data-act="pgTodos" data-b="${bi}" aria-pressed="${t===7}">todos os dias</button></div>
+        ${chipsDias(b.d,`data-act="pgDia" data-b="${bi}"`,CATS[b.cat].cor)}</div>`;
+    }).join('');
+    corpo=`<div class="hd" style="margin-top:6px"><h2 style="font-size:18px">Programação de ${L.nome}</h2><p>Temporada de fim de ano. Em quais dias cada atividade acontece.</p></div>
+      <div class="card">${linhas}</div>
+      <p class="nota-linha"><button class="link" data-act="novoBloco">+ Novo bloco</button></p>`;
+  }
+  const mudou=dirty();
+  $('#v-cfg').innerHTML=`<div class="hd"><h2>Configuração</h2><p>Aqui se prepara a temporada. A escala do dia fica só com o que acontece no dia.</p></div>
+    <div class="cfg-top"><div class="cfg-sub" role="tablist">
+      <button role="tab" data-act="cfgSub" data-k="equipe" aria-selected="${st.cfgSub==='equipe'}">Equipe do local</button>
+      <button role="tab" data-act="cfgSub" data-k="prog" aria-selected="${st.cfgSub==='prog'}">Programação da temporada</button></div></div>
+    <div class="tl-bar" style="gap:6px;justify-content:flex-start;margin-bottom:14px">${locBtns}</div>
+    ${corpo}
+    ${mudou?`<div class="savebar"><span>Você mudou a configuração</span><div><button class="btn" data-act="cfgCancelar">Cancelar</button><button class="btn main" data-act="cfgSalvar">Salvar</button></div></div>`:''}`;
+}
+
+/* ============ render geral ============ */
+function renderAll(){
+  renderTabs();
+  if(st.tab==='dia')renderDia();
+  if(st.tab==='sem')renderSem();
+  if(st.tab==='loc')renderLoc();
+  if(st.tab==='cfg')renderCfg();
+  if(st.tab!=='dia'&&st.sel!=null){st.sel=null}
+  renderPanel();
+}
+
+/* ============ cliques ============ */
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-act]');
+  if(st.pop&&!e.target.closest('.pop-wrap')){st.pop=false;if(st.tab==='dia')renderDia()}
+  if(!t)return;
+  const a=t.dataset.act,d=t.dataset;
+  switch(a){
+    case 'tab':st.tab=d.k;st.pop=false;renderAll();window.scrollTo(0,0);break;
+    case 'popLocal':st.pop=!st.pop;renderDia();break;
+    case 'local':st.local=d.k;st.pop=false;st.resumo=false;st.status='rascunho';st.sel=null;renderDia();renderPanel();break;
+    case 'dia':st.off+=Number(d.d);renderAll();break;
+    case 'resumo':st.resumo=!st.resumo;renderDia();break;
+    case 'porPessoa':st.porPessoa=!st.porPessoa;renderDia();break;
+    case 'publicar':
+      st.publicando=true;renderDia();
+      setTimeout(()=>{st.publicando=false;st.status='publicada';renderDia();toast('Escala de '+LOCAIS[st.local].nome+' publicada (exemplo). O elenco já vê.')},900);break;
+    case 'abrir':abrir(Number(d.id));break;
+    case 'fechar':fechar();break;
+    case 'modo':{
+      st.modo=d.m;
+      if(d.m==='ajustar')st.draft=new Set(achaAct().p);
+      renderPanel();break;}
+    case 'adjTog':st.draft.has(d.n)?st.draft.delete(d.n):st.draft.add(d.n);renderPanel();break;
+    case 'adjSalvar':{
+      const x=achaAct();x.p=TODOS.filter(n=>st.draft.has(n));
+      tocouNaEscala();st.modo='menu';renderDia();renderPanel();toast('Pessoas ajustadas (exemplo).');break;}
+    case 'horSalvar':{
+      const x=achaAct(),i=$('#hIni').value,f=$('#hFim').value;
+      if(!i||!f||tn(f)<=tn(i)){toast('O fim precisa ser depois do começo.');break}
+      x.ini=i;x.fim=f;DIA[st.local].sort((p,q)=>tn(p.ini)-tn(q.ini));
+      tocouNaEscala();st.modo='menu';renderDia();renderPanel();toast('Horário mudado só neste dia (exemplo).');break;}
+    case 'editarDia':toast('No app de verdade, abriria o editor só deste dia.');break;
+    case 'tirar':{
+      const lista=DIA[st.local],idx=lista.findIndex(x=>x.id===st.sel),item=lista.splice(idx,1)[0];
+      const antes=st.status;tocouNaEscala();st.sel=null;renderDia();renderPanel();
+      toast('“'+item.nome+'” saiu deste dia.','Desfazer',()=>{lista.splice(idx,0,item);st.status=antes;renderDia()});break;}
+    case 'soDois':st.soDois=!st.soDois;renderLoc();break;
+    case 'cfgLocal':st.cfgLocal=d.k;renderCfg();break;
+    case 'cfgSub':st.cfgSub=d.k;renderCfg();break;
+    case 'eqDia':{const arr=draft.eq[st.cfgLocal][d.n];arr[d.i]=arr[d.i]?0:1;renderCfg();break;}
+    case 'eqTodos':{const arr=draft.eq[st.cfgLocal][d.n],tudo=arr.every(Boolean);arr.fill(tudo?0:1);renderCfg();break;}
+    case 'pgDia':{const arr=draft.prog[st.cfgLocal][d.b].d;arr[d.i]=arr[d.i]?0:1;renderCfg();break;}
+    case 'pgTodos':{const arr=draft.prog[st.cfgLocal][d.b].d,tudo=arr.every(Boolean);arr.fill(tudo?0:1);renderCfg();break;}
+    case 'novoBloco':toast('No app de verdade, abriria uma janela com Cancelar e Salvar.');break;
+    case 'cfgCancelar':draft=clone(saved);renderCfg();break;
+    case 'cfgSalvar':saved=clone(draft);renderCfg();toast('Configuração salva (exemplo).');break;
+  }
+});
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  if(st.pop){st.pop=false;renderDia();return}
+  if(st.sel!=null)fechar();
+});
+
+renderAll();
+</script>
+</body>
+</html>
