@@ -102,7 +102,7 @@ Cada item é **um prompt numa sessão nova**, **conferido na sessão principal a
 | # | O quê | Migração | Observação |
 |---|---|---|---|
 | a | **Conferir o commit `6d51be8`:** Tirar este show do dia, Refazer os Livros do dia, motivo opcional na cópia | — | só conferir; falta ver Supervisão de verdade com Livro de show de outra pessoa e o Elenco recebendo o aviso depois de republicar |
-| b | **Correção do tempo disponível:** intervalo antes/depois de atividade em hotel não conta (decisão 26) | — | mexe em `services/escala-tempo-disponivel.ts`; ajustar o teste |
+| b | **Correção do tempo disponível:** intervalo antes/depois de atividade em hotel não conta (decisão 26) | — | **Feito em 31/10:** `locations.type = "hotel"` chega pelo `escala-dia.ts` e tira o intervalo do aviso e do Dia dividido; casos novos em `escala-tempo-disponivel.test.ts` |
 | c | **Escala do dia nova** (seção 2.1) | — | por atividade com painel de ações; por pessoa mais limpa; celular em cartões |
 | d | **Configuração** (seção 2.3): Programação e Equipe saem do dia; Regras do local com a recomendação e o "conta para o equilíbrio" | provável (a recomendação e a marca por show precisam de lugar no banco: **0091**) | pergunta aberta ao construir: onde guardar a marca "conta para o equilíbrio" |
 | e | **Semana por show** com os totais por pessoa (seção 2.2) | — | depende de (d) para a média e o destaque |

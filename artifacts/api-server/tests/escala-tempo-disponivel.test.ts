@@ -32,7 +32,7 @@ async function run() {
   // ── regras puras ──
   const L1 = "11111111-1111-4111-8111-111111111111", L2 = "22222222-2222-4222-8222-222222222222";
   const semIda = () => null;
-  const t = (inicio: number, fim: number, localId = L1, rotulo = "x") => ({ inicio, fim, localId, localNome: localId === L1 ? "Snowland" : "Acqua", rotulo });
+  const t = (inicio: number, fim: number, localId = L1, rotulo = "x") => ({ inicio, fim, localId, localNome: localId === L1 ? "Snowland" : "Acqua", rotulo, hotel: false });
   const h = (hh: number, mm = 0) => hh * 60 + mm;
 
   const b1 = buracosDaPessoa("p", [t(h(9), h(10), L1, "Treino"), t(h(10, 45), h(11, 30), L1, "Aula")], L1, 30, semIda);
@@ -75,6 +75,34 @@ async function run() {
   assert(trechosDaPessoa("p", L1, outros, { ativa: false, temMarca: () => true }).length === 1, "sem equipe na casa, só o local da Escala conta");
   assert(trechosDaPessoa("p", L1, outros, { ativa: true, temMarca: () => false }).length === 2, "com equipe, a atividade de outro local conta; o 'todo mundo' de outro local não conta para quem não tem marca");
   assert(trechosDaPessoa("p", L1, outros, { ativa: true, temMarca: () => true }).length === 3, "quem tem marca de equipe conta o 'todo mundo' do outro local");
+
+  // Hotel (decisão de 30/10): o intervalo antes ou depois de uma atividade em hotel nunca é tempo disponível, nem "dia dividido".
+  const hotel = (inicio: number, fim: number, rotulo = "Show no hotel") => ({ ...t(inicio, fim, L2, rotulo), hotel: true });
+  const parqueAteHotel = buracosDaPessoa("p", [t(h(14), h(15, 30), L1, "Montanha"), hotel(h(18, 15), h(19))], L1, 30, ida30);
+  assert(parqueAteHotel.length === 0, "parque → hotel: as 2h45 até o show no hotel NÃO são tempo disponível");
+  assert(buracosDaPessoa("p", [t(h(14), h(15, 30), L1, "Montanha"), hotel(h(20, 45), h(21))], L1, 30, ida30).length === 0, "parque → hotel: nem um intervalo de mais de 3 horas vira 'dia dividido'");
+  assert(buracosDaPessoa("p", [hotel(h(8), h(9)), t(h(12), h(13), L1, "Aula")], L2, 30, ida30).length === 0, "hotel de manhã → parque: o intervalo depois do hotel também não conta (olhando o local do hotel)");
+  assert(buracosDaPessoa("p", [hotel(h(8), h(9)), t(h(12), h(13), L1, "Aula")], L1, 30, ida30).length === 0, "hotel de manhã → parque: nem olhando o local do parque");
+  assert(buracosDaPessoa("p", [{ ...t(h(8), h(9), L1), hotel: true }, { ...t(h(12), h(13), L1), hotel: true }], L1, 30, semIda).length === 0, "dois blocos no mesmo hotel: o intervalo entre eles não conta");
+  const parqueAteParque = buracosDaPessoa("p", [t(h(9), h(10), L1, "Treino"), t(h(11), h(12), L2, "Aula")], L1, 30, ida30);
+  assert(parqueAteParque.length === 1 && parqueAteParque[0]!.minutos === 30, "parque → parque continua avisando, descontando a ida");
+  assert(buracosDaPessoa("p", [t(h(9), h(10), L1, "Treino"), t(h(13), h(14), L2, "Aula")], L1, 30, ida30).length === 1, "parque → parque de 3h ou mais continua (dia dividido)");
+  // Uma atividade em hotel no meio não apaga o buraco que não toca nela.
+  const comHotelDepois = buracosDaPessoa("p", [t(h(9), h(10), L1, "Treino"), t(h(11), h(12), L1, "Aula"), hotel(h(18), h(19))], L1, 30, semIda);
+  assert(comHotelDepois.length === 1 && comHotelDepois[0]!.de === "10:00", "o buraco entre dois parques segue; só o trecho até o hotel some");
+  // O tipo do local chega pela montagem: trechosDaPessoa marca o trecho do hotel.
+  const doHotel = trechosDaPessoa("p", L1, [{ id: L1, name: "Bella", tipo: "hotel", blocos: [bloco("Show", "18:15", "19:00", ["p"])] }], casa);
+  assert(doHotel.length === 1 && doHotel[0]!.hotel === true, "o bloco de um local do tipo hotel vira trecho de hotel");
+  const doParque = trechosDaPessoa("p", L1, [{ id: L1, name: "Snowland", tipo: "parque", blocos: [bloco("Montanha", "14:00", "15:30", ["p"])] }], casa);
+  assert(doParque.length === 1 && doParque[0]!.hotel === false, "o bloco de um parque não é de hotel");
+  const diaComHotel = tempoDisponivelDoDia({
+    localId: L1, limite: 30, pessoaIds: ["p"], equipe: { ativa: true, temMarca: () => false }, tempoDeIda: semIda,
+    locais: [
+      { id: L1, name: "Snowland", tipo: "parque", blocos: [bloco("Montanha", "14:00", "15:30", ["p"])] },
+      { id: L2, name: "Bella", tipo: "hotel", blocos: [bloco("Show", "18:15", "19:00", ["p"])] },
+    ],
+  });
+  assert(diaComHotel.avisos.length === 0 && diaComHotel.diaDividido.length === 0, "no dia inteiro: parque às 15:30 e hotel às 18:15 não geram aviso nem 'dia dividido'");
 
   // Dia dividido e ordem.
   const grandes = tempoDisponivelDoDia({

@@ -102,7 +102,7 @@ export type TipoDoLocal = { id: string; nome: string; cor: string; chave: string
 
 export type EscalaDia = {
   date: string;
-  location: { id: string; name: string };
+  location: { id: string; name: string; type: string };
   escala: { id: string; status: string; version: number; publishedAt: Date | null; alteradaDesde: Date | null } | null;
   programacao: { id: string; nome: string; vigenciaInicio: string; vigenciaFim: string } | null;
   areas: { id: string; name: string; supervisores: { id: string; name: string }[]; pronta: { por: string | null; em: Date } | null; /** A parte já foi enviada e a marca saiu depois: quem tirou e quando (a tela explica por que a área voltou a faltar). */ prontaTirada?: { por: string | null; em: Date } | null }[];
@@ -360,10 +360,10 @@ async function imprevistosDoDiaComNomes(organizationId: string, date: string): P
 }
 
 export async function montarEscalaDoDia(organizationId: string, locationId: string, date: string, options: { publishedOnly?: boolean; /** A regra da equipe e os imprevistos são da casa toda no dia: quem já leu passa adiante para a leitura dos outros locais não repetir as mesmas consultas. */ regraDaEquipe?: RegraDaEquipe; imprevistos?: ImprevistoDoDiaComNomes[]; /** Só a tela da Escala pede: marca quem já tem atividade em outro local hoje (custa uma leitura por local). */ comOutrosLocais?: boolean; /** Só Administração e Supervisão recebem o tempo disponível (decisão 4): a rota liga; quem não é dos dois nem recebe o campo. */ comTempoDisponivel?: boolean } = {}): Promise<EscalaDia | null> {
-  const [achado] = await db.select({ id: locationsTable.id, name: locationsTable.name, tempoDisponivelLigado: locationsTable.tempoDisponivelLigado, tempoDisponivelMinutos: locationsTable.tempoDisponivelMinutos }).from(locationsTable)
+  const [achado] = await db.select({ id: locationsTable.id, name: locationsTable.name, type: locationsTable.type, tempoDisponivelLigado: locationsTable.tempoDisponivelLigado, tempoDisponivelMinutos: locationsTable.tempoDisponivelMinutos }).from(locationsTable)
     .where(and(eq(locationsTable.id, locationId), eq(locationsTable.organizationId, organizationId))).limit(1);
   if (!achado) return null;
-  const location = { id: achado.id, name: achado.name };
+  const location = { id: achado.id, name: achado.name, type: achado.type };
 
   const [scale, people, supervisors, fechado, equipe, imprevistosDoDia, tempoDeIda] = await Promise.all([
     findEscalaDoDia(locationId, date, db, options.publishedOnly),
@@ -670,7 +670,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     ? tempoDisponivelDoDia({
         localId: locationId, limite: achado.tempoDisponivelMinutos, equipe, tempoDeIda: tempoDeIda ?? (() => null),
         pessoaIds: people.filter((p) => !folgaOf.get(p.id) && !foraDoLocalAqui(p.id) && !(equipe.ativa && present.has(p.id) && equipe.semLocalHoje(p.id))).map((p) => p.id),
-        locais: [{ id: locationId, name: location.name, blocos }, ...diasDosOutros.map((d) => ({ id: d.location.id, name: d.location.name, blocos: d.blocos }))],
+        locais: [{ id: locationId, name: location.name, tipo: location.type, blocos }, ...diasDosOutros.map((d) => ({ id: d.location.id, name: d.location.name, tipo: d.location.type, blocos: d.blocos }))],
       })
     : undefined;
 

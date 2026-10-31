@@ -34,12 +34,12 @@ export type TempoDisponivel = {
   diaDividido: Buraco[];
 };
 
-type Trecho = { inicio: number; fim: number; localId: string; localNome: string; rotulo: string };
+type Trecho = { inicio: number; fim: number; localId: string; localNome: string; rotulo: string; /** O local é um hotel: o tempo antes e depois dele nunca é tempo disponível. */ hotel: boolean };
 
-export type LocalDoDia = { id: string; name: string; blocos: BlocoDia[] };
+export type LocalDoDia = { id: string; name: string; /** locations.type; "hotel" tira o intervalo ao redor do tempo disponível. */ tipo?: string | null; blocos: BlocoDia[] };
 
 /** O que ocupa o tempo da pessoa num bloco, em minutos; null quando o bloco não ocupa (ou não tem hora). */
-function trechoDoBloco(b: BlocoDia, local: { id: string; name: string }): Trecho | null {
+function trechoDoBloco(b: BlocoDia, local: { id: string; name: string; tipo?: string | null }): Trecho | null {
   if (b.regra === "ninguem") return null;
   if (b.chamada && !b.chamada.ocupaTempo) return null;
   const ini = minutosDe(b.inicio);
@@ -48,7 +48,7 @@ function trechoDoBloco(b: BlocoDia, local: { id: string; name: string }): Trecho
   // A janela de almoço só vale com fim; os outros blocos, sem fim, duram 30 minutos.
   if (b.flexivel && (fimLido === null || fimLido <= ini)) return null;
   const fim = fimLido !== null && fimLido > ini ? fimLido : ini + DURACAO_PADRAO_MINUTOS;
-  return { inicio: ini, fim, localId: local.id, localNome: local.name, rotulo: b.rotulo };
+  return { inicio: ini, fim, localId: local.id, localNome: local.name, rotulo: b.rotulo, hotel: local.tipo === "hotel" };
 }
 
 /** Os trechos que ocupam a pessoa no dia: deste local, e (quando a casa usa equipe) dos outros, pela regra do choque entre locais. */
@@ -81,11 +81,13 @@ export function buracosDaPessoa(pessoaId: string, trechos: Trecho[], localId: st
   for (const proximo of ordenados.slice(1)) {
     if (proximo.inicio < atual.fim) {
       // Cruza ou encosta: um trecho só. Quem termina por último diz onde a pessoa está depois.
-      if (proximo.fim > atual.fim) atual = { ...atual, fim: proximo.fim, localId: proximo.localId, localNome: proximo.localNome, rotulo: proximo.rotulo };
+      if (proximo.fim > atual.fim) atual = { ...atual, fim: proximo.fim, localId: proximo.localId, localNome: proximo.localNome, rotulo: proximo.rotulo, hotel: proximo.hotel };
       continue;
     }
     const outroLocal = proximo.localId !== atual.localId;
     const ida = outroLocal ? Math.max(tempoDeIda(atual.localId, proximo.localId) ?? 0, 0) : 0;
+    // Hotel é outro turno: antes ou depois dele a pessoa vai para casa, então o intervalo não é tempo disponível (o choque e o tempo de ida seguem em outro lugar).
+    if (atual.hotel || proximo.hotel) { atual = { ...proximo }; continue; }
     const livre = proximo.inicio - atual.fim - ida;
     if (atual.localId === localId && livre >= limite) {
       buracos.push({
