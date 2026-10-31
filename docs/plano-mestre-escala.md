@@ -12,6 +12,7 @@ Regra de uso: o que mudar de estado muda **aqui primeiro**. Código só com o "p
 - **Pronto, conferido e NÃO promovido:**
   - **H (copiar de outro dia)** e **G (tempo disponível, migração 0090)**. Ordem: backup, migração 0090, API, site.
   - **Tirar este show do dia, Refazer os Livros do dia, motivo opcional na cópia** (`6d51be8`): só locais, nada enviado, sem migração. Falta a conferência (item 3a).
+  - **Correções da conferência (`97a4c4d`, 31/10/2026):** as decisões 32 e 33 viraram regra no código. A Supervisão do local tira o show mesmo com pessoa responsável, e a responsável recebe o aviso no sino (quem tirou, o show, o dia e o motivo, se houver; um por acontecimento). Gerar Livro de show tirado é recusado no "gerar o dia" e na rota manual (409 com a frase "Este show foi tirado deste dia. Use 'Voltar ao dia' na Escala."); só "descartar o mês" limpa a marca. O "Refazer os Livros deste dia" grava o motivo no Registro de cada Livro e um evento da Escala por acontecimento (`POST /escalas/dia/refazer/registrar`).
   - Equipe do local: o rodapé diz por que o Salvar está desligado, e a janela diz o que tocar (`3b35c72`, `0bc8cf2`).
 - **Próxima migração livre: 0091.** (O `_journal.json` termina na 0090, a do tempo disponível, já no banco de teste.) Ao criar uma, escreva o
   rollback em `lib/db/drizzle/rollback/` e registre no `meta/_journal.json`.
