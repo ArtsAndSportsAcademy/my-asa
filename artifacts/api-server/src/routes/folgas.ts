@@ -10,6 +10,8 @@ import {
   operationsTable,
   userRolesTable,
   operationalGroupsTable,
+  areasTable,
+  locationsTable,
   isSchedulableMember,
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
@@ -526,6 +528,11 @@ router.get("/folgas/grid", requireAuth, requireOrganization, async (req, res) =>
     // Quem pode ser alterado por quem está olhando (a tela trava as outras linhas).
     const scopes = user.role === "ADMIN" ? [] : await listAreaLocalScopes(user.sub, user.organizationId);
     const canEdit = (m: (typeof members)[number]) => user.role === "ADMIN" || (user.role !== "DIR" && m.userId !== user.sub && inTeam(scopes, m));
+    // A grade se organiza por área e local (não mais pelos grupos antigos): a tela agrupa e filtra por estes nomes.
+    const idsDeArea = [...new Set(members.map((m) => m.areaId).filter((id): id is string => !!id))];
+    const idsDeLocal = [...new Set(members.map((m) => m.defaultLocationId).filter((id): id is string => !!id))];
+    const nomeDaArea = new Map(idsDeArea.length ? (await db.select({ id: areasTable.id, name: areasTable.name }).from(areasTable).where(inArray(areasTable.id, idsDeArea))).map((a) => [a.id, a.name] as const) : []);
+    const nomeDoLocal = new Map(idsDeLocal.length ? (await db.select({ id: locationsTable.id, name: locationsTable.name }).from(locationsTable).where(inArray(locationsTable.id, idsDeLocal))).map((l) => [l.id, l.name] as const) : []);
     const result = members.map((m) => {
       const days = daysMap[m.userId] ?? {};
       const totals: Record<string, number> = {
@@ -535,7 +542,7 @@ router.get("/folgas/grid", requireAuth, requireOrganization, async (req, res) =>
         if (type in totals) totals[type]++;
       }
       const g = groupByUser.get(m.userId) ?? null;
-      return { userId: m.userId, name: nomeNaLista(m), days, totals, groupId: g?.id ?? null, groupName: g?.name ?? null, editable: canEdit(m) };
+      return { userId: m.userId, name: nomeNaLista(m), days, totals, groupId: g?.id ?? null, groupName: g?.name ?? null, areaId: m.areaId ?? null, areaName: (m.areaId && nomeDaArea.get(m.areaId)) || null, localId: m.defaultLocationId ?? null, localName: (m.defaultLocationId && nomeDoLocal.get(m.defaultLocationId)) || null, editable: canEdit(m) };
     });
 
     log.info({ operationId, yr, mo, members: result.length }, "grade de folgas gerada");
@@ -1169,6 +1176,152 @@ router.delete("/folgas/grid/reset", requireAuth, requireOrganization, async (req
   } catch (err) {
     log.error({ err }, "erro ao resetar mês de folgas");
     res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// ─── POST /folgas/grid/limpar — voltar o mês (ou só algumas pessoas) ao branco ───
+// Limpa o que foi marcado à mão na grade. Folga que nasceu de um pedido aprovado (origem SOLICITACAO) NÃO sai: o
+// pedido continua valendo e quem o desfaz é a tela de Solicitações, com motivo. Um Registro por limpeza, com o que
+// saiu guardado, para o "Desfazer" devolver exatamente aquilo.
+
+type RecorteLimpo = { userId: string; type: string; startDate: string; endDate: string; notes: string | null };
+const MAIS_DE_UMA_FOLGA = "Escolha ao menos uma pessoa para limpar.";
+const diasDoRecorte = (de: string, ate: string) => { const dias: string[] = []; for (let d = de; d <= ate && dias.length < 400; d = offsetDate(d, 1)) dias.push(d); return dias; };
+
+router.post("/folgas/grid/limpar", requireAuth, requireOrganization, async (req, res) => {
+  const log = requestLogger(LOG_DOMAIN.FOLGAS, req.requestId, req.correlationId);
+  const user = req.user!;
+  if (!MANAGER_ROLES.includes(user.role)) { res.status(403).json(SO_GERENCIA); return; }
+
+  const { operationId, year, month, userIds, tipos, motivo } = req.body as { operationId?: string; year?: number; month?: number; userIds?: unknown; tipos?: unknown; motivo?: unknown };
+  if (!operationId || !Number.isInteger(year) || !Number.isInteger(month) || month! < 1 || month! > 12) {
+    res.status(400).json({ error: "Bad Request", message: "operationId, year e month são obrigatórios" });
+    return;
+  }
+  const scopeErr = await validateManagerScope(user, operationId);
+  if (scopeErr) { res.status(403).json({ error: "Forbidden", message: scopeErr }); return; }
+
+  const pessoas = Array.isArray(userIds) ? [...new Set(userIds.filter((id): id is string => typeof id === "string" && id.length > 0))] : null;
+  if (pessoas && !pessoas.length) { res.status(400).json({ error: "Bad Request", message: MAIS_DE_UMA_FOLGA }); return; }
+  if (!pessoas && user.role !== "ADMIN") { res.status(403).json({ error: "Forbidden", message: "Só a Administração limpa o mês de todo mundo de uma vez. Escolha as pessoas da sua equipe." }); return; }
+  const tiposLimpos = Array.isArray(tipos) && tipos.length ? tipos : TIPOS_DE_FOLGA;
+  if (!tiposLimpos.every((t) => typeof t === "string" && TIPOS_DE_FOLGA.includes(t))) { res.status(400).json({ error: "Bad Request", message: FRASE_TIPO }); return; }
+  if (pessoas) {
+    const recusa = await recusaDeFolgaEmLote(user, operationId, pessoas);
+    if (recusa) { res.status(403).json({ error: "Forbidden", message: recusa }); return; }
+  }
+  const motivoLimpeza = typeof motivo === "string" ? motivo.trim().slice(0, 600) || null : null;
+
+  try {
+    const yr = year!, mo = month!;
+    const firstDay = `${yr}-${String(mo).padStart(2, "0")}-01`;
+    const lastDay = `${yr}-${String(mo).padStart(2, "0")}-${String(new Date(yr, mo, 0).getDate()).padStart(2, "0")}`;
+    const resultado = await db.transaction(async (tx) => {
+      const ativas = await tx.select({ id: folgasTable.id, userId: folgasTable.userId, type: folgasTable.type, startDate: folgasTable.startDate, endDate: folgasTable.endDate, notes: folgasTable.notes, origem: folgasTable.origem })
+        .from(folgasTable)
+        .where(and(
+          eq(folgasTable.operationId, operationId), eq(folgasTable.status, "ACTIVE"),
+          lte(folgasTable.startDate, lastDay), gte(folgasTable.endDate, firstDay),
+          inArray(folgasTable.type, tiposLimpos as any),
+          ...(pessoas ? [inArray(folgasTable.userId, pessoas)] : []),
+        ));
+      const doPedido = ativas.filter((f) => f.origem === "SOLICITACAO");
+      const alvo = ativas.filter((f) => f.origem !== "SOLICITACAO");
+      const recortes: RecorteLimpo[] = [];
+      for (const f of alvo) {
+        const de = f.startDate < firstDay ? firstDay : f.startDate;
+        const ate = f.endDate > lastDay ? lastDay : f.endDate;
+        recortes.push({ userId: f.userId, type: f.type, startDate: de, endDate: ate, notes: f.notes });
+        await tx.update(folgasTable).set({ status: "CANCELLED", updatedAt: new Date() }).where(eq(folgasTable.id, f.id));
+        // Folga que atravessa a virada do mês: só o pedaço deste mês sai, o resto continua.
+        if (f.startDate < firstDay) await tx.insert(folgasTable).values({ userId: f.userId, operationId, type: f.type, startDate: f.startDate, endDate: offsetDate(firstDay, -1), status: "ACTIVE", origem: "MANUAL", createdBy: user.sub, notes: f.notes });
+        if (f.endDate > lastDay) await tx.insert(folgasTable).values({ userId: f.userId, operationId, type: f.type, startDate: offsetDate(lastDay, 1), endDate: f.endDate, status: "ACTIVE", origem: "MANUAL", createdBy: user.sub, notes: f.notes });
+      }
+      const dias = recortes.reduce((n, r) => n + diasDoRecorte(r.startDate, r.endDate).length, 0);
+      const diasDePedido = doPedido.reduce((n, f) => n + diasDoRecorte(f.startDate < firstDay ? firstDay : f.startDate, f.endDate > lastDay ? lastDay : f.endDate).length, 0);
+      const quemSaiu = new Set(recortes.map((r) => r.userId));
+      let eventId: string | null = null;
+      if (recortes.length) {
+        const quantas = quemSaiu.size === 1 ? "1 pessoa" : `${quemSaiu.size} pessoas`;
+        eventId = await writeHistoryEvent({
+          category: "ABSENCE", action: "FOLGA_GRID_LIMPAR",
+          title: `Folgas limpas — ${String(mo).padStart(2, "0")}/${yr} · ${dias} dia(s) · ${quantas}`,
+          narrative: `A gestão limpou ${dias} dia(s) marcados à mão no mês ${String(mo).padStart(2, "0")}/${yr} para ${quantas}${pessoas ? "" : " (mês inteiro)"}.${motivoLimpeza ? ` Motivo: ${motivoLimpeza}` : ""}`,
+          entityType: "folga", entityId: operationId, actorId: user.sub, operationId, orgId: user.organizationId,
+          metadata: { year: yr, month: mo, tipos: tiposLimpos, pessoas: quemSaiu.size, dias, mesInteiro: !pessoas, motivo: motivoLimpeza, mantidosDePedido: diasDePedido },
+          beforeState: { recortes },
+          afterState: { limpeza: { firstDay, lastDay } },
+        }, tx as any);
+        await avisarRepublicacaoFolgas(tx, user.organizationId, operationId, firstDay, lastDay, eventId);
+      }
+      return { eventId, dias, pessoas: quemSaiu.size, diasDePedido };
+    });
+    log.info({ operationId, yr, mo, ...resultado }, "folgas do mês limpas");
+    res.json({ ok: true, ...resultado });
+  } catch (err) {
+    log.error({ err }, "erro ao limpar folgas do mês");
+    res.status(500).json({ error: "Internal Server Error", message: "Não consegui limpar as folgas agora. Nada foi alterado; tente de novo." });
+  }
+});
+
+// ─── POST /folgas/grid/limpar/desfazer — devolve o que a limpeza tirou ───────────
+// Devolve só os dias que continuam livres: se alguém marcou outra coisa depois, a marcação nova vence.
+router.post("/folgas/grid/limpar/desfazer", requireAuth, requireOrganization, async (req, res) => {
+  const log = requestLogger(LOG_DOMAIN.FOLGAS, req.requestId, req.correlationId);
+  const user = req.user!;
+  if (!MANAGER_ROLES.includes(user.role)) { res.status(403).json(SO_GERENCIA); return; }
+  const { eventId } = req.body as { eventId?: unknown };
+  if (typeof eventId !== "string" || !/^[0-9a-f-]{36}$/i.test(eventId)) { res.status(400).json({ error: "Bad Request", message: "Diga qual limpeza desfazer." }); return; }
+
+  const [evento] = await db.select().from(historyEventsTable)
+    .where(and(eq(historyEventsTable.id, eventId), eq(historyEventsTable.action, "FOLGA_GRID_LIMPAR"), eq(historyEventsTable.orgId, user.organizationId))).limit(1);
+  const recortes = ((evento?.beforeState as { recortes?: RecorteLimpo[] } | null)?.recortes) ?? [];
+  if (!evento || !evento.operationId || !recortes.length) { res.status(404).json({ error: "Not Found", message: "Não achei essa limpeza." }); return; }
+  const operationId = evento.operationId;
+  const scopeErr = await validateManagerScope(user, operationId);
+  if (scopeErr) { res.status(403).json({ error: "Forbidden", message: scopeErr }); return; }
+  const recusa = await recusaDeFolgaEmLote(user, operationId, [...new Set(recortes.map((r) => r.userId))]);
+  if (recusa) { res.status(403).json({ error: "Forbidden", message: recusa }); return; }
+  const [jaDesfeita] = await db.select({ id: historyEventsTable.id }).from(historyEventsTable)
+    .where(and(eq(historyEventsTable.action, "FOLGA_GRID_LIMPAR_DESFEITA"), eq(historyEventsTable.entityId, eventId))).limit(1);
+  if (jaDesfeita) { res.status(409).json({ error: "Conflict", message: "Essa limpeza já foi desfeita." }); return; }
+
+  try {
+    const primeiro = recortes.map((r) => r.startDate).sort()[0]!, ultimo = recortes.map((r) => r.endDate).sort().at(-1)!;
+    const resultado = await db.transaction(async (tx) => {
+      const ocupados = new Set<string>();
+      const atuais = await tx.select({ userId: folgasTable.userId, startDate: folgasTable.startDate, endDate: folgasTable.endDate }).from(folgasTable)
+        .where(and(eq(folgasTable.operationId, operationId), eq(folgasTable.status, "ACTIVE"), lte(folgasTable.startDate, ultimo), gte(folgasTable.endDate, primeiro), inArray(folgasTable.userId, [...new Set(recortes.map((r) => r.userId))])));
+      for (const f of atuais) for (const d of diasDoRecorte(f.startDate, f.endDate)) ocupados.add(`${f.userId}:${d}`);
+      let devolvidos = 0, jaOcupados = 0;
+      for (const r of recortes) {
+        let trecho: string[] = [];
+        const fecha = async () => {
+          if (!trecho.length) return;
+          await tx.insert(folgasTable).values({ userId: r.userId, operationId, type: r.type as any, startDate: trecho[0]!, endDate: trecho[trecho.length - 1]!, status: "ACTIVE", origem: "MANUAL", createdBy: user.sub, notes: r.notes });
+          trecho = [];
+        };
+        for (const d of diasDoRecorte(r.startDate, r.endDate)) {
+          if (ocupados.has(`${r.userId}:${d}`)) { jaOcupados++; await fecha(); continue; }
+          ocupados.add(`${r.userId}:${d}`); devolvidos++; trecho.push(d);
+        }
+        await fecha();
+      }
+      const novoEvento = await writeHistoryEvent({
+        category: "ABSENCE", action: "FOLGA_GRID_LIMPAR_DESFEITA",
+        title: `Limpeza de folgas desfeita · ${devolvidos} dia(s) de volta`,
+        narrative: `A gestão desfez a limpeza de folgas e devolveu ${devolvidos} dia(s).${jaOcupados ? ` ${jaOcupados} dia(s) já tinham outra marcação e ficaram como estavam.` : ""}`,
+        entityType: "folga", entityId: eventId, actorId: user.sub, operationId, orgId: user.organizationId,
+        metadata: { devolvidos, jaOcupados }, beforeState: null, afterState: { devolvidos },
+      }, tx as any);
+      if (devolvidos) await avisarRepublicacaoFolgas(tx, user.organizationId, operationId, primeiro, ultimo, novoEvento);
+      return { devolvidos, jaOcupados };
+    });
+    log.info({ operationId, eventId, ...resultado }, "limpeza de folgas desfeita");
+    res.json({ ok: true, ...resultado });
+  } catch (err) {
+    log.error({ err }, "erro ao desfazer a limpeza de folgas");
+    res.status(500).json({ error: "Internal Server Error", message: "Não consegui desfazer agora. Nada foi alterado; tente de novo." });
   }
 });
 

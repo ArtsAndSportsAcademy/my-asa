@@ -1,8 +1,11 @@
 import { Fragment, useRef, useState, useCallback, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Lock } from "lucide-react";
+import { Eraser, Loader2, Lock } from "lucide-react";
+import { mensagemDoErro } from "@/lib/mensagem-do-erro";
 import {
+  type FolgasGridMember,
+  customFetch,
   useGetFolgasGrid,
   useToggleFolgaCell,
   useBulkFillFolgas,
@@ -235,16 +238,126 @@ interface FolgasGridProps {
   year: number;
   month: number;
   memberFilter?: string;
-  groupBy?: boolean;
   /** "Publicar mês" (desenho 18): a tela mostra se o mês foi publicado e se mudou depois. */
   onPublicacao?: (publicacao: FolgasPublicacao) => void;
   refreshKey?: number;
 }
 export type FolgasPublicacao = { publishedAt: string | null; publishedBy: string | null; changedSince: boolean };
 
-const NO_GROUP_LABEL = "Sem grupo";
+const NO_AREA_LABEL = "Sem área";
 
-export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = false, onPublicacao, refreshKey = 0 }: FolgasGridProps) {
+/** Três tamanhos para a mesma tabela: o compacto cabe o mês inteiro numa tela, o grande é para editar com calma. */
+const TAMANHOS = {
+  compacto: { rotulo: "Compacto", nome: "min-w-[104px] max-w-[130px]", dia: "min-w-[25px] px-0", linha: "h-6", selo: "w-5 h-4 text-[10px]", texto: "text-[10px]", semana: "min-h-[22px]" },
+  normal:   { rotulo: "Normal",   nome: "min-w-[130px] max-w-[180px]", dia: "min-w-[34px] px-0.5", linha: "h-8", selo: "w-7 h-5 text-xs", texto: "text-xs", semana: "min-h-[30px]" },
+  grande:   { rotulo: "Grande",   nome: "min-w-[170px] max-w-[220px]", dia: "min-w-[46px] px-1", linha: "h-11", selo: "w-8 h-6 text-sm", texto: "text-sm", semana: "min-h-[44px]" },
+} as const;
+type Tamanho = keyof typeof TAMANHOS;
+const CHAVE_TAMANHO = "myasa-folgas-tamanho";
+const CHAVE_AGRUPAR = "myasa-folgas-agrupar";
+
+function lerPreferencia(chave: string): string | null {
+  try { return localStorage.getItem(chave); } catch { return null; }
+}
+function guardarPreferencia(chave: string, valor: string) {
+  try { localStorage.setItem(chave, valor); } catch { /* sem armazenamento: a escolha vale só até recarregar */ }
+}
+
+/** O que a limpeza do mês pergunta: cada letra da grade, com os tipos do servidor que ela reúne. */
+const GRUPOS_DE_TIPO = [
+  { id: "F", rotulo: "Folga (F)", tipos: ["DAY_OFF", "NO_SHOW"] },
+  { id: "R", rotulo: "Recesso (R)", tipos: ["RECESSO"] },
+  { id: "A", rotulo: "Afastamento (A)", tipos: ["AFASTAMENTO"] },
+  { id: "O", rotulo: "Outro (O)", tipos: ["OUTRO", "RESTRICAO"] },
+] as const;
+
+/** O servidor manda área, local e se a linha é editável; o tipo gerado só os conhece depois de gerar o cliente de novo. */
+type GridMember = FolgasGridMember & { areaName?: string | null; localName?: string | null; editable?: boolean };
+type ResultadoLimpeza = { ok: boolean; eventId: string | null; dias: number; pessoas: number; diasDePedido: number };
+type AvisoLimpeza = { texto: string; eventId: string | null };
+
+function LimparFolgasDialog({ candidatas, descricaoFiltro, semFiltro, todosEditaveis, operationId, year, month, onClose, onFeito }: {
+  candidatas: GridMember[]; descricaoFiltro: string; semFiltro: boolean; todosEditaveis: boolean;
+  operationId: string; year: number; month: number; onClose: () => void; onFeito: (r: ResultadoLimpeza) => void;
+}) {
+  const [escopo, setEscopo] = useState<"todas" | "escolher">("todas");
+  const [escolhidas, setEscolhidas] = useState<Set<string>>(new Set());
+  const [tipos, setTipos] = useState<Set<string>>(new Set(GRUPOS_DE_TIPO.map((g) => g.id)));
+  const [motivo, setMotivo] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState("");
+  useEffect(() => {
+    const fechaComEsc = (e: KeyboardEvent) => { if (e.key === "Escape" && !enviando) onClose(); };
+    document.addEventListener("keydown", fechaComEsc);
+    return () => document.removeEventListener("keydown", fechaComEsc);
+  }, [enviando, onClose]);
+
+  const tiposDoServidor = GRUPOS_DE_TIPO.filter((g) => tipos.has(g.id)).flatMap((g) => g.tipos as readonly string[]);
+  const alvo = escopo === "todas" ? candidatas : candidatas.filter((m) => escolhidas.has(m.userId));
+  const dias = alvo.reduce((n, m) => n + Object.values(m.days).filter((t) => tiposDoServidor.includes(t)).length, 0);
+  const pessoasComDia = alvo.filter((m) => Object.values(m.days).some((t) => tiposDoServidor.includes(t))).length;
+  const mesPorExtenso = `${MONTH_NAMES[month - 1]} de ${year}`;
+
+  async function limpar(e: React.FormEvent) {
+    e.preventDefault();
+    if (enviando || !alvo.length || !tiposDoServidor.length) return;
+    setEnviando(true); setErro("");
+    // Administração olhando o mapa todo, sem filtro: manda o mês inteiro sem listar ninguém (uma rota só, sem 100 conferências).
+    const mesInteiro = escopo === "todas" && semFiltro && todosEditaveis;
+    try {
+      const r = await customFetch<ResultadoLimpeza>("/api/folgas/grid/limpar", {
+        method: "POST",
+        body: JSON.stringify({ operationId, year, month, tipos: tiposDoServidor, motivo: motivo.trim() || undefined, ...(mesInteiro ? {} : { userIds: alvo.map((m) => m.userId) }) }),
+      });
+      onFeito(r);
+    } catch (err) {
+      setErro(mensagemDoErro(err, "Não consegui limpar agora. Nada foi alterado; tente de novo."));
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <div className="cycle-modal" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget && !enviando) onClose(); }}>
+      <form onSubmit={limpar} role="dialog" aria-modal="true" aria-label="Limpar folgas do mês">
+        <header><h2>Limpar folgas</h2><button type="button" aria-label="Fechar" onClick={onClose}>×</button></header>
+        <p className="cycle-ajuda">Volta {mesPorExtenso} ao branco. O que veio de um pedido aprovado em Solicitações não sai daqui. Dá para desfazer logo depois.</p>
+        <fieldset>
+          <legend>De quem</legend>
+          <label><input type="radio" name="escopo" checked={escopo === "todas"} onChange={() => setEscopo("todas")}/> {descricaoFiltro ? `As ${candidatas.length} pessoas que aparecem agora (${descricaoFiltro})` : candidatas.length === 1 ? "A pessoa da tabela" : `Todas as ${candidatas.length} pessoas da tabela`}</label>
+          <label><input type="radio" name="escopo" checked={escopo === "escolher"} onChange={() => setEscopo("escolher")}/> Só as pessoas que eu escolher</label>
+        </fieldset>
+        {escopo === "escolher" && (
+          <div className="rounded-lg border border-border" style={{ maxHeight: 190, overflow: "auto" }}>
+            <label className="sticky top-0 bg-white" style={{ display: "flex", gap: 8, padding: "8px 10px", borderBottom: "1px solid var(--asa-line)" }}>
+              <input type="checkbox" checked={escolhidas.size === candidatas.length} onChange={(e) => setEscolhidas(e.target.checked ? new Set(candidatas.map((m) => m.userId)) : new Set())} style={{ minHeight: 0, width: 18, height: 18 }}/> Todas
+            </label>
+            {candidatas.map((m) => (
+              <label key={m.userId} style={{ display: "flex", gap: 8, padding: "8px 10px", alignItems: "center" }}>
+                <input type="checkbox" checked={escolhidas.has(m.userId)} onChange={(e) => setEscolhidas((atual) => { const prox = new Set(atual); if (e.target.checked) prox.add(m.userId); else prox.delete(m.userId); return prox; })} style={{ minHeight: 0, width: 18, height: 18 }}/>
+                <span>{m.name}{m.areaName ? <small style={{ opacity: .6 }}> · {m.areaName}</small> : null}</span>
+              </label>
+            ))}
+          </div>
+        )}
+        <fieldset>
+          <legend>O que sai</legend>
+          {GRUPOS_DE_TIPO.map((g) => (
+            <label key={g.id}><input type="checkbox" checked={tipos.has(g.id)} onChange={(e) => setTipos((atual) => { const prox = new Set(atual); if (e.target.checked) prox.add(g.id); else prox.delete(g.id); return prox; })}/> {g.rotulo}</label>
+          ))}
+        </fieldset>
+        <label>Motivo (opcional, fica no Registro)<input value={motivo} maxLength={600} onChange={(e) => setMotivo(e.target.value)} placeholder="Ex.: recomeçar o mês do zero"/></label>
+        <p role="status" className="cycle-ajuda">{dias ? `Vão sair até ${dias} ${dias === 1 ? "dia marcado" : "dias marcados"} de ${pessoasComDia} ${pessoasComDia === 1 ? "pessoa" : "pessoas"}.` : alvo.length ? "Não há dia marcado para limpar com essas escolhas." : "Escolha pelo menos uma pessoa."}</p>
+        {erro && <p className="cycle-erro-janela" role="alert">{erro}</p>}
+        <footer>
+          <button type="button" className="cycle-secondary" onClick={onClose}>Cancelar</button>
+          <button className="cycle-primary" disabled={enviando || !dias}>{enviando ? "Limpando…" : dias ? `Limpar ${dias} ${dias === 1 ? "dia" : "dias"}` : "Limpar"}</button>
+        </footer>
+      </form>
+    </div>
+  );
+}
+
+export function FolgasGrid({ operationId, year, month, memberFilter, onPublicacao, refreshKey = 0 }: FolgasGridProps) {
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -260,22 +373,40 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
 
   const publicacao = (data as { publicacao?: FolgasPublicacao } | undefined)?.publicacao;
   useEffect(() => { if (publicacao) onPublicacao?.(publicacao); }, [publicacao?.publishedAt, publicacao?.changedSince]);
-  const filteredMembers = (data?.members ?? []).filter((m) => {
+  const [tamanho, setTamanho] = useState<Tamanho>(() => { const v = lerPreferencia(CHAVE_TAMANHO); return v && v in TAMANHOS ? (v as Tamanho) : window.innerWidth < 640 ? "compacto" : "normal"; });
+  const [agrupar, setAgrupar] = useState(() => lerPreferencia(CHAVE_AGRUPAR) !== "0");
+  const [areaFiltro, setAreaFiltro] = useState("");
+  const [localFiltro, setLocalFiltro] = useState("");
+  const [limparAberto, setLimparAberto] = useState(false);
+  const [aviso, setAviso] = useState<AvisoLimpeza | null>(null);
+  const [desfazendo, setDesfazendo] = useState(false);
+  const t = TAMANHOS[tamanho];
+
+  const todos = ((data?.members ?? []) as GridMember[]);
+  const areas = [...new Set(todos.map((m) => m.areaName).filter((a): a is string => !!a))].sort((a, b) => a.localeCompare(b, "pt"));
+  const locais = [...new Set(todos.map((m) => m.localName).filter((l): l is string => !!l))].sort((a, b) => a.localeCompare(b, "pt"));
+  const filteredMembers = todos.filter((m) => {
+    if (areaFiltro && m.areaName !== areaFiltro) return false;
+    if (localFiltro && m.localName !== localFiltro) return false;
     if (!memberFilter) return true;
     return m.name.toLowerCase().includes(memberFilter.toLowerCase());
   });
-  // Quando agrupado, ordenamos por grupo (alfabético, "Sem grupo" no fim) e
-  // depois por nome. A ordem do array é usada também pela seleção por arraste.
-  const members = groupBy
+  // Agrupado, a tabela se organiza por área ("Sem área" no fim) e depois por nome. A ordem do array
+  // é usada também pela seleção por arraste.
+  const members = agrupar
     ? [...filteredMembers].sort((a, b) => {
-        const aNo = a.groupName ? 0 : 1;
-        const bNo = b.groupName ? 0 : 1;
+        const aNo = a.areaName ? 0 : 1;
+        const bNo = b.areaName ? 0 : 1;
         if (aNo !== bNo) return aNo - bNo;
-        const g = (a.groupName ?? "").localeCompare(b.groupName ?? "", "pt");
+        const g = (a.areaName ?? "").localeCompare(b.areaName ?? "", "pt");
         if (g !== 0) return g;
         return a.name.localeCompare(b.name, "pt");
       })
     : filteredMembers;
+  const pessoasPorArea = new Map<string, number>();
+  for (const m of members) pessoasPorArea.set(m.areaName ?? NO_AREA_LABEL, (pessoasPorArea.get(m.areaName ?? NO_AREA_LABEL) ?? 0) + 1);
+  const descricaoFiltro = [areaFiltro && `área ${areaFiltro}`, localFiltro && `local ${localFiltro}`, memberFilter && `busca "${memberFilter}"`].filter(Boolean).join(", ");
+  const candidatasAoLimpar = filteredMembers.filter((m) => m.editable !== false);
   const daysInMonth = data?.daysInMonth ?? 30;
   // 08/10: a Supervisão vê todo mundo, mas só altera a própria equipe (a API manda `editable`).
   const editable = (userId: string) => (members.find((m) => m.userId === userId) as { editable?: boolean } | undefined)?.editable !== false;
@@ -427,6 +558,35 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
     setWeekFillMenu(null);
   }
 
+  function mudarTamanho(novo: Tamanho) { setTamanho(novo); guardarPreferencia(CHAVE_TAMANHO, novo); }
+  function alternarAgrupar() { setAgrupar((v) => { guardarPreferencia(CHAVE_AGRUPAR, v ? "0" : "1"); return !v; }); }
+
+  function limpezaFeita(r: ResultadoLimpeza) {
+    setLimparAberto(false);
+    invalidate();
+    const resto = r.diasDePedido ? ` ${r.diasDePedido} ${r.diasDePedido === 1 ? "dia vindo" : "dias vindos"} de pedido aprovado ficaram.` : "";
+    setAviso(r.dias
+      ? { texto: `Limpei ${r.dias} ${r.dias === 1 ? "dia" : "dias"} de ${r.pessoas} ${r.pessoas === 1 ? "pessoa" : "pessoas"}.${resto}`, eventId: r.eventId }
+      : { texto: `Não havia dia marcado à mão para limpar.${resto}`, eventId: null });
+  }
+
+  async function desfazerLimpeza() {
+    if (!aviso?.eventId || desfazendo) return;
+    setDesfazendo(true);
+    try {
+      const r = await customFetch<{ devolvidos: number; jaOcupados: number }>("/api/folgas/grid/limpar/desfazer", { method: "POST", body: JSON.stringify({ eventId: aviso.eventId }) });
+      invalidate();
+      setAviso({ texto: `Devolvi ${r.devolvidos} ${r.devolvidos === 1 ? "dia" : "dias"}.${r.jaOcupados ? ` ${r.jaOcupados} ${r.jaOcupados === 1 ? "dia já tinha" : "dias já tinham"} outra marcação e ficaram como estavam.` : ""}`, eventId: null });
+    } catch (err) {
+      setAviso({ texto: mensagemDoErro(err, "Não consegui desfazer agora. Nada foi alterado; tente de novo."), eventId: aviso.eventId });
+    } finally {
+      setDesfazendo(false);
+    }
+  }
+
+  // Mudar de mês ou de operação troca a tabela: o aviso do mês anterior deixaria de fazer sentido.
+  useEffect(() => { setAviso(null); }, [operationId, year, month]);
+
   useEffect(() => {
     function handleMouseUp() {
       if (isDragging && selected.size > 1) {
@@ -455,7 +615,7 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
     );
   }
 
-  if (members.length === 0) {
+  if (todos.length === 0) {
     return (
       <div className="text-center py-24 text-muted-foreground text-sm">
         Nenhum membro ativo nesta operação.
@@ -471,27 +631,68 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
         </div>
       )}
 
-      {/* Legend */}
-      <div className="flex items-center gap-3 px-4 py-2 border-b bg-muted/20 flex-wrap">
-        {GRID_TYPES.map((t) => (
-          <div key={t.value} className="flex items-center gap-1.5">
-            <span className={`inline-flex items-center justify-center w-6 h-5 rounded text-xs font-bold ${t.bg} ${t.text}`}>
-              {t.abbr}
-            </span>
-            <span className="text-xs text-muted-foreground">{t.label}</span>
+      {/* Barra de controles: legenda à esquerda; filtros, tamanho e limpar à direita. */}
+      <div className="flex items-center gap-x-4 gap-y-2 px-4 py-2.5 border-b bg-muted/20 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
+          {GRID_TYPES.map((tipo) => (
+            <div key={tipo.value} className="flex items-center gap-1.5">
+              <span className={`inline-flex items-center justify-center w-6 h-5 rounded text-xs font-bold ${tipo.bg} ${tipo.text}`}>
+                {tipo.abbr}
+              </span>
+              <span className="text-xs text-muted-foreground">{tipo.label}</span>
+            </div>
+          ))}
+        </div>
+        <div className="ml-auto flex items-center gap-2 flex-wrap">
+          {areas.length > 0 && <select aria-label="Filtrar por área" value={areaFiltro} onChange={(e) => setAreaFiltro(e.target.value)} className="h-11 sm:h-9 rounded-full border border-border bg-white px-3 text-xs font-medium text-foreground">
+            <option value="">Todas as áreas</option>
+            {areas.map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>}
+          {locais.length > 0 && <select aria-label="Filtrar por local" value={localFiltro} onChange={(e) => setLocalFiltro(e.target.value)} className="h-11 sm:h-9 rounded-full border border-border bg-white px-3 text-xs font-medium text-foreground">
+            <option value="">Todos os locais</option>
+            {locais.map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>}
+          <div role="group" aria-label="Tamanho da tabela" className="inline-flex rounded-full border border-border bg-white p-0.5">
+            {(Object.keys(TAMANHOS) as Tamanho[]).map((chave) => (
+              <button key={chave} type="button" aria-pressed={tamanho === chave} onClick={() => mudarTamanho(chave)}
+                className={`h-10 sm:h-8 px-3 rounded-full text-xs font-semibold transition-colors ${tamanho === chave ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                {TAMANHOS[chave].rotulo}
+              </button>
+            ))}
           </div>
-        ))}
-        <div className="ml-auto text-xs text-muted-foreground italic">
-          Clique para editar · Arraste para selecionar múltiplas
+          <button type="button" aria-pressed={agrupar} onClick={alternarAgrupar} title="Separar a tabela por área"
+            className={`h-11 sm:h-9 rounded-full border px-3 text-xs font-semibold transition-colors ${agrupar ? "border-primary text-primary bg-primary/5" : "border-border bg-white text-muted-foreground"}`}>
+            Por área
+          </button>
+          {candidatasAoLimpar.length > 0 && (
+            <button type="button" onClick={() => setLimparAberto(true)} className="inline-flex items-center gap-1.5 h-11 sm:h-9 rounded-full border border-border bg-white px-3 text-xs font-semibold text-foreground hover:bg-muted">
+              <Eraser className="w-3.5 h-3.5"/> Limpar…
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Grid */}
-      <div className="overflow-x-auto">
-        <table className="text-xs border-collapse" style={{ minWidth: "max-content" }}>
+      {aviso && (
+        <div role="status" className="flex items-center gap-3 flex-wrap px-4 py-2 border-b bg-emerald-50 text-xs text-emerald-900">
+          <span>{aviso.texto}</span>
+          {aviso.eventId && <button type="button" disabled={desfazendo} onClick={() => void desfazerLimpeza()} className="font-bold underline min-h-[44px] sm:min-h-0">{desfazendo ? "Desfazendo…" : "Desfazer"}</button>}
+          <button type="button" onClick={() => setAviso(null)} className="ml-auto font-semibold min-h-[44px] sm:min-h-0">Fechar</button>
+        </div>
+      )}
+
+      {members.length === 0 && (
+        <div className="text-center py-16 text-muted-foreground text-sm">
+          Ninguém aparece com esses filtros.{" "}
+          <button type="button" className="underline font-semibold" onClick={() => { setAreaFiltro(""); setLocalFiltro(""); }}>Tirar os filtros de área e local</button>
+        </div>
+      )}
+
+      {/* Grade: rola por dentro (cabeçalho dos dias e coluna dos nomes ficam fixos). */}
+      <div className={members.length === 0 ? "hidden" : "overflow-auto"} style={{ maxHeight: "calc(100dvh - 280px)", minHeight: 280 }}>
+        <table className={`${t.texto} border-separate border-spacing-0`} style={{ minWidth: "max-content" }}>
           <thead>
             <tr>
-              <th className="sticky left-0 z-20 bg-white border-r border-b border-border px-3 py-2 text-left font-medium text-muted-foreground min-w-[150px] max-w-[200px]">
+              <th className={`sticky left-0 top-0 z-30 bg-white border-r border-b border-border px-3 py-2 text-left font-medium text-muted-foreground ${t.nome}`}>
                 Membro
               </th>
               {days.map((d) => {
@@ -500,7 +701,7 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
                 return (
                   <th
                     key={d}
-                    className={`border-b border-r border-border px-1 py-1 text-center font-medium min-w-[36px] ${
+                    className={`sticky top-0 z-20 border-b border-r border-border py-1 text-center font-medium ${t.dia} ${
                       weekend ? "bg-slate-50 text-slate-400" : "bg-white text-muted-foreground"
                     } ${isToday ? "bg-blue-50 text-blue-600 font-bold" : ""}`}
                   >
@@ -509,32 +710,32 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
                   </th>
                 );
               })}
-              <th className="border-b border-l border-border px-3 py-2 text-left font-medium text-muted-foreground bg-white min-w-[120px]">
+              <th className="sticky top-0 z-20 border-b border-l border-border px-3 py-2 text-left font-medium text-muted-foreground bg-white min-w-[100px]">
                 Totais
               </th>
-              <th className="border-b border-l border-border px-2 py-2 bg-white min-w-[80px]" />
+              <th className="sticky top-0 z-20 border-b border-l border-border px-2 py-2 bg-white min-w-[70px]" />
             </tr>
           </thead>
           <tbody>
             {members.map((m, rowIdx) => {
               const prev = rowIdx > 0 ? members[rowIdx - 1] : undefined;
               const showGroupHeader =
-                groupBy && (rowIdx === 0 || (prev?.groupName ?? null) !== (m.groupName ?? null));
-              const groupLabel = m.groupName ?? NO_GROUP_LABEL;
+                agrupar && (rowIdx === 0 || (prev?.areaName ?? null) !== (m.areaName ?? null));
+              const groupLabel = m.areaName ?? NO_AREA_LABEL;
               return (
               <Fragment key={m.userId}>
               {showGroupHeader && (
                 <tr>
                   <td
                     colSpan={days.length + 3}
-                    className="sticky left-0 z-10 bg-muted/50 border-b border-border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                    className="sticky left-0 z-10 bg-slate-100 border-b border-border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
                   >
-                    {groupLabel}
+                    {groupLabel} <span className="normal-case font-normal opacity-70">· {pessoasPorArea.get(groupLabel) ?? 0} {(pessoasPorArea.get(groupLabel) ?? 0) === 1 ? "pessoa" : "pessoas"}</span>
                   </td>
                 </tr>
               )}
               <tr className={rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
-                <td title={editable(m.userId) ? m.name : "Só a Administração altera a folga desta pessoa"} className={`sticky left-0 z-10 border-r border-b border-border px-3 py-1.5 font-medium ${m.name.endsWith("(desligado)") ? "whitespace-normal break-words leading-tight" : "truncate"} max-w-[200px] ${
+                <td title={editable(m.userId) ? m.name : "Só a Administração altera a folga desta pessoa"} className={`sticky left-0 z-10 border-r border-b border-border px-3 py-1.5 font-medium ${m.name.endsWith("(desligado)") ? "whitespace-normal break-words leading-tight" : "truncate"} ${t.nome} ${
                   rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50"
                 }`}>
                   {!editable(m.userId) && <Lock className="inline w-3 h-3 mr-1 text-muted-foreground" aria-label="Só a Administração altera" />}{m.name}
@@ -550,7 +751,7 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
                   return (
                     <td
                       key={d}
-                      className={`border-b border-r border-border text-center ${editable(m.userId) ? "cursor-pointer" : "cursor-not-allowed opacity-70"} transition-colors h-8 ${
+                      className={`border-b border-r border-border text-center ${editable(m.userId) ? "cursor-pointer" : "cursor-not-allowed opacity-70"} transition-colors ${t.linha} ${
                         weekend && !type ? "bg-slate-50/80" : ""
                       } ${isToday && !type ? "bg-blue-50/50" : ""} ${
                         isSelected ? "ring-2 ring-inset ring-primary bg-primary/10" : ""
@@ -560,7 +761,7 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
                       onMouseUp={(e) => handleCellMouseUp(e, m.userId, d)}
                     >
                       {info && (
-                        <span className={`inline-flex items-center justify-center w-7 h-5 rounded text-xs font-bold ${info.bg} ${info.text}`}>
+                        <span className={`inline-flex items-center justify-center ${t.selo} rounded font-bold ${info.bg} ${info.text}`}>
                           {info.abbr}
                         </span>
                       )}
@@ -582,7 +783,7 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
                 </td>
                 <td className="border-b border-l border-border px-2 py-1">
                   {editable(m.userId) && <button
-                    className="text-xs text-muted-foreground hover:text-foreground whitespace-nowrap px-2 min-h-[44px] rounded hover:bg-muted transition-colors"
+                    className="text-muted-foreground hover:text-foreground whitespace-nowrap px-2 ${t.semana} rounded hover:bg-muted transition-colors"
                     onClick={(e) => handleFillWeekClick(e, m.userId)}
                     title="Preencher semana visível"
                   >
@@ -596,6 +797,20 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
           </tbody>
         </table>
       </div>
+
+      {limparAberto && (
+        <LimparFolgasDialog
+          candidatas={candidatasAoLimpar}
+          descricaoFiltro={descricaoFiltro}
+          semFiltro={!descricaoFiltro}
+          todosEditaveis={todos.every((m) => m.editable !== false)}
+          operationId={operationId}
+          year={year}
+          month={month}
+          onClose={() => setLimparAberto(false)}
+          onFeito={limpezaFeita}
+        />
+      )}
 
       {cellMenu && (
         <CellMenu

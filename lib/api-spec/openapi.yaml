@@ -9210,6 +9210,11 @@ components:
         name: { type: string }
         groupId: { type: string, nullable: true }
         groupName: { type: string, nullable: true }
+        areaId: { type: string, nullable: true }
+        areaName: { type: string, nullable: true }
+        localId: { type: string, nullable: true }
+        localName: { type: string, nullable: true }
+        editable: { type: boolean }
         days:
           type: object
           additionalProperties: { type: string }

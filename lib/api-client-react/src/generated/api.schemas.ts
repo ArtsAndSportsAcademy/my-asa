@@ -2808,6 +2808,11 @@ export interface FolgasGridMember {
   name: string;
   groupId?: string | null;
   groupName?: string | null;
+  areaId?: string | null;
+  areaName?: string | null;
+  localId?: string | null;
+  localName?: string | null;
+  editable?: boolean;
   days: FolgasGridMemberDays;
   totals: FolgasGridMemberTotals;
 }
